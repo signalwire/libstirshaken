@@ -159,13 +159,193 @@ typedef struct stir_shaken_settings_s {
     stir_shaken_stica_t stica;
 } stir_shaken_settings_t;
 
+/* Global Values */
+typedef struct stir_shaken_globals_s {
+    
+	stir_shaken_settings_t settings;
+	
+    /** SSL */
+    const SSL_METHOD    *ssl_method;
+	SSL_CTX             *ssl_ctx;
+	SSL                 *ssl;
+    
+    stir_shaken_csr_t     csr;                      // CSR
+    stir_shaken_cert_t    cert;                     // Certificate
+    int                 curve_nid;                  // id of the curve in OpenSSL
+} switch_stir_shaken_globals_t;
+
+extern switch_stir_shaken_globals_t stir_shaken_globals;
+
+/**
+ * Create JSON token from call @pparams.
+ */
+cJSON * stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams);
+
+/**
+ * Using @digest_name and @pkey create a signature for @data and save it i @out.
+ * Return @out and lenght of it in @datalen.
+ */ 
+stir_shaken_status_t stir_shaken_do_sign_data_with_digest(const char *digest_name, EVP_PKEY *pkey, const char *data, size_t datalen, unsigned char *out, size_t *outlen);
+
+/**
+ * Generate new keys. Always removes old files.
+ */
+stir_shaken_status_t stir_shaken_generate_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name);
+
+/**
+ * Create signatures in @jwt and save intermediate results in @info.
+ */
+stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *passport, EVP_PKEY *pkey);
+
+/**
+ * Initialise PASSporT pointed to by @passport using call @params and sign it with @pkey.
+ */
+stir_shaken_status_t stir_shaken_passport_create(stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
+
+/**
+ * 
+ * Generate CSR needed by STI-CA to issue new cert.
+ * 
+ * @sp_code - (in) Service Provider code
+ * @csr - (out) result
+ */
+stir_shaken_status_t stir_shaken_generate_csr(uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *csr_full_name, const char *csr_text_full_name);
+
+/**
+ * Generate self signed X509 certificate from csr @req.
+ *
+ * @sp_code - (in) Service Provider code
+ * @req - (in) X509 certificate sign request
+ */
+X509 * stir_shaken_generate_x509_self_sign(uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key);
+
+/**
+ * Get the cert from STI-CA.
+ *
+ * May require to generate CSR and get the cert from remote STI-CA server
+ * or may just fetch it from local storage for self trusted CA.
+ *
+ * @sp_code - (in) Service Provider code
+ * @stica - (in) STI-CA description
+ * @cert - (out) result certificate
+ * @pkey - private key to sign csr
+ */
+stir_shaken_status_t stir_shaken_stisp_acquire_cert_from_stica(uint32_t sp_code, stir_shaken_stica_t *stica, stir_shaken_cert_t *cert);
+
+/*
+ * Get cert from disk.
+ * Return STIR_SHAKEN_STATUS_NOOP if successful, otherwise return STIR_SHAKEN_STATUS_FALSE.
+ */
+stir_shaken_status_t stir_shaken_acquire_cert_from_local_storage(uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, const char *cert_full_name);
+
+/**
+ * Get the cert locally. Get it from disk or create and sign. 
+ * 
+ * @cert - (out) result certificate
+ *
+ * Return value:
+ * STIR_SHAKEN_STATUS_FALSE: failed creating cert for self-trusted STI-CA
+ * STIR_SHAKEN_STATUS_NOOP: reusing old cert for self-trusted STI-CA from RAM
+ * STIR_SHAKEN_STATUS_RESTART: reusing old cert for self-trusted STI-CA from disk
+ * STIR_SHAKEN_STATUS_SUCCESS: generated and signed new new cert
+ */
+stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, const char *cert_full_name, const char *cert_text_full_name);
+
+/**
+ * Authorize (assert/sign) call with SIP Identity Header for Service Provider identified by @sp_code.
+ *
+ * @sih - (out) on success points to SIP Identity Header which is authentication of the call
+ * @sp_code - (in) Service Provider Code which uniquely identifies Service Provider within their STI-CA (Cert Authority)
+ * @stica - (in) STI-CA description (this can be configured from dialplan config / channel variables, or by consulting other lookup service)
+ * @params - call params in terms of STIR Shaken's PASSporT
+ */
+stir_shaken_status_t stir_shaken_authorize(char **sih, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
+
+/**
+ * Authorize the call and keep PASSporT if the @keep_pasport is true.
+ */
+stir_shaken_status_t stir_shaken_authorize_keep_passport(char **sih, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport, uint8_t keep_passport, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_authorize_self_trusted(char **sih, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
+
+/**
+ * High level interface to authorization (main entry point).
+ */
+stir_shaken_status_t stir_shaken_stisp_perform_authorization(EVP_PKEY *pkey, stir_shaken_cert_t *cert);
+
+int stir_shaken_verify_data(const char *data, const char *signature, size_t siglen, EVP_PKEY *pkey);
+int stir_shaken_do_verify_data_file(const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);
+int stir_shaken_do_verify_data(const void *data, size_t datalen, const unsigned char *sig, size_t siglen, EVP_PKEY *public_key);
+
+/**
+ * Verify (check/authenticate) call identity.
+ *
+ * @sdp - (in) SDP call description
+ */
+stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, stir_shaken_cert_t *cert);
+
+/**
+ * Perform STIR-Shaken verification of the @identity_header.
+ *
+ * This will attempt to obtain certificate referenced by SIP @identity_header
+ * and if successfull then will verify signature from that header against data from PASSporT
+ * (where the challenge is header and payload [base 64]) using public key from cert.
+ */
+stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url);
+
+/*
+ * Sign PASSporT with @pkey (generate signature in Jason Web Token).
+ * Sign the call data with the @pkey. 
+ * Local PASSporT object is created and destroyed. Only SIP Identity header is returned.
+ *
+ * External parameters that must be given to this method to be able to sign the SDP:
+ * X means "needed"
+ *
+ *      // JSON web token (JWT)
+ *          // JSON JOSE Header (alg, ppt, typ, x5u)
+ *              // alg      This value indicates the encryption algorithm. Must be 'ES256'.
+ *              // ppt      This value indicates the extension used. Must be 'shaken'.
+ *              // typ      This value indicates the token type. Must be 'passport'.
+ * X            // x5u      This value indicates the location of the certificate used to sign the token.
+ *          // JWS Payload
+ * X            // attest   This value indicates the attestation level. Must be either A, B, or C.
+ * X            // dest     This value indicates the called number(s) or called Uniform Resource Identifier(s).
+ *              // iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
+ * X            // orig     This value indicates the calling number or calling Uniform Resource Identifier.
+ * X            // origid   This value indicates the origination identifier.
+ *          // JWS Signature
+ *
+ *      // Parameters
+ *          //Alg
+ * (==x5u)	//Info	(X [needed], but implicitely copied from @x5u)
+ *          //PPT
+ */ 
+char* stir_shaken_do_sign(stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
+
+char* stir_shaken_sip_identity_create(stir_shaken_passport_t *passport);
+
+/*
+ * Sign the call data with the @pkey, and keep pointer to created PASSporT if @keep_passport is true. 
+ * SIP Identity header is returned and PASSporT.
+ * @passport - (out) will point to created PASSporT
+ */
+char * stir_shaken_do_sign_keep_passport(stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_passport_t **passport, uint8_t keep_passport);
+
+stir_shaken_status_t stir_shaken_download_cert(const char *url, mem_chunk_t *chunk);
+stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const char *file);
+stir_shaken_status_t stir_shaken_install_cert(stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_load_cert_from_mem(X509 **x, void *mem, size_t n);
+stir_shaken_status_t stir_shaken_load_cert_from_mem_through_file(X509 **x, void *mem, size_t n);
+stir_shaken_status_t stir_shaken_load_cert_from_file(X509 **x, const char *cert_tmp_name);
+stir_shaken_status_t stir_shaken_init_ssl(void);
+void stir_shaken_free_ssl(void);
+
 // TEST
 
 static stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line);
 
 /* Exit from calling location if test fails. */
-#define stir_shaken_assert(x, m, s) if (!(x)) return stir_shaken_test_die((m), __FILE__, __LINE__);
+#define stir_shaken_assert(x, m) if (!(x)) return stir_shaken_test_die((m), __FILE__, __LINE__);
 
-stir_shaken_status_t stir_shaken_unit_test_sign_verify_data_file(void);
+stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void);
 
 #endif // __STIR_SHAKEN
