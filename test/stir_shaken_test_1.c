@@ -1,10 +1,15 @@
 #include "stir_shaken.h"
 
 
-stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
+static stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line)
+{
+	printf("FAIL: %s. %s:%d\n", reason, file, line);
+    return STIR_SHAKEN_STATUS_FALSE;
+}
+
+stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(const char *path)
 {
     stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
-	const char *path = "/usr/local/freeswitch/conf/stir_shaken/test";
     const char *data_test_pass = "unit test 2 pass";
     const char *data_test_fail = "unit test 2 fail";
     size_t datalen = 0;
@@ -19,13 +24,15 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
     EVP_PKEY *public_key = NULL;
     int i = -1;
     
-    sprintf("%s%s%s", private_key_name, path, '/', "u2_private_key.pem");
-    sprintf("%s%s%s", public_key_name, path, '/', "u2_public_key.pem");
+	sprintf(private_key_name, "%s%c%s", path, '/', "u1_private_key.pem");
+    sprintf(public_key_name, "%s%c%s", path, '/', "u1_public_key.pem");
 
     printf("=== Unit testing: STIR/Shaken Sign-verify (in memory) [stir_shaken_unit_test_sign_verify_data]\n\n");
     
     // Generate new keys for this test
+	pthread_mutex_lock(&stir_shaken_globals.mutex);
     status = stir_shaken_generate_keys(&ec_key, &private_key, &public_key, private_key_name, public_key_name);
+	pthread_mutex_unlock(&stir_shaken_globals.mutex);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...\n\n");
     stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key\n\n");
     stir_shaken_assert(private_key != NULL, "Err, failed to generate private key\n\n");
@@ -52,7 +59,9 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 
 int main(void)
 {
-	if (stir_shaken_unit_test_sign_verify_data() != STIR_SHAKEN_STATUS_OK) {
+	const char *path = "/usr/local/freeswitch/conf/stir_shaken/test";
+
+	if (stir_shaken_unit_test_sign_verify_data(path) != STIR_SHAKEN_STATUS_OK) {
 		return -1;
 	}
 

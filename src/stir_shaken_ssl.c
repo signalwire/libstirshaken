@@ -409,10 +409,11 @@ stir_shaken_status_t stir_shaken_generate_csr(uint32_t sp_code, X509_REQ **csr_r
 
 	req = X509_REQ_new();
 	if (!req) {
-		printf("STIR-Shaken: CSR ERR: Cannot create CSR\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR ERR: Cannot create CSR\n");
 		goto fail;
 	}
-	printf("STIR-Shaken: CSR: New CSR request created\n");
+	
+	// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR: New CSR request created\n");
 
 	// Make request (similar to OpenSSL's make_REQ from req.c
 
@@ -423,15 +424,16 @@ stir_shaken_status_t stir_shaken_generate_csr(uint32_t sp_code, X509_REQ **csr_r
 
 	i = build_subject(req, req_subj, req_chtype, req_multirdn);
 	if (i == 0) {
-		printf("STIR-Shaken: CSR ERR: Unable to build CSR's subject\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR ERR: Unable to build CSR's subject\n");
 		goto fail;
 	}
 
 	if (!X509_REQ_set_pubkey(req, public_key)) {
-		printf("STIR-Shaken: CSR ERR: Cannot set EVP_KEY to CSR\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR ERR: Cannot set EVP_KEY to CSR\n");
 		goto fail;
 	}
-	printf("STIR-Shaken: CSR: Prepared CSR request for signing\n");
+
+	// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR: Prepared CSR request for signing\n");
 
 	// Set up V3 context struct
 	X509V3_set_ctx(&ext_ctx, NULL, NULL, req, NULL, 0);
@@ -440,45 +442,47 @@ stir_shaken_status_t stir_shaken_generate_csr(uint32_t sp_code, X509_REQ **csr_r
 	include_der_string = 1;
 	der_len = stir_shaken_generate_der(ext_value_der, EXT_VALUE_DER_LEN, sp_code, include_der_string);
 	if (der_len == -1) {
-		printf("STIR-Shaken: CSR ERR: Failed to generate DER\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR ERR: Failed to generate DER\n");
 		goto fail;
 	}
-	printf("STIR-Shaken: CSR: Got DER (len=%d): %s\n", der_len, ext_value_der);
+	
+	// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR: Got DER (len=%d): %s\n", der_len, ext_value_der);
 
 
 	// Add extensions
 	i = stir_shaken_v3_add_extensions(&ext_ctx, ext_name, ext_value_der, req, NULL);
 	if (i == 0) {
-		printf("STIR-Shaken: CSR ERR: Cannot load extensions into CSR\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR ERR: Cannot load extensions into CSR\n");
 		goto fail;
 	}
 
 	digest = EVP_get_digestbyname("sha256");
 	if (!digest) {
-		printf("STIR-Shaken: CSR ERR: Failed loading digest\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR ERR: Failed loading digest\n");
 		goto fail;
 	}
 
 	i = do_X509_REQ_sign(req, private_key, digest, NULL);
 	if (i == 0) {
-		prinf("STIR-Shaken: CSR ERR: Failed to sign CSR\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR ERR: Failed to sign CSR\n");
 		goto fail;
 	}
-	printf("STIR-Shaken: CSR: Signed CSR\n");
+	
+	// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR: Signed CSR\n");
 
 	if (csr_full_name) {
 		i = BIO_write_filename(out, (char*)csr_full_name);
 		if (i == 0) {
-			printf("STIR-Shaken: CSR ERR: Failed to redirect bio to file %s\n", csr_full_name);
+			// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR ERR: Failed to redirect bio to file %s\n", csr_full_name);
 			goto fail;
 		}
 
 		i = PEM_write_bio_X509_REQ(out, req);
 		if (i == 0) {
-			printf("STIR-Shaken: CSR ERR: Failed to write CSR to file %s\n", csr_full_name);
+			// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR ERR: Failed to write CSR to file %s\n", csr_full_name);
 			goto fail;
 		}
-		printf("STIR-Shaken: CSR: Written CSR to file %s\n", csr_full_name);
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR: Written CSR to file %s\n", csr_full_name);
 	}
 
 	BIO_free_all(out);
@@ -488,7 +492,7 @@ stir_shaken_status_t stir_shaken_generate_csr(uint32_t sp_code, X509_REQ **csr_r
         if (!bio) goto anyway;
         X509_REQ_print_ex(bio, req, 0, 0);
         BIO_free_all(bio);
-        printf("STIR-Shaken: CSR: Written CSR in human readable form to file %s\n", csr_text_full_name);
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR: Written CSR in human readable form to file %s\n", csr_text_full_name);
     }
 
 anyway:
@@ -608,16 +612,17 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_s
 		out = BIO_new_fp(stdout, 0);
 		i = BIO_write_filename(out, (char*) cert_full_name);
 		if (i == 0) {
-			printf("STIR-Shaken: Cert ERR: Failed to redirect bio to file %s\n", cert_full_name);
+			// TODO set error string, allow for retrieval printf("STIR-Shaken: Cert ERR: Failed to redirect bio to file %s\n", cert_full_name);
 			goto fail;
 		}
 
 		i = PEM_write_bio_X509(out, x);
 		if (i == 0) {
-			log_printf("STIR-Shaken: Cert ERR: Failed to write certificate to file %s\n", cert_full_name);
+			// TODO set error string, allow for retrieval: "STIR-Shaken: Cert ERR: Failed to write certificate to file %s\n", cert_full_name);
 			goto fail;
 		}
-		printf("STIR-Shaken: Cert: Written certificate to file %s\n", cert_full_name);
+		
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: Cert: Written certificate to file %s\n", cert_full_name);
 	}
 
 	BIO_free_all(out);
@@ -629,7 +634,8 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_s
 		X509_print_ex(bio, x, 0, 0);
 		BIO_free_all(bio);
 		bio = NULL;
-		printf("STIR-Shaken: Cert: Written certificate in human readable form to file %s\n", cert_text_full_name);
+		
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: Cert: Written certificate in human readable form to file %s\n", cert_text_full_name);
 	}
 
 anyway:
@@ -691,7 +697,7 @@ stir_shaken_status_t stir_shaken_load_cert_from_file(X509 **x, const char *cert_
     }
 
     if (BIO_read_filename(in, cert_tmp_name) <= 0) {
-		printf("STIR-Shaken: Load: Cert ERR: Failed to load cert %s\n", cert_tmp_name);
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: Load: Cert ERR: Failed to load cert %s\n", cert_tmp_name);
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
@@ -706,10 +712,14 @@ stir_shaken_status_t stir_shaken_generate_keys(EC_KEY **eck, EVP_PKEY **priv, EV
     EC_KEY                  *ec_key = NULL;
     EVP_PKEY                *pk = NULL;
     BIO                     *out = NULL, *bio = NULL, *key = NULL;
+	
+	
+	if (!stir_shaken_globals.initialised) {
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
 
     if (eck == NULL || priv == NULL || pub == NULL || private_key_full_name == NULL || public_key_full_name == NULL)
         return STIR_SHAKEN_STATUS_FALSE;
-
 
     // file_remove(private_key_full_name, NULL);
     // file_remove(public_key_full_name, NULL);
@@ -717,23 +727,24 @@ stir_shaken_status_t stir_shaken_generate_keys(EC_KEY **eck, EVP_PKEY **priv, EV
     /* Generate EC key associated with our chosen curve. */
     ec_key = EC_KEY_new_by_curve_name(stir_shaken_globals.curve_nid);
     if (!ec_key) {
-		printf("STIR-Shaken: SSL ERR: Cannot construct new EC key\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL ERR: Cannot construct new EC key\n");
         goto fail;
     }
-    printf("STIR-Shaken: SSL: Got new EC\n");
+
+	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Got new EC\n");
     *eck = ec_key;
    
     if (!EC_KEY_generate_key(ec_key)) {
-		printf("STIR-Shaken: SSL ERR: Cannot generate new private/public keys from EC key\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL ERR: Cannot generate new private/public keys from EC key\n");
         goto fail;
     }
-    printf("STIR-Shaken: SSL: Got new private/public EC key pair\n");
+	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Got new private/public EC key pair\n");
 
     if (!EC_KEY_check_key(ec_key)) {
-		printf("STIR-Shaken: SSL ERR: EC key pair is invalid\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL ERR: EC key pair is invalid\n");
         goto fail;
     }
-    printf("STIR-Shaken: SSL: Private/public EC key pair is OK\n");
+	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Private/public EC key pair is OK\n");
 
     // Print them out
     out = BIO_new_fp(stdout, BIO_NOCLOSE);
@@ -759,29 +770,28 @@ stir_shaken_status_t stir_shaken_generate_keys(EC_KEY **eck, EVP_PKEY **priv, EV
     BIO_free_all(bio);
     bio = NULL;
 
-    printf("STIR-Shaken: SSL: Saved private key: %s\n", private_key_full_name);
-    printf("STIR-Shaken: SSL: Saved public key: %s\n", public_key_full_name);
+	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Saved private key: %s\n", private_key_full_name); printf("STIR-Shaken: SSL: Saved public key: %s\n", public_key_full_name);
 
     key = BIO_new(BIO_s_file());
     if (BIO_read_filename(key, private_key_full_name) <= 0) {
-        printf("Err, bio read priv key\n");
+		// TODO set error string, allow for retrieval printf("Err, bio read priv key\n");
         goto fail;
     }
     pk = PEM_read_bio_PrivateKey(key, NULL, NULL, NULL);
     *priv = pk;
 
-    printf("STIR-Shaken: SSL: Loaded pkey from: %s\n", private_key_full_name);
+	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Loaded pkey from: %s\n", private_key_full_name);
     BIO_free_all(key);
 
     key = BIO_new(BIO_s_file());
     if (BIO_read_filename(key, public_key_full_name) <= 0) {
-        printf("Err, bio read public key\n");
+		// TODO set error string, allow for retrieval printf("Err, bio read public key\n");
         goto fail;
     }
     pk = PEM_read_bio_PUBKEY(key, NULL, NULL, NULL);
     *pub = pk;
 
-    printf("STIR-Shaken: SSL: Loaded pkey from: %s\n", public_key_full_name);
+	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Loaded pkey from: %s\n", public_key_full_name);
     
     BIO_free_all(key);
     BIO_free_all(out);
@@ -799,9 +809,143 @@ fail:
 }
 
 /**
+ * Using @digest_name and @pkey create a signature for @data and save it in @out.
+ * Return @out and length of it in @outlen.
+ */ 
+stir_shaken_status_t stir_shaken_do_sign_data_with_digest(const char *digest_name, EVP_PKEY *pkey, const char *data, size_t datalen, unsigned char *out, size_t *outlen)
+{
+    // TODO: JWS signature
+    // JWS Signature = ES256(ASCII(BASE64URL(UTF8(JWS Protected Header)) || "." || BASE64URL(JWS Payload)))
+    // JWS Signature = ES256(Main Signature)
+    //
+    //    +--------------+-------------------------------+--------------------+
+    //    | "alg" Param  | Digital Signature or MAC      | Implementation     |
+    //    | Value        | Algorithm                     | Requirements       |
+    //    +--------------+-------------------------------+--------------------+
+    //    | HS256        | HMAC using SHA-256            | Required           |
+    //    | HS384        | HMAC using SHA-384            | Optional           |
+    //    | HS512        | HMAC using SHA-512            | Optional           |
+    //    | RS256        | RSASSA-PKCS1-v1_5 using       | Recommended        |
+    //    |              | SHA-256                       |                    |
+    //    | RS384        | RSASSA-PKCS1-v1_5 using       | Optional           |
+    //    |              | SHA-384                       |                    |
+    //    | RS512        | RSASSA-PKCS1-v1_5 using       | Optional           |
+    //    |              | SHA-512                       |                    |
+    //    | ES256        | ECDSA using P-256 and SHA-256 | Recommended+ 
+    
+    const EVP_MD    *md = NULL;
+    EVP_MD_CTX      *mdctx = NULL;
+    int             i = 0;
+	
+	
+	if (!stir_shaken_globals.initialised) {
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+    if (!pkey || !data || !out || !outlen) return STIR_SHAKEN_STATUS_FALSE;
+
+    md = EVP_get_digestbyname(digest_name);
+    if (!md) {
+        // TODO save error string and allow for retrieval by a caller:  sprintf(buf, "STIR-Shaken: Cannot get %s digest\n", digest_name);
+        goto err;
+    }
+
+    mdctx = EVP_MD_CTX_create();
+    if (!mdctx) goto err;
+    EVP_MD_CTX_init(mdctx);
+    i = EVP_DigestSignInit(mdctx, NULL, md, NULL, pkey);
+    if (i == 0) goto err;
+    i = EVP_DigestSignUpdate(mdctx, data, datalen);
+    if (i == 0) goto err;
+    i = EVP_DigestSignFinal(mdctx, out, outlen);
+    if (i == 0 || (*outlen >= PBUF_LEN - 1)) goto err;
+    out[*outlen] = '\0';
+
+    return STIR_SHAKEN_STATUS_OK;
+
+err:
+    return STIR_SHAKEN_STATUS_FALSE;
+}
+
+int stir_shaken_do_verify_data(const void *data, size_t datalen, const unsigned char *sig, size_t siglen, EVP_PKEY *public_key)
+{
+    BIO *bio_err = NULL;
+    const EVP_MD    *md = NULL;
+    EVP_MD_CTX *mctx = NULL;
+    EVP_PKEY_CTX *pctx = NULL;
+    int r = -1;
+    int res = -1;
+
+    const char      *digest_name = "sha256";
+
+	if (!stir_shaken_globals.initialised) {
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+    if (!data || !sig || siglen == 0 || !public_key) {
+        goto err;
+    }
+
+    bio_err = BIO_new(BIO_s_file());
+    BIO_set_fp(bio_err, stdout, BIO_NOCLOSE | BIO_FP_TEXT);
+    
+    md = EVP_get_digestbyname(digest_name);
+    if (!md) {
+        // TODO save error string and allow for retrieval by a caller:  sprintf(buf, "STIR-Shaken: Cannot get %s digest\n", digest_name);
+        goto err;
+    }
+
+    mctx = EVP_MD_CTX_create();
+    //EVP_DigestInit_ex(mdctx, md, NULL);
+    EVP_MD_CTX_init(mctx);
+
+    r = EVP_DigestVerifyInit(mctx, &pctx, md, NULL, public_key);
+    if (r <= 0) {
+        // TODO save error string and allow for retrieval by a caller:  sprintf(buf, "STIR-Shaken: Error setting context\n");
+        goto err;
+    }
+    
+    r = EVP_DigestVerifyUpdate(mctx, (const void*)data, datalen);
+    if (r <= 0) {
+        // TODO save error string and allow for retrieval by a caller:  sprintf(buf, "STIR-Shaken: Error updating context\n");
+        goto err;
+    }
+    
+    r = EVP_DigestVerifyFinal(mctx, (unsigned char*)sig, (unsigned int)siglen);
+    if (r > 0) {
+        // TODO save error string and allow for retrieval by a caller:  sprintf(buf, "STIR-Shaken: Signature OK\n");
+        res = 0;
+    } else if (r == 0) {
+        // TODO save error string and allow for retrieval by a caller:  sprintf(buf, "STIR-Shaken: Signature/data failed verification\n");
+        res = 1;
+    } else {
+        // TODO save error string and allow for retrieval by a caller:  "STIR-Shaken: Error Verifying Data\n");
+        res = 2;
+        ERR_print_errors(bio_err);
+    }
+
+    if (mctx) {
+        EVP_MD_CTX_destroy(mctx);
+    }
+    if (bio_err) {
+        BIO_free(bio_err);
+    }
+    return res;
+
+err:
+    if (mctx) {
+        EVP_MD_CTX_destroy(mctx);
+    }
+    if (bio_err) {
+        BIO_free(bio_err);
+    }
+    return -1;
+}
+
+/**
  * Setup OpenSSL lib.
  */
-stir_shaken_status_t stir_shaken_stir_shaken_init_ssl(void)
+stir_shaken_status_t stir_shaken_init_ssl(void)
 {
 	stir_shaken_settings_t  *settings = &stir_shaken_globals.settings;
     const SSL_METHOD        **ssl_method = &stir_shaken_globals.ssl_method;
@@ -812,19 +956,19 @@ stir_shaken_status_t stir_shaken_stir_shaken_init_ssl(void)
     int                     curve_nid = -1;                 // id of the curve in OpenSSL
 
 
-    if (!settings->path) return STIR_SHAKEN_STATUS_FALSE;
-	
 	*ssl_method = SSLv23_server_method();                   /* create server instance */
 	
+	ERR_clear_error();	
     *ssl_ctx = SSL_CTX_new(*ssl_method);                    /* create context */
     if (!*ssl_ctx) {
-        printf("STIR-Shaken: SSL ERR: Failed to init SSL context\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL ERR: Failed to init SSL context\n");
+		fprintf(stderr, "STIR-Shaken: SSL error: %s\n", ERR_error_string(ERR_get_error(), NULL)); 
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
 	*ssl = SSL_new(*ssl_ctx);
     if (!*ssl) {
-        printf("STIR-Shaken: SSL ERR: Failed to init SSL\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL ERR: Failed to init SSL\n");
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
@@ -833,17 +977,17 @@ stir_shaken_status_t stir_shaken_stir_shaken_init_ssl(void)
     // Get total number of curves
     n = EC_get_builtin_curves(NULL, 0);
     if (n < 1) {
-		printf("STIR-Shaken: SSL ERR: Eliptic curves are not supported (change OpenSSL version to 1.0.2?)\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL ERR: Eliptic curves are not supported (change OpenSSL version to 1.0.2?)\n");
 		goto fail;
     }
-    printf("STIR-Shaken: SSL: Eliptic curves supported (%zu)\n", n);
+	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Eliptic curves supported (%zu)\n", n);
 
     /* 2. Check support for "X9.62/SECG curve over a 256 bit prime field" */
 
     // Get curves description
     curves = malloc(n * sizeof(EC_builtin_curve));									// TODO free
     if (!curves) {
-		printf("STIR-Shaken: SSL ERR: Not enough memory\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL ERR: Not enough memory\n");
 		goto fail;
     }
     EC_get_builtin_curves(curves, n);
@@ -851,7 +995,7 @@ stir_shaken_status_t stir_shaken_stir_shaken_init_ssl(void)
     // Search for "prime256v1" curve
     for (i = 0; i < n; ++i) {
         c = &curves[i];
-		printf("STIR-Shaken: SSL: Eliptic curve %s [%d] is supported\n", c->comment, c->nid);
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Eliptic curve %s [%d] is supported\n", c->comment, c->nid);
         if (strstr(c->comment, "X9.62/SECG curve over a 256 bit prime field")) {
             curve_nid = c->nid;
             curve = c;
@@ -859,10 +1003,10 @@ stir_shaken_status_t stir_shaken_stir_shaken_init_ssl(void)
     }
 
     if (curve_nid == -1 || !curve) {
-		printf("STIR-Shaken: SSL ERR: Eliptic curve 'X9.62/SECG curve over a 256 bit prime field' is not supported (change OpenSSL version to 1.0.2?)\n");
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL ERR: Eliptic curve 'X9.62/SECG curve over a 256 bit prime field' is not supported (change OpenSSL version to 1.0.2?)\n");
         goto fail;
     } else {
-		printf("STIR-Shaken: SSL: Using (%s [%d]) eliptic curve\n", curve->comment, curve->nid);
+		// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Using (%s [%d]) eliptic curve\n", curve->comment, curve->nid);
     }
     stir_shaken_globals.curve_nid = curve_nid;
 
@@ -877,7 +1021,7 @@ fail:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
-void stir_shaken_stir_shaken_free_ssl(void)
+void stir_shaken_free_ssl(void)
 {
 	SSL_CTX **ssl_ctx = &stir_shaken_globals.ssl_ctx;
 	SSL     **ssl = &stir_shaken_globals.ssl;

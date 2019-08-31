@@ -10,6 +10,8 @@
 // For cert downloading
 #include <curl/curl.h>
 
+#include <pthread.h>
+
 #define PBUF_LEN 800
 
 #include <openssl/crypto.h>
@@ -29,7 +31,9 @@
 
 typedef enum stir_shaken_status {
 	STIR_SHAKEN_STATUS_OK,
-	STIR_SHAKEN_STATUS_FALSE
+	STIR_SHAKEN_STATUS_FALSE,
+	STIR_SHAKEN_STATUS_RESTART,
+	STIR_SHAKEN_STATUS_NOOP
 } stir_shaken_status_t;
 
 typedef struct mem_chunk_s {
@@ -56,27 +60,27 @@ typedef struct mem_chunk_s {
  */
 typedef struct stir_shaken_passport {
 
-    // JSON web token (JWT)
-        // JSON JOSE Header (alg, ppt, typ, x5u)
-            // alg      This value indicates the encryption algorithm. Must be 'ES256'.
-            // ppt      This value indicates the extension used. Must be 'shaken'.
-            // typ      This value indicates the token type. Must be 'passport'.
-            // x5u      This value indicates the location of the certificate used to sign the token.
-        // JWS Payload
-            // attest   This value indicates the attestation level. Must be either A, B, or C.
-            // dest     This value indicates the called number(s) or called Uniform Resource Identifier(s).
-            // iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
-            // orig     This value indicates the calling number or calling Uniform Resource Identifier.
-            // origid   This value indicates the origination identifier.
-        // JWS Signature
+	// JSON web token (JWT)
+	// JSON JOSE Header (alg, ppt, typ, x5u)
+	// alg      This value indicates the encryption algorithm. Must be 'ES256'.
+	// ppt      This value indicates the extension used. Must be 'shaken'.
+	// typ      This value indicates the token type. Must be 'passport'.
+	// x5u      This value indicates the location of the certificate used to sign the token.
+	// JWS Payload
+	// attest   This value indicates the attestation level. Must be either A, B, or C.
+	// dest     This value indicates the called number(s) or called Uniform Resource Identifier(s).
+	// iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
+	// orig     This value indicates the calling number or calling Uniform Resource Identifier.
+	// origid   This value indicates the origination identifier.
+	// JWS Signature
 
-    // Parameters
-        //Alg
-        //Info
-        //PPT
+	// Parameters
+	//Alg
+	//Info
+	//PPT
 
-    cJSON *json;        // PASSport JSON (JWT + Parameters)
-    cJSON *info;        // Additional info (payload/header intermediate signatures used to generate @jwt->signature)
+	cJSON *json;        // PASSport JSON (JWT + Parameters)
+	cJSON *info;        // Additional info (payload/header intermediate signatures used to generate @jwt->signature)
 } stir_shaken_passport_t;
 
 /*
@@ -94,98 +98,135 @@ typedef struct stir_shaken_passport {
  * @ppt_ignore - true if ppt field should not be included
  */ 
 typedef struct stir_shaken_passport_params_s {
-    const char  *x5u;
-    const char  *attest;
-    const char  *desttn_key;
-    const char  *desttn_val;
-    int         iat;
-    const char  *origtn_key;
-    const char  *origtn_val;
-    const char  *origid;
-    uint8_t     ppt_ignore;     // Should skip ppt field?
+	const char  *x5u;
+	const char  *attest;
+	const char  *desttn_key;
+	const char  *desttn_val;
+	int         iat;
+	const char  *origtn_key;
+	const char  *origtn_val;
+	const char  *origid;
+	uint8_t     ppt_ignore;     // Should skip ppt field?
 } stir_shaken_passport_params_t;
 
 typedef struct stir_shaken_stisp_s {
-    uint32_t	sp_code;
+	uint32_t	sp_code;
 	char		*install_path;
 	char		*install_url;
 } stir_shaken_stisp_t;
 
 typedef struct stir_shaken_stica_s {
-    const char *hostname;
-    uint16_t port;
-    uint8_t self_trusted;               /* 1 if STI-CA can be accessed locally, by _acquire_cert_from_local_storage */
-    const char *local_storage_path;     /* If STI-CA is self-trusted this tells where is the local storage where the cert is stored. */ 
+	const char *hostname;
+	uint16_t port;
+	uint8_t self_trusted;               /* 1 if STI-CA can be accessed locally, by _acquire_cert_from_local_storage */
+	const char *local_storage_path;     /* If STI-CA is self-trusted this tells where is the local storage where the cert is stored. */ 
 } stir_shaken_stica_t;
 
 typedef struct stir_shaken_csr_s {
-    X509_REQ    *req;
-    const char  *body;
-    EC_KEY              *ec_key;
-    EVP_PKEY            *pkey;
+	X509_REQ    *req;
+	const char  *body;
+	EC_KEY              *ec_key;
+	EVP_PKEY            *pkey;
 } stir_shaken_csr_t;
 
 typedef struct stir_shaken_cert_s {
-    X509        *x;
-    char        *body;
+	X509        *x;
+	char        *body;
 	size_t		len;
-    uint8_t     is_fresh;
+	uint8_t     is_fresh;
 	char		*full_name;
 	char		*name;
 	char		*install_path;				// folder, where cert must be put to be accessible with @install_url for other SPs
 	char		*install_url;				// URL access to cert, this is put into PASSporT as @x5u and @params.info
 	char		*access;
-    EC_KEY              *ec_key;
-    EVP_PKEY            *pkey;
+	EC_KEY              *ec_key;
+	EVP_PKEY            *pkey;
 } stir_shaken_cert_t;
 
 typedef struct stir_shaken_settings_s {
-    const char *path;
-    const char *ssl_private_key_name;
-    const char *ssl_private_key_full_name;
-    const char *ssl_public_key_name;
-    const char *ssl_public_key_full_name;
-    const char *ssl_csr_name;
-    const char *ssl_csr_full_name;
-    const char *ssl_csr_text_full_name;
-    const char *ssl_cert_name;
-    const char *ssl_cert_full_name;
-    const char *ssl_cert_text_full_name;
-    const char *ssl_template_file_name;
-    const char *ssl_template_file_full_name;
-    uint8_t stisp_configured;
-    uint8_t stica_configured;
-    stir_shaken_stisp_t stisp;
-    stir_shaken_stica_t stica;
+	const char *path;
+	const char *ssl_private_key_name;
+	const char *ssl_private_key_full_name;
+	const char *ssl_public_key_name;
+	const char *ssl_public_key_full_name;
+	const char *ssl_csr_name;
+	const char *ssl_csr_full_name;
+	const char *ssl_csr_text_full_name;
+	const char *ssl_cert_name;
+	const char *ssl_cert_full_name;
+	const char *ssl_cert_text_full_name;
+	const char *ssl_template_file_name;
+	const char *ssl_template_file_full_name;
+	uint8_t stisp_configured;
+	uint8_t stica_configured;
+	stir_shaken_stisp_t stisp;
+	stir_shaken_stica_t stica;
 } stir_shaken_settings_t;
 
 /* Global Values */
 typedef struct stir_shaken_globals_s {
-    
-	stir_shaken_settings_t settings;
-	
-    /** SSL */
-    const SSL_METHOD    *ssl_method;
+
+	pthread_mutexattr_t		attr;	
+	pthread_mutex_t			mutex;	
+	stir_shaken_settings_t	settings;
+	uint8_t					initialised;
+
+	/** SSL */
+	const SSL_METHOD    *ssl_method;
 	SSL_CTX             *ssl_ctx;
 	SSL                 *ssl;
-    
-    stir_shaken_csr_t     csr;                      // CSR
-    stir_shaken_cert_t    cert;                     // Certificate
-    int                 curve_nid;                  // id of the curve in OpenSSL
+
+	stir_shaken_csr_t     csr;                      // CSR
+	stir_shaken_cert_t    cert;                     // Certificate
+	int                 curve_nid;                  // id of the curve in OpenSSL
 } switch_stir_shaken_globals_t;
 
 extern switch_stir_shaken_globals_t stir_shaken_globals;
 
 /**
- * Create JSON token from call @pparams.
+ * Main entry point.
+ *
+ * This is called on library load.
  */
-cJSON * stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams);
+static void stir_shaken_init(void) __attribute__ ((constructor));
 
 /**
- * Using @digest_name and @pkey create a signature for @data and save it i @out.
- * Return @out and lenght of it in @datalen.
+ * Main exit point.
+ *
+ * This is called on library unload.
+ */
+static void stir_shaken_deinit(void) __attribute__ ((destructor));
+
+/**
+ * Create JSON token from call @pparams.
+ */
+cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams);
+
+/**
+ * Using @digest_name and @pkey create a signature for @data and save it in @out.
+ * Return @out and lenght of it in @outlen.
  */ 
 stir_shaken_status_t stir_shaken_do_sign_data_with_digest(const char *digest_name, EVP_PKEY *pkey, const char *data, size_t datalen, unsigned char *out, size_t *outlen);
+
+int stir_shaken_verify_data(const char *data, const char *signature, size_t siglen, EVP_PKEY *pkey);
+int stir_shaken_do_verify_data_file(const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);
+int stir_shaken_do_verify_data(const void *data, size_t datalen, const unsigned char *sig, size_t siglen, EVP_PKEY *public_key);
+
+/**
+ * Verify (check/authenticate) call identity.
+ *
+ * @sdp - (in) SDP call description
+ */
+stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, stir_shaken_cert_t *cert);
+
+/**
+ * Perform STIR-Shaken verification of the @identity_header.
+ *
+ * This will attempt to obtain certificate referenced by SIP @identity_header
+ * and if successfull then will verify signature from that header against data from PASSporT
+ * (where the challenge is header and payload [base 64]) using public key from cert.
+ */
+stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url);
 
 /**
  * Generate new keys. Always removes old files.
@@ -272,26 +313,6 @@ stir_shaken_status_t stir_shaken_authorize_self_trusted(char **sih, stir_shaken_
  */
 stir_shaken_status_t stir_shaken_stisp_perform_authorization(EVP_PKEY *pkey, stir_shaken_cert_t *cert);
 
-int stir_shaken_verify_data(const char *data, const char *signature, size_t siglen, EVP_PKEY *pkey);
-int stir_shaken_do_verify_data_file(const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);
-int stir_shaken_do_verify_data(const void *data, size_t datalen, const unsigned char *sig, size_t siglen, EVP_PKEY *public_key);
-
-/**
- * Verify (check/authenticate) call identity.
- *
- * @sdp - (in) SDP call description
- */
-stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, stir_shaken_cert_t *cert);
-
-/**
- * Perform STIR-Shaken verification of the @identity_header.
- *
- * This will attempt to obtain certificate referenced by SIP @identity_header
- * and if successfull then will verify signature from that header against data from PASSporT
- * (where the challenge is header and payload [base 64]) using public key from cert.
- */
-stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url);
-
 /*
  * Sign PASSporT with @pkey (generate signature in Jason Web Token).
  * Sign the call data with the @pkey. 
@@ -346,6 +367,6 @@ static stir_shaken_status_t stir_shaken_test_die(const char *reason, const char 
 /* Exit from calling location if test fails. */
 #define stir_shaken_assert(x, m) if (!(x)) return stir_shaken_test_die((m), __FILE__, __LINE__);
 
-stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void);
+stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(const char *path);
 
 #endif // __STIR_SHAKEN
