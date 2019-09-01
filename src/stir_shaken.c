@@ -75,3 +75,75 @@ static void stir_shaken_deinit(void)
 	pthread_mutex_destroy(&stir_shaken_globals.mutex);
 	pthread_mutexattr_destroy(&stir_shaken_globals.attr);
 }
+
+stir_shaken_status_t stir_shaken_dir_exists(const char *path)
+{
+	struct stat sb;
+
+	if (path && stat(path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+		return STIR_SHAKEN_STATUS_OK;
+	}
+
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+stir_shaken_status_t stir_shaken_dir_create(const char *path)
+{
+	if (path && mkdir(path, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) == 0) {
+		return STIR_SHAKEN_STATUS_OK;
+	}
+
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+stir_shaken_status_t stir_shaken_dir_create_recursive(const char *path)
+{
+	char	*p = NULL, *tmp = NULL;
+	size_t	len = 0;
+
+	if (!path) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	len = strlen(path);
+	tmp = malloc(len + 1);
+	if (!tmp) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+	memcpy(tmp, path, len);
+	tmp[len] = '\0';
+
+	if (tmp[len - 1] == '/') {
+		tmp[len - 1] = 0;
+	}
+
+	for (p = tmp + 1; *p; p++) {
+
+		if (*p == '/') {
+
+			*p = 0;
+
+			if (stir_shaken_dir_exists(tmp) == STIR_SHAKEN_STATUS_FALSE) {
+
+				if (mkdir(tmp, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) != 0) {
+					goto fail;
+				}
+			}
+
+			*p = '/';
+		}
+	}
+
+	if (mkdir(tmp, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) != 0) {
+		goto fail;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+	if (tmp) {
+		free(tmp);
+		tmp = NULL;
+	}
+	return STIR_SHAKEN_STATUS_FALSE;
+}

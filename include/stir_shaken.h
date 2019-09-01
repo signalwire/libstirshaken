@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <sys/stat.h>
 
 #include <cjson/cJSON.h>
 
@@ -360,6 +361,11 @@ stir_shaken_status_t stir_shaken_load_cert_from_file(X509 **x, const char *cert_
 stir_shaken_status_t stir_shaken_init_ssl(void);
 void stir_shaken_free_ssl(void);
 
+// Utility
+stir_shaken_status_t stir_shaken_dir_exists(const char *path);
+stir_shaken_status_t stir_shaken_dir_create(const char *path);
+stir_shaken_status_t stir_shaken_dir_create_recursive(const char *path);
+
 // TEST
 
 static stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line);
@@ -367,6 +373,6 @@ static stir_shaken_status_t stir_shaken_test_die(const char *reason, const char 
 /* Exit from calling location if test fails. */
 #define stir_shaken_assert(x, m) if (!(x)) return stir_shaken_test_die((m), __FILE__, __LINE__);
 
-stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(const char *path);
+stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void);
 
 #endif // __STIR_SHAKEN
