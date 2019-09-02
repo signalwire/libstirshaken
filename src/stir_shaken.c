@@ -147,3 +147,91 @@ fail:
 	}
 	return STIR_SHAKEN_STATUS_FALSE;
 }
+
+static const char stir_shaken_b64_table[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+#define B64BUFFLEN 1024
+
+stir_shaken_status_t stir_shaken_b64_encode(unsigned char *in, size_t ilen, unsigned char *out, size_t olen)
+{
+	int y = 0, bytes = 0;
+	size_t x = 0;
+	unsigned int b = 0, l = 0;
+
+	for (x = 0; x < ilen; x++) {
+		b = (b << 8) + in[x];
+		l += 8;
+
+		while (l >= 6) {
+			out[bytes++] = stir_shaken_b64_table[(b >> (l -= 6)) % 64];
+			if (bytes >= (int)olen - 1) {
+				goto end;
+			}
+			if (++y != 72) {
+				continue;
+			}
+			/* out[bytes++] = '\n'; */
+			y = 0;
+		}
+	}
+
+	if (l > 0) {
+		out[bytes++] = stir_shaken_b64_table[((b % 16) << (6 - l)) % 64];
+	}
+	if (l != 0) {
+		while (l < 6 && bytes < (int)olen - 1) {
+			out[bytes++] = '=', l += 2;
+		}
+	}
+
+  end:
+
+	out[bytes] = '\0';
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen)
+{
+	char l64[256];
+	int b = 0, c, l = 0, i;
+	const char *ip;
+	char *op = out;
+	size_t ol = 0;
+
+	for (i = 0; i < 256; i++) {
+		l64[i] = -1;
+	}
+
+	for (i = 0; i < 64; i++) {
+		l64[(int) stir_shaken_b64_table[i]] = (char) i;
+	}
+
+	for (ip = in; ip && *ip; ip++) {
+		c = l64[(int) *ip];
+		if (c == -1) {
+			continue;
+		}
+
+		b = (b << 6) + c;
+		l += 6;
+
+		while (l >= 8) {
+			op[ol++] = (char) ((b >> (l -= 8)) % 256);
+			if (ol >= olen - 2) {
+				goto end;
+			}
+		}
+	}
+
+  end:
+
+	op[ol++] = '\0';
+
+	return ol;
+}
+
+stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line)
+{
+	printf("FAIL: %s. %s:%d\n", reason, file, line);
+	return STIR_SHAKEN_STATUS_FALSE;
+}

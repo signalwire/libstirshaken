@@ -361,14 +361,21 @@ stir_shaken_status_t stir_shaken_load_cert_from_file(X509 **x, const char *cert_
 stir_shaken_status_t stir_shaken_init_ssl(void);
 void stir_shaken_free_ssl(void);
 
+// Authorization service
+cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams);
+stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *passport, EVP_PKEY *pkey);
+stir_shaken_status_t stir_shaken_passport_create(stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
+
 // Utility
 stir_shaken_status_t stir_shaken_dir_exists(const char *path);
 stir_shaken_status_t stir_shaken_dir_create(const char *path);
 stir_shaken_status_t stir_shaken_dir_create_recursive(const char *path);
+stir_shaken_status_t stir_shaken_b64_encode(unsigned char *in, size_t ilen, unsigned char *out, size_t olen);
+size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen);
 
 // TEST
 
-static stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line);
+stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line);
 
 /* Exit from calling location if test fails. */
 #define stir_shaken_assert(x, m) if (!(x)) return stir_shaken_test_die((m), __FILE__, __LINE__);

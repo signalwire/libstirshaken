@@ -1,12 +1,6 @@
 #include "stir_shaken.h"
 
 
-static stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line)
-{
-	printf("FAIL: %s. %s:%d\n", reason, file, line);
-	return STIR_SHAKEN_STATUS_FALSE;
-}
-
 stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
@@ -35,10 +29,11 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 	pthread_mutex_lock(&stir_shaken_globals.mutex);
 	status = stir_shaken_generate_keys(&ec_key, &private_key, &public_key, private_key_name, public_key_name);
 	pthread_mutex_unlock(&stir_shaken_globals.mutex);
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...\n\n");
-	stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key\n\n");
-	stir_shaken_assert(private_key != NULL, "Err, failed to generate private key\n\n");
-	stir_shaken_assert(public_key != NULL, "Err, failed to generate public key\n\n");
+
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
+	stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key");
+	stir_shaken_assert(private_key != NULL, "Err, failed to generate private key");
+	stir_shaken_assert(public_key != NULL, "Err, failed to generate public key");
 
 	/* Test */
 	printf("Signing...\n\n");
@@ -46,15 +41,15 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 	datalen = strlen(data_test_pass);
 	outlen = sizeof(sig);
 	status = stir_shaken_do_sign_data_with_digest("sha256", private_key, data_test_pass, datalen, sig, &outlen);
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign");
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign\n");
 
 	printf("Verifying (against good data)...\n\n");
 	i = stir_shaken_do_verify_data(data_test_pass, strlen(data_test_pass), sig, outlen, public_key);
-	stir_shaken_assert(i == 0, "Err, verify failed\n\n");
+	stir_shaken_assert(i == 0, "Err, verify failed");
 
 	printf("Verifying (against bad data)...\n\n");
 	i = stir_shaken_do_verify_data(data_test_fail, strlen(data_test_fail), sig, outlen, public_key);
-	stir_shaken_assert(i == 1, "Err, verify failed\n\n");
+	stir_shaken_assert(i == 1, "Err, verify failed");
 
 	return STIR_SHAKEN_STATUS_OK;
 }
@@ -67,7 +62,7 @@ int main(void)
 
 		if (stir_shaken_dir_create_recursive(path) != STIR_SHAKEN_STATUS_OK) {
 	
-			printf("Test 1: ERR: Cannot create test dir\n");
+			printf("ERR: Cannot create test dir\n");
 			return -1;
 		}
 	}
@@ -76,11 +71,11 @@ int main(void)
 
 	if (stir_shaken_unit_test_sign_verify_data() != STIR_SHAKEN_STATUS_OK) {
 		
-		printf("Test 1: Fail\n");
+		printf("Fail\n");
 		return -2;
 	}
 
-	printf("Test 1: OK\n");
+	printf("OK\n");
 
 	return 0;
 }
