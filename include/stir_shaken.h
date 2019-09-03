@@ -198,16 +198,61 @@ static void stir_shaken_init(void) __attribute__ ((constructor));
  */
 static void stir_shaken_deinit(void) __attribute__ ((destructor));
 
-/**
- * Create JSON token from call @pparams.
- */
-cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams);
+
+// SSL
 
 /**
  * Using @digest_name and @pkey create a signature for @data and save it in @out.
  * Return @out and lenght of it in @outlen.
  */ 
 stir_shaken_status_t stir_shaken_do_sign_data_with_digest(const char *digest_name, EVP_PKEY *pkey, const char *data, size_t datalen, unsigned char *out, size_t *outlen);
+
+/**
+ * Generate new keys. Always removes old files.
+ */
+stir_shaken_status_t stir_shaken_generate_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name);
+
+/**
+ * 
+ * Generate CSR needed by STI-CA to issue new cert.
+ * 
+ * @sp_code - (in) Service Provider code
+ * @csr - (out) result
+ */
+stir_shaken_status_t stir_shaken_generate_csr(uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *csr_full_name, const char *csr_text_full_name);
+
+/**
+ * Generate self signed X509 certificate from csr @req.
+ *
+ * @sp_code - (in) Service Provider code
+ * @req - (in) X509 certificate sign request
+ */
+X509 * stir_shaken_generate_x509_self_sign(uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key);
+
+/**
+ * Get the cert locally. Get it from disk or create and sign. 
+ * 
+ * @cert - (out) result certificate
+ *
+ * Return value:
+ * STIR_SHAKEN_STATUS_FALSE: failed creating cert for self-trusted STI-CA
+ * STIR_SHAKEN_STATUS_NOOP: reusing old cert for self-trusted STI-CA from RAM
+ * STIR_SHAKEN_STATUS_RESTART: reusing old cert for self-trusted STI-CA from disk
+ * STIR_SHAKEN_STATUS_SUCCESS: generated and signed new new cert
+ */
+stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, const char *cert_full_name, const char *cert_text_full_name);
+
+stir_shaken_status_t stir_shaken_download_cert(const char *url, mem_chunk_t *chunk);
+stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const char *file);
+stir_shaken_status_t stir_shaken_install_cert(stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_load_cert_from_mem(X509 **x, void *mem, size_t n);
+stir_shaken_status_t stir_shaken_load_cert_from_mem_through_file(X509 **x, void *mem, size_t n);
+stir_shaken_status_t stir_shaken_load_cert_from_file(X509 **x, const char *cert_tmp_name);
+stir_shaken_status_t stir_shaken_init_ssl(void);
+void stir_shaken_free_ssl(void);
+
+
+// Verification service
 
 int stir_shaken_verify_data(const char *data, const char *signature, size_t siglen, EVP_PKEY *pkey);
 int stir_shaken_do_verify_data_file(const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);
@@ -229,10 +274,13 @@ stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, s
  */
 stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url);
 
+
+// Authorization service
+
 /**
- * Generate new keys. Always removes old files.
+ * Create JSON token from call @pparams.
  */
-stir_shaken_status_t stir_shaken_generate_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name);
+cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams);
 
 /**
  * Create signatures in @jwt and save intermediate results in @info.
@@ -243,55 +291,6 @@ stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *
  * Initialise PASSporT pointed to by @passport using call @params and sign it with @pkey.
  */
 stir_shaken_status_t stir_shaken_passport_create(stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
-
-/**
- * 
- * Generate CSR needed by STI-CA to issue new cert.
- * 
- * @sp_code - (in) Service Provider code
- * @csr - (out) result
- */
-stir_shaken_status_t stir_shaken_generate_csr(uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *csr_full_name, const char *csr_text_full_name);
-
-/**
- * Generate self signed X509 certificate from csr @req.
- *
- * @sp_code - (in) Service Provider code
- * @req - (in) X509 certificate sign request
- */
-X509 * stir_shaken_generate_x509_self_sign(uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key);
-
-/**
- * Get the cert from STI-CA.
- *
- * May require to generate CSR and get the cert from remote STI-CA server
- * or may just fetch it from local storage for self trusted CA.
- *
- * @sp_code - (in) Service Provider code
- * @stica - (in) STI-CA description
- * @cert - (out) result certificate
- * @pkey - private key to sign csr
- */
-stir_shaken_status_t stir_shaken_stisp_acquire_cert_from_stica(uint32_t sp_code, stir_shaken_stica_t *stica, stir_shaken_cert_t *cert);
-
-/*
- * Get cert from disk.
- * Return STIR_SHAKEN_STATUS_NOOP if successful, otherwise return STIR_SHAKEN_STATUS_FALSE.
- */
-stir_shaken_status_t stir_shaken_acquire_cert_from_local_storage(uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, const char *cert_full_name);
-
-/**
- * Get the cert locally. Get it from disk or create and sign. 
- * 
- * @cert - (out) result certificate
- *
- * Return value:
- * STIR_SHAKEN_STATUS_FALSE: failed creating cert for self-trusted STI-CA
- * STIR_SHAKEN_STATUS_NOOP: reusing old cert for self-trusted STI-CA from RAM
- * STIR_SHAKEN_STATUS_RESTART: reusing old cert for self-trusted STI-CA from disk
- * STIR_SHAKEN_STATUS_SUCCESS: generated and signed new new cert
- */
-stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, const char *cert_full_name, const char *cert_text_full_name);
 
 /**
  * Authorize (assert/sign) call with SIP Identity Header for Service Provider identified by @sp_code.
@@ -352,26 +351,21 @@ char* stir_shaken_sip_identity_create(stir_shaken_passport_t *passport);
  */
 char * stir_shaken_do_sign_keep_passport(stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_passport_t **passport, uint8_t keep_passport);
 
-stir_shaken_status_t stir_shaken_download_cert(const char *url, mem_chunk_t *chunk);
-stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const char *file);
-stir_shaken_status_t stir_shaken_install_cert(stir_shaken_cert_t *cert);
-stir_shaken_status_t stir_shaken_load_cert_from_mem(X509 **x, void *mem, size_t n);
-stir_shaken_status_t stir_shaken_load_cert_from_mem_through_file(X509 **x, void *mem, size_t n);
-stir_shaken_status_t stir_shaken_load_cert_from_file(X509 **x, const char *cert_tmp_name);
-stir_shaken_status_t stir_shaken_init_ssl(void);
-void stir_shaken_free_ssl(void);
 
 // Authorization service
 cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams);
 stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *passport, EVP_PKEY *pkey);
 stir_shaken_status_t stir_shaken_passport_create(stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
 
+
 // Utility
+
 stir_shaken_status_t stir_shaken_dir_exists(const char *path);
 stir_shaken_status_t stir_shaken_dir_create(const char *path);
 stir_shaken_status_t stir_shaken_dir_create_recursive(const char *path);
 stir_shaken_status_t stir_shaken_b64_encode(unsigned char *in, size_t ilen, unsigned char *out, size_t olen);
 size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen);
+
 
 // TEST
 
@@ -380,6 +374,13 @@ stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, 
 /* Exit from calling location if test fails. */
 #define stir_shaken_assert(x, m) if (!(x)) return stir_shaken_test_die((m), __FILE__, __LINE__);
 
+// Test 1
 stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void);
+
+// Test 2
+stir_shaken_status_t stir_shaken_unit_test_passport_create(void);
+
+// Test 3
+stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void);
 
 #endif // __STIR_SHAKEN

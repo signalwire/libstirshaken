@@ -291,3 +291,123 @@ err:
     }
     return STIR_SHAKEN_STATUS_FALSE;
 }
+
+// TODO Mallocs memory for identity header, free later
+char* stir_shaken_sip_identity_create(stir_shaken_passport_t *passport)
+{
+    char *sih = NULL;
+    cJSON *h_sig = NULL, *p_sig = NULL, *jwt = NULL, *sig = NULL, *params = NULL, *info = NULL, *alg = NULL, *ppt = NULL;
+    size_t len = 0;
+
+    if (!passport || !passport->info || !passport->json) return NULL;
+    
+    h_sig = cJSON_GetObjectItem(passport->info, "header_base64");
+    p_sig = cJSON_GetObjectItem(passport->info, "payload_base64");
+    jwt = cJSON_GetObjectItem(passport->json, "jwt");
+    params = cJSON_GetObjectItem(passport->json, "params");
+
+    if (!h_sig || !p_sig || !jwt || !params) return NULL;
+
+    sig = cJSON_GetObjectItem(jwt, "signature");
+    info = cJSON_GetObjectItem(params, "info");
+    alg = cJSON_GetObjectItem(params, "alg");
+    ppt = cJSON_GetObjectItem(params, "ppt");
+
+    if (!sig || !info || !alg || !ppt) return NULL;
+
+    // extra length of 15 for info=<> alg= ppt=
+    len = strlen(h_sig->valuestring) + 1 + strlen(p_sig->valuestring) + 1 + strlen(sig->valuestring) + 1 + strlen(info->valuestring) + 1 + strlen(alg->valuestring) + 1 + strlen(ppt->valuestring) + 1 + 15;
+    sih = malloc(len); // TODO free
+    if (!sih) return NULL;
+    sprintf(sih, "%s.%s.%s;info=<%s>;alg=%s;ppt=%s", h_sig->valuestring, p_sig->valuestring, sig->valuestring, info->valuestring, alg->valuestring, ppt->valuestring);
+    return sih;
+}
+
+// TODO May malloc memory for passport, free later
+/*
+ * Sign the call data with the @pkey, and keep pointer to created PASSporT (if @keep_passport is true). 
+ * SIP Identity header is returned and PASSporT.
+ * @passport - (out) will point to created PASSporT
+ */
+char* stir_shaken_do_sign_keep_passport(stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_passport_t **passport, uint8_t keep_passport)
+{
+    char					*sih = NULL;
+    stir_shaken_passport_t	local_passport = {0};   // It will only allow you to cross this function's border
+
+    if (!pkey || !params)
+        return NULL;
+
+    // Create PASSporT
+    if (keep_passport) {
+
+        *passport = malloc(sizeof(stir_shaken_passport_t));	// TODO free
+        if (!*passport)
+            goto err;
+
+        if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_create(*passport, params, pkey)) {
+            goto err;
+        }
+
+        // Sign PASSpoprT and create SIP Identity header
+        sih = stir_shaken_sip_identity_create(*passport);
+        if (!sih) {
+            goto err;
+        }
+
+    } else {
+
+        if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_create(&local_passport, params, pkey)) {
+            return NULL;
+        }
+
+        // Create SIP Identity header
+        sih = stir_shaken_sip_identity_create(&local_passport);
+        if (!sih) {
+            return NULL;
+        }
+    }
+
+    return sih;
+
+err:
+	if (*passport) {
+		free(*passport);
+		*passport = NULL;
+	}
+
+    return NULL;
+}
+
+/*
+ * Sign the call data with the @pkey. 
+ * Local PASSporT object is created and destroyed. Only SIP Identity header is returned.
+ * If you want to keep the PASSporT, then use stir_shaken_shaken_do_sign_keep_passport instead.
+ *
+ * External parameters that must be given to this method to be able to sign the SDP:
+ * X means "needed"
+ *
+ *      // JSON web token (JWT)
+ *          // JSON JOSE Header (alg, ppt, typ, x5u)
+ *              // alg      This value indicates the encryption algorithm. Must be 'ES256'.
+ *              // ppt      This value indicates the extension used. Must be 'shaken'.
+ *              // typ      This value indicates the token type. Must be 'passport'.
+ * X            // x5u      This value indicates the location of the certificate used to sign the token.
+ *          // JWS Payload
+ * X            // attest   This value indicates the attestation level. Must be either A, B, or C.
+ * X            // dest     This value indicates the called number(s) or called Uniform Resource Identifier(s).
+ *              // iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
+ * X            // orig     This value indicates the calling number or calling Uniform Resource Identifier.
+ * X            // origid   This value indicates the origination identifier.
+ *          // JWS Signature
+ *
+ *      // Parameters
+ *          //Alg
+ * X(==x5u) //Info
+ *          //PPT
+ */ 
+char* stir_shaken_do_sign(stir_shaken_passport_params_t *params, EVP_PKEY *pkey)
+{
+    if (!pkey || !params) return NULL;
+
+    return stir_shaken_do_sign_keep_passport(params, pkey, NULL, 0);
+}

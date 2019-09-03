@@ -837,10 +837,6 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(const char *digest_nam
 	int             i = 0;
 
 
-	if (!stir_shaken_globals.initialised) {
-		return STIR_SHAKEN_STATUS_RESTART;
-	}
-
 	if (!pkey || !data || !out || !outlen) return STIR_SHAKEN_STATUS_FALSE;
 
 	md = EVP_get_digestbyname(digest_name);
@@ -877,9 +873,6 @@ int stir_shaken_do_verify_data(const void *data, size_t datalen, const unsigned 
 
 	const char      *digest_name = "sha256";
 
-	if (!stir_shaken_globals.initialised) {
-		return STIR_SHAKEN_STATUS_RESTART;
-	}
 
 	if (!data || !sig || siglen == 0 || !public_key) {
 		goto err;
