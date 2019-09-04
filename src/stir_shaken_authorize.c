@@ -266,7 +266,10 @@ err:
 
 stir_shaken_status_t stir_shaken_passport_create(stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey)
 {
-    if (!passport || passport->json || !params || !pkey) return STIR_SHAKEN_STATUS_FALSE;
+    if (!passport || passport->json || !params || !pkey) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
     memset(passport, 0, sizeof(*passport));
 
     /* Init @jwt JSON with all ASCII info */
@@ -318,6 +321,7 @@ char* stir_shaken_sip_identity_create(stir_shaken_passport_t *passport)
     // extra length of 15 for info=<> alg= ppt=
     len = strlen(h_sig->valuestring) + 1 + strlen(p_sig->valuestring) + 1 + strlen(sig->valuestring) + 1 + strlen(info->valuestring) + 1 + strlen(alg->valuestring) + 1 + strlen(ppt->valuestring) + 1 + 15;
     sih = malloc(len); // TODO free
+	memset(sih, 0, len);
     if (!sih) return NULL;
     sprintf(sih, "%s.%s.%s;info=<%s>;alg=%s;ppt=%s", h_sig->valuestring, p_sig->valuestring, sig->valuestring, info->valuestring, alg->valuestring, ppt->valuestring);
     return sih;
@@ -343,6 +347,7 @@ char* stir_shaken_do_sign_keep_passport(stir_shaken_passport_params_t *params, E
         *passport = malloc(sizeof(stir_shaken_passport_t));	// TODO free
         if (!*passport)
             goto err;
+		memset(*passport, 0, sizeof(stir_shaken_passport_t));
 
         if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_create(*passport, params, pkey)) {
             goto err;
@@ -410,4 +415,41 @@ char* stir_shaken_do_sign(stir_shaken_passport_params_t *params, EVP_PKEY *pkey)
     if (!pkey || !params) return NULL;
 
     return stir_shaken_do_sign_keep_passport(params, pkey, NULL, 0);
+}
+
+/*
+ * Authorize (assert/sign) call identity with cert of Service Provider.
+ * If @keep_passport is true then keep pointer to PASSporT.
+ * @sih - (out) on success points to SIP Identity Header which is authentication of the call
+ */
+stir_shaken_status_t stir_shaken_authorize_keep_passport(char **sih, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport, uint8_t keep_passport, EVP_PKEY *pkey, stir_shaken_cert_t *cert)
+{
+    /* Let's start from this. */
+    *sih = NULL;
+
+    if (!params || !params->attest || (*params->attest != 'A' && *params->attest != 'B' && *params->attest != 'C')) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+    /* Assert/sign call identity with a private key associated with cert. */
+    
+    *sih = stir_shaken_do_sign_keep_passport(params, pkey, passport, keep_passport);
+    if (!*sih) {
+        goto err;
+    }
+
+    return STIR_SHAKEN_STATUS_OK;
+
+err:
+    /* TODO Logging with error details. */
+
+    return STIR_SHAKEN_STATUS_FALSE;
+}
+
+/*
+ * Authorize the call.
+ */
+stir_shaken_status_t stir_shaken_authorize(char **sih, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_cert_t *cert)
+{
+    return stir_shaken_authorize_keep_passport(sih, params, NULL, 0, pkey, cert);
 }

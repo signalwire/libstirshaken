@@ -383,4 +383,13 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create(void);
 // Test 3
 stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void);
 
+// Test 4
+stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void);
+
+// Test 5
+stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(void);
+
+// Test 6
+stir_shaken_status_t stir_shaken_unit_test_authorize(void);
+
 #endif // __STIR_SHAKEN
