@@ -295,6 +295,23 @@ err:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
+void stir_shaken_passport_destroy(stir_shaken_passport_t *passport)
+{
+    if (!passport) {
+		return;
+	}
+
+    if (passport->json) {
+        cJSON_Delete(passport->json);
+        passport->json = NULL;
+    }
+
+    if (passport->info) {
+        cJSON_Delete(passport->info);
+        passport->info = NULL;
+    }
+}
+
 // TODO Mallocs memory for identity header, free later
 char* stir_shaken_sip_identity_create(stir_shaken_passport_t *passport)
 {

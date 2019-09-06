@@ -356,6 +356,7 @@ char * stir_shaken_do_sign_keep_passport(stir_shaken_passport_params_t *params, 
 cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams);
 stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *passport, EVP_PKEY *pkey);
 stir_shaken_status_t stir_shaken_passport_create(stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
+void stir_shaken_passport_destroy(stir_shaken_passport_t *passport);
 
 
 // Utility
@@ -391,5 +392,14 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(voi
 
 // Test 6
 stir_shaken_status_t stir_shaken_unit_test_authorize(void);
+
+// Test 7
+stir_shaken_status_t stir_shaken_unit_test_authorize_keep_passport(void);
+
+// Test 8
+stir_shaken_status_t stir_shaken_unit_test_verify(void);
+
+// Test 9
+stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void);
 
 #endif // __STIR_SHAKEN
