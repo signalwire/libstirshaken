@@ -11,38 +11,38 @@ TESTS = $(check_PROGRAMS)
 
 LIBS += -lcjson -lssl -lcrypto -pthread
 
-stir_shaken_test_1_SOURCES = test/stir_shaken_test_1.c src/stir_shaken_service.c src/stir_shaken_ssl.c src/stir_shaken.c
+stir_shaken_test_1_SOURCES = test/stir_shaken_test_1.c
 stir_shaken_test_1_CFLAGS = -Iinclude
-stir_shaken_test_1_LDFLAGS = -lssl -lcrypto -lm
+stir_shaken_test_1_LDFLAGS = -lstirshaken -lssl -lcrypto -lm
 
-stir_shaken_test_2_SOURCES = test/stir_shaken_test_2.c src/stir_shaken_service.c src/stir_shaken_authorize.c src/stir_shaken_ssl.c src/stir_shaken.c
+stir_shaken_test_2_SOURCES = test/stir_shaken_test_2.c
 stir_shaken_test_2_CFLAGS = -Iinclude
-stir_shaken_test_2_LDFLAGS = -lssl -lcrypto -lm
+stir_shaken_test_2_LDFLAGS = -lstirshaken -lssl -lcrypto -lm
 
-stir_shaken_test_3_SOURCES = test/stir_shaken_test_3.c src/stir_shaken_service.c src/stir_shaken_authorize.c src/stir_shaken_ssl.c src/stir_shaken.c
+stir_shaken_test_3_SOURCES = test/stir_shaken_test_3.c
 stir_shaken_test_3_CFLAGS = -Iinclude
-stir_shaken_test_3_LDFLAGS = -lssl -lcrypto -lm
+stir_shaken_test_3_LDFLAGS = -lstirshaken -lssl -lcrypto -lm
 
-stir_shaken_test_4_SOURCES = test/stir_shaken_test_4.c src/stir_shaken_service.c src/stir_shaken_authorize.c src/stir_shaken_ssl.c src/stir_shaken.c
+stir_shaken_test_4_SOURCES = test/stir_shaken_test_4.c
 stir_shaken_test_4_CFLAGS = -Iinclude
-stir_shaken_test_4_LDFLAGS = -lssl -lcrypto -lm
+stir_shaken_test_4_LDFLAGS = -lstirshaken -lssl -lcrypto -lm
 
-stir_shaken_test_5_SOURCES = test/stir_shaken_test_5.c src/stir_shaken_service.c src/stir_shaken_authorize.c src/stir_shaken_ssl.c src/stir_shaken.c
+stir_shaken_test_5_SOURCES = test/stir_shaken_test_5.c
 stir_shaken_test_5_CFLAGS = -Iinclude
-stir_shaken_test_5_LDFLAGS = -lssl -lcrypto -lm
+stir_shaken_test_5_LDFLAGS = -lstirshaken -lssl -lcrypto -lm
 
-stir_shaken_test_6_SOURCES = test/stir_shaken_test_6.c src/stir_shaken_service.c src/stir_shaken_authorize.c src/stir_shaken_ssl.c src/stir_shaken.c
+stir_shaken_test_6_SOURCES = test/stir_shaken_test_6.c
 stir_shaken_test_6_CFLAGS = -Iinclude
-stir_shaken_test_6_LDFLAGS = -lssl -lcrypto -lm
+stir_shaken_test_6_LDFLAGS = -lstirshaken -lssl -lcrypto -lm
 
-stir_shaken_test_7_SOURCES = test/stir_shaken_test_7.c src/stir_shaken_service.c src/stir_shaken_authorize.c src/stir_shaken_ssl.c src/stir_shaken.c
+stir_shaken_test_7_SOURCES = test/stir_shaken_test_7.c
 stir_shaken_test_7_CFLAGS = -Iinclude
-stir_shaken_test_7_LDFLAGS = -lssl -lcrypto -lm
+stir_shaken_test_7_LDFLAGS = -lstirshaken -lssl -lcrypto -lm
 
-stir_shaken_test_8_SOURCES = test/stir_shaken_test_8.c src/stir_shaken_service.c src/stir_shaken_authorize.c src/stir_shaken_verify.c src/stir_shaken_ssl.c src/stir_shaken.c
+stir_shaken_test_8_SOURCES = test/stir_shaken_test_8.c
 stir_shaken_test_8_CFLAGS = -Iinclude
-stir_shaken_test_8_LDFLAGS = -lssl -lcrypto -lm
+stir_shaken_test_8_LDFLAGS = -lstirshaken -lssl -lcrypto -lm
 
-stir_shaken_test_9_SOURCES = test/stir_shaken_test_9.c src/stir_shaken_service.c src/stir_shaken_authorize.c src/stir_shaken_verify.c src/stir_shaken_ssl.c src/stir_shaken.c
+stir_shaken_test_9_SOURCES = test/stir_shaken_test_9.c
 stir_shaken_test_9_CFLAGS = -Iinclude
-stir_shaken_test_9_LDFLAGS = -lssl -lcrypto -lm
+stir_shaken_test_9_LDFLAGS = -lstirshaken -lssl -lcrypto -lm
