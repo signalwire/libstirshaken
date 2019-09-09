@@ -67,6 +67,18 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(voi
     printf("Reference SIP Identity Header:\n%s\n", sip_identity_header_ref);
     stir_shaken_assert(!strcmp(sih, sip_identity_header_ref), "Wrong SIP Identity Header");
     printf("OK\n\n");
+
+	free(sih);
+	sih = NULL;
+    
+	/* Need to free JSON object allocated by cJSON lib. */
+	stir_shaken_passport_destroy(passport);
+	free(passport);
+	passport = NULL;
+	
+	pthread_mutex_lock(&stir_shaken_globals.mutex);
+	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
+	pthread_mutex_unlock(&stir_shaken_globals.mutex);
     
     return STIR_SHAKEN_STATUS_OK;
 }

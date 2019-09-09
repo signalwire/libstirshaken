@@ -384,6 +384,7 @@ char* stir_shaken_do_sign_keep_passport(stir_shaken_passport_params_t *params, E
 
         // Create SIP Identity header
         sih = stir_shaken_sip_identity_create(&local_passport);
+		stir_shaken_passport_destroy(&local_passport);
         if (!sih) {
             return NULL;
         }
