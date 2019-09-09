@@ -131,10 +131,11 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create(void)
     printf("OK\n\n");
 
     /* Need to free JSON object allocated by cJSON lib. */
-    cJSON_Delete(passport.json);
-    cJSON_Delete(passport.info);
-
-    // TODO passport_free()
+	stir_shaken_passport_destroy(&passport);
+	
+	pthread_mutex_lock(&stir_shaken_globals.mutex);
+	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
+	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 
 	return status;
 }

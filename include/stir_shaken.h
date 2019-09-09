@@ -197,6 +197,7 @@ static void stir_shaken_init(void) __attribute__ ((constructor));
  * This is called on library unload.
  */
 static void stir_shaken_deinit(void) __attribute__ ((destructor));
+void stir_shaken_do_deinit(void);
 
 
 // SSL
@@ -211,6 +212,11 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(const char *digest_nam
  * Generate new keys. Always removes old files.
  */
 stir_shaken_status_t stir_shaken_generate_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name);
+
+/**
+ * Call SSL destructors and release memory used for SSL keys.
+ */
+void stir_shaken_destroy_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub);
 
 /**
  * 

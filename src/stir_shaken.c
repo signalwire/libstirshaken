@@ -62,14 +62,24 @@ static void stir_shaken_init(void)
 
 static void stir_shaken_deinit(void)
 {
+	return stir_shaken_do_deinit();
+}
+
+void stir_shaken_do_deinit(void)
+{
 	// TODO remove
 	printf("STIR-Shaken: deinit\n");
+
+	if (stir_shaken_globals.initialised == 0) {
+		printf("STIR-Shaken: deinit skipped, already done\n");
+		return;
+	}
 	
 	stir_shaken_globals.initialised = 0;
 
 	// TODO deinit settings (path, etc)
 	
-	stir_shaken_free_ssl();
+	stir_shaken_deinit_ssl();
 
 	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 	pthread_mutex_destroy(&stir_shaken_globals.mutex);

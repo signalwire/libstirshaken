@@ -807,6 +807,22 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
+void stir_shaken_destroy_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub)
+{
+	if (eck && *eck) {
+		EC_KEY_free(*eck);
+		*eck = NULL;
+	}
+	if (priv && *priv) {
+		EVP_PKEY_free(*priv);
+		*priv = NULL;
+	}
+	if (pub && *pub) {
+		EVP_PKEY_free(*pub);
+		*pub = NULL;
+	}
+}
+
 /**
  * Using @digest_name and @pkey create a signature for @data and save it in @out.
  * Return @out and length of it in @outlen.
@@ -855,6 +871,7 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(const char *digest_nam
 	i = EVP_DigestSignFinal(mdctx, out, outlen);
 	if (i == 0 || (*outlen >= PBUF_LEN - 1)) goto err;
 	out[*outlen] = '\0';
+	EVP_MD_CTX_destroy(mdctx);
 
 	return STIR_SHAKEN_STATUS_OK;
 
@@ -953,7 +970,13 @@ stir_shaken_status_t stir_shaken_init_ssl(void)
 		return STIR_SHAKEN_STATUS_NOOP;
 	}
 
+	// Init libssl
 	SSL_library_init();
+	SSL_load_error_strings();
+
+	// Init libcrypto
+	OpenSSL_add_all_algorithms();
+	ERR_load_crypto_strings();
 
 	*ssl_method = SSLv23_server_method();                   /* create server instance */
 
@@ -1020,7 +1043,7 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-void stir_shaken_free_ssl(void)
+void stir_shaken_deinit_ssl(void)
 {
 	SSL_CTX **ssl_ctx = &stir_shaken_globals.ssl_ctx;
 	SSL     **ssl = &stir_shaken_globals.ssl;
