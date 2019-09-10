@@ -22,6 +22,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, s
     unsigned char signature[BUFSIZE] = {0};
     char *b = NULL, *e = NULL, *se = NULL, *sig = NULL;
     int len = 0, challenge_len = 0;
+	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
 
     if (!identity_header || !cert) {
         return STIR_SHAKEN_STATUS_FALSE;
@@ -67,7 +68,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, s
         goto fail;
     }
 
-    return STIR_SHAKEN_STATUS_OK;
+    status = STIR_SHAKEN_STATUS_OK;
 
 fail:
 	if (challenge) {
@@ -78,5 +79,5 @@ fail:
 		free(sig);
 		sig = NULL;
 	}
-	return STIR_SHAKEN_STATUS_FALSE;
+	return status;
 }

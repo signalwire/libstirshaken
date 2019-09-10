@@ -246,7 +246,7 @@ X509 * stir_shaken_generate_x509_self_sign(uint32_t sp_code, X509_REQ *req, EVP_
  * STIR_SHAKEN_STATUS_RESTART: reusing old cert for self-trusted STI-CA from disk
  * STIR_SHAKEN_STATUS_SUCCESS: generated and signed new new cert
  */
-stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, const char *cert_full_name, const char *cert_text_full_name);
+stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name);
 
 stir_shaken_status_t stir_shaken_download_cert(const char *url, mem_chunk_t *chunk);
 stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const char *file);

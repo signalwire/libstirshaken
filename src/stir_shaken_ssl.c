@@ -585,10 +585,11 @@ fail:
 	return NULL;
 }
 
-stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key,const char *cert_full_name, const char *cert_text_full_name)
+stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name)
 {
 	X509            *x = NULL;
 	BIO             *out = NULL, *bio = NULL;
+	EVP_PKEY		*k = NULL;
 	int i = 0;
 
 	if (!csr) {
@@ -597,7 +598,7 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_s
 
 	// Generate certificate
 
-	if (!private_key) {
+	if (!private_key || !public_key) {
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -605,6 +606,7 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_s
 	if (!x) {
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
+	// TODO Maybe X509_set_pubkey(x, public_key); doesn't fix the leak though
 	cert->x = x;
 
 	if (cert_full_name) {
@@ -630,9 +632,22 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_s
 	if (cert_text_full_name) {
 		bio = BIO_new_file(cert_text_full_name, "w");
 		if (!bio) goto anyway;
-		X509_print_ex(bio, x, 0, 0);
+
+		// TODO This call leaks EVP_PKEY which it creates
+		// ==17095==    at 0x4C28C20: malloc (vg_replace_malloc.c:296)
+		// ==17095==    by 0x581D377: CRYPTO_malloc (in /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0)
+		// ==17095==    by 0x58B45D9: EVP_PKEY_new (in /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0)
+		// ==17095==    by 0x58C3C77: X509_PUBKEY_get (in /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0)
+		// ==17095==    by 0x58C8069: X509_print_ex (in /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0)
+		// ==17095==    by 0x4E3BA66: stir_shaken_generate_cert_from_csr (stir_shaken_ssl.c:635)
+		X509_print_ex(bio, x, XN_FLAG_COMPAT, X509_FLAG_COMPAT);
+
 		BIO_free_all(bio);
 		bio = NULL;
+
+		// Need to decrement ref count of pubkey created by a call to X509_PUBKEY_get in X509_print_ex, so the pubkey is freed
+		//k = X509_get0_pubkey(x);
+		//EVP_PKEY_free(k);
 
 		// TODO set error string, allow for retrieval printf("STIR-Shaken: Cert: Written certificate in human readable form to file %s\n", cert_text_full_name);
 	}
@@ -652,6 +667,11 @@ fail:
 	}
 	if (out) {
 		BIO_free_all(out);
+	}
+	if (x) {
+		X509_free(x);
+		x = NULL;
+		cert->x = NULL;
 	}
 	return STIR_SHAKEN_STATUS_FALSE;
 }

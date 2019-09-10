@@ -123,6 +123,18 @@ stir_shaken_status_t stir_shaken_unit_test_authorize_keep_passport(void)
     sig = cJSON_GetObjectItem(passport->info, "signature");
     stir_shaken_assert(sig != NULL, "Failed to create Signature");
     printf("OK\n\n");
+	
+	free(sih);
+	sih = NULL;
+    
+	/* Need to free JSON object allocated by cJSON lib. */
+	stir_shaken_passport_destroy(passport);
+	free(passport);
+	passport = NULL;
+	
+	pthread_mutex_lock(&stir_shaken_globals.mutex);
+	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
+	pthread_mutex_unlock(&stir_shaken_globals.mutex);
     
     return STIR_SHAKEN_STATUS_OK;
 }

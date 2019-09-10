@@ -72,7 +72,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void)
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
     
     printf("Creating Certificate\n");
-    status = stir_shaken_generate_cert_from_csr(sp_code, &cert, &csr, private_key, cert_name, cert_text_name);
+    status = stir_shaken_generate_cert_from_csr(sp_code, &cert, &csr, private_key, public_key, cert_name, cert_text_name);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating Cert");
 
     printf("Verifying SIP Identity Header's signature with Cert... (against good data)\n\n");
@@ -102,15 +102,25 @@ stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void)
     status = stir_shaken_verify_with_cert(spoofed_sih, &cert);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Err, verifying");
 
-	free(sih);
-	sih = NULL;
-
-	free(spoofed_sih);
-	spoofed_sih = NULL;
-
 	stir_shaken_passport_destroy(passport);
 	free(passport);
 	passport = NULL;
+	
+	X509_REQ_free(csr.req);
+	csr.req = NULL;
+		
+	X509_free(cert.x);
+	cert.x = NULL;
+
+	free(sih);
+	sih = NULL;
+	
+	free(spoofed_sih);
+	spoofed_sih = NULL;
+	
+	pthread_mutex_lock(&stir_shaken_globals.mutex);
+	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
+	pthread_mutex_unlock(&stir_shaken_globals.mutex);
     
     return STIR_SHAKEN_STATUS_OK;
 }

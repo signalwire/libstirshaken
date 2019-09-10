@@ -43,6 +43,13 @@ stir_shaken_status_t stir_shaken_unit_test_authorize(void)
     stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
     
     printf("OK\n\n");
+	
+	free(sih);
+	sih = NULL;
+    
+	pthread_mutex_lock(&stir_shaken_globals.mutex);
+	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
+	pthread_mutex_unlock(&stir_shaken_globals.mutex);
     
     return STIR_SHAKEN_STATUS_OK;
 }
