@@ -248,8 +248,6 @@ X509 * stir_shaken_generate_x509_self_sign(uint32_t sp_code, X509_REQ *req, EVP_
  */
 stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name);
 
-stir_shaken_status_t stir_shaken_download_cert(const char *url, mem_chunk_t *chunk);
-stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const char *file);
 stir_shaken_status_t stir_shaken_install_cert(stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_load_cert_from_mem(X509 **x, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_mem_through_file(X509 **x, void *mem, size_t n);
@@ -263,6 +261,11 @@ void stir_shaken_free_ssl(void);
 int stir_shaken_verify_data(const char *data, const char *signature, size_t siglen, EVP_PKEY *pkey);
 int stir_shaken_do_verify_data_file(const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);
 int stir_shaken_do_verify_data(const void *data, size_t datalen, const unsigned char *sig, size_t siglen, EVP_PKEY *public_key);
+
+stir_shaken_status_t stir_shaken_download_cert(const char *url, mem_chunk_t *chunk);
+void stir_shaken_cert_configure(stir_shaken_cert_t *cert, char *install_path, char *install_url);
+stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const char *file);
+stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url);
 
 /**
  * Verify (check/authenticate) call identity.
@@ -299,6 +302,12 @@ stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *
 stir_shaken_status_t stir_shaken_passport_create(stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
 
 /**
+ * Authorize the call and keep PASSporT if the @keep_pasport is true.
+ */
+stir_shaken_status_t stir_shaken_authorize_keep_passport(char **sih, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport, uint8_t keep_passport, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_authorize_self_trusted(char **sih, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
+
+/**
  * Authorize (assert/sign) call with SIP Identity Header for Service Provider identified by @sp_code.
  *
  * @sih - (out) on success points to SIP Identity Header which is authentication of the call
@@ -308,11 +317,7 @@ stir_shaken_status_t stir_shaken_passport_create(stir_shaken_passport_t *passpor
  */
 stir_shaken_status_t stir_shaken_authorize(char **sih, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
 
-/**
- * Authorize the call and keep PASSporT if the @keep_pasport is true.
- */
-stir_shaken_status_t stir_shaken_authorize_keep_passport(char **sih, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport, uint8_t keep_passport, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
-stir_shaken_status_t stir_shaken_authorize_self_trusted(char **sih, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_install_cert(stir_shaken_cert_t *cert);
 
 /**
  * High level interface to authorization (main entry point).
@@ -370,6 +375,8 @@ void stir_shaken_passport_destroy(stir_shaken_passport_t *passport);
 stir_shaken_status_t stir_shaken_dir_exists(const char *path);
 stir_shaken_status_t stir_shaken_dir_create(const char *path);
 stir_shaken_status_t stir_shaken_dir_create_recursive(const char *path);
+stir_shaken_status_t stir_shaken_file_exists(const char *path);
+stir_shaken_status_t stir_shaken_file_remove(const char *path);
 stir_shaken_status_t stir_shaken_b64_encode(unsigned char *in, size_t ilen, unsigned char *out, size_t olen);
 size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen);
 

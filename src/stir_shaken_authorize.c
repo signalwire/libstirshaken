@@ -471,3 +471,60 @@ stir_shaken_status_t stir_shaken_authorize(char **sih, stir_shaken_passport_para
 {
     return stir_shaken_authorize_keep_passport(sih, params, NULL, 0, pkey, cert);
 }
+
+stir_shaken_status_t stir_shaken_install_cert(stir_shaken_cert_t *cert)
+{
+	char cert_full_name[300] = {0};
+	BIO *out = NULL;
+	int i = 0;
+
+    if (!cert) {
+
+		// TODO remove	
+		printf("STIR-Shaken: Cert not set\n");
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
+	
+	if (!cert->install_path) {
+        
+		// TODO remove	
+		printf("STIR-Shaken: Cert's @install_path not set. Where should I create the cert? How would others verify the call if I don't know where to place the certificate?\n");
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
+
+	snprintf(cert_full_name, 300, "%s%s", cert->install_path, cert->name);
+
+	if (stir_shaken_file_exists(cert_full_name) == STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_file_remove(cert_full_name);
+	}
+
+	out = BIO_new(BIO_s_file());
+	if (!out) goto fail;
+	i = BIO_write_filename(out, (char*) cert_full_name);
+	if (i == 0) {
+		
+		// TODO remove	
+		printf("STIR-Shaken: Install: Failed to redirect bio to file %s\n", cert_full_name);
+		goto fail;
+	}
+
+	i = PEM_write_bio_X509(out, cert->x);
+	if (i == 0) {
+	
+		// TODO remove	
+		printf("STIR-Shaken: Install: Failed to write certificate to file %s\n", cert_full_name);
+		goto fail;
+	}
+	printf("STIR-Shaken: Install: Written certificate to file %s\n", cert_full_name);
+
+	BIO_free_all(out);
+	out = NULL;
+
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+	if (out) {
+		BIO_free_all(out);
+	}
+	return STIR_SHAKEN_STATUS_FALSE;
+}

@@ -158,6 +158,26 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
+stir_shaken_status_t stir_shaken_file_exists(const char *path)
+{
+	struct stat sb;
+
+	if (path && stat(path, &sb) == 0 && S_ISREG(sb.st_mode)) {
+		return STIR_SHAKEN_STATUS_OK;
+	}
+
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+stir_shaken_status_t stir_shaken_file_remove(const char *path)
+{
+	if (remove(path) == 0) {
+		return STIR_SHAKEN_STATUS_OK;
+	}
+
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
 static const char stir_shaken_b64_table[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 #define B64BUFFLEN 1024
 
