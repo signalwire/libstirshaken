@@ -57,6 +57,8 @@ stir_shaken_status_t stir_shaken_unit_test_authorize(void)
 int main(void)
 {
 	const char *path = "./test/run";
+	
+	stir_shaken_do_init();
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 
@@ -74,6 +76,8 @@ int main(void)
 		printf("Fail\n");
 		return -2;
 	}
+	
+	stir_shaken_do_deinit();
 
 	printf("OK\n");
 

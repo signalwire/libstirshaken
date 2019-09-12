@@ -1,7 +1,7 @@
 #include "stir_shaken.h"
 
 
-switch_stir_shaken_globals_t stir_shaken_globals;
+stir_shaken_globals_t stir_shaken_globals;
 
 // Must be called locked
 stir_shaken_status_t stir_shaken_settings_set_path(const char *path)
@@ -27,6 +27,11 @@ stir_shaken_status_t stir_shaken_settings_set_path(const char *path)
 
 
 static void stir_shaken_init(void)
+{
+	return stir_shaken_do_init();
+}
+
+void stir_shaken_do_init(void)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
 

@@ -61,6 +61,8 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 int main(void)
 {
 	const char *path = "./test/run";
+	
+	stir_shaken_do_init();
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 
@@ -81,7 +83,6 @@ int main(void)
 
 	printf("OK\n");
 
-	// For testing purposes need to call SSL deinit from here, otherwise valgrind doesn't catch released memory that is returned by a call to stir_shaken_deinit made by library deallocator	
 	stir_shaken_do_deinit();
 
 	return 0;

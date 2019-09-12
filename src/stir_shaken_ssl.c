@@ -726,6 +726,90 @@ stir_shaken_status_t stir_shaken_load_cert_from_file(X509 **x, const char *cert_
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+stir_shaken_status_t stir_shaken_load_cert_and_key(const char *cert_name, stir_shaken_cert_t **cert, const char *private_key_name, EVP_PKEY **pkey)
+{
+	X509            *x = NULL;
+	BIO             *in = NULL;
+	char *b = NULL;
+
+	if (!cert_name) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (!*cert) {
+		*cert = malloc(sizeof(stir_shaken_cert_t));
+		if (!*cert) {
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+	}
+	
+	b = basename((char*) cert_name);
+
+	// TODO need to free strings somewhere
+	memset(*cert, 0, sizeof(stir_shaken_cert_t));
+	(*cert)->full_name = malloc(strlen(cert_name) + 1);
+	(*cert)->name = malloc(strlen(b) + 1);
+
+	if (!(*cert)->name || !(*cert)->full_name) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+	
+	memcpy((*cert)->full_name, cert_name, strlen(cert_name));
+	(*cert)->full_name[strlen(cert_name)] = '\0';
+
+	memcpy((*cert)->name, b, strlen(b));
+	(*cert)->name[strlen(b)] = '\0';
+
+	if (stir_shaken_file_exists(cert_name) != STIR_SHAKEN_STATUS_OK) {
+		
+		// TODO remove
+		printf("STIR-Shaken: File doesn't exist: %s\n", cert_name);
+		free((*cert)->full_name);
+		(*cert)->full_name = NULL;
+		free((*cert)->name);
+		(*cert)->name = NULL;
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (stir_shaken_file_exists(private_key_name) != STIR_SHAKEN_STATUS_OK) {
+		
+		// TODO remove
+		printf("STIR-Shaken: File doesn't exist: %s\n", private_key_name);
+		free((*cert)->full_name);
+		(*cert)->full_name = NULL;
+		free((*cert)->name);
+		(*cert)->name = NULL;
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	in = BIO_new(BIO_s_file());
+	if (BIO_read_filename(in, private_key_name) <= 0) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	*pkey = PEM_read_bio_PrivateKey(in, NULL, NULL, NULL);
+	BIO_free(in);
+
+
+	in = BIO_new(BIO_s_file());
+	if (!in) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (BIO_read_filename(in, cert_name) <= 0) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	x = PEM_read_bio_X509(in, NULL, NULL, NULL);
+	(*cert)->x = x;
+	(*cert)->pkey = *pkey;
+
+	BIO_free(in);
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+
 stir_shaken_status_t stir_shaken_generate_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name)
 {
 	EC_KEY                  *ec_key = NULL;

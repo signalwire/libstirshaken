@@ -28,6 +28,7 @@
 #include <openssl/err.h>
 #include <openssl/bio.h>
 #include <openssl/conf_api.h>
+#include <libgen.h>
 
 
 typedef enum stir_shaken_status {
@@ -180,23 +181,24 @@ typedef struct stir_shaken_globals_s {
 	stir_shaken_csr_t     csr;                      // CSR
 	stir_shaken_cert_t    cert;                     // Certificate
 	int                 curve_nid;                  // id of the curve in OpenSSL
-} switch_stir_shaken_globals_t;
+} stir_shaken_globals_t;
 
-extern switch_stir_shaken_globals_t stir_shaken_globals;
+extern stir_shaken_globals_t stir_shaken_globals;
 
 /**
  * Main entry point.
  *
  * This is called on library load.
  */
-static void stir_shaken_init(void) __attribute__ ((constructor));
+//static void stir_shaken_init(void) __attribute__ ((constructor));
+void stir_shaken_do_init(void);
 
 /**
  * Main exit point.
  *
  * This is called on library unload.
  */
-static void stir_shaken_deinit(void) __attribute__ ((destructor));
+//static void stir_shaken_deinit(void) __attribute__ ((destructor));
 void stir_shaken_do_deinit(void);
 
 
@@ -252,6 +254,7 @@ stir_shaken_status_t stir_shaken_install_cert(stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_load_cert_from_mem(X509 **x, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_mem_through_file(X509 **x, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_file(X509 **x, const char *cert_tmp_name);
+stir_shaken_status_t stir_shaken_load_cert_and_key(const char *cert_name, stir_shaken_cert_t **cert, const char *private_key_name, EVP_PKEY **pkey);
 stir_shaken_status_t stir_shaken_init_ssl(void);
 void stir_shaken_free_ssl(void);
 
