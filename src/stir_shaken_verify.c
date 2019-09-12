@@ -1,6 +1,169 @@
 #include "stir_shaken.h"
 
+#undef BUFSIZE
 #define BUFSIZE 1024*8
+
+int stir_shaken_do_verify_data_file(const char *data_filename, const char *signature_filename, EVP_PKEY *public_key)
+{
+    BIO *in = NULL, *inp = NULL, *bmd = NULL, *sigbio = NULL, *bio_err = NULL;
+    const EVP_MD    *md = NULL;
+    EVP_MD_CTX *mctx = NULL;
+    EVP_PKEY_CTX *pctx = NULL;
+    int r = -1, sanity = 5000;
+    int siglen = 0, res = -1;
+    unsigned char *buf = NULL;
+    unsigned char *sigbuf = NULL;
+    EVP_MD_CTX *ctx = NULL;
+
+    const char      *digest_name = "sha256";
+    int             i = 0;
+
+
+    if (!data_filename || !signature_filename || !public_key) {
+        goto err;
+    }
+
+    bio_err = BIO_new(BIO_s_file());
+    BIO_set_fp(bio_err, stdout, BIO_NOCLOSE | BIO_FP_TEXT);
+
+    buf = malloc(BUFSIZE);
+    if (!buf) {
+        goto err;
+    }
+    memset(buf, 0, BUFSIZE);
+    
+    md = EVP_get_digestbyname(digest_name);
+    if (!md) {
+        
+		// TODO remove
+		printf("STIR-Shaken: Cannot get %s digest\n", digest_name);
+        goto err;
+    }
+    
+    in = BIO_new(BIO_s_file());
+    bmd = BIO_new(BIO_f_md());
+    if ((in == NULL) || (bmd == NULL)) {
+        
+		// TODO remove
+		printf("STIR-Shaken: Cannot get SSL'e BIOs...\n");
+        goto err;
+    }
+
+    if (!BIO_get_md_ctx(bmd, &mctx)) {
+        
+		// TODO remove
+		printf("STIR-Shaken: Error getting context\n");
+        goto err;
+    }
+
+    r = EVP_DigestVerifyInit(mctx, &pctx, md, NULL, public_key);
+    if (!r) {
+        
+		// TODO remove
+		printf("STIR-Shaken: Error setting context\n");
+        goto err;
+    }
+    
+    sigbio = BIO_new_file(signature_filename, "rb");
+    if (sigbio == NULL) {
+        
+		// TODO remove
+		printf("STIR-Shaken: Error opening signature file\n");
+		// TODO remove
+        goto err;
+    }
+    siglen = EVP_PKEY_size(public_key);
+    sigbuf = malloc(siglen);
+    siglen = BIO_read(sigbio, sigbuf, siglen);
+    BIO_free(sigbio);
+    if (siglen <= 0) {
+        
+		// TODO remove
+		printf("STIR-Shaken: Error reading signature\n");
+        ERR_print_errors(bio_err);
+        goto err;
+    }
+
+    inp = BIO_push(bmd, in);
+    
+    if (BIO_read_filename(in, data_filename) <= 0) {
+        
+		// TODO remove
+		printf("STIR-Shaken: Error reading data file\n");
+        ERR_print_errors(bio_err);
+        goto err;
+    }
+
+    // Do fp
+
+    for (;sanity--;) {
+        i = BIO_read(inp, (char *)buf, BUFSIZE);
+        if (i < 0) {
+            
+			// TODO remove
+			printf("STIR-Shaken: Read Error\n");
+            ERR_print_errors(bio_err);
+            goto err;
+        }
+        if (i == 0) {
+            break;
+        }
+    }
+    BIO_get_md_ctx(inp, &ctx);
+    i = EVP_DigestVerifyFinal(ctx, sigbuf, (unsigned int)siglen);
+    if (i > 0) {
+		
+		// TODO remove
+        printf("STIR-Shaken: Verified OK\n");
+        res = 0;
+    } else if (i == 0) {
+		
+		// TODO remove
+        printf("STIR-Shaken: Signature/data failed verification\n");
+        res = 1;
+    } else {
+		
+		// TODO remove
+        printf("STIR-Shaken: Error Verifying Data\n");
+        res = 2;
+        ERR_print_errors(bio_err);
+    }
+
+    if (buf) {
+        free(buf);
+    }
+    if (sigbuf) {
+        free(sigbuf);
+    }
+    if (bio_err) {
+        BIO_free(bio_err);
+    }
+    if (in) {
+        BIO_free(in);
+    }
+    if (bmd) {
+        BIO_free(bmd);
+    }
+    return res;
+
+err:
+    if (sigbuf) {
+        free(sigbuf);
+    }
+    if (buf) {
+        free(buf);
+    }
+    if (bio_err) {
+        BIO_free(bio_err);
+    }
+    if (in) {
+        BIO_free(in);
+    }
+    if (bmd) {
+        BIO_free(bmd);
+    }
+    return -1;
+}
 
 
 static int stir_shaken_verify_data_with_cert(const char *data, size_t datalen, const unsigned char *signature, size_t siglen, stir_shaken_cert_t *cert)
