@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <sys/stat.h>
+#include <string.h>
 
 #include <cjson/cJSON.h>
 
@@ -201,6 +202,8 @@ void stir_shaken_do_init(void);
 //static void stir_shaken_deinit(void) __attribute__ ((destructor));
 void stir_shaken_do_deinit(void);
 
+stir_shaken_status_t stir_shaken_settings_set_path(const char *path);
+
 
 // SSL
 
@@ -256,7 +259,7 @@ stir_shaken_status_t stir_shaken_load_cert_from_mem_through_file(X509 **x, void 
 stir_shaken_status_t stir_shaken_load_cert_from_file(X509 **x, const char *cert_tmp_name);
 stir_shaken_status_t stir_shaken_load_cert_and_key(const char *cert_name, stir_shaken_cert_t **cert, const char *private_key_name, EVP_PKEY **pkey);
 stir_shaken_status_t stir_shaken_init_ssl(void);
-void stir_shaken_free_ssl(void);
+void stir_shaken_deinit_ssl(void);
 
 
 // Verification service
