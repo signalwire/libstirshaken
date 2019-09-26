@@ -40,14 +40,14 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(voi
     printf("=== Unit testing: STIR/Shaken SIP Identity Header (keep passport) creation [stir_shaken_unit_test_sip_identity_header_keep_passport]\n\n");
     
     // Generate new keys for this test
-    status = stir_shaken_generate_keys(&ec_key, &private_key, &public_key, private_key_name, public_key_name);
+    status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
     stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key\n\n");
     stir_shaken_assert(private_key != NULL, "Err, failed to generate private key");
     stir_shaken_assert(public_key != NULL, "Err, failed to generate public key");
 
     /* Test */
-    sih =  stir_shaken_do_sign_keep_passport(&params, private_key, &passport, 1);
+    sih =  stir_shaken_do_sign_keep_passport(NULL, &params, private_key, &passport, 1);
     stir_shaken_assert(passport != NULL, "PASSporT has not been created");
     stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
     printf("SIP Identity Header:\n%s\n", sih);
@@ -87,7 +87,7 @@ int main(void)
 {
 	const char *path = "./test/run";
 	
-	stir_shaken_do_init();
+	stir_shaken_do_init(NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

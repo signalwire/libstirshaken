@@ -27,7 +27,7 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 
 	// Generate new keys for this test
 	pthread_mutex_lock(&stir_shaken_globals.mutex);
-	status = stir_shaken_generate_keys(&ec_key, &private_key, &public_key, private_key_name, public_key_name);
+	status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name);
 	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
@@ -40,15 +40,15 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 
 	datalen = strlen(data_test_pass);
 	outlen = sizeof(sig);
-	status = stir_shaken_do_sign_data_with_digest("sha256", private_key, data_test_pass, datalen, sig, &outlen);
+	status = stir_shaken_do_sign_data_with_digest(NULL, "sha256", private_key, data_test_pass, datalen, sig, &outlen);
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign\n");
 
 	printf("Verifying (against good data)...\n\n");
-	i = stir_shaken_do_verify_data(data_test_pass, strlen(data_test_pass), sig, outlen, public_key);
+	i = stir_shaken_do_verify_data(NULL, data_test_pass, strlen(data_test_pass), sig, outlen, public_key);
 	stir_shaken_assert(i == 0, "Err, verify failed");
 
 	printf("Verifying (against bad data)...\n\n");
-	i = stir_shaken_do_verify_data(data_test_fail, strlen(data_test_fail), sig, outlen, public_key);
+	i = stir_shaken_do_verify_data(NULL, data_test_fail, strlen(data_test_fail), sig, outlen, public_key);
 	stir_shaken_assert(i == 1, "Err, verify failed");
 	
 	pthread_mutex_lock(&stir_shaken_globals.mutex);
@@ -62,7 +62,7 @@ int main(void)
 {
 	const char *path = "./test/run";
 	
-	stir_shaken_do_init();
+	stir_shaken_do_init(NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

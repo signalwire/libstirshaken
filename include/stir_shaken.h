@@ -15,6 +15,7 @@
 #include <pthread.h>
 
 #define PBUF_LEN 800
+#define STIR_SHAKEN_ERROR_BUF_LEN 1500
 
 #include <openssl/crypto.h>
 #include <openssl/pem.h>
@@ -39,9 +40,15 @@ typedef enum stir_shaken_status {
 	STIR_SHAKEN_STATUS_NOOP
 } stir_shaken_status_t;
 
+typedef struct stir_shaken_context_s {
+	char err_buf[1500];
+	uint8_t got_error;
+} stir_shaken_context_t;
+
 typedef struct mem_chunk_s {
 	char    *mem;
 	size_t  size;
+	stir_shaken_context_t	*ss;
 } mem_chunk_t;
 
 
@@ -192,7 +199,7 @@ extern stir_shaken_globals_t stir_shaken_globals;
  * This is called on library load.
  */
 //static void stir_shaken_init(void) __attribute__ ((constructor));
-void stir_shaken_do_init(void);
+stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss);
 
 /**
  * Main exit point.
@@ -211,12 +218,12 @@ stir_shaken_status_t stir_shaken_settings_set_path(const char *path);
  * Using @digest_name and @pkey create a signature for @data and save it in @out.
  * Return @out and lenght of it in @outlen.
  */ 
-stir_shaken_status_t stir_shaken_do_sign_data_with_digest(const char *digest_name, EVP_PKEY *pkey, const char *data, size_t datalen, unsigned char *out, size_t *outlen);
+stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t *ss, const char *digest_name, EVP_PKEY *pkey, const char *data, size_t datalen, unsigned char *out, size_t *outlen);
 
 /**
  * Generate new keys. Always removes old files.
  */
-stir_shaken_status_t stir_shaken_generate_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name);
+stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name);
 
 /**
  * Call SSL destructors and release memory used for SSL keys.
@@ -253,32 +260,32 @@ X509 * stir_shaken_generate_x509_self_sign(uint32_t sp_code, X509_REQ *req, EVP_
  */
 stir_shaken_status_t stir_shaken_generate_cert_from_csr(uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name);
 
-stir_shaken_status_t stir_shaken_install_cert(stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_install_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_load_cert_from_mem(X509 **x, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_mem_through_file(X509 **x, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_file(X509 **x, const char *cert_tmp_name);
 stir_shaken_status_t stir_shaken_load_cert_and_key(const char *cert_name, stir_shaken_cert_t **cert, const char *private_key_name, EVP_PKEY **pkey);
-stir_shaken_status_t stir_shaken_init_ssl(void);
+stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss);
 void stir_shaken_deinit_ssl(void);
 
 
 // Verification service
 
-int stir_shaken_verify_data(const char *data, const char *signature, size_t siglen, EVP_PKEY *pkey);
-int stir_shaken_do_verify_data_file(const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);
-int stir_shaken_do_verify_data(const void *data, size_t datalen, const unsigned char *sig, size_t siglen, EVP_PKEY *public_key);
+int stir_shaken_verify_data(stir_shaken_context_t *ss, const char *data, const char *signature, size_t siglen, EVP_PKEY *pkey);
+int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);
+int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size_t datalen, const unsigned char *sig, size_t siglen, EVP_PKEY *public_key);
 
-stir_shaken_status_t stir_shaken_download_cert(const char *url, mem_chunk_t *chunk);
-void stir_shaken_cert_configure(stir_shaken_cert_t *cert, char *install_path, char *install_url);
+stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const char *url, mem_chunk_t *chunk);
+stir_shaken_status_t stir_shaken_cert_configure(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *install_path, char *install_url);
 stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const char *file);
-stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url);
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url);
 
 /**
  * Verify (check/authenticate) call identity.
  *
  * @sdp - (in) SDP call description
  */
-stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert);
 
 /**
  * Perform STIR-Shaken verification of the @identity_header.
@@ -287,7 +294,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, s
  * and if successfull then will verify signature from that header against data from PASSporT
  * (where the challenge is header and payload [base 64]) using public key from cert.
  */
-stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url);
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url);
 
 
 // Authorization service
@@ -295,23 +302,24 @@ stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url);
 /**
  * Create JSON token from call @pparams.
  */
-cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams);
+cJSON* stir_shaken_passport_create_json(stir_shaken_context_t *ss, stir_shaken_passport_params_t *pparams);
+void stir_shaken_passport_destroy(stir_shaken_passport_t *passport);
 
 /**
  * Create signatures in @jwt and save intermediate results in @info.
  */
-stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *passport, EVP_PKEY *pkey);
+stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, EVP_PKEY *pkey);
 
 /**
  * Initialise PASSporT pointed to by @passport using call @params and sign it with @pkey.
  */
-stir_shaken_status_t stir_shaken_passport_create(stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
+stir_shaken_status_t stir_shaken_passport_create(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
 
 /**
  * Authorize the call and keep PASSporT if the @keep_pasport is true.
  */
-stir_shaken_status_t stir_shaken_authorize_keep_passport(char **sih, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport, uint8_t keep_passport, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
-stir_shaken_status_t stir_shaken_authorize_self_trusted(char **sih, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport, uint8_t keep_passport, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_authorize_self_trusted(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
 
 /**
  * Authorize (assert/sign) call with SIP Identity Header for Service Provider identified by @sp_code.
@@ -321,9 +329,7 @@ stir_shaken_status_t stir_shaken_authorize_self_trusted(char **sih, stir_shaken_
  * @stica - (in) STI-CA description (this can be configured from dialplan config / channel variables, or by consulting other lookup service)
  * @params - call params in terms of STIR Shaken's PASSporT
  */
-stir_shaken_status_t stir_shaken_authorize(char **sih, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
-
-stir_shaken_status_t stir_shaken_install_cert(stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_cert_t *cert);
 
 /**
  * High level interface to authorization (main entry point).
@@ -357,23 +363,16 @@ stir_shaken_status_t stir_shaken_stisp_perform_authorization(EVP_PKEY *pkey, sti
  * (==x5u)	//Info	(X [needed], but implicitely copied from @x5u)
  *          //PPT
  */ 
-char* stir_shaken_do_sign(stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
+char* stir_shaken_do_sign(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
 
-char* stir_shaken_sip_identity_create(stir_shaken_passport_t *passport);
+char* stir_shaken_sip_identity_create(stir_shaken_context_t *ss, stir_shaken_passport_t *passport);
 
 /*
  * Sign the call data with the @pkey, and keep pointer to created PASSporT if @keep_passport is true. 
  * SIP Identity header is returned and PASSporT.
  * @passport - (out) will point to created PASSporT
  */
-char * stir_shaken_do_sign_keep_passport(stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_passport_t **passport, uint8_t keep_passport);
-
-
-// Authorization service
-cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams);
-stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *passport, EVP_PKEY *pkey);
-stir_shaken_status_t stir_shaken_passport_create(stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
-void stir_shaken_passport_destroy(stir_shaken_passport_t *passport);
+char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_passport_t **passport, uint8_t keep_passport);
 
 
 // Utility
@@ -385,6 +384,10 @@ stir_shaken_status_t stir_shaken_file_exists(const char *path);
 stir_shaken_status_t stir_shaken_file_remove(const char *path);
 stir_shaken_status_t stir_shaken_b64_encode(unsigned char *in, size_t ilen, unsigned char *out, size_t olen);
 size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen);
+
+void stir_shaken_set_error_string(stir_shaken_context_t *ss, const char *err);
+void stir_shaken_set_error_string_if_clear(stir_shaken_context_t *ss, const char *err);
+void stir_shaken_clear_error_string(stir_shaken_context_t *ss);
 
 
 // TEST

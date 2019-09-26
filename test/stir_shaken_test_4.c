@@ -34,7 +34,7 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void)
     
     // Generate new keys for this test
 	pthread_mutex_lock(&stir_shaken_globals.mutex);
-    status = stir_shaken_generate_keys(&ec_key, &private_key, &public_key, private_key_name, public_key_name);
+    status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name);
 	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
@@ -43,7 +43,7 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void)
     stir_shaken_assert(public_key != NULL, "Err, failed to generate public key");
 
     /* Test */
-    sih =  stir_shaken_do_sign(&params, private_key);
+    sih =  stir_shaken_do_sign(NULL, &params, private_key);
     stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
     printf("SIP Identity Header:\n%s\n", sih);
     printf("OK\n\n");
@@ -63,7 +63,7 @@ int main(void)
 {
 	const char *path = "./test/run";
 	
-	stir_shaken_do_init();
+	stir_shaken_do_init(NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

@@ -3,7 +3,7 @@
 #undef BUFSIZE
 #define BUFSIZE 1024*8
 
-int stir_shaken_do_verify_data_file(const char *data_filename, const char *signature_filename, EVP_PKEY *public_key)
+int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_filename, const char *signature_filename, EVP_PKEY *public_key)
 {
     BIO *in = NULL, *inp = NULL, *bmd = NULL, *sigbio = NULL, *bio_err = NULL;
     const EVP_MD    *md = NULL;
@@ -17,7 +17,10 @@ int stir_shaken_do_verify_data_file(const char *data_filename, const char *signa
 
     const char      *digest_name = "sha256";
     int             i = 0;
+	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
+	
+	stir_shaken_clear_error_string(ss);
 
     if (!data_filename || !signature_filename || !public_key) {
         goto err;
@@ -35,8 +38,8 @@ int stir_shaken_do_verify_data_file(const char *data_filename, const char *signa
     md = EVP_get_digestbyname(digest_name);
     if (!md) {
         
-		// TODO remove
-		printf("STIR-Shaken: Cannot get %s digest\n", digest_name);
+		sprintf(err_buf, "Cannot get %s digest", digest_name);
+		stir_shaken_set_error_string(ss, err_buf); 
         goto err;
     }
     
@@ -44,32 +47,31 @@ int stir_shaken_do_verify_data_file(const char *data_filename, const char *signa
     bmd = BIO_new(BIO_f_md());
     if ((in == NULL) || (bmd == NULL)) {
         
-		// TODO remove
-		printf("STIR-Shaken: Cannot get SSL'e BIOs...\n");
+		sprintf(err_buf, "Cannot get SSL'e BIOs...");
+		stir_shaken_set_error_string(ss, err_buf); 
         goto err;
     }
 
     if (!BIO_get_md_ctx(bmd, &mctx)) {
         
-		// TODO remove
-		printf("STIR-Shaken: Error getting context\n");
+		sprintf(err_buf, "Error getting message digest context");
+		stir_shaken_set_error_string(ss, err_buf); 
         goto err;
     }
 
     r = EVP_DigestVerifyInit(mctx, &pctx, md, NULL, public_key);
     if (!r) {
         
-		// TODO remove
-		printf("STIR-Shaken: Error setting context\n");
+		sprintf(err_buf, "Error setting context");
+		stir_shaken_set_error_string(ss, err_buf); 
         goto err;
     }
     
     sigbio = BIO_new_file(signature_filename, "rb");
     if (sigbio == NULL) {
         
-		// TODO remove
-		printf("STIR-Shaken: Error opening signature file\n");
-		// TODO remove
+		sprintf(err_buf, "Error opening signature file");
+		stir_shaken_set_error_string(ss, err_buf); 
         goto err;
     }
     siglen = EVP_PKEY_size(public_key);
@@ -78,9 +80,9 @@ int stir_shaken_do_verify_data_file(const char *data_filename, const char *signa
     BIO_free(sigbio);
     if (siglen <= 0) {
         
-		// TODO remove
-		printf("STIR-Shaken: Error reading signature\n");
-        ERR_print_errors(bio_err);
+		sprintf(err_buf, "Error reading signature");
+		stir_shaken_set_error_string(ss, err_buf); 
+        //ERR_print_errors(bio_err);
         goto err;
     }
 
@@ -89,8 +91,9 @@ int stir_shaken_do_verify_data_file(const char *data_filename, const char *signa
     if (BIO_read_filename(in, data_filename) <= 0) {
         
 		// TODO remove
-		printf("STIR-Shaken: Error reading data file\n");
-        ERR_print_errors(bio_err);
+		sprintf(err_buf, "Error reading data file");
+		stir_shaken_set_error_string(ss, err_buf); 
+        //ERR_print_errors(bio_err);
         goto err;
     }
 
@@ -101,8 +104,9 @@ int stir_shaken_do_verify_data_file(const char *data_filename, const char *signa
         if (i < 0) {
             
 			// TODO remove
-			printf("STIR-Shaken: Read Error\n");
-            ERR_print_errors(bio_err);
+			sprintf(err_buf, "Read Error");
+			stir_shaken_set_error_string(ss, err_buf); 
+            //ERR_print_errors(bio_err);
             goto err;
         }
         if (i == 0) {
@@ -113,20 +117,19 @@ int stir_shaken_do_verify_data_file(const char *data_filename, const char *signa
     i = EVP_DigestVerifyFinal(ctx, sigbuf, (unsigned int)siglen);
     if (i > 0) {
 		
-		// TODO remove
-        printf("STIR-Shaken: Verified OK\n");
+		// OK
         res = 0;
     } else if (i == 0) {
 		
-		// TODO remove
-        printf("STIR-Shaken: Signature/data failed verification\n");
+        sprintf(err_buf, "Signature/data-key failed verification (signature doesn't match the data-key pair)");
+		stir_shaken_set_error_string(ss, err_buf); 
         res = 1;
     } else {
 		
-		// TODO remove
-        printf("STIR-Shaken: Error Verifying Data\n");
+        sprintf(err_buf, "Unknown error while verifying data");
+		stir_shaken_set_error_string(ss, err_buf); 
         res = 2;
-        ERR_print_errors(bio_err);
+        //ERR_print_errors(bio_err);
     }
 
     if (buf) {
@@ -166,20 +169,24 @@ err:
 }
 
 
-static int stir_shaken_verify_data_with_cert(const char *data, size_t datalen, const unsigned char *signature, size_t siglen, stir_shaken_cert_t *cert)
+static int stir_shaken_verify_data_with_cert(stir_shaken_context_t *ss, const char *data, size_t datalen, const unsigned char *signature, size_t siglen, stir_shaken_cert_t *cert)
 {
     EVP_PKEY *pkey = NULL;
 
+
+	stir_shaken_clear_error_string(ss);
+
     // Get EVP_PKEY public key from cert
     if (!cert || !cert->x || !(pkey = X509_get_pubkey(cert->x))) {
+		stir_shaken_set_error_string(ss, "Verify data with cert: Bad params");
         return -1;
     }
 
-    return stir_shaken_do_verify_data(data, datalen, signature, siglen, pkey);
+    return stir_shaken_do_verify_data(ss, data, datalen, signature, siglen, pkey);
 }
 
 
-stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, stir_shaken_cert_t *cert)
+stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert)
 {
     char *challenge = NULL;
     unsigned char signature[BUFSIZE] = {0};
@@ -187,7 +194,11 @@ stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, s
     int len = 0, challenge_len = 0;
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
 
+
+	stir_shaken_clear_error_string(ss);
+
     if (!identity_header || !cert) {
+		stir_shaken_set_error_string(ss, "Verify with cert: Bad params");
         return STIR_SHAKEN_STATUS_FALSE;
     }
     
@@ -197,14 +208,17 @@ stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, s
 
     b = strchr(identity_header, '.');
     if (!b || (b + 1 == strchr(identity_header, '\0'))) {
+		stir_shaken_set_error_string(ss, "Verify with cert: Bad SIP Identity Header");
         return STIR_SHAKEN_STATUS_FALSE;
     }
     e = strchr(b + 1, '.');
     if (!e || (e + 1 == strchr(identity_header, '\0'))) {
+		stir_shaken_set_error_string(ss, "Verify with cert: Bad SIP Identity Header");
         return STIR_SHAKEN_STATUS_FALSE;
     }
     se = strchr(e + 1, ';');
     if (!se || (se + 1 == strchr(identity_header, '\0'))) {
+		stir_shaken_set_error_string(ss, "Verify with cert: Bad SIP Identity Header");
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
@@ -212,6 +226,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, s
     challenge_len = len;
     challenge = malloc(challenge_len);
     if (!challenge) {
+		stir_shaken_set_error_string(ss, "Verify with cert: Out of memory");
         return STIR_SHAKEN_STATUS_FALSE;
     }
     memcpy(challenge, identity_header, challenge_len);
@@ -219,6 +234,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, s
     len = se - e;
     sig = malloc(len);
     if (!sig) {
+		stir_shaken_set_error_string(ss, "Verify with cert: Out of memory");
 		goto fail;
     }
     memcpy(sig, e + 1, len);
@@ -227,7 +243,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(const char *identity_header, s
     len = stir_shaken_b64_decode(sig, (char*)signature, BUFSIZE); // decode signature from SIP Identity Header (cause we encode it Base64, TODO confirm, they don't Base 64 cause ES256 would produce ASCII maybe while our current signature is not printable and of different length, something is not right with our signature, oh dear),
     // alternatively we would do signature = stir_shaken_core_strdup(stir_shaken_globals.pool, e + 1);
     
-    if (stir_shaken_verify_data_with_cert(challenge, challenge_len, signature, len - 1, cert) != 0) { // len - 1 cause _b64_decode appends '\0' and counts it
+    if (stir_shaken_verify_data_with_cert(ss, challenge, challenge_len, signature, len - 1, cert) != 0) { // len - 1 cause _b64_decode appends '\0' and counts it
         goto fail;
     }
 
@@ -242,6 +258,7 @@ fail:
 		free(sig);
 		sig = NULL;
 	}
+	stir_shaken_set_error_string_if_clear(ss, "Verify with cert: Error");
 	return status;
 }
 
@@ -251,11 +268,15 @@ static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
 	size_t realsize = size * nmemb;
 	mem_chunk_t *mem = (mem_chunk_t *) p;
 
+	
+	stir_shaken_clear_error_string(mem->ss);
+
+	// TODO remove
 	printf("STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, mem->size);
 
 	m = realloc(mem->mem, mem->size + realsize + 1);
 	if(!m) {
-		printf("STIR-Shaken: realloc returned NULL\n");
+		stir_shaken_set_error_string(mem->ss, "realloc returned NULL");
 		return 0;
 	}
 
@@ -267,11 +288,15 @@ static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
 	return realsize;
 }
 
-stir_shaken_status_t stir_shaken_download_cert(const char *url, mem_chunk_t *chunk)
+stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const char *url, mem_chunk_t *chunk)
 {
 	CURL *curl_handle = NULL;
 	CURLcode res = 0;
     stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
+	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	
+	
+	stir_shaken_clear_error_string(ss);
 
 	chunk->mem = malloc(1);
 	chunk->size = 0;
@@ -289,14 +314,14 @@ stir_shaken_status_t stir_shaken_download_cert(const char *url, mem_chunk_t *chu
 
 	if (res != CURLE_OK) {
 		
-		// TODO remove
-		printf("STIR-Shaken: Download: Error in CURL: %s\n", curl_easy_strerror(res));
+		sprintf(err_buf, "Download: Error in CURL: %s", curl_easy_strerror(res));
+		stir_shaken_set_error_string(ss, err_buf); 
         status = STIR_SHAKEN_STATUS_FALSE;
 
 	} else {
 
 		// TODO remove
-		printf("STIR-Shaken: Download: Got %zu bytes\n", chunk->size);
+		printf("Download: Got %zu bytes\n", chunk->size);
         status = STIR_SHAKEN_STATUS_OK;
 	}
 
@@ -306,18 +331,24 @@ stir_shaken_status_t stir_shaken_download_cert(const char *url, mem_chunk_t *chu
 	return status;
 }
 
-void stir_shaken_cert_configure(stir_shaken_cert_t *cert, char *install_path, char *install_url)
+stir_shaken_status_t stir_shaken_cert_configure(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *install_path, char *install_url)
 {
 	char b[500] = {0};
 	int c = strlen(install_path);
 	int d = strlen(install_url);
 	int e = 0;
+	
+	
+	stir_shaken_clear_error_string(ss);
 
 	if (cert) {
 
 		cert->install_path = malloc(c + 1);
 		cert->install_url = malloc(d + 1);
-		if (!cert->install_path || !cert->install_url) return;
+		if (!cert->install_path || !cert->install_url) {
+			stir_shaken_set_error_string(ss, "Cert configure: Cannot allocate memory");
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
 		memcpy(cert->install_path, install_path, c);
 		memcpy(cert->install_url, install_url, d);
 		cert->install_path[c] = '\0';
@@ -326,9 +357,15 @@ void stir_shaken_cert_configure(stir_shaken_cert_t *cert, char *install_path, ch
 		snprintf(b, 500, "%s%s", cert->install_url, cert->name);
 		e = strlen(b);
 		cert->access = malloc(e + 1);
+		if (!cert->access) {
+			stir_shaken_set_error_string(ss, "Cert configure: Cannot allocate memory");
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
 		memcpy(cert->access, b, e);
 		cert->access[e] = '\0';
 	}
+
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 static size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
@@ -359,13 +396,22 @@ stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const ch
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url)
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url)
 {
 	stir_shaken_cert_t cert = {0};
     mem_chunk_t chunk = { .mem = NULL, .size = 0};
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
+	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	
-	if (!sih || !cert_url) {
+	stir_shaken_clear_error_string(ss);
+	
+	if (!sih) {
+		stir_shaken_set_error_string(ss, "Verify: SIP Identity Header not set");
+		goto fail;
+	}
+	
+	if (!cert_url) {
+		stir_shaken_set_error_string(ss, "Verify: Cert URL not set");
 		goto fail;
 	}
 
@@ -377,8 +423,7 @@ stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url)
 	// TODO remove
 	printf("STIR-Shaken: Verify: downloading cert...\n");
 
-	if (stir_shaken_download_cert(cert_url, &chunk) != STIR_SHAKEN_STATUS_OK) {
-		printf("STIR-Shaken: Verify: error downloading\n");
+	if (stir_shaken_download_cert(ss, cert_url, &chunk) != STIR_SHAKEN_STATUS_OK) {
 		goto fail;
 	}
 
@@ -389,8 +434,7 @@ stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url)
 
     if (stir_shaken_load_cert_from_mem(&cert.x, chunk.mem, chunk.size) != STIR_SHAKEN_STATUS_OK) {
 	
-		// TODO remove
-		printf("STIR-Shaken: Verify: error loading cert\n");
+		stir_shaken_set_error_string(ss, "Verify: error while loading cert from memory");
 		goto fail;
     }
 	
@@ -398,8 +442,7 @@ stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url)
 	cert.body = malloc(chunk.size);
 	if (!cert.body) {
 	
-		// TODO remove
-		printf("STIR-Shaken: Verify: out of memory\n");
+		stir_shaken_set_error_string(ss, "Verify: out of memory");
 		goto fail;
 	}
 	memcpy(cert.body, chunk.mem, chunk.size);
@@ -410,7 +453,7 @@ stir_shaken_status_t stir_shaken_verify(const char *sih, const char *cert_url)
 	// TODO remove
 	printf("STIR-Shaken: Verify: checking signature...\n");
 
-	if (stir_shaken_verify_with_cert(sih, &cert) != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_verify_with_cert(ss, sih, &cert) != STIR_SHAKEN_STATUS_OK) {
 		printf("STIR-Shaken: Verify: FAIL (spoofed)\n");
 		goto fail;
 	}
@@ -425,7 +468,6 @@ fail:
         free(chunk.mem);
 		chunk.mem = NULL;
     }
-	// TODO remove
-	printf("STIR-Shaken: Verify: FAIL\n");
+	stir_shaken_set_error_string_if_clear(ss, "Verify: Error");
 	return status;
 }

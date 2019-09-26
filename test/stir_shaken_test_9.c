@@ -51,7 +51,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void)
     printf("=== Unit testing: STIR/Shaken Verification against good and spoofed SIP Identity Header [stir_shaken_unit_test_verify]\n\n");
     
     // Generate new keys for this test
-    status = stir_shaken_generate_keys(&ec_key, &private_key, &public_key, private_key_name, public_key_name);
+    status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
     stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key\n\n");
     stir_shaken_assert(private_key != NULL, "Err, failed to generate private key");
@@ -59,7 +59,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void)
 
     /* Test */
     printf("Authorizing...\n\n");
-    status = stir_shaken_authorize_keep_passport(&sih, &params, &passport, 1, private_key, NULL);
+    status = stir_shaken_authorize_keep_passport(NULL, &sih, &params, &passport, 1, private_key, NULL);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to create SIP Identity Header");
     stir_shaken_assert(passport != NULL, "Failed to create PASSporT");
     stir_shaken_assert(passport->json != NULL, "Failed to create PASSporT json");
@@ -76,7 +76,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void)
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating Cert");
 
     printf("Verifying SIP Identity Header's signature with Cert... (against good data)\n\n");
-    status = stir_shaken_verify_with_cert(sih, &cert);
+    status = stir_shaken_verify_with_cert(NULL, sih, &cert);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, verifying");
 
     // Spoofed SIP Identity Header
@@ -90,16 +90,16 @@ stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void)
     // Need to update @info as stir_shaken_sip_identity_create takes header and payload base 64 from @info,
     // otherwise spoofed SIP Identity Header would be same as original header (even if @jwt changed).
     // Second arg is NULL, so only header and payload will change but signature won't be touched
-    status = stir_shaken_passport_finalise_json(passport, NULL);
+    status = stir_shaken_passport_finalise_json(NULL, passport, NULL);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, updating json");
 
     // Using same signature, same data, apart from spoofed Telephone Number
-    spoofed_sih = stir_shaken_sip_identity_create(passport);
+    spoofed_sih = stir_shaken_sip_identity_create(NULL, passport);
     stir_shaken_assert(spoofed_sih != NULL, "Failed to create (spoofed) SIP Identity Header");
     printf("Spoofed SIP Identity Header:\n%s\n\n", spoofed_sih);
     
     printf("Verifying SIP Identity Header's signature with Cert... (against spoofed SIP Identity Header)\n\n");
-    status = stir_shaken_verify_with_cert(spoofed_sih, &cert);
+    status = stir_shaken_verify_with_cert(NULL, spoofed_sih, &cert);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Err, verifying");
 
 	stir_shaken_passport_destroy(passport);
@@ -129,7 +129,7 @@ int main(void)
 {
 	const char *path = "./test/run";
 	
-	stir_shaken_do_init();
+	stir_shaken_do_init(NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

@@ -31,14 +31,14 @@ stir_shaken_status_t stir_shaken_unit_test_authorize(void)
     printf("=== Unit testing: STIR/Shaken Authorization [stir_shaken_unit_test_authorize]\n\n");
     
     // Generate new keys for this test
-    status = stir_shaken_generate_keys(&ec_key, &private_key, &public_key, private_key_name, public_key_name);
+    status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
     stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key\n\n");
     stir_shaken_assert(private_key != NULL, "Err, failed to generate private key");
     stir_shaken_assert(public_key != NULL, "Err, failed to generate public key");
 
     /* Test */
-    status = stir_shaken_authorize(&sih, &params, private_key, NULL);
+    status = stir_shaken_authorize(NULL, &sih, &params, private_key, NULL);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to create SIP Identity Header");
     stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
     
@@ -58,7 +58,7 @@ int main(void)
 {
 	const char *path = "./test/run";
 	
-	stir_shaken_do_init();
+	stir_shaken_do_init(NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

@@ -41,7 +41,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
     printf("=== Unit testing: STIR/Shaken PASSporT create/verify signature [stir_shaken_unit_test_passport_create_verify_signature]\n\n");
     
     // Generate new keys for this test
-    status = stir_shaken_generate_keys(&ec_key, &private_key, &public_key, private_key_name, public_key_name);
+    status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
     stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key\n\n");
     stir_shaken_assert(private_key != NULL, "Err, failed to generate private key");
@@ -49,7 +49,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
 
     /* Test */
 	pthread_mutex_lock(&stir_shaken_globals.mutex);
-    status = stir_shaken_passport_create(&passport, &params, private_key);
+    status = stir_shaken_passport_create(NULL, &passport, &params, private_key);
 	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
@@ -77,7 +77,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
     len = len - 1;  // stir_shaken_b64_decode returns length of the data plus 1 for '\0' which it appends
 
     // Verify
-    i = stir_shaken_do_verify_data(siginput->valuestring, strlen(siginput->valuestring), signature, len, public_key);
+    i = stir_shaken_do_verify_data(NULL, siginput->valuestring, strlen(siginput->valuestring), signature, len, public_key);
     stir_shaken_assert(i == 0, "Err, verify failed\n\n");
 
     printf("OK\n\n");
@@ -97,7 +97,7 @@ int main(void)
 {
 	const char *path = "./test/run";
 	
-	stir_shaken_do_init();
+	stir_shaken_do_init(NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

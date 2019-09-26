@@ -28,10 +28,11 @@ stir_shaken_status_t stir_shaken_settings_set_path(const char *path)
 
 static void stir_shaken_init(void)
 {
-	return stir_shaken_do_init();
+	stir_shaken_do_init(NULL);
+	return;
 }
 
-void stir_shaken_do_init(void)
+stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
 
@@ -40,26 +41,23 @@ void stir_shaken_do_init(void)
 	
 	if (pthread_mutexattr_init(&stir_shaken_globals.attr) != 0) {
 		
-		// TODO remove
-		printf("STIR-Shaken: init mutex attr failed\n");
-		return;
+		stir_shaken_set_error_string(ss, "init mutex attr failed");
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	pthread_mutexattr_settype(&stir_shaken_globals.attr, PTHREAD_MUTEX_RECURSIVE);
 	
 	if (pthread_mutex_init(&stir_shaken_globals.mutex, &stir_shaken_globals.attr) != 0) {
 		
-		// TODO remove
-		printf("STIR-Shaken: init mutex failed\n");
-		return;
+		stir_shaken_set_error_string(ss, "init mutex failed");
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	status = stir_shaken_init_ssl();
+	status = stir_shaken_init_ssl(ss);
 	if (status != STIR_SHAKEN_STATUS_OK) {
 	
-		// TODO remove
-		printf("STIR-Shaken: init SSL failed\n");
-		return;
+		stir_shaken_set_error_string(ss, "init SSL failed\n");
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	stir_shaken_globals.initialised = 1;
@@ -263,6 +261,41 @@ size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen)
 	op[ol++] = '\0';
 
 	return ol;
+}
+
+void stir_shaken_set_error_string(stir_shaken_context_t *ss, const char *err)
+{
+	int i = 0;
+
+	if (!ss) return;
+	
+	memset(ss->err_buf, 0, STIR_SHAKEN_ERROR_BUF_LEN);
+
+	while ((i < STIR_SHAKEN_ERROR_BUF_LEN - 1) && (err[i] != '\0')) {
+		ss->err_buf[i] = err[i];
+		++i;
+	}
+
+	ss->err_buf[i] = '\0';
+	ss->got_error = 1;
+}
+
+void stir_shaken_set_error_string_if_clear(stir_shaken_context_t *ss, const char *err)
+{
+	if (ss) {
+
+		if (!ss->got_error) {
+			stir_shaken_set_error_string(ss, err);
+		}
+	}
+}
+
+void stir_shaken_clear_error_string(stir_shaken_context_t *ss)
+{
+	if (!ss) return;
+
+	memset(ss->err_buf, 0, STIR_SHAKEN_ERROR_BUF_LEN);
+	ss->got_error = 0;
 }
 
 stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line)

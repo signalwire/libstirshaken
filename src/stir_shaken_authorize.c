@@ -1,7 +1,7 @@
 #include "stir_shaken.h"
 
 
-cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams)
+cJSON* stir_shaken_passport_create_json(stir_shaken_context_t *ss, stir_shaken_passport_params_t *pparams)
 {
     /**
      * Create main JSON object with members: @jwt and @params (Jason Web Token and Parameters)
@@ -22,7 +22,10 @@ cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams)
 
     cJSON *json = NULL, *jwt = NULL, *params = NULL, *hdr = NULL, *e = NULL, *payload = NULL, *dest = NULL, *tn = NULL, *orig = NULL;
 
+	stir_shaken_clear_error_string(ss);
+
     if (!pparams) {
+		stir_shaken_set_error_string(ss, "Passport create json: Bad params");
         return NULL;
     }
 
@@ -38,39 +41,63 @@ cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams)
 
     // 1. Main JSON object
     json = cJSON_CreateObject();
-    if (!json) goto err;
+    if (!json) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @json");
+		goto err;
+	}
     
     // 1.1 JSON web token
     jwt = cJSON_CreateObject();
-    if (!jwt) goto err;
+    if (!jwt) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @jwt");
+		goto err;
+	}
     cJSON_AddItemToObject(json, "jwt", jwt);
 
     // 1.1.1 JSON JOSE Header (alg, ppt, typ, x5u)
     hdr = cJSON_CreateObject();
-    if (!hdr) goto err;
+    if (!hdr) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @hdr");
+		goto err;
+	}
     cJSON_AddItemToObject(jwt, "header", hdr);
 
     e = cJSON_CreateString("ES256");
-    if (!e) goto err;
+    if (!e) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, header @ES256");
+		goto err;
+	}
     cJSON_AddItemToObject(hdr, "alg", e);
    
     if (!ppt_ignore) { 
         e = cJSON_CreateString("shaken");
-        if (!e) goto err;
+        if (!e) {
+			stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @ppt");
+			goto err;
+		}
         cJSON_AddItemToObject(hdr, "ppt", e);
     }
     
     e = cJSON_CreateString("passport");
-    if (!e) goto err;
+    if (!e) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @typ");
+		goto err;
+	}
     cJSON_AddItemToObject(hdr, "typ", e);
     
     e = cJSON_CreateString(x5u);
-    if (!e) goto err;
+    if (!e) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @x5u");
+		goto err;
+	}
     cJSON_AddItemToObject(hdr, "x5u", e);
 
     // 1.1.2 JWS Payload
     payload = cJSON_CreateObject();
-    if (!payload) goto err;
+    if (!payload) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @payload");
+		goto err;
+	}
     cJSON_AddItemToObject(jwt, "payload", payload);
     
     if (attest && (*attest == 'A' || *attest == 'B' || *attest == 'C')) {
@@ -78,16 +105,25 @@ cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams)
     }
     
     dest = cJSON_CreateObject();
-    if (!dest) goto err;
+    if (!dest) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @dest");
+		goto err;
+	}
     cJSON_AddItemToObject(payload, "dest", dest);
 
     if (!strcmp(desttn_key, "uri")) {
         tn = cJSON_CreateArray();
-        if (!tn) goto err;
+        if (!tn) {
+			stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @desttn [key]");
+			goto err;
+		}
         cJSON_AddItemToObject(dest, desttn_key, tn);
 
         e = cJSON_CreateString(desttn_val);
-        if (!e) goto err;
+        if (!e) {
+			stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @desttn [val]");
+			goto err;
+		}
         cJSON_AddItemToArray(tn, e);
     } else {
         cJSON_AddStringToObject(dest, "tn", desttn_val);
@@ -96,16 +132,25 @@ cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams)
     cJSON_AddNumberToObject(payload, "iat", iat);
     
     orig = cJSON_CreateObject();
-    if (!orig) goto err;
+    if (!orig) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @orig");
+		goto err;
+	}
     cJSON_AddItemToObject(payload, "orig", orig);
     
     if (!strcmp(origtn_key, "uri")) {
         tn = cJSON_CreateArray();
-        if (!tn) goto err;
+        if (!tn) {
+			stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @origtn [key]");
+			goto err;
+		}
         cJSON_AddItemToObject(orig, origtn_key, tn);
 
         e = cJSON_CreateString(origtn_val);
-        if (!e) goto err;
+        if (!e) {
+			stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @origtn [val]");
+			goto err;
+		}
         cJSON_AddItemToArray(tn, e);
     } else {
         cJSON_AddStringToObject(orig, "tn", origtn_val);
@@ -117,33 +162,51 @@ cJSON* stir_shaken_passport_create_json(stir_shaken_passport_params_t *pparams)
 
     // Generate signature
     p = cJSON_PrintUnformatted(hdr);
-    if (!p) goto err;
+    if (!p) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, print @header");
+		goto err;
+	}
     if (stir_shaken_b64_encode((unsigned char *) p, strlen(p), &buf[0], PBUF_LEN) != STIR_SHAKEN_STATUS_OK) goto err;
     free(p); p = NULL;
 
     p = cJSON_PrintUnformatted(payload);
-    if (!p) goto err;
+    if (!p) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, print @payload");
+		goto err;
+	}
     if (stir_shaken_b64_encode((unsigned char *) p, strlen(p), &buf[0], PBUF_LEN) != STIR_SHAKEN_STATUS_OK) goto err;
     free(p); p = NULL;
    
     // 1.2 Parameters
     params = cJSON_CreateObject();
-    if (!params) goto err;
+    if (!params) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, @params");
+		goto err;
+	}
     cJSON_AddItemToObject(json, "params", params);
     
     // 1.2.1 Alg
     e = cJSON_CreateString("ES256");
-    if (!e) goto err;
+    if (!e) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, params @alg");
+		goto err;
+	}
     cJSON_AddItemToObject(params, "alg", e);
     
     // 1.2.2 Info
     e = cJSON_CreateString(x5u); // TODO info must be same as @x5u but within "<>", i.e. "<@x5u>" (Enclose @x5u within "<>")
-    if (!e) goto err;
+    if (!e) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, params @x5u");
+		goto err;
+	}
     cJSON_AddItemToObject(params, "info", e);
     
     // 1.2.3 PPT
     e = cJSON_CreateString("shaken");
-    if (!e) goto err;
+    if (!e) {
+		stir_shaken_set_error_string(ss, "Passport create json: Error in cjson, params @ppt");
+		goto err;
+	}
     cJSON_AddItemToObject(params, "ppt", e);
 
     // TODO: need to call cJSON_Delete on it later
@@ -156,11 +219,12 @@ err:
     if (p) {
         free(p);
     }
+	stir_shaken_set_error_string_if_clear(ss, "Passport create json: Error");
 
     return NULL;
 }
 
-stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *passport, EVP_PKEY *pkey)
+stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, EVP_PKEY *pkey)
 {
     const char      *digest_name = "sha256";
     char *p = NULL;
@@ -175,16 +239,31 @@ stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *
     unsigned char   signature[PBUF_LEN] = {0};
     size_t   signature_len = PBUF_LEN;
 
-    if (!passport) return STIR_SHAKEN_STATUS_FALSE;
+
+	stir_shaken_clear_error_string(ss);
+
+    if (!passport) {
+		stir_shaken_set_error_string(ss, "Passport finalise json: Bad params");
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
     
     jwt = cJSON_GetObjectItem(passport->json, "jwt");
-    if (!jwt) goto err;
+    if (!jwt) {
+		stir_shaken_set_error_string(ss, "Passport finalise json: Bad @jwt");
+		goto err;
+	}
 
     payload = cJSON_GetObjectItem(jwt, "payload");
-    if (!jwt) goto err;
+    if (!payload) {
+		stir_shaken_set_error_string(ss, "Passport finalise json: Bad @payload");
+		goto err;
+	}
     
     header = cJSON_GetObjectItem(jwt, "header");
-    if (!jwt) goto err;
+    if (!header) {
+		stir_shaken_set_error_string(ss, "Passport finalise json: Bad @header");
+		goto err;
+	}
    
     if (passport->info) {
         cJSON_Delete(passport->info);
@@ -192,26 +271,41 @@ stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *
 
     // Help info 
     info = cJSON_CreateObject();
-    if (!info) goto err;
+    if (!info) {
+		stir_shaken_set_error_string(ss, "Passport finalise json: Bad @info");
+		goto err;
+	}
     
     // Generate signature
 
     // Paylaod signature
     p = cJSON_PrintUnformatted(payload);
-    if (!p) goto err;
+    if (!p) {
+		stir_shaken_set_error_string(ss, "Passport finalise json: Error in cjson");
+		goto err;
+	}
     cJSON_AddStringToObject(info, "payload_serialised", p);
     plen = strlen(p);
-    if (stir_shaken_b64_encode((unsigned char *) p, plen, &pbuf[0], PBUF_LEN) != STIR_SHAKEN_STATUS_OK) goto err;
+    if (stir_shaken_b64_encode((unsigned char *) p, plen, &pbuf[0], PBUF_LEN) != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_string(ss, "Passport finalise json: Error encoding payload b64");
+		goto err;
+	}
     plen = strlen((const char*) &pbuf[0]);
     free(p); p = NULL;
     cJSON_AddStringToObject(info, "payload_base64", (const char *) &pbuf[0]);
 
     // Header signature
     p = cJSON_PrintUnformatted(header);
-    if (!p) goto err;
+    if (!p) {
+		stir_shaken_set_error_string(ss, "Passport finalise json: Error in cjson");
+		goto err;
+	}
     cJSON_AddStringToObject(info, "header_serialised", p);
     hlen = strlen(p);
-    if (stir_shaken_b64_encode((unsigned char *) p, hlen, &hbuf[0], PBUF_LEN) != STIR_SHAKEN_STATUS_OK) goto err;
+    if (stir_shaken_b64_encode((unsigned char *) p, hlen, &hbuf[0], PBUF_LEN) != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_string(ss, "Passport finalise json: Error encoding header b64");
+		goto err;
+	}
     hlen = strlen((const char*) &hbuf[0]);
     free(p); p = NULL;
     cJSON_AddStringToObject(info, "header_base64", (const char *) &hbuf[0]);
@@ -230,9 +324,9 @@ stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *
         cJSON_AddStringToObject(info, "main_signature", (const char *) &sbuf[0]);
 
         // Terminates output with '\0' but returned length excludes this
-        if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_sign_data_with_digest(digest_name, pkey, &sbuf[0], hlen + plen + 1, signature, &signature_len)) {
-	
-			// TODO set error string, allow for retrieval printf("STIR-Shaken: Signing failed\n");
+        if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_sign_data_with_digest(ss, digest_name, pkey, &sbuf[0], hlen + plen + 1, signature, &signature_len)) {
+			
+			stir_shaken_set_error_string_if_clear(ss, "Passport finalise json: Signing failed");
             goto err;
         }
 
@@ -241,7 +335,7 @@ stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *
         // Signature is BASE64URL(JWS Signature)
         if (stir_shaken_b64_encode((unsigned char *) &signature[0], signature_len, (unsigned char*) &ebuf[0], 2*PBUF_LEN + 2) != STIR_SHAKEN_STATUS_OK) {
 			
-			// TODO set error string, allow for retrieval printf("STIR-Shaken: Encoding base 64 failed\n");
+			stir_shaken_set_error_string(ss, "Passport finalise json: Encoding signature in base 64 failed");
             goto err;
         }
 
@@ -255,7 +349,7 @@ stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_passport_t *
 
 err:
 	
-	// TODO set error string, allow for retrieval printf("STIR-Shaken: Failed to sign json\n");
+	stir_shaken_set_error_string_if_clear(ss, "Passport finalise json: Failed to sign json");
 
     if (info) {
         cJSON_Delete(info);
@@ -264,20 +358,27 @@ err:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_passport_create(stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey)
+stir_shaken_status_t stir_shaken_passport_create(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey)
 {
+	stir_shaken_clear_error_string(ss);
+
     if (!passport || passport->json || !params || !pkey) {
+		stir_shaken_set_error_string_if_clear(ss, "Passport create: Bad params");
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
     memset(passport, 0, sizeof(*passport));
 
     /* Init @jwt JSON with all ASCII info */
-    passport->json = stir_shaken_passport_create_json(params);
-    if (!passport->json) goto err;
+    passport->json = stir_shaken_passport_create_json(ss, params);
+    if (!passport->json) {
+		stir_shaken_set_error_string_if_clear(ss, "Passport create: Create json failed");
+		goto err;
+	}
 
     /* Finalise PASSporT: create @jwt JSON signatures and save intermediate results in @info */ 
-    if (stir_shaken_passport_finalise_json(passport, pkey) != STIR_SHAKEN_STATUS_OK) {
+    if (stir_shaken_passport_finalise_json(ss, passport, pkey) != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_string_if_clear(ss, "Passport create: Finalise json failed");
         goto err;
     }
 
@@ -292,6 +393,8 @@ err:
         cJSON_Delete(passport->info);
         passport->info = NULL;
     }
+	stir_shaken_set_error_string_if_clear(ss, "Passport create: Error");
+
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
@@ -313,33 +416,49 @@ void stir_shaken_passport_destroy(stir_shaken_passport_t *passport)
 }
 
 // TODO Mallocs memory for identity header, free later
-char* stir_shaken_sip_identity_create(stir_shaken_passport_t *passport)
+char* stir_shaken_sip_identity_create(stir_shaken_context_t *ss, stir_shaken_passport_t *passport)
 {
     char *sih = NULL;
     cJSON *h_sig = NULL, *p_sig = NULL, *jwt = NULL, *sig = NULL, *params = NULL, *info = NULL, *alg = NULL, *ppt = NULL;
     size_t len = 0;
 
-    if (!passport || !passport->info || !passport->json) return NULL;
+	stir_shaken_clear_error_string(ss);
+
+    if (!passport || !passport->info || !passport->json) {
+		stir_shaken_set_error_string(ss, "SIP Identity create: Bad params");
+		return NULL;
+	}
     
     h_sig = cJSON_GetObjectItem(passport->info, "header_base64");
     p_sig = cJSON_GetObjectItem(passport->info, "payload_base64");
     jwt = cJSON_GetObjectItem(passport->json, "jwt");
     params = cJSON_GetObjectItem(passport->json, "params");
 
-    if (!h_sig || !p_sig || !jwt || !params) return NULL;
+    if (!h_sig || !p_sig || !jwt || !params) {
+
+		stir_shaken_set_error_string(ss, "SIP Identity create: Error in cjson [1]");
+		return NULL;
+	}
 
     sig = cJSON_GetObjectItem(jwt, "signature");
     info = cJSON_GetObjectItem(params, "info");
     alg = cJSON_GetObjectItem(params, "alg");
     ppt = cJSON_GetObjectItem(params, "ppt");
 
-    if (!sig || !info || !alg || !ppt) return NULL;
+    if (!sig || !info || !alg || !ppt) {
+
+		stir_shaken_set_error_string(ss, "SIP Identity create: Error in cjson [2]");
+		return NULL;
+	}
 
     // extra length of 15 for info=<> alg= ppt=
     len = strlen(h_sig->valuestring) + 1 + strlen(p_sig->valuestring) + 1 + strlen(sig->valuestring) + 1 + strlen(info->valuestring) + 1 + strlen(alg->valuestring) + 1 + strlen(ppt->valuestring) + 1 + 15;
     sih = malloc(len); // TODO free
+    if (!sih) {
+		stir_shaken_set_error_string(ss, "SIP Identity create: Out of memory");
+		return NULL;
+	}
 	memset(sih, 0, len);
-    if (!sih) return NULL;
     sprintf(sih, "%s.%s.%s;info=<%s>;alg=%s;ppt=%s", h_sig->valuestring, p_sig->valuestring, sig->valuestring, info->valuestring, alg->valuestring, ppt->valuestring);
     return sih;
 }
@@ -350,42 +469,53 @@ char* stir_shaken_sip_identity_create(stir_shaken_passport_t *passport)
  * SIP Identity header is returned and PASSporT.
  * @passport - (out) will point to created PASSporT
  */
-char* stir_shaken_do_sign_keep_passport(stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_passport_t **passport, uint8_t keep_passport)
+char* stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_passport_t **passport, uint8_t keep_passport)
 {
     char					*sih = NULL;
     stir_shaken_passport_t	local_passport = {0};   // It will only allow you to cross this function's border
+	
+	
+	stir_shaken_clear_error_string(ss);
 
-    if (!pkey || !params)
+    if (!pkey || !params) {
+		stir_shaken_set_error_string(ss, "Do sign keep passport: Bad params");
         return NULL;
+	}
 
     // Create PASSporT
     if (keep_passport) {
 
         *passport = malloc(sizeof(stir_shaken_passport_t));	// TODO free
-        if (!*passport)
+        if (!*passport) {
+			stir_shaken_set_error_string(ss, "Do sign keep passport: Out of memory");
             goto err;
+		}
 		memset(*passport, 0, sizeof(stir_shaken_passport_t));
 
-        if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_create(*passport, params, pkey)) {
+        if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_create(ss, *passport, params, pkey)) {
+			stir_shaken_set_error_string_if_clear(ss, "Do sign keep passport: Passport create failed [1]");
             goto err;
         }
 
         // Sign PASSpoprT and create SIP Identity header
-        sih = stir_shaken_sip_identity_create(*passport);
+        sih = stir_shaken_sip_identity_create(ss, *passport);
         if (!sih) {
+			stir_shaken_set_error_string_if_clear(ss, "Do sign keep passport: SIP Identity create failed [1]");
             goto err;
         }
 
     } else {
 
-        if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_create(&local_passport, params, pkey)) {
+        if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_create(ss, &local_passport, params, pkey)) {
+			stir_shaken_set_error_string_if_clear(ss, "Do sign keep passport: Passport create failed [2]");
             return NULL;
         }
 
         // Create SIP Identity header
-        sih = stir_shaken_sip_identity_create(&local_passport);
+        sih = stir_shaken_sip_identity_create(ss, &local_passport);
 		stir_shaken_passport_destroy(&local_passport);
         if (!sih) {
+			stir_shaken_set_error_string_if_clear(ss, "Do sign keep passport: SIP Identity create failed [2]");
             return NULL;
         }
     }
@@ -397,6 +527,7 @@ err:
 		free(*passport);
 		*passport = NULL;
 	}
+	stir_shaken_set_error_string_if_clear(ss, "Do sign keep passport: Error");
 
     return NULL;
 }
@@ -428,11 +559,17 @@ err:
  * X(==x5u) //Info
  *          //PPT
  */ 
-char* stir_shaken_do_sign(stir_shaken_passport_params_t *params, EVP_PKEY *pkey)
+char* stir_shaken_do_sign(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, EVP_PKEY *pkey)
 {
-    if (!pkey || !params) return NULL;
+	stir_shaken_clear_error_string(ss);
 
-    return stir_shaken_do_sign_keep_passport(params, pkey, NULL, 0);
+    if (!pkey || !params) {
+		
+		stir_shaken_set_error_string(ss, "Do sign: Bad params");
+		return NULL;
+	}
+
+    return stir_shaken_do_sign_keep_passport(ss, params, pkey, NULL, 0);
 }
 
 /*
@@ -440,26 +577,33 @@ char* stir_shaken_do_sign(stir_shaken_passport_params_t *params, EVP_PKEY *pkey)
  * If @keep_passport is true then keep pointer to PASSporT.
  * @sih - (out) on success points to SIP Identity Header which is authentication of the call
  */
-stir_shaken_status_t stir_shaken_authorize_keep_passport(char **sih, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport, uint8_t keep_passport, EVP_PKEY *pkey, stir_shaken_cert_t *cert)
+stir_shaken_status_t stir_shaken_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport, uint8_t keep_passport, EVP_PKEY *pkey, stir_shaken_cert_t *cert)
 {
     /* Let's start from this. */
     *sih = NULL;
+	
+	stir_shaken_clear_error_string(ss);
 
     if (!params || !params->attest || (*params->attest != 'A' && *params->attest != 'B' && *params->attest != 'C')) {
+		
+		stir_shaken_set_error_string(ss, "Authorize keep passport: Bad params");
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
     /* Assert/sign call identity with a private key associated with cert. */
     
-    *sih = stir_shaken_do_sign_keep_passport(params, pkey, passport, keep_passport);
+    *sih = stir_shaken_do_sign_keep_passport(ss, params, pkey, passport, keep_passport);
     if (!*sih) {
+		
+		stir_shaken_set_error_string_if_clear(ss, "Authorize keep passport: Do sign keep passport failed");
         goto err;
     }
 
     return STIR_SHAKEN_STATUS_OK;
 
 err:
-    /* TODO Logging with error details. */
+    
+	stir_shaken_set_error_string_if_clear(ss, "Authorize keep passport: Error");
 
     return STIR_SHAKEN_STATUS_FALSE;
 }
@@ -467,28 +611,29 @@ err:
 /*
  * Authorize the call.
  */
-stir_shaken_status_t stir_shaken_authorize(char **sih, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_cert_t *cert)
+stir_shaken_status_t stir_shaken_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_cert_t *cert)
 {
-    return stir_shaken_authorize_keep_passport(sih, params, NULL, 0, pkey, cert);
+    return stir_shaken_authorize_keep_passport(ss, sih, params, NULL, 0, pkey, cert);
 }
 
-stir_shaken_status_t stir_shaken_install_cert(stir_shaken_cert_t *cert)
+stir_shaken_status_t stir_shaken_install_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
 {
 	char cert_full_name[300] = {0};
 	BIO *out = NULL;
 	int i = 0;
+	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+
+	stir_shaken_clear_error_string(ss);
 
     if (!cert) {
 
-		// TODO remove	
-		printf("STIR-Shaken: Cert not set\n");
+		stir_shaken_set_error_string(ss, "Install cert: Cert not set");
         return STIR_SHAKEN_STATUS_FALSE;
     }
 	
 	if (!cert->install_path) {
         
-		// TODO remove	
-		printf("STIR-Shaken: Cert's @install_path not set. Where should I create the cert? How would others verify the call if I don't know where to place the certificate?\n");
+		stir_shaken_set_error_string(ss, "Install cert: Cert's @install_path not set. Where should I create the cert? How would others verify the call if I don't know where to place the certificate?");
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
@@ -503,19 +648,21 @@ stir_shaken_status_t stir_shaken_install_cert(stir_shaken_cert_t *cert)
 	i = BIO_write_filename(out, (char*) cert_full_name);
 	if (i == 0) {
 		
-		// TODO remove	
-		printf("STIR-Shaken: Install: Failed to redirect bio to file %s\n", cert_full_name);
+		sprintf(err_buf, "Install cert: Failed to redirect bio to file %s", cert_full_name);
+		stir_shaken_set_error_string(ss, err_buf);
 		goto fail;
 	}
 
 	i = PEM_write_bio_X509(out, cert->x);
 	if (i == 0) {
 	
-		// TODO remove	
-		printf("STIR-Shaken: Install: Failed to write certificate to file %s\n", cert_full_name);
+		sprintf(err_buf, "Install cert: Failed to write certificate to file %s", cert_full_name);
+		stir_shaken_set_error_string(ss, err_buf);
 		goto fail;
 	}
-	printf("STIR-Shaken: Install: Written certificate to file %s\n", cert_full_name);
+
+	// TODO remove
+	printf("STIR-Shaken: Install cert: Written certificate to file %s\n", cert_full_name);
 
 	BIO_free_all(out);
 	out = NULL;
@@ -526,5 +673,8 @@ fail:
 	if (out) {
 		BIO_free_all(out);
 	}
+	
+	stir_shaken_set_error_string_if_clear(ss, "Install cert: Error");
+
 	return STIR_SHAKEN_STATUS_FALSE;
 }
