@@ -432,9 +432,9 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	// TODO remove
 	printf("STIR-Shaken: Verify: loading cert from memory into X509...\n");
 
-    if (stir_shaken_load_cert_from_mem(&cert.x, chunk.mem, chunk.size) != STIR_SHAKEN_STATUS_OK) {
+    if (stir_shaken_load_cert_from_mem(ss, &cert.x, chunk.mem, chunk.size) != STIR_SHAKEN_STATUS_OK) {
 	
-		stir_shaken_set_error_string(ss, "Verify: error while loading cert from memory");
+		stir_shaken_set_error_string_if_clear(ss, "Verify: error while loading cert from memory");
 		goto fail;
     }
 	

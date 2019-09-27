@@ -62,11 +62,11 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
     printf("SIP Identity Header:\n%s\n", sih);
 
     printf("Creating CSR\n");
-    status = stir_shaken_generate_csr(sp_code, &csr.req, private_key, public_key, csr_name, csr_text_name);
+    status = stir_shaken_generate_csr(NULL, sp_code, &csr.req, private_key, public_key, csr_name, csr_text_name);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
     
     printf("Creating Certificate\n");
-    status = stir_shaken_generate_cert_from_csr(sp_code, &cert, &csr, private_key, public_key, cert_name, cert_text_name);
+    status = stir_shaken_generate_cert_from_csr(NULL, sp_code, &cert, &csr, private_key, public_key, cert_name, cert_text_name);
     printf("Err, generating Cert\n");
 
     printf("Verifying SIP Identity Header's signature with Cert...\n\n");
