@@ -192,14 +192,15 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
     unsigned char signature[BUFSIZE] = {0};
     char *b = NULL, *e = NULL, *se = NULL, *sig = NULL;
     int len = 0, challenge_len = 0;
-	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
+	stir_shaken_status_t status = STIR_SHAKEN_STATUS_ERR;
 
 
 	stir_shaken_clear_error_string(ss);
 
     if (!identity_header || !cert) {
+		
 		stir_shaken_set_error_string(ss, "Verify with cert: Bad params");
-        return STIR_SHAKEN_STATUS_FALSE;
+        return status;
     }
     
     // Identity header is in the form header_base64.payload_base64.signature_base64
@@ -208,33 +209,41 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
 
     b = strchr(identity_header, '.');
     if (!b || (b + 1 == strchr(identity_header, '\0'))) {
+		
 		stir_shaken_set_error_string(ss, "Verify with cert: Bad SIP Identity Header");
-        return STIR_SHAKEN_STATUS_FALSE;
+        return STIR_SHAKEN_STATUS_ERR;
     }
+
     e = strchr(b + 1, '.');
     if (!e || (e + 1 == strchr(identity_header, '\0'))) {
+		
 		stir_shaken_set_error_string(ss, "Verify with cert: Bad SIP Identity Header");
-        return STIR_SHAKEN_STATUS_FALSE;
+        return STIR_SHAKEN_STATUS_ERR;
     }
+
     se = strchr(e + 1, ';');
     if (!se || (se + 1 == strchr(identity_header, '\0'))) {
+		
 		stir_shaken_set_error_string(ss, "Verify with cert: Bad SIP Identity Header");
-        return STIR_SHAKEN_STATUS_FALSE;
+        return STIR_SHAKEN_STATUS_ERR;
     }
 
     len = e - identity_header;
     challenge_len = len;
     challenge = malloc(challenge_len);
     if (!challenge) {
+		
 		stir_shaken_set_error_string(ss, "Verify with cert: Out of memory");
-        return STIR_SHAKEN_STATUS_FALSE;
+        return STIR_SHAKEN_STATUS_ERR;
     }
     memcpy(challenge, identity_header, challenge_len);
     
     len = se - e;
     sig = malloc(len);
     if (!sig) {
+		
 		stir_shaken_set_error_string(ss, "Verify with cert: Out of memory");
+		status = STIR_SHAKEN_STATUS_ERR;
 		goto fail;
     }
     memcpy(sig, e + 1, len);
@@ -244,21 +253,26 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
     // alternatively we would do signature = stir_shaken_core_strdup(stir_shaken_globals.pool, e + 1);
     
     if (stir_shaken_verify_data_with_cert(ss, challenge, challenge_len, signature, len - 1, cert) != 0) { // len - 1 cause _b64_decode appends '\0' and counts it
-        goto fail;
-    }
-
-    status = STIR_SHAKEN_STATUS_OK;
+		
+		status = STIR_SHAKEN_STATUS_FALSE;
+    
+	} else {
+		
+		status = STIR_SHAKEN_STATUS_OK;
+	}
 
 fail:
+
 	if (challenge) {
 		free(challenge);
 		challenge = NULL;
 	}
+
 	if (sig) {
 		free(sig);
 		sig = NULL;
 	}
-	stir_shaken_set_error_string_if_clear(ss, "Verify with cert: Error");
+
 	return status;
 }
 
@@ -453,21 +467,38 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	// TODO remove
 	printf("STIR-Shaken: Verify: checking signature...\n");
 
-	if (stir_shaken_verify_with_cert(ss, sih, &cert) != STIR_SHAKEN_STATUS_OK) {
-		printf("STIR-Shaken: Verify: FAIL (spoofed)\n");
-		goto fail;
+	status = stir_shaken_verify_with_cert(ss, sih, &cert);
+	
+	switch (status) {
+	   
+		case STIR_SHAKEN_STATUS_OK:
+
+			// Passed	
+			break;
+
+		case STIR_SHAKEN_STATUS_FALSE:
+			
+			// Didn't pass
+			goto fail;
+
+		case STIR_SHAKEN_STATUS_ERR:
+		default:
+			
+			// Error while verifying
+			stir_shaken_set_error_string_if_clear(ss, "Verify: Error");
+			goto fail;
 	}
 
 	// TODO remove
 	printf("STIR-Shaken: Verify: PASS\n");
     
-	status = STIR_SHAKEN_STATUS_OK;
-
 fail:
+
     if (chunk.mem) {
-        free(chunk.mem);
+        
+		free(chunk.mem);
 		chunk.mem = NULL;
     }
-	stir_shaken_set_error_string_if_clear(ss, "Verify: Error");
+
 	return status;
 }

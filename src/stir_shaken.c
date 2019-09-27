@@ -298,6 +298,21 @@ void stir_shaken_clear_error_string(stir_shaken_context_t *ss)
 	ss->got_error = 0;
 }
 
+uint8_t stir_shaken_is_error_set(stir_shaken_context_t *ss)
+{
+	if (!ss) return 0;
+	return (!!ss->got_error);
+}
+
+const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
+{
+	if (!ss) return NULL;
+	if (ss->got_error) {
+		return ss->err_buf;
+	}
+	return "";
+}
+
 stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line)
 {
 	printf("FAIL: %s. %s:%d\n", reason, file, line);

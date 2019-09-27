@@ -36,6 +36,7 @@
 typedef enum stir_shaken_status {
 	STIR_SHAKEN_STATUS_OK,
 	STIR_SHAKEN_STATUS_FALSE,
+	STIR_SHAKEN_STATUS_ERR,
 	STIR_SHAKEN_STATUS_RESTART,
 	STIR_SHAKEN_STATUS_NOOP
 } stir_shaken_status_t;
@@ -388,6 +389,8 @@ size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen);
 void stir_shaken_set_error_string(stir_shaken_context_t *ss, const char *err);
 void stir_shaken_set_error_string_if_clear(stir_shaken_context_t *ss, const char *err);
 void stir_shaken_clear_error_string(stir_shaken_context_t *ss);
+uint8_t stir_shaken_is_error_set(stir_shaken_context_t *ss);
+const char* stir_shaken_get_error_string(stir_shaken_context_t *ss);
 
 
 // TEST
