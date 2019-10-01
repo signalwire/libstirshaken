@@ -20,7 +20,7 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 	
-	stir_shaken_clear_error_string(ss);
+	stir_shaken_clear_error(ss);
 
     if (!data_filename || !signature_filename || !public_key) {
         goto err;
@@ -39,7 +39,7 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
     if (!md) {
         
 		sprintf(err_buf, "Cannot get %s digest", digest_name);
-		stir_shaken_set_error_string(ss, err_buf); 
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
         goto err;
     }
     
@@ -48,14 +48,14 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
     if ((in == NULL) || (bmd == NULL)) {
         
 		sprintf(err_buf, "Cannot get SSL'e BIOs...");
-		stir_shaken_set_error_string(ss, err_buf); 
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
         goto err;
     }
 
     if (!BIO_get_md_ctx(bmd, &mctx)) {
         
 		sprintf(err_buf, "Error getting message digest context");
-		stir_shaken_set_error_string(ss, err_buf); 
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
         goto err;
     }
 
@@ -63,7 +63,7 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
     if (!r) {
         
 		sprintf(err_buf, "Error setting context");
-		stir_shaken_set_error_string(ss, err_buf); 
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
         goto err;
     }
     
@@ -71,7 +71,7 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
     if (sigbio == NULL) {
         
 		sprintf(err_buf, "Error opening signature file");
-		stir_shaken_set_error_string(ss, err_buf); 
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
         goto err;
     }
     siglen = EVP_PKEY_size(public_key);
@@ -81,7 +81,7 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
     if (siglen <= 0) {
         
 		sprintf(err_buf, "Error reading signature");
-		stir_shaken_set_error_string(ss, err_buf); 
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
         //ERR_print_errors(bio_err);
         goto err;
     }
@@ -92,7 +92,7 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
         
 		// TODO remove
 		sprintf(err_buf, "Error reading data file");
-		stir_shaken_set_error_string(ss, err_buf); 
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
         //ERR_print_errors(bio_err);
         goto err;
     }
@@ -105,7 +105,7 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
             
 			// TODO remove
 			sprintf(err_buf, "Read Error");
-			stir_shaken_set_error_string(ss, err_buf); 
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
             //ERR_print_errors(bio_err);
             goto err;
         }
@@ -119,17 +119,20 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
 		
 		// OK
         res = 0;
+
     } else if (i == 0) {
 		
         sprintf(err_buf, "Signature/data-key failed verification (signature doesn't match the data-key pair)");
-		stir_shaken_set_error_string(ss, err_buf); 
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER); 
         res = 1;
+
     } else {
 		
         sprintf(err_buf, "Unknown error while verifying data");
-		stir_shaken_set_error_string(ss, err_buf); 
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
         res = 2;
         //ERR_print_errors(bio_err);
+
     }
 
     if (buf) {
@@ -174,11 +177,11 @@ static int stir_shaken_verify_data_with_cert(stir_shaken_context_t *ss, const ch
     EVP_PKEY *pkey = NULL;
 
 
-	stir_shaken_clear_error_string(ss);
+	stir_shaken_clear_error(ss);
 
     // Get EVP_PKEY public key from cert
     if (!cert || !cert->x || !(pkey = X509_get_pubkey(cert->x))) {
-		stir_shaken_set_error_string(ss, "Verify data with cert: Bad params");
+		stir_shaken_set_error(ss, "Verify data with cert: Bad params", STIR_SHAKEN_ERROR_GENERAL);
         return -1;
     }
 
@@ -195,11 +198,11 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_ERR;
 
 
-	stir_shaken_clear_error_string(ss);
+	stir_shaken_clear_error(ss);
 
     if (!identity_header || !cert) {
 		
-		stir_shaken_set_error_string(ss, "Verify with cert: Bad params");
+		stir_shaken_set_error(ss, "Verify with cert: Bad params", STIR_SHAKEN_ERROR_GENERAL);
         return status;
     }
     
@@ -210,21 +213,21 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
     b = strchr(identity_header, '.');
     if (!b || (b + 1 == strchr(identity_header, '\0'))) {
 		
-		stir_shaken_set_error_string(ss, "Verify with cert: Bad SIP Identity Header");
+		stir_shaken_set_error(ss, "Verify with cert: Invalid SIP Identity Header", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
         return STIR_SHAKEN_STATUS_ERR;
     }
 
     e = strchr(b + 1, '.');
     if (!e || (e + 1 == strchr(identity_header, '\0'))) {
 		
-		stir_shaken_set_error_string(ss, "Verify with cert: Bad SIP Identity Header");
+		stir_shaken_set_error(ss, "Verify with cert: Invalid SIP Identity Header", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
         return STIR_SHAKEN_STATUS_ERR;
     }
 
     se = strchr(e + 1, ';');
     if (!se || (se + 1 == strchr(identity_header, '\0'))) {
 		
-		stir_shaken_set_error_string(ss, "Verify with cert: Bad SIP Identity Header");
+		stir_shaken_set_error(ss, "Verify with cert: Invalid SIP Identity Header", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
         return STIR_SHAKEN_STATUS_ERR;
     }
 
@@ -233,7 +236,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
     challenge = malloc(challenge_len);
     if (!challenge) {
 		
-		stir_shaken_set_error_string(ss, "Verify with cert: Out of memory");
+		stir_shaken_set_error(ss, "Verify with cert: Out of memory", STIR_SHAKEN_ERROR_GENERAL);
         return STIR_SHAKEN_STATUS_ERR;
     }
     memcpy(challenge, identity_header, challenge_len);
@@ -242,7 +245,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
     sig = malloc(len);
     if (!sig) {
 		
-		stir_shaken_set_error_string(ss, "Verify with cert: Out of memory");
+		stir_shaken_set_error(ss, "Verify with cert: Out of memory", STIR_SHAKEN_ERROR_GENERAL);
 		status = STIR_SHAKEN_STATUS_ERR;
 		goto fail;
     }
@@ -254,6 +257,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
     
     if (stir_shaken_verify_data_with_cert(ss, challenge, challenge_len, signature, len - 1, cert) != 0) { // len - 1 cause _b64_decode appends '\0' and counts it
 		
+		stir_shaken_set_error_if_clear(ss, "Verify with cert: SIP Identity Header is spoofed", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 		status = STIR_SHAKEN_STATUS_FALSE;
     
 	} else {
@@ -283,14 +287,14 @@ static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
 	mem_chunk_t *mem = (mem_chunk_t *) p;
 
 	
-	stir_shaken_clear_error_string(mem->ss);
+	stir_shaken_clear_error(mem->ss);
 
 	// TODO remove
 	printf("STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, mem->size);
 
 	m = realloc(mem->mem, mem->size + realsize + 1);
 	if(!m) {
-		stir_shaken_set_error_string(mem->ss, "realloc returned NULL");
+		stir_shaken_set_error(mem->ss, "realloc returned NULL", STIR_SHAKEN_ERROR_GENERAL);
 		return 0;
 	}
 
@@ -310,7 +314,7 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const 
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	
 	
-	stir_shaken_clear_error_string(ss);
+	stir_shaken_clear_error(ss);
 
 	chunk->mem = malloc(1);
 	chunk->size = 0;
@@ -329,7 +333,7 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const 
 	if (res != CURLE_OK) {
 		
 		sprintf(err_buf, "Download: Error in CURL: %s", curl_easy_strerror(res));
-		stir_shaken_set_error_string(ss, err_buf); 
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO); 
         status = STIR_SHAKEN_STATUS_FALSE;
 
 	} else {
@@ -353,14 +357,14 @@ stir_shaken_status_t stir_shaken_cert_configure(stir_shaken_context_t *ss, stir_
 	int e = 0;
 	
 	
-	stir_shaken_clear_error_string(ss);
+	stir_shaken_clear_error(ss);
 
 	if (cert) {
 
 		cert->install_path = malloc(c + 1);
 		cert->install_url = malloc(d + 1);
 		if (!cert->install_path || !cert->install_url) {
-			stir_shaken_set_error_string(ss, "Cert configure: Cannot allocate memory");
+			stir_shaken_set_error(ss, "Cert configure: Cannot allocate memory", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
 		memcpy(cert->install_path, install_path, c);
@@ -372,7 +376,7 @@ stir_shaken_status_t stir_shaken_cert_configure(stir_shaken_context_t *ss, stir_
 		e = strlen(b);
 		cert->access = malloc(e + 1);
 		if (!cert->access) {
-			stir_shaken_set_error_string(ss, "Cert configure: Cannot allocate memory");
+			stir_shaken_set_error(ss, "Cert configure: Cannot allocate memory", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
 		memcpy(cert->access, b, e);
@@ -410,6 +414,59 @@ stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const ch
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+// 5.3.1 PASSporT & Identity Header Verification
+// The certificate referenced in the “info” parameter of the Identity header field shall be validated by performing the
+// following:
+// • Check the certificate’s validity using the Basic Path Validation algorithm defined in the X.509
+// certificate standard (RFC 5280).
+// • Check that the certificate is not revoked using CRLs and/or OCSP.
+// The verifier validates that the PASSporT token provided in the Identity header of the INVITE includes all of the
+// baseline claims, as well as the SHAKEN extension claims. The verifier shall also follow the draft-ietf-stir-
+// rfc4474bis-defined verification procedures to check the corresponding date, originating identity (i.e., the
+// originating telephone number) and destination identities (i.e., the terminating telephone numbers).
+// The “orig” claim and “dest” claim shall be of type “tn”.
+//
+// The “orig” claim “tn” value validation shall be performed as follows:
+// • The P-Asserted-Identity header field value shall be checked as the telephone identity to be validated if
+// present, otherwise the From header field value shall also be checked.
+// • If there are two P-Asserted-Identity values, the verification service shall check each of them until it finds
+// one that is valid.
+// NOTE: As discussed in draft-ietf-stir-rfc4474bis, call features such as call forwarding can cause calls to reach a
+// destination different from the number in the To header field. The problem of determining whether or not these call
+// features or other B2BUA functions have been used legitimately is out of scope of STIR. It is expected that future
+// SHAKEN documents will address these use cases.
+//
+//
+// ERRORS
+// ======
+// There are five main procedural errors defined in draft-ietf-stir-rfc4474bis that can identify issues with the validation
+// of the Identity header field. The error conditions and their associated response codes and reason phrases are as
+// follows:
+// 403 – ‘Stale Date’ – Sent when the verification service receives a request with a Date header field value
+// that is older than the local policy 3 for freshness permits. The same response may be used when the "iat"
+// has a value older than the local policy for freshness permits.
+// 428 – ‘Use Identity Header’ is not recommended for SHAKEN until a point where all calls on the VoIP
+// network are mandated to be signed either by local or global policy.
+// 436 – ‘Bad-Identity-Info’ – The URI in the “info” parameter cannot be dereferenced (i.e., the request times
+// out or receives a 4xx or 5xx error).
+// 437 – ‘Unsupported credential’ – This error occurs when a credential is supplied by the “info” parameter
+// but the verifier doesn’t support it or it doesn’t contain the proper certificate chain in order to trust the
+// credentials.
+// 438 – ‘Invalid Identity Header’ – This occurs if the signature verification fails.
+// If any of the above error conditions are detected, the terminating network shall convey the response code and
+// reason phrase back to the originating network, indicating which one of the five error scenarios has occurred. How
+// this error information is signaled to the originating network depends on the disposition of the call as a result of the
+// error. If local policy dictates that the call should not proceed due to the error, then the terminating network shall
+// include the error response code and reason phrase in the status line of a final 4xx error response sent to the
+// originating network. On the other hand, if local policy dictates that the call should continue, then the terminating
+// network shall include the error response code and reason phrase in a Reason header field (defined in [RFC
+// 3326]) in the next provisional or final response sent to the originating network as a result of normal terminating
+// call processing.
+// Example of Reason header field:
+// Reason: SIP ;cause=436 ;text="Bad Identity Info"
+// In addition, if any of the base claims or SHAKEN extension claims are missing from the PASSporT token claims,
+// the verification service shall treat this as a 438 ‘Invalid Identity Header’ error and proceed as defined above.
+
 stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url)
 {
 	stir_shaken_cert_t cert = {0};
@@ -417,15 +474,15 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	
-	stir_shaken_clear_error_string(ss);
+	stir_shaken_clear_error(ss);
 	
 	if (!sih) {
-		stir_shaken_set_error_string(ss, "Verify: SIP Identity Header not set");
+		stir_shaken_set_error(ss, "Verify: SIP Identity Header not set", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 		goto fail;
 	}
 	
 	if (!cert_url) {
-		stir_shaken_set_error_string(ss, "Verify: Cert URL not set");
+		stir_shaken_set_error(ss, "Verify: Cert URL not set", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 		goto fail;
 	}
 
@@ -438,6 +495,8 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	printf("STIR-Shaken: Verify: downloading cert...\n");
 
 	if (stir_shaken_download_cert(ss, cert_url, &chunk) != STIR_SHAKEN_STATUS_OK) {
+		sprintf(err_buf, "Verify: Cannot download certificate using URL: %s", cert_url);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 		goto fail;
 	}
 
@@ -448,7 +507,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 
     if (stir_shaken_load_cert_from_mem(ss, &cert.x, chunk.mem, chunk.size) != STIR_SHAKEN_STATUS_OK) {
 	
-		stir_shaken_set_error_string_if_clear(ss, "Verify: error while loading cert from memory");
+		stir_shaken_set_error_if_clear(ss, "Verify: error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
     }
 	
@@ -456,13 +515,15 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	cert.body = malloc(chunk.size);
 	if (!cert.body) {
 	
-		stir_shaken_set_error_string(ss, "Verify: out of memory");
+		stir_shaken_set_error(ss, "Verify: out of memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 	memcpy(cert.body, chunk.mem, chunk.size);
 	cert.len = chunk.size;
 
 	// Verify signature
+
+	// TODO Handle STIR_SHAKEN_ERROR_SIP_403_STALE_DATE
 	
 	// TODO remove
 	printf("STIR-Shaken: Verify: checking signature...\n");
@@ -479,13 +540,21 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 		case STIR_SHAKEN_STATUS_FALSE:
 			
 			// Didn't pass
+			// Cannot download referenced certificate or caller didn't pass verification
+			// Bad Identity Headers also end up here
+			//
+			// Error code will be set to one of:
+			// STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER			- bad Identity Header, missing fields, malformed content, etc.
+			// STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER_SIGNATURE	- didn't pass the signature check
+			// STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO					- cannot download referenced certificate
+			stir_shaken_set_error_if_clear(ss, "Verify: SIP Identity Header is spoofed", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 			goto fail;
 
 		case STIR_SHAKEN_STATUS_ERR:
 		default:
 			
 			// Error while verifying
-			stir_shaken_set_error_string_if_clear(ss, "Verify: Error");
+			stir_shaken_set_error_if_clear(ss, "Verify: Error while processing request", STIR_SHAKEN_ERROR_GENERAL);
 			goto fail;
 	}
 

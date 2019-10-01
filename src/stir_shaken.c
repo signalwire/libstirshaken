@@ -41,7 +41,7 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss)
 	
 	if (pthread_mutexattr_init(&stir_shaken_globals.attr) != 0) {
 		
-		stir_shaken_set_error_string(ss, "init mutex attr failed");
+		stir_shaken_set_error(ss, "init mutex attr failed", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -49,14 +49,14 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss)
 	
 	if (pthread_mutex_init(&stir_shaken_globals.mutex, &stir_shaken_globals.attr) != 0) {
 		
-		stir_shaken_set_error_string(ss, "init mutex failed");
+		stir_shaken_set_error(ss, "init mutex failed", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	status = stir_shaken_init_ssl(ss);
 	if (status != STIR_SHAKEN_STATUS_OK) {
 	
-		stir_shaken_set_error_string(ss, "init SSL failed\n");
+		stir_shaken_set_error(ss, "init SSL failed\n", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -263,39 +263,37 @@ size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen)
 	return ol;
 }
 
-void stir_shaken_set_error_string(stir_shaken_context_t *ss, const char *err)
+void stir_shaken_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error)
 {
 	int i = 0;
 
 	if (!ss) return;
-	
 	memset(ss->err_buf, 0, STIR_SHAKEN_ERROR_BUF_LEN);
 
-	while ((i < STIR_SHAKEN_ERROR_BUF_LEN - 1) && (err[i] != '\0')) {
-		ss->err_buf[i] = err[i];
+	while ((i < STIR_SHAKEN_ERROR_BUF_LEN - 1) && (description[i] != '\0')) {
+		ss->err_buf[i] = description[i];
 		++i;
 	}
 
 	ss->err_buf[i] = '\0';
+	ss->error = error;
 	ss->got_error = 1;
 }
 
-void stir_shaken_set_error_string_if_clear(stir_shaken_context_t *ss, const char *err)
+void stir_shaken_set_error_if_clear(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error)
 {
 	if (ss) {
 
 		if (!ss->got_error) {
-			stir_shaken_set_error_string(ss, err);
+			stir_shaken_set_error(ss, description, error);
 		}
 	}
 }
 
-void stir_shaken_clear_error_string(stir_shaken_context_t *ss)
+void stir_shaken_clear_error(stir_shaken_context_t *ss)
 {
 	if (!ss) return;
-
-	memset(ss->err_buf, 0, STIR_SHAKEN_ERROR_BUF_LEN);
-	ss->got_error = 0;
+	memset(ss, 0, sizeof(*ss));
 }
 
 uint8_t stir_shaken_is_error_set(stir_shaken_context_t *ss)
@@ -304,13 +302,33 @@ uint8_t stir_shaken_is_error_set(stir_shaken_context_t *ss)
 	return (!!ss->got_error);
 }
 
-const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
+static const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
 {
 	if (!ss) return NULL;
-	if (ss->got_error) {
+	if (stir_shaken_is_error_set(ss)) {
 		return ss->err_buf;
 	}
-	return "";
+	return "No description provided";
+}
+
+static stir_shaken_error_t stir_shaken_get_error_code(stir_shaken_context_t *ss)
+{
+	if (!ss || !stir_shaken_is_error_set(ss)) {
+		// This function must always be called with ss pointer set and only if error has been set,
+		// otherwise will return spurious results.
+		return STIR_SHAKEN_ERROR_GENERAL;
+	}
+
+	return ss->error;
+}
+
+const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t *error)
+{
+	if (!ss || !stir_shaken_is_error_set(ss)) return NULL;
+	if (error) {
+		*error = stir_shaken_get_error_code(ss);
+	}
+	return stir_shaken_get_error_string(ss);
 }
 
 stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line)

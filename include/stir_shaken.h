@@ -41,8 +41,54 @@ typedef enum stir_shaken_status {
 	STIR_SHAKEN_STATUS_NOOP
 } stir_shaken_status_t;
 
+// 5.3.2 Verification Error Conditions
+// If the authentication service functions correctly, and the certificate is valid and available to the verification service,
+// the SIP message can be delivered successfully. However, if these conditions are not satisfied, errors can be
+// generated as defined draft-ietf-stir-rfc4474bis. This section identifies important error conditions and specifies
+// procedurally what should happen if they occur. Error handling procedures should consider how best to always
+// deliver the call per current regulatory requirements 2 while providing diagnostic information back to the signer.
+// There are five main procedural errors defined in draft-ietf-stir-rfc4474bis that can identify issues with the validation
+// of the Identity header field. The error conditions and their associated response codes and reason phrases are as
+// follows:
+// 403 – ‘Stale Date’ – Sent when the verification service receives a request with a Date header field value
+// that is older than the local policy for freshness permits. The same response may be used when the "iat"
+// has a value older than the local policy for freshness permits.
+// 428 – ‘Use Identity Header’ is not recommended for SHAKEN until a point where all calls on the VoIP
+// network are mandated to be signed either by local or global policy.
+// 436 – ‘Bad-Identity-Info’ – The URI in the “info” parameter cannot be dereferenced (i.e., the request times
+// out or receives a 4xx or 5xx error).
+// 437 – ‘Unsupported credential’ – This error occurs when a credential is supplied by the “info” parameter
+// but the verifier doesn’t support it or it doesn’t contain the proper certificate chain in order to trust the
+// credentials.
+// 438 – ‘Invalid Identity Header’ – This occurs if the signature verification fails.
+// If any of the above error conditions are detected, the terminating network shall convey the response code and
+// reason phrase back to the originating network, indicating which one of the five error scenarios has occurred. How
+// this error information is signaled to the originating network depends on the disposition of the call as a result of the
+// error. If local policy dictates that the call should not proceed due to the error, then the terminating network shall
+// include the error response code and reason phrase in the status line of a final 4xx error response sent to the
+// originating network. On the other hand, if local policy dictates that the call should continue, then the terminating
+// network shall include the error response code and reason phrase in a Reason header field (defined in [RFC
+// 3326]) in the next provisional or final response sent to the originating network as a result of normal terminating
+// call processing.
+// Example of Reason header field:
+// Reason: SIP ;cause=436 ;text="Bad Identity Info"
+// In addition, if any of the base claims or SHAKEN extension claims are missing from the PASSporT token claims,
+// the verification service shall treat this as a 438 ‘Invalid Identity Header’ error and proceed as defined above.
+typedef enum stir_shaken_error {
+	STIR_SHAKEN_ERROR_GENERAL,
+	STIR_SHAKEN_ERROR_CJSON,
+	STIR_SHAKEN_ERROR_SSL,
+	STIR_SHAKEN_ERROR_SIP_403_STALE_DATE,
+	STIR_SHAKEN_ERROR_SIP_428_USE_IDENTITY_HEADER,
+	STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO,
+	STIR_SHAKEN_ERROR_SIP_437_UNSUPPORTED_CREDENTIAL,
+	STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER,
+	STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER_SIGNATURE,
+} stir_shaken_error_t;
+
 typedef struct stir_shaken_context_s {
 	char err_buf[1500];
+	stir_shaken_error_t error;
 	uint8_t got_error;
 } stir_shaken_context_t;
 
@@ -386,11 +432,11 @@ stir_shaken_status_t stir_shaken_file_remove(const char *path);
 stir_shaken_status_t stir_shaken_b64_encode(unsigned char *in, size_t ilen, unsigned char *out, size_t olen);
 size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen);
 
-void stir_shaken_set_error_string(stir_shaken_context_t *ss, const char *err);
-void stir_shaken_set_error_string_if_clear(stir_shaken_context_t *ss, const char *err);
-void stir_shaken_clear_error_string(stir_shaken_context_t *ss);
+void stir_shaken_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error);
+void stir_shaken_set_error_if_clear(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error);
+void stir_shaken_clear_error(stir_shaken_context_t *ss);
 uint8_t stir_shaken_is_error_set(stir_shaken_context_t *ss);
-const char* stir_shaken_get_error_string(stir_shaken_context_t *ss);
+const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t *error);
 
 
 // TEST
