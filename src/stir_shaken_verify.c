@@ -213,22 +213,22 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
     b = strchr(identity_header, '.');
     if (!b || (b + 1 == strchr(identity_header, '\0'))) {
 		
-		stir_shaken_set_error(ss, "Verify with cert: Invalid SIP Identity Header", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
-        return STIR_SHAKEN_STATUS_ERR;
+		stir_shaken_set_error(ss, "Verify with cert: Invalid SIP Identity Header: Missing dot separating header/payload", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		return STIR_SHAKEN_STATUS_FALSE;
     }
 
     e = strchr(b + 1, '.');
     if (!e || (e + 1 == strchr(identity_header, '\0'))) {
 		
-		stir_shaken_set_error(ss, "Verify with cert: Invalid SIP Identity Header", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
-        return STIR_SHAKEN_STATUS_ERR;
+		stir_shaken_set_error(ss, "Verify with cert: Invalid SIP Identity Header: Missing dot separating payload/signature", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		return STIR_SHAKEN_STATUS_FALSE;
     }
 
-    se = strchr(e + 1, ';');
-    if (!se || (se + 1 == strchr(identity_header, '\0'))) {
+    se = strchr(b + 1, ';');
+    if (!se || e > se || (se + 1 == strchr(identity_header, '\0'))) {
 		
-		stir_shaken_set_error(ss, "Verify with cert: Invalid SIP Identity Header", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
-        return STIR_SHAKEN_STATUS_ERR;
+		stir_shaken_set_error(ss, "Verify with cert: Invalid SIP Identity Header: Missing dot separating header/payload or no colon terminating signature", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		return STIR_SHAKEN_STATUS_FALSE;
     }
 
     len = e - identity_header;
@@ -334,7 +334,10 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const 
 		
 		sprintf(err_buf, "Download: Error in CURL: %s", curl_easy_strerror(res));
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO); 
-        status = STIR_SHAKEN_STATUS_FALSE;
+	
+		// Only curl_easy_cleanup in case of error, cause otherwise (if also curl_global_cleanup) SSL starts to mulfunction ???? (EVP_get_digestbyname("sha256") in stir_shaken_do_verify_data returns NULL)
+		curl_easy_cleanup(curl_handle);
+        return STIR_SHAKEN_STATUS_FALSE;
 
 	} else {
 
@@ -496,7 +499,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 
 	if (stir_shaken_download_cert(ss, cert_url, &chunk) != STIR_SHAKEN_STATUS_OK) {
 		sprintf(err_buf, "Verify: Cannot download certificate using URL: %s", cert_url);
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+		stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 		goto fail;
 	}
 
