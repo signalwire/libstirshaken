@@ -535,7 +535,6 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 anyway:
 
 	*csr_req = req;
-	stir_shaken_set_error_if_clear(ss, "Generate CSR: Something went wrong ['anyway' hit]", STIR_SHAKEN_ERROR_SSL);
 
 	return STIR_SHAKEN_STATUS_OK;
 
@@ -748,8 +747,6 @@ anyway:
 		BIO_free_all(out);
 	}
 	
-	stir_shaken_set_error_if_clear(ss, "Generate cert from CSR: Something went wrong ['anyway' hit]", STIR_SHAKEN_ERROR_GENERAL);
-
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:

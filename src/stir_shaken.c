@@ -56,7 +56,7 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss)
 	status = stir_shaken_init_ssl(ss);
 	if (status != STIR_SHAKEN_STATUS_OK) {
 	
-		stir_shaken_set_error(ss, "init SSL failed\n", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "init SSL failed\n", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -74,6 +74,8 @@ void stir_shaken_do_deinit(void)
 	printf("STIR-Shaken: deinit\n");
 
 	if (stir_shaken_globals.initialised == 0) {
+
+		// TODO remove
 		printf("STIR-Shaken: deinit skipped, already done\n");
 		return;
 	}
@@ -299,7 +301,7 @@ void stir_shaken_clear_error(stir_shaken_context_t *ss)
 uint8_t stir_shaken_is_error_set(stir_shaken_context_t *ss)
 {
 	if (!ss) return 0;
-	return (!!ss->got_error);
+	return (ss->got_error ? 1 : 0);
 }
 
 static const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)

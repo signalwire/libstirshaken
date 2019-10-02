@@ -263,7 +263,7 @@ stir_shaken_status_t stir_shaken_settings_set_path(const char *path);
 
 /**
  * Using @digest_name and @pkey create a signature for @data and save it in @out.
- * Return @out and lenght of it in @outlen.
+ * Return @out and length of it in @outlen.
  */ 
 stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t *ss, const char *digest_name, EVP_PKEY *pkey, const char *data, size_t datalen, unsigned char *out, size_t *outlen);
 
