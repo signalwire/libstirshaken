@@ -124,11 +124,11 @@ typedef struct stir_shaken_passport {
 	// typ      This value indicates the token type. Must be 'passport'.
 	// x5u      This value indicates the location of the certificate used to sign the token.
 	// JWS Payload
-	// attest   This value indicates the attestation level. Must be either A, B, or C.
+	// attest   This value indicates the attestation level. Must be either A, B, or C. (This is Shaken extension to PASSporT)
 	// dest     This value indicates the called number(s) or called Uniform Resource Identifier(s).
 	// iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
 	// orig     This value indicates the calling number or calling Uniform Resource Identifier.
-	// origid   This value indicates the origination identifier.
+	// origid   This value indicates the origination identifier. (This is Shaken extension to PASSporT)
 	// JWS Signature
 
 	// Parameters
@@ -398,11 +398,11 @@ stir_shaken_status_t stir_shaken_stisp_perform_authorization(EVP_PKEY *pkey, sti
  *              // typ      This value indicates the token type. Must be 'passport'.
  * X            // x5u      This value indicates the location of the certificate used to sign the token.
  *          // JWS Payload
- * X            // attest   This value indicates the attestation level. Must be either A, B, or C.
+ * X            // attest   This value indicates the attestation level. Must be either A, B, or C. (This is Shaken extension to PASSporT)
  * X            // dest     This value indicates the called number(s) or called Uniform Resource Identifier(s).
  *              // iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
  * X            // orig     This value indicates the calling number or calling Uniform Resource Identifier.
- * X            // origid   This value indicates the origination identifier.
+ * X            // origid   This value indicates the origination identifier. (This is Shaken extension to PASSporT)
  *          // JWS Signature
  *
  *      // Parameters
@@ -431,6 +431,8 @@ stir_shaken_status_t stir_shaken_file_exists(const char *path);
 stir_shaken_status_t stir_shaken_file_remove(const char *path);
 stir_shaken_status_t stir_shaken_b64_encode(unsigned char *in, size_t ilen, unsigned char *out, size_t olen);
 size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen);
+char* stir_shaken_remove_multiple_adjacent(char *in, char what);
+char* stir_shaken_get_dir_path(const char *path);
 
 void stir_shaken_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error);
 void stir_shaken_set_error_if_clear(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error);

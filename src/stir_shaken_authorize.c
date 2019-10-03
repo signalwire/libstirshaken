@@ -618,7 +618,7 @@ stir_shaken_status_t stir_shaken_authorize(stir_shaken_context_t *ss, char **sih
 
 stir_shaken_status_t stir_shaken_install_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
 {
-	char cert_full_name[300] = {0};
+	char cert_full_name[300] = {0}, *install_path = NULL;
 	BIO *out = NULL;
 	int i = 0;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
@@ -637,7 +637,17 @@ stir_shaken_status_t stir_shaken_install_cert(stir_shaken_context_t *ss, stir_sh
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
-	snprintf(cert_full_name, 300, "%s%s", cert->install_path, cert->name);
+	install_path = stir_shaken_get_dir_path(cert->install_path);
+	if (!install_path) {
+		
+		sprintf(err_buf, "Install cert: Error processing @install_path '%s'", cert->install_path);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+        return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	snprintf(cert_full_name, 300, "%s%s", install_path, basename(cert->name));
+	free(install_path);
+	install_path = NULL;
 
 	if (stir_shaken_file_exists(cert_full_name) == STIR_SHAKEN_STATUS_OK) {
 		stir_shaken_file_remove(cert_full_name);

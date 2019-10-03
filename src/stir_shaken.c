@@ -265,6 +265,60 @@ size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen)
 	return ol;
 }
 
+char* stir_shaken_remove_multiple_adjacent(char *in, char what)
+{
+	char *ip = in, *op = in;
+
+	if (!in) return NULL;
+
+	do {
+
+		*op = *ip;
+		++ip;
+
+		while (*op == what && *ip == what) {
+		   ++ip;
+		};
+
+		++op;
+	} while (*ip != '\0');
+
+	return in;
+}
+
+char* stir_shaken_get_dir_path(const char *path)
+{
+	char *p = NULL, *res = NULL, *p1 = NULL, *p2 = NULL;
+	const char *dname = NULL;
+	const char *bname = NULL;
+	int len = 0;
+
+	if (!path) return NULL;
+
+	if (!(p1 = strdup(path))) return NULL;
+	dname = dirname(p1);
+
+
+	if (!(p2 = strdup(path))) return NULL;
+	bname = basename(p2);
+
+	len = strlen(dname) + 1 + strlen(bname) + 1 + 1;
+	
+	p = malloc(len);
+	if (!p) {
+		free(p1);
+		free(p2);
+		return NULL;
+	}
+
+	sprintf(p, "%s/%s/", dname, bname);
+
+	free(p1);
+	free(p2);
+
+	return stir_shaken_remove_multiple_adjacent(p, '/');
+}
+
 void stir_shaken_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error)
 {
 	int i = 0;
