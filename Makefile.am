@@ -41,12 +41,12 @@ stir_shaken_test_7_LDFLAGS = -lstirshaken
 
 stir_shaken_test_8_SOURCES = test/stir_shaken_test_8.c
 stir_shaken_test_8_CFLAGS = -Iinclude
-stir_shaken_test_8_LDFLAGS = -lstirshaken
+stir_shaken_test_8_LDFLAGS = -lcurl -lstirshaken
 
 stir_shaken_test_9_SOURCES = test/stir_shaken_test_9.c
 stir_shaken_test_9_CFLAGS = -Iinclude
-stir_shaken_test_9_LDFLAGS = -lstirshaken
+stir_shaken_test_9_LDFLAGS = -lcurl -lstirshaken
 
 stir_shaken_test_10_SOURCES = test/stir_shaken_test_10.c
 stir_shaken_test_10_CFLAGS = -Iinclude
-stir_shaken_test_10_LDFLAGS = -lstirshaken
+stir_shaken_test_10_LDFLAGS = -lcurl -lstirshaken
