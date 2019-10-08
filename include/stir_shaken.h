@@ -51,18 +51,18 @@ typedef enum stir_shaken_status {
 // of the Identity header field. The error conditions and their associated response codes and reason phrases are as
 // follows:
 // 
-// 403 – ‘Stale Date’ – Sent when the verification service receives a request with a Date header field value
+// 403 - 'Stale Date' - Sent when the verification service receives a request with a Date header field value
 // that is older than the local policy for freshness permits. The same response may be used when the "iat"
 // has a value older than the local policy for freshness permits.
 // 
-// 428 – A 428 response will be sent (per Section 6.2) when an Identity header
+// 428 - 'Use Identity Header' - A 428 response will be sent (per Section 6.2) when an Identity header
 // field is required but no Identity header field without a "ppt"
 // parameter or with a supported "ppt" value has been received. [RFC 8224]
 //
-// ‘Use Identity Header’ is not recommended for SHAKEN until a point where all calls on the VoIP
+// 'Use Identity Header' is not recommended for SHAKEN until a point where all calls on the VoIP
 // network are mandated to be signed either by local or global policy.
 //
-// 436 – The 436 "Bad Identity Info" response code indicates an inability to
+// 436 - The 436 "Bad Identity Info" response code indicates an inability to
 // acquire the credentials needed by the verification service for
 // validating the signature in an Identity header field. Again, given
 // the potential presence of multiple Identity header fields, this
@@ -73,10 +73,10 @@ typedef enum stir_shaken_status {
 // resends the request with an "info" parameter pointing to a credential
 // that the verification service can access. [RFC 8224]
 //
-// ‘Bad-Identity-Info’ – The URI in the “info” parameter cannot be dereferenced (i.e., the request times
+// 'Bad-Identity-Info' - The URI in the info parameter cannot be dereferenced (i.e., the request times
 // out or receives a 4xx or 5xx error).
 //
-// 437 – The 437 "Unsupported Credential" response (previously
+// 437 - The 437 "Unsupported Credential" response (previously
 // "Unsupported Certificate"; see Section 13.2) is sent when a
 // verification service can acquire, or already holds, the credential
 // represented by the "info" parameter of at least one Identity header
@@ -85,11 +85,11 @@ typedef enum stir_shaken_status {
 // (CA) or failing to support the algorithm with which the credential
 // was signed. [RFC 8224]
 //
-// ‘Unsupported credential’ – This error occurs when a credential is supplied by the “info” parameter
-// but the verifier doesn’t support it or it doesn’t contain the proper certificate chain in order to trust the
+// 'Unsupported credential' - This error occurs when a credential is supplied by the info parameter
+// but the verifier doesnt support it or it doesnt contain the proper certificate chain in order to trust the
 // credentials.
 //
-// 438 – The 438 "Invalid Identity Header" response indicates that of the set
+// 438 - The 438 "Invalid Identity Header" response indicates that of the set
 // of Identity header fields in a request, no header field with a valid
 // and supported PASSporT object has been received. Like the 428
 // response, this is sent by a verification service when its local
@@ -108,7 +108,7 @@ typedef enum stir_shaken_status {
 // required claims for that extension. Sending a string along these
 // lines will help humans debugging the sending system. [RFC 8224]
 //
-// ‘Invalid Identity Header’ – This occurs if the signature verification fails.
+// 'Invalid Identity Header' - This occurs if the signature verification fails.
 //
 // If any of the above error conditions are detected, the terminating network shall convey the response code and
 // reason phrase back to the originating network, indicating which one of the five error scenarios has occurred. How
@@ -122,7 +122,7 @@ typedef enum stir_shaken_status {
 // Example of Reason header field:
 // Reason: SIP ;cause=436 ;text="Bad Identity Info"
 // In addition, if any of the base claims or SHAKEN extension claims are missing from the PASSporT token claims,
-// the verification service shall treat this as a 438 ‘Invalid Identity Header’ error and proceed as defined above.
+// the verification service shall treat this as a 438 'Invalid Identity Header' error and proceed as defined above.
 typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_GENERAL,
 	STIR_SHAKEN_ERROR_CJSON,
