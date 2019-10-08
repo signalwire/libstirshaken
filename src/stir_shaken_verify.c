@@ -290,7 +290,7 @@ static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
 	stir_shaken_clear_error(mem->ss);
 
 	// TODO remove
-	printf("STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, mem->size);
+	printf("STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, realsize + mem->size);
 
 	m = realloc(mem->mem, mem->size + realsize + 1);
 	if(!m) {
@@ -352,44 +352,6 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const 
 	return status;
 }
 
-// TODO destroy cert, free memory
-stir_shaken_status_t stir_shaken_cert_configure(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *install_path, char *install_url)
-{
-	char b[500] = {0}, *access = NULL;
-	int c = strlen(install_path);
-	int d = strlen(install_url);
-	int e = 0;
-	
-	
-	stir_shaken_clear_error(ss);
-
-	if (cert) {
-
-		cert->install_path = malloc(c + 1);
-		cert->install_url = malloc(d + 1);
-		if (!cert->install_path || !cert->install_url) {
-			stir_shaken_set_error(ss, "Cert configure: Cannot allocate memory", STIR_SHAKEN_ERROR_GENERAL);
-			return STIR_SHAKEN_STATUS_FALSE;
-		}
-		memcpy(cert->install_path, install_path, c);
-		memcpy(cert->install_url, install_url, d);
-		cert->install_path[c] = '\0';
-		cert->install_url[d] = '\0';
-	
-		snprintf(b, 500, "%s%s", cert->install_url, cert->name);
-		e = strlen(b);
-		cert->public_url = malloc(e + 1);
-		if (!cert->public_url) {
-			stir_shaken_set_error(ss, "Cert configure: Cannot allocate memory", STIR_SHAKEN_ERROR_GENERAL);
-			return STIR_SHAKEN_STATUS_FALSE;
-		}
-		memcpy(cert->public_url, b, e);
-		cert->public_url[e] = '\0';
-	}
-
-	return STIR_SHAKEN_STATUS_OK;
-}
-
 static size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
 	size_t written = fwrite(ptr, size, nmemb, stream);
 	return written;
@@ -419,21 +381,21 @@ stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const ch
 }
 
 // 5.3.1 PASSporT & Identity Header Verification
-// The certificate referenced in the “info” parameter of the Identity header field shall be validated by performing the
+// The certificate referenced in the info parameter of the Identity header field shall be validated by performing the
 // following:
-// • Check the certificate’s validity using the Basic Path Validation algorithm defined in the X.509
+// - Check the certificate's validity using the Basic Path Validation algorithm defined in the X.509
 // certificate standard (RFC 5280).
-// • Check that the certificate is not revoked using CRLs and/or OCSP.
+// - Check that the certificate is not revoked using CRLs and/or OCSP.
 // The verifier validates that the PASSporT token provided in the Identity header of the INVITE includes all of the
 // baseline claims, as well as the SHAKEN extension claims. The verifier shall also follow the draft-ietf-stir-
 // rfc4474bis-defined verification procedures to check the corresponding date, originating identity (i.e., the
 // originating telephone number) and destination identities (i.e., the terminating telephone numbers).
-// The “orig” claim and “dest” claim shall be of type “tn”.
+// The orig claim and dest claim shall be of type tn.
 //
-// The “orig” claim “tn” value validation shall be performed as follows:
-// • The P-Asserted-Identity header field value shall be checked as the telephone identity to be validated if
+// The orig claim tn value validation shall be performed as follows:
+// - The P-Asserted-Identity header field value shall be checked as the telephone identity to be validated if
 // present, otherwise the From header field value shall also be checked.
-// • If there are two P-Asserted-Identity values, the verification service shall check each of them until it finds
+// - If there are two P-Asserted-Identity values, the verification service shall check each of them until it finds
 // one that is valid.
 // NOTE: As discussed in draft-ietf-stir-rfc4474bis, call features such as call forwarding can cause calls to reach a
 // destination different from the number in the To header field. The problem of determining whether or not these call
@@ -446,17 +408,17 @@ stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const ch
 // There are five main procedural errors defined in draft-ietf-stir-rfc4474bis that can identify issues with the validation
 // of the Identity header field. The error conditions and their associated response codes and reason phrases are as
 // follows:
-// 403 – ‘Stale Date’ – Sent when the verification service receives a request with a Date header field value
+// 403 Stale Date - Sent when the verification service receives a request with a Date header field value
 // that is older than the local policy 3 for freshness permits. The same response may be used when the "iat"
 // has a value older than the local policy for freshness permits.
-// 428 – ‘Use Identity Header’ is not recommended for SHAKEN until a point where all calls on the VoIP
+// 428 'Use Identity Header' is not recommended for SHAKEN until a point where all calls on the VoIP
 // network are mandated to be signed either by local or global policy.
-// 436 – ‘Bad-Identity-Info’ – The URI in the “info” parameter cannot be dereferenced (i.e., the request times
+// 436 'Bad-Identity-Info' - The URI in the info parameter cannot be dereferenced (i.e., the request times
 // out or receives a 4xx or 5xx error).
-// 437 – ‘Unsupported credential’ – This error occurs when a credential is supplied by the “info” parameter
-// but the verifier doesn’t support it or it doesn’t contain the proper certificate chain in order to trust the
+// 437 'Unsupported credential' - This error occurs when a credential is supplied by the info parameter
+// but the verifier doesntt support it or it doesn't contain the proper certificate chain in order to trust the
 // credentials.
-// 438 – ‘Invalid Identity Header’ – This occurs if the signature verification fails.
+// 438 Invalid Identity Header -  This occurs if the signature verification fails.
 // If any of the above error conditions are detected, the terminating network shall convey the response code and
 // reason phrase back to the originating network, indicating which one of the five error scenarios has occurred. How
 // this error information is signaled to the originating network depends on the disposition of the call as a result of the
@@ -469,7 +431,7 @@ stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const ch
 // Example of Reason header field:
 // Reason: SIP ;cause=436 ;text="Bad Identity Info"
 // In addition, if any of the base claims or SHAKEN extension claims are missing from the PASSporT token claims,
-// the verification service shall treat this as a 438 ‘Invalid Identity Header’ error and proceed as defined above.
+// the verification service shall treat this as a 438 Invalid Identity Header error and proceed as defined above.
 
 stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url)
 {

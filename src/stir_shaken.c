@@ -283,6 +283,8 @@ char* stir_shaken_remove_multiple_adjacent(char *in, char what)
 		++op;
 	} while (*ip != '\0');
 
+    *op = '\0';
+
 	return in;
 }
 
