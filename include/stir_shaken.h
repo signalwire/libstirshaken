@@ -241,10 +241,10 @@ typedef struct stir_shaken_cert_s {
 	size_t		len;
 	uint8_t     is_fresh;
 	char		*full_name;
-	char		*name;
-	char		*install_path;				// folder, where cert must be put to be accessible with @install_url for other SPs
-	char		*install_url;				// URL access to cert, this is put into PASSporT as @x5u and @params.info
-	char		*access;
+	char		*name;						// name of the certificate, also used in file part of the publicly accessible URL
+	char		*install_path;				// folder, where cert must be put to be accessible with @public_url for other SPs
+	char		*install_url;				// directory part of the publicly accessible URL
+	char		*public_url;				// publicly accessible URL which can be used to download the certificate, this is concatenated from @install_url and cert's @name and is put into PASSporT as @x5u and @params.info
 	EC_KEY              *ec_key;
 	EVP_PKEY            *pkey;
 } stir_shaken_cert_t;

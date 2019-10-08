@@ -352,9 +352,10 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const 
 	return status;
 }
 
+// TODO destroy cert, free memory
 stir_shaken_status_t stir_shaken_cert_configure(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *install_path, char *install_url)
 {
-	char b[500] = {0};
+	char b[500] = {0}, *access = NULL;
 	int c = strlen(install_path);
 	int d = strlen(install_url);
 	int e = 0;
@@ -377,13 +378,13 @@ stir_shaken_status_t stir_shaken_cert_configure(stir_shaken_context_t *ss, stir_
 	
 		snprintf(b, 500, "%s%s", cert->install_url, cert->name);
 		e = strlen(b);
-		cert->access = malloc(e + 1);
-		if (!cert->access) {
+		cert->public_url = malloc(e + 1);
+		if (!cert->public_url) {
 			stir_shaken_set_error(ss, "Cert configure: Cannot allocate memory", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
-		memcpy(cert->access, b, e);
-		cert->access[e] = '\0';
+		memcpy(cert->public_url, b, e);
+		cert->public_url[e] = '\0';
 	}
 
 	return STIR_SHAKEN_STATUS_OK;
