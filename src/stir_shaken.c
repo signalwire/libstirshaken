@@ -300,7 +300,6 @@ char* stir_shaken_get_dir_path(const char *path)
 	if (!(p1 = strdup(path))) return NULL;
 	dname = dirname(p1);
 
-
 	if (!(p2 = strdup(path))) return NULL;
 	bname = basename(p2);
 
@@ -319,6 +318,20 @@ char* stir_shaken_get_dir_path(const char *path)
 	free(p2);
 
 	return stir_shaken_remove_multiple_adjacent(p, '/');
+}
+
+char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, const char *file, const char *path_separator)
+{
+	int e = 0;
+
+	if (!buf || !dir || !file || (buflen < strlen(dir) + 1 + strlen(file) + 1)) return NULL;
+
+	e = snprintf(buf, buflen, "%s%s%s", dir, path_separator, file);
+	if (e >= buflen) {
+		return NULL;
+	}
+
+	return stir_shaken_remove_multiple_adjacent(buf, path_separator);
 }
 
 void stir_shaken_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error)
