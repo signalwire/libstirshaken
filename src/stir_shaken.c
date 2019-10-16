@@ -61,6 +61,7 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss)
 	}
 
 	stir_shaken_globals.initialised = 1;
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 static void stir_shaken_deinit(void)

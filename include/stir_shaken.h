@@ -273,6 +273,12 @@ typedef struct stir_shaken_settings_s {
 	stir_shaken_stica_t stica;
 } stir_shaken_settings_t;
 
+typedef struct stir_shaken_ssl_keys {
+    EC_KEY		*ec_key;
+    EVP_PKEY	*private_key;
+    EVP_PKEY	*public_key;
+} stir_shaken_ssl_keys_t;
+
 /* Global Values */
 typedef struct stir_shaken_globals_s {
 
