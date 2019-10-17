@@ -1267,6 +1267,7 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss)
 	stir_shaken_clear_error(ss);
 
 	if (stir_shaken_globals.initialised) {
+		stir_shaken_set_error(ss, "Already initialised", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_NOOP;
 	}
 
@@ -1334,7 +1335,7 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss)
 	} else {
 		
 		// TODO remove
-		printf("SSL: Using (%s [%d]) eliptic curve", curve->comment, curve->nid);
+		printf("SSL: Using (%s [%d]) eliptic curve\n", curve->comment, curve->nid);
 	}
 	stir_shaken_globals.curve_nid = curve_nid;
 

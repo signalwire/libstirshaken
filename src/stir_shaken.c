@@ -39,6 +39,11 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss)
 	// TODO remove
 	printf("STIR-Shaken: init\n");
 	
+	if (stir_shaken_globals.initialised) {
+		stir_shaken_set_error(ss, "Already initialised", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_NOOP;
+	}
+	
 	if (pthread_mutexattr_init(&stir_shaken_globals.attr) != 0) {
 		
 		stir_shaken_set_error(ss, "init mutex attr failed", STIR_SHAKEN_ERROR_GENERAL);
@@ -54,7 +59,7 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss)
 	}
 
 	status = stir_shaken_init_ssl(ss);
-	if (status != STIR_SHAKEN_STATUS_OK) {
+	if (status != STIR_SHAKEN_STATUS_OK && status != STIR_SHAKEN_STATUS_NOOP) {
 	
 		stir_shaken_set_error_if_clear(ss, "init SSL failed\n", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;

@@ -38,7 +38,8 @@ typedef enum stir_shaken_status {
 	STIR_SHAKEN_STATUS_FALSE,
 	STIR_SHAKEN_STATUS_ERR,
 	STIR_SHAKEN_STATUS_RESTART,
-	STIR_SHAKEN_STATUS_NOOP
+	STIR_SHAKEN_STATUS_NOOP,
+	STIR_SHAKEN_STATUS_TERM
 } stir_shaken_status_t;
 
 // 5.3.2 Verification Error Conditions
