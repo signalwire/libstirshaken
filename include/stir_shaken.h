@@ -216,10 +216,25 @@ typedef struct stir_shaken_passport_params_s {
 	uint8_t     ppt_ignore;     // Should skip ppt field?
 } stir_shaken_passport_params_t;
 
+typedef struct stir_shaken_stipa_api_s {
+	const char	*url;
+	size_t		id;
+	const char	*sp_code_req;
+} stir_shaken_stipa_api_t;
+
+typedef struct stir_shaken_stipa_interface_s {
+	const char				*login;
+	const char				*password;
+	size_t					secret;
+	const char				*selection;
+	stir_shaken_stipa_api_t	api;
+} stir_shaken_stipa_interface_t;
+
 typedef struct stir_shaken_stisp_s {
 	uint32_t	sp_code;
 	char		*install_path;
 	char		*install_url;
+	stir_shaken_stipa_interface_t	stipa_interface;
 } stir_shaken_stisp_t;
 
 typedef struct stir_shaken_stica_s {
