@@ -326,14 +326,24 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const 
 	curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)chunk);
 
 	// Some pple say, some servers don't like requests that are made without a user-agent field, so we provide one.
-	curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+	curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "freeswitch-stir-shaken/1.0");
 
 	res = curl_easy_perform(curl_handle);
 
 	if (res != CURLE_OK) {
 		
 		sprintf(err_buf, "Download: Error in CURL: %s", curl_easy_strerror(res));
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO); 
+		
+		if (res == CURLE_COULDNT_RESOLVE_HOST || res == CURLE_COULDNT_RESOLVE_PROXY || res == CURLE_COULDNT_CONNECT || res != CURLE_REMOTE_ACCESS_DENIED) {
+			
+			// Cannot access
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+
+		} else {
+
+			// All other erros
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CURL);
+		}
 	
 		// Only curl_easy_cleanup in case of error, cause otherwise (if also curl_global_cleanup) SSL starts to mulfunction ???? (EVP_get_digestbyname("sha256") in stir_shaken_do_verify_data returns NULL)
 		curl_easy_cleanup(curl_handle);

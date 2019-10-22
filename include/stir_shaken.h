@@ -127,6 +127,7 @@ typedef enum stir_shaken_status {
 typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_GENERAL,
 	STIR_SHAKEN_ERROR_CJSON,
+	STIR_SHAKEN_ERROR_CURL,
 	STIR_SHAKEN_ERROR_SSL,
 	STIR_SHAKEN_ERROR_SIP_403_STALE_DATE,
 	STIR_SHAKEN_ERROR_SIP_428_USE_IDENTITY_HEADER,
@@ -135,6 +136,12 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER,
 	STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER_SIGNATURE,
 } stir_shaken_error_t;
+
+typedef enum stir_shaken_http_req_type {
+	STIR_SHAKEN_HTTP_REQ_TYPE_GET,
+	STIR_SHAKEN_HTTP_REQ_TYPE_POST,
+	STIR_SHAKEN_HTTP_REQ_TYPE_PUT
+} stir_shaken_http_req_type_t;
 
 typedef struct stir_shaken_context_s {
 	char err_buf[1500];
@@ -294,6 +301,23 @@ typedef struct stir_shaken_ssl_keys {
     EVP_PKEY	*private_key;
     EVP_PKEY	*public_key;
 } stir_shaken_ssl_keys_t;
+
+typedef struct curl_slist curl_slist_t;
+
+typedef struct stir_shaken_http_response_s {
+	long			code;
+	void			*data;
+	mem_chunk_t		mem;
+	curl_slist_t	*headers;
+} stir_shaken_http_response_t;
+
+typedef struct stir_shaken_http_req_s {
+	const char					*url;
+	stir_shaken_http_req_type_t	type;
+	const char					*data;
+	curl_slist_t				*headers;
+	stir_shaken_http_response_t	response;
+} stir_shaken_http_req_t;
 
 /* Global Values */
 typedef struct stir_shaken_globals_s {
@@ -501,6 +525,10 @@ char* stir_shaken_sip_identity_create(stir_shaken_context_t *ss, stir_shaken_pas
  * @passport - (out) will point to created PASSporT
  */
 char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_passport_t **passport, uint8_t keep_passport);
+
+// Service
+
+stir_shaken_status_t stir_shaken_stisp_get_code_token(stir_shaken_context_t *ss, stir_shaken_stisp_t *stisp);
 
 
 // Utility
