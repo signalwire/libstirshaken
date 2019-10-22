@@ -304,6 +304,11 @@ typedef struct stir_shaken_ssl_keys {
 
 typedef struct curl_slist curl_slist_t;
 
+typedef enum stir_shaken_http_req_content_type {
+	STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON,
+	STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED
+} stir_shaken_http_req_content_type_t;
+
 typedef struct stir_shaken_http_response_s {
 	long			code;
 	void			*data;
@@ -316,6 +321,7 @@ typedef struct stir_shaken_http_req_s {
 	stir_shaken_http_req_type_t	type;
 	const char					*data;
 	curl_slist_t				*headers;
+	stir_shaken_http_req_content_type_t content_type;
 	stir_shaken_http_response_t	response;
 } stir_shaken_http_req_t;
 
@@ -392,6 +398,12 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
  * @req - (in) X509 certificate sign request
  */
 X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key);
+
+/**
+ * @buf - (out) will contain fingerprint, must be of size at least 3*EVP_MAX_MD_SIZE bytes
+ * @buflen - (out) will contain string len including '\0'
+ */
+stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, X509* x509, const char *digest_name, char *buf, int *buflen);
 
 /**
  * Get the cert locally. Get it from disk or create and sign. 
@@ -528,8 +540,11 @@ char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_
 
 // Service
 
-stir_shaken_status_t stir_shaken_stisp_get_code_token(stir_shaken_context_t *ss, stir_shaken_stisp_t *stisp);
-
+/**
+ * @api - (in) STI-SP's api interface to STI-PA
+ * @http_req - (out) will contain HTPP response
+ */
+stir_shaken_status_t stir_shaken_stisp_get_code_token(stir_shaken_context_t *ss, stir_shaken_stipa_api_t *api, stir_shaken_http_req_t *http_req);
 
 // Utility
 

@@ -649,6 +649,36 @@ fail:
 	return NULL;
 }
 
+/**
+ * @buf - (out) will contain fingerprint, must be of size at least 3*EVP_MAX_MD_SIZE bytes
+ * @buflen - (out) will contain string len including '\0'
+ */
+stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, X509* x509, const char *digest_name, char *buf, int *buflen)
+{
+	const EVP_MD *evp = NULL;
+	unsigned int i = 0, j = 0;
+	char raw[EVP_MAX_MD_SIZE] = { 0 };
+
+	if (!x509 || !buf || !buflen || !(evp = EVP_get_digestbyname(digest_name))) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (X509_digest(x509, evp, raw, buflen) != 1 ||  buflen <= 0) {
+		
+		stir_shaken_set_error(ss, "Extract_fingerprint: Error in SSL while extracting digest", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	for (i = 0, j = 0; i < *buflen; ++i, j += 3) {
+		sprintf((char*) &buf[j], (i == (*buflen - 1)) ? "%.2X" : "%.2X:", raw[i]);
+	}
+	*(&buf[j - 1]) = '\0';
+
+	*buflen = j;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name)
 {
 	X509            *x = NULL;

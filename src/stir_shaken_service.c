@@ -48,8 +48,9 @@ static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nm
 
 stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
-	CURLcode res = 0;
-	CURL *curl_handle = NULL;
+	CURLcode		res = 0;
+	CURL			*curl_handle = NULL;
+	curl_slist_t	*headers = NULL;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 	if (!http_req || !http_req->url) return STIR_SHAKEN_STATUS_FALSE;
@@ -87,6 +88,20 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 				curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDSIZE, strlen(http_req->data));
 				curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDS, (void *) http_req->data);
 			}
+
+			// Curl will send form urlencoded by default, so for json the Content-Type header must be explicitly set
+			switch (http_req->content_type) {
+
+				case STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON:
+					
+					headers = curl_slist_append(headers, "Content-Type: application/json");
+					break;
+
+				case STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED:
+				default:
+					break;
+			}
+
 			break;
 
 		case STIR_SHAKEN_HTTP_REQ_TYPE_PUT:
@@ -106,31 +121,42 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 		// Do not curl_global_cleanup in case of error, cause otherwise (if also curl_global_cleanup) SSL starts to mulfunction ???? (EVP_get_digestbyname("sha256") in stir_shaken_do_verify_data returns NULL)
 		curl_easy_cleanup(curl_handle);
 		
-		// curl_slist_free_all(headers); TODO append headers
+		if (headers) {
+			curl_slist_free_all(headers);
+		}
+
         return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &http_req->response.code);
 	curl_easy_cleanup(curl_handle);
-	// curl_slist_free_all(headers); TODO append headers
+	
+	if (headers) {
+		curl_slist_free_all(headers);
+	}
 
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_stisp_get_code_token(stir_shaken_context_t *ss, stir_shaken_stisp_t *stisp)
+/**
+ * @api - (in) STI-SP's api interface to STI-PA
+ * @http_req - (out) will contain HTPP response
+ */
+stir_shaken_status_t stir_shaken_stisp_get_code_token(stir_shaken_context_t *ss, stir_shaken_stipa_api_t *api, stir_shaken_http_req_t *http_req)
 {
     stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
 	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-	stir_shaken_http_req_t	http_req = { 0 };
 	char					*fingerprint = NULL;
 
-	if (!stisp) {
+	if (!api || !http_req) {
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	http_req.type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
-	http_req.data = fingerprint;
-	http_req.url = stisp->stipa_interface.api.url; // TODO create complete SP Code request from url and sp_code_req
+	memset(http_req, 0, sizeof(*http_req));
 
-	return stir_shaken_make_http_req(ss, &http_req);
+	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
+	http_req->data = fingerprint;
+	http_req->url = api->url;	// TODO create complete SP Code request from url and sp_code_req
+
+	return stir_shaken_make_http_req(ss, http_req);
 }
