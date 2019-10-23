@@ -507,7 +507,7 @@ stir_shaken_status_t stir_shaken_b64_encode(unsigned char *in, size_t ilen, unsi
 size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen);
 char* stir_shaken_remove_multiple_adjacent(char *in, char what);
 char* stir_shaken_get_dir_path(const char *path);
-char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, const char *file, char path_separator);
+char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, const char *file, const char *path_separator);
 
 void stir_shaken_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error);
 void stir_shaken_set_error_if_clear(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error);
