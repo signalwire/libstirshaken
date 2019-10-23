@@ -679,6 +679,19 @@ stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, 
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY *pkey)
+{
+	X509 *x = X509_new();
+	if (!x) {
+
+		stir_shaken_set_error(ss, "Make cert from public key: Failed to  create new X509 certificate", STIR_SHAKEN_ERROR_SSL);
+		return NULL;
+	}
+
+	X509_set_pubkey(x, pkey);
+	return x;
+}
+
 stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name)
 {
 	X509            *x = NULL;
@@ -1284,7 +1297,6 @@ err:
  */
 stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss)
 {
-	stir_shaken_settings_t  *settings = &stir_shaken_globals.settings;
 	const SSL_METHOD        **ssl_method = &stir_shaken_globals.ssl_method;
 	SSL_CTX                 **ssl_ctx = &stir_shaken_globals.ssl_ctx;
 	SSL                     **ssl = &stir_shaken_globals.ssl;

@@ -1,5 +1,6 @@
 #include <stir_shaken.h>
 
+const char *path = "./test/run";
 
 stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 {
@@ -45,15 +46,12 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	memset(&ss, 0, sizeof(ss));
 
 
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
-	sprintf(private_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u10_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u10_public_key.pem");
-    sprintf(csr_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u10_csr.pem");
-    sprintf(csr_text_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u10_csr_text.pem");
-    sprintf(cert_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u10_cert.crt");
-    sprintf(cert_text_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u10_cert_text.crt");
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
-
+	sprintf(private_key_name, "%s%c%s", path, '/', "u10_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u10_public_key.pem");
+    sprintf(csr_name, "%s%c%s", path, '/', "u10_csr.pem");
+    sprintf(csr_text_name, "%s%c%s", path, '/', "u10_csr_text.pem");
+    sprintf(cert_name, "%s%c%s", path, '/', "u10_cert.crt");
+    sprintf(cert_text_name, "%s%c%s", path, '/', "u10_cert_text.crt");
 
     printf("=== Unit testing: STIR/Shaken verify response error codes [stir_shaken_unit_test_verify_response]\n\n");
     
@@ -169,17 +167,13 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	free(sih_malformed);
 	sih_malformed = NULL;
 	
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
     
     return STIR_SHAKEN_STATUS_OK;
 }
 
 int main(void)
 {
-	const char *path = "./test/run";
-	
 	stir_shaken_do_init(NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
@@ -190,8 +184,6 @@ int main(void)
 			return -1;
 		}
 	}
-
-	stir_shaken_settings_set_path(path);
 
 	if (stir_shaken_unit_test_verify_response() != STIR_SHAKEN_STATUS_OK) {
 		

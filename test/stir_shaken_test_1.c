@@ -1,5 +1,7 @@
 #include <stir_shaken.h>
 
+const char *path = "./test/run";
+
 
 stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 {
@@ -18,17 +20,13 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 	EVP_PKEY *public_key = NULL;
 	int i = -1;
 
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
-	sprintf(private_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u1_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u1_public_key.pem");
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
+	sprintf(private_key_name, "%s%c%s", path, '/', "u1_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u1_public_key.pem");
 
 	printf("=== Unit testing: STIR/Shaken Sign-verify (in memory) [stir_shaken_unit_test_sign_verify_data]\n\n");
 
 	// Generate new keys for this test
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
 	status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name);
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
 	stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key");
@@ -51,19 +49,15 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 	i = stir_shaken_do_verify_data(NULL, data_test_fail, strlen(data_test_fail), sig, outlen, public_key);
 	stir_shaken_assert(i == 1, "Err, verify failed");
 	
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 
 	return STIR_SHAKEN_STATUS_OK;
 }
 
 int main(void)
 {
-	const char *path = "./test/run";
-	
 	stir_shaken_do_init(NULL);
-
+	
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 
 		if (stir_shaken_dir_create_recursive(path) != STIR_SHAKEN_STATUS_OK) {
@@ -72,8 +66,6 @@ int main(void)
 			return -1;
 		}
 	}
-
-	stir_shaken_settings_set_path(path);
 
 	if (stir_shaken_unit_test_sign_verify_data() != STIR_SHAKEN_STATUS_OK) {
 		

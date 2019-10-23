@@ -1,5 +1,6 @@
 #include <stir_shaken.h>
 
+const char *path = "./test/run";
 
 stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void)
 {
@@ -25,17 +26,13 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void)
     EVP_PKEY *public_key = NULL;
 
 
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
-	sprintf(private_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u4_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u4_public_key.pem");
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
+	sprintf(private_key_name, "%s%c%s", path, '/', "u4_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u4_public_key.pem");
 
     printf("=== Unit testing: STIR/Shaken SIP Identity Header creation [stir_shaken_unit_test_sip_identity_header]\n\n");
     
     // Generate new keys for this test
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
     status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name);
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
     stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key");
@@ -51,9 +48,7 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void)
 	free(sih);
 	sih = NULL;
 
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 
     return STIR_SHAKEN_STATUS_OK;
 }
@@ -73,8 +68,6 @@ int main(void)
 			return -1;
 		}
 	}
-
-	stir_shaken_settings_set_path(path);
 
 	if (stir_shaken_unit_test_sip_identity_header() != STIR_SHAKEN_STATUS_OK) {
 		

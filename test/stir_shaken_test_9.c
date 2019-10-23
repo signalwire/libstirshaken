@@ -1,5 +1,6 @@
 #include <stir_shaken.h>
 
+const char *path = "./test/run";
 
 stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void)
 {
@@ -38,15 +39,12 @@ stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void)
     cJSON *jwt = NULL, *jPayload = NULL, *orig = NULL;
 
 
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
-	sprintf(private_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u9_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u9_public_key.pem");
-    sprintf(csr_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u9_csr.pem");
-    sprintf(csr_text_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u9_csr_text.pem");
-    sprintf(cert_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u9_cert.crt");
-    sprintf(cert_text_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u9_cert_text.crt");
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
-
+	sprintf(private_key_name, "%s%c%s", path, '/', "u9_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u9_public_key.pem");
+    sprintf(csr_name, "%s%c%s", path, '/', "u9_csr.pem");
+    sprintf(csr_text_name, "%s%c%s", path, '/', "u9_csr_text.pem");
+    sprintf(cert_name, "%s%c%s", path, '/', "u9_cert.crt");
+    sprintf(cert_text_name, "%s%c%s", path, '/', "u9_cert_text.crt");
 
     printf("=== Unit testing: STIR/Shaken Verification against good and spoofed SIP Identity Header [stir_shaken_unit_test_verify]\n\n");
     
@@ -118,17 +116,13 @@ stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void)
 	free(spoofed_sih);
 	spoofed_sih = NULL;
 	
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
     
     return STIR_SHAKEN_STATUS_OK;
 }
 
 int main(void)
 {
-	const char *path = "./test/run";
-	
 	stir_shaken_do_init(NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
@@ -139,8 +133,6 @@ int main(void)
 			return -1;
 		}
 	}
-
-	stir_shaken_settings_set_path(path);
 
 	if (stir_shaken_unit_test_verify_spoofed() != STIR_SHAKEN_STATUS_OK) {
 		

@@ -1,5 +1,6 @@
 #include <stir_shaken.h>
 
+const char *path = "./test/run";
 
 stir_shaken_status_t stir_shaken_unit_test_verify(void)
 {
@@ -33,15 +34,12 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
     stir_shaken_cert_t cert = {0};
 
 
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
-	sprintf(private_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u8_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u8_public_key.pem");
-    sprintf(csr_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u8_csr.pem");
-    sprintf(csr_text_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u8_csr_text.pem");
-    sprintf(cert_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u8_cert.crt");
-    sprintf(cert_text_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u8_cert_text.crt");
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
-
+	sprintf(private_key_name, "%s%c%s", path, '/', "u8_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u8_public_key.pem");
+    sprintf(csr_name, "%s%c%s", path, '/', "u8_csr.pem");
+    sprintf(csr_text_name, "%s%c%s", path, '/', "u8_csr_text.pem");
+    sprintf(cert_name, "%s%c%s", path, '/', "u8_cert.crt");
+    sprintf(cert_text_name, "%s%c%s", path, '/', "u8_cert_text.crt");
 
     printf("=== Unit testing: STIR/Shaken Verification [stir_shaken_unit_test_verify]\n\n");
     
@@ -82,17 +80,13 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	free(sih);
 	sih = NULL;
 	
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
     
     return status;
 }
 
 int main(void)
 {
-	const char *path = "./test/run";
-	
 	stir_shaken_do_init(NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
@@ -103,8 +97,6 @@ int main(void)
 			return -1;
 		}
 	}
-
-	stir_shaken_settings_set_path(path);
 
 	if (stir_shaken_unit_test_verify() != STIR_SHAKEN_STATUS_OK) {
 		

@@ -1,5 +1,6 @@
 #include <stir_shaken.h>
 
+const char *path = "./test/run";
 
 stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(void)
 {
@@ -32,10 +33,8 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(voi
     EVP_PKEY *public_key = NULL;
 
 
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
-	sprintf(private_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u5_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u5_public_key.pem");
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
+	sprintf(private_key_name, "%s%c%s", path, '/', "u5_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u5_public_key.pem");
 
     printf("=== Unit testing: STIR/Shaken SIP Identity Header (keep passport) creation [stir_shaken_unit_test_sip_identity_header_keep_passport]\n\n");
     
@@ -76,17 +75,13 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(voi
 	free(passport);
 	passport = NULL;
 	
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
     
     return STIR_SHAKEN_STATUS_OK;
 }
 
 int main(void)
 {
-	const char *path = "./test/run";
-	
 	stir_shaken_do_init(NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
@@ -97,8 +92,6 @@ int main(void)
 			return -1;
 		}
 	}
-
-	stir_shaken_settings_set_path(path);
 
 	if (stir_shaken_unit_test_sip_identity_header_keep_passport() != STIR_SHAKEN_STATUS_OK) {
 		

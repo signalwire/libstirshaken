@@ -3,6 +3,9 @@
 
 #define BUF_LEN 1000
 
+const char *path = "./test/run";
+
+
 stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void)
 {
     stir_shaken_passport_t passport = {0};
@@ -33,10 +36,8 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
     stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat, .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid, .ppt_ignore = ppt_ignore};
 
     
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
-	sprintf(private_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u3_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", stir_shaken_globals.settings.path, '/', "u3_public_key.pem");
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
+	sprintf(private_key_name, "%s%c%s", path, '/', "u3_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u3_public_key.pem");
 
     printf("=== Unit testing: STIR/Shaken PASSporT create/verify signature [stir_shaken_unit_test_passport_create_verify_signature]\n\n");
     
@@ -48,9 +49,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
     stir_shaken_assert(public_key != NULL, "Err, failed to generate public key");
 
     /* Test */
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
     status = stir_shaken_passport_create(NULL, &passport, &params, private_key);
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
     stir_shaken_assert(passport.json != NULL, "JSON @json has not been created");
@@ -85,9 +84,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
     /* Need to free JSON object allocated by cJSON lib. */
 	stir_shaken_passport_destroy(&passport);
 
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 
 	return status;
 }
@@ -95,8 +92,6 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
 
 int main(void)
 {
-	const char *path = "./test/run";
-	
 	stir_shaken_do_init(NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
@@ -107,8 +102,6 @@ int main(void)
 			return -1;
 		}
 	}
-
-	stir_shaken_settings_set_path(path);
 
 	if (stir_shaken_unit_test_passport_create_verify_signature() != STIR_SHAKEN_STATUS_OK) {
 		

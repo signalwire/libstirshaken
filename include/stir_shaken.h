@@ -223,34 +223,6 @@ typedef struct stir_shaken_passport_params_s {
 	uint8_t     ppt_ignore;     // Should skip ppt field?
 } stir_shaken_passport_params_t;
 
-typedef struct stir_shaken_stipa_api_s {
-	const char	*url;
-	size_t		id;
-	const char	*sp_code_req;
-} stir_shaken_stipa_api_t;
-
-typedef struct stir_shaken_stipa_interface_s {
-	const char				*login;
-	const char				*password;
-	size_t					secret;
-	const char				*selection;
-	stir_shaken_stipa_api_t	api;
-} stir_shaken_stipa_interface_t;
-
-typedef struct stir_shaken_stisp_s {
-	uint32_t	sp_code;
-	char		*install_path;
-	char		*install_url;
-	stir_shaken_stipa_interface_t	stipa_interface;
-} stir_shaken_stisp_t;
-
-typedef struct stir_shaken_stica_s {
-	const char *hostname;
-	uint16_t port;
-	uint8_t self_trusted;               /* 1 if STI-CA can be accessed locally, by _acquire_cert_from_local_storage */
-	const char *local_storage_path;     /* If STI-CA is self-trusted this tells where is the local storage where the cert is stored. */ 
-} stir_shaken_stica_t;
-
 typedef struct stir_shaken_csr_s {
 	X509_REQ    *req;
 	const char  *body;
@@ -274,28 +246,6 @@ typedef struct stir_shaken_cert_s {
 	EVP_PKEY            *pkey;
 } stir_shaken_cert_t;
 
-typedef struct stir_shaken_settings_s {
-	const char *path;
-	const char *ssl_private_key_name;
-	const char *ssl_private_key_full_name;
-	const char *ssl_public_key_name;
-	const char *ssl_public_key_full_name;
-	const char *ssl_csr_name;
-	const char *ssl_csr_full_name;
-	const char *ssl_csr_text_name;
-	const char *ssl_csr_text_full_name;
-	const char *ssl_cert_name;
-	const char *ssl_cert_full_name;
-	const char *ssl_cert_text_name;
-	const char *ssl_cert_text_full_name;
-	const char *ssl_template_file_name;
-	const char *ssl_template_file_full_name;
-	uint8_t stisp_configured;
-	uint8_t stica_configured;
-	stir_shaken_stisp_t stisp;
-	stir_shaken_stica_t stica;
-} stir_shaken_settings_t;
-
 typedef struct stir_shaken_ssl_keys {
     EC_KEY		*ec_key;
     EVP_PKEY	*private_key;
@@ -304,6 +254,7 @@ typedef struct stir_shaken_ssl_keys {
 
 typedef struct curl_slist curl_slist_t;
 
+// HTTP
 typedef enum stir_shaken_http_req_content_type {
 	STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON,
 	STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED
@@ -330,16 +281,12 @@ typedef struct stir_shaken_globals_s {
 
 	pthread_mutexattr_t		attr;	
 	pthread_mutex_t			mutex;	
-	stir_shaken_settings_t	settings;
 	uint8_t					initialised;
 
 	/** SSL */
 	const SSL_METHOD    *ssl_method;
 	SSL_CTX             *ssl_ctx;
 	SSL                 *ssl;
-
-	stir_shaken_csr_t     csr;                      // CSR
-	stir_shaken_cert_t    cert;                     // Certificate
 	int                 curve_nid;                  // id of the curve in OpenSSL
 } stir_shaken_globals_t;
 
@@ -360,8 +307,6 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss);
  */
 //static void stir_shaken_deinit(void) __attribute__ ((destructor));
 void stir_shaken_do_deinit(void);
-
-stir_shaken_status_t stir_shaken_settings_set_path(const char *path);
 
 
 // SSL
@@ -404,6 +349,8 @@ X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t s
  * @buflen - (out) will contain string len including '\0'
  */
 stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, X509* x509, const char *digest_name, char *buf, int *buflen);
+
+X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY *pkey);
 
 /**
  * Get the cert locally. Get it from disk or create and sign. 
@@ -541,10 +488,13 @@ char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_
 // Service
 
 /**
+ *  MOVE to FS
+ *
  * @api - (in) STI-SP's api interface to STI-PA
  * @http_req - (out) will contain HTPP response
- */
-stir_shaken_status_t stir_shaken_stisp_get_code_token(stir_shaken_context_t *ss, stir_shaken_stipa_api_t *api, stir_shaken_http_req_t *http_req);
+ *
+stir_shaken_status_t stir_shaken_stisp_get_code_token(stir_shaken_context_t *ss, stir_shaken_stisp_service_t *stisp, stir_shaken_http_req_t *http_req);
+**/
 
 // Utility
 
@@ -557,7 +507,7 @@ stir_shaken_status_t stir_shaken_b64_encode(unsigned char *in, size_t ilen, unsi
 size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen);
 char* stir_shaken_remove_multiple_adjacent(char *in, char what);
 char* stir_shaken_get_dir_path(const char *path);
-char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, const char *file, const char *path_separator);
+char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, const char *file, char path_separator);
 
 void stir_shaken_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error);
 void stir_shaken_set_error_if_clear(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error);

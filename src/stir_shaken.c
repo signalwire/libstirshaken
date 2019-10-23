@@ -3,28 +3,6 @@
 
 stir_shaken_globals_t stir_shaken_globals;
 
-// Must be called locked
-stir_shaken_status_t stir_shaken_settings_set_path(const char *path)
-{
-	char *p = NULL;
-
-	if (stir_shaken_globals.settings.path) {
-
-		free((void*)stir_shaken_globals.settings.path);
-	}
-
-	p = malloc(strlen(path) + 1);
-	if (!p) {
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-
-	memcpy(p, path, strlen(path));
-	p[strlen(path)] = '\0';
-	stir_shaken_globals.settings.path = p;
-
-	return STIR_SHAKEN_STATUS_OK;
-}
-
 
 static void stir_shaken_init(void)
 {
@@ -326,13 +304,13 @@ char* stir_shaken_get_dir_path(const char *path)
 	return stir_shaken_remove_multiple_adjacent(p, '/');
 }
 
-char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, const char *file, const char *path_separator)
+char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, const char *file, char path_separator)
 {
 	int e = 0;
 
 	if (!buf || !dir || !file || (buflen < strlen(dir) + 1 + strlen(file) + 1)) return NULL;
 
-	e = snprintf(buf, buflen, "%s%s%s", dir, path_separator, file);
+	e = snprintf(buf, buflen, "%s%c%s", dir, path_separator, file);
 	if (e >= buflen) {
 		return NULL;
 	}
