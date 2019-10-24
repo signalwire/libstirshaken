@@ -873,7 +873,7 @@ stir_shaken_status_t stir_shaken_load_cert_from_file(stir_shaken_context_t *ss, 
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t **cert, const char *private_key_name, EVP_PKEY **pkey)
+stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey)
 {
 	X509            *x = NULL;
 	BIO             *in = NULL;
@@ -889,33 +889,29 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	if (!*cert) {
-		*cert = malloc(sizeof(stir_shaken_cert_t));
-		if (!*cert) {
-			
-			stir_shaken_set_error(ss, "Load cert and key: Out of memory [1]", STIR_SHAKEN_ERROR_GENERAL);
-			return STIR_SHAKEN_STATUS_FALSE;
-		}
+	if (!cert) {
+		stir_shaken_set_error(ss, "Load cert and key: Cert not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
 	b = basename((char*) cert_name);
 
 	// TODO need to free strings somewhere
-	memset(*cert, 0, sizeof(stir_shaken_cert_t));
-	(*cert)->full_name = malloc(strlen(cert_name) + 1);
-	(*cert)->name = malloc(strlen(b) + 1);
+	memset(cert, 0, sizeof(stir_shaken_cert_t));
+	cert->full_name = malloc(strlen(cert_name) + 1);
+	cert->name = malloc(strlen(b) + 1);
 
-	if (!(*cert)->name || !(*cert)->full_name) {
+	if (!cert->name || !cert->full_name) {
 		
 		stir_shaken_set_error(ss, "Load cert and key: Out of memory [2]", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
-	memcpy((*cert)->full_name, cert_name, strlen(cert_name));
-	(*cert)->full_name[strlen(cert_name)] = '\0';
+	memcpy(cert->full_name, cert_name, strlen(cert_name));
+	cert->full_name[strlen(cert_name)] = '\0';
 
-	memcpy((*cert)->name, b, strlen(b));
-	(*cert)->name[strlen(b)] = '\0';
+	memcpy(cert->name, b, strlen(b));
+	cert->name[strlen(b)] = '\0';
 
 	if (stir_shaken_file_exists(cert_name) != STIR_SHAKEN_STATUS_OK) {
 		
@@ -971,8 +967,8 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 	}
 
 	x = PEM_read_bio_X509(in, NULL, NULL, NULL);
-	(*cert)->x = x;
-	(*cert)->pkey = *pkey;
+	cert->x = x;
+	cert->private_key = *pkey;
 
 	BIO_free(in);
 
@@ -980,10 +976,10 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 
 err:
 	
-	free((*cert)->full_name);
-	(*cert)->full_name = NULL;
-	free((*cert)->name);
-	(*cert)->name = NULL;
+	if (cert->full_name) free(cert->full_name);
+	cert->full_name = NULL;
+	if (cert->name) free(cert->name);
+	cert->name = NULL;
 	stir_shaken_set_error_if_clear(ss, "Load cert and key: Error", STIR_SHAKEN_ERROR_GENERAL);
 
 	return STIR_SHAKEN_STATUS_FALSE;

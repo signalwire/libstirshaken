@@ -243,7 +243,7 @@ typedef struct stir_shaken_cert_s {
 	char		*install_url;				// directory part of the publicly accessible URL
 	char		*public_url;				// publicly accessible URL which can be used to download the certificate, this is concatenated from @install_url and cert's @name and is put into PASSporT as @x5u and @params.info
 	EC_KEY              *ec_key;
-	EVP_PKEY            *pkey;
+	EVP_PKEY            *private_key;
 } stir_shaken_cert_t;
 
 typedef struct stir_shaken_ssl_keys {
@@ -368,7 +368,7 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *s
 stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_mem_through_file(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_file(stir_shaken_context_t *ss, X509 **x, const char *cert_tmp_name);
-stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t **cert, const char *private_key_name, EVP_PKEY **pkey);
+stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey);
 stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss);
 void stir_shaken_deinit_ssl(void);
 
