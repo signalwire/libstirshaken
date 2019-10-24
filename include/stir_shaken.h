@@ -487,14 +487,12 @@ char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_
 
 // Service
 
+stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+
 /**
- *  MOVE to FS
- *
- * @api - (in) STI-SP's api interface to STI-PA
  * @http_req - (out) will contain HTPP response
- *
-stir_shaken_status_t stir_shaken_stisp_get_code_token(stir_shaken_context_t *ss, stir_shaken_stisp_service_t *stisp, stir_shaken_http_req_t *http_req);
-**/
+ */
+stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, const char *fingerprint);
 
 // Utility
 

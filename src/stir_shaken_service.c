@@ -139,33 +139,21 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 }
 
 /**
- * @api - (in) STI-SP's api interface to STI-PA
  * @http_req - (out) will contain HTTP response
- *
- *
- * MOVE to FS
- *
-stir_shaken_status_t stir_shaken_stisp_get_code_token(stir_shaken_context_t *ss, EVP_PKEY *public_key, stir_shaken_http_req_t *http_req)
+ * @url - (in) POST url
+ * @fingerprint - POST body, should be fingerprint of the STI-SP's public key certificate
+ */
+stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, const char *fingerprint)
 {
-    stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
-	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-	X509					*x = NULL;
-	char					*fingerprint = NULL;
-	stir_shaken_stipa_api_t *api = NULL;
-
-	if (!public_key || !http_req) {
+	if (!http_req || !url || !fingerprint) {
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
-	api = &stisp->settings.stipa_interface.api;
 
 	memset(http_req, 0, sizeof(*http_req));
 
 	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
 	http_req->data = fingerprint;
-	http_req->url = api->url;	// TODO create complete SP Code request from url and sp_code_req
-
-	// Get public key certificate fingerprint
-	x = stir_shaken_make_cert_from_public_key(ss, stisp->keys.public_key);
+	http_req->url = url;	// this should be similar to http://my-sti-pa.com/sti-pa/account/:id/token
 
 	return stir_shaken_make_http_req(ss, http_req);
-}**/
+}
