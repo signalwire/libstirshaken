@@ -152,7 +152,8 @@ stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_conte
 	memset(http_req, 0, sizeof(*http_req));
 
 	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
-	http_req->data = fingerprint;
+	http_req->data = fingerprint; // TODO change to JSON if it is not JSON already
+	http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
 	http_req->url = url;	// this should be similar to http://my-sti-pa.com/sti-pa/account/:id/token
 
 	return stir_shaken_make_http_req(ss, http_req);

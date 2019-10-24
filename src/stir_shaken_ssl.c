@@ -657,7 +657,7 @@ stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, 
 {
 	const EVP_MD *evp = NULL;
 	unsigned int i = 0, j = 0;
-	char raw[EVP_MAX_MD_SIZE] = { 0 };
+	uint8_t raw[EVP_MAX_MD_SIZE] = { 0 };
 
 	if (!x509 || !buf || !buflen || !(evp = EVP_get_digestbyname(digest_name))) {
 		return STIR_SHAKEN_STATUS_FALSE;
@@ -670,7 +670,7 @@ stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, 
 	}
 
 	for (i = 0, j = 0; i < *buflen; ++i, j += 3) {
-		sprintf((char*) &buf[j], (i == (*buflen - 1)) ? "%.2X" : "%.2X:", raw[i]);
+		sprintf((char*) &buf[j], (i == (*buflen - 1)) ? "%.2X" : "%.2X:", raw[i] & 0xff);
 	}
 	*(&buf[j - 1]) = '\0';
 
