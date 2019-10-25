@@ -262,7 +262,6 @@ typedef enum stir_shaken_http_req_content_type {
 
 typedef struct stir_shaken_http_response_s {
 	long			code;
-	void			*data;
 	mem_chunk_t		mem;
 	curl_slist_t	*headers;
 } stir_shaken_http_response_t;

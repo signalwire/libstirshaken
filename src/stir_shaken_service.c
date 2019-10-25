@@ -110,7 +110,18 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 		default:
 			break;
 	}
-	
+
+	if (headers) {
+		curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, headers);
+	}
+
+	// TODO remove
+	if (http_req->data) {
+		printf("STIR-Shaken: making HTTP (%d) call:\nurl:\t%s\ndata:\t%s\n", http_req->type, http_req->url, http_req->data);
+	} else {
+		printf("STIR-Shaken: making HTTP (%d) call:\nurl:\t%s\n", http_req->type, http_req->url);
+	}
+
 	res = curl_easy_perform(curl_handle);
 
 	if (res != CURLE_OK) {
