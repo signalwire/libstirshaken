@@ -154,7 +154,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
  * @url - (in) POST url
  * @fingerprint - POST body, should be fingerprint of the STI-SP's public key certificate
  */
-stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, const char *fingerprint)
+stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, void *fingerprint)
 {
 	if (!http_req || !url || !fingerprint) {
 		return STIR_SHAKEN_STATUS_FALSE;
