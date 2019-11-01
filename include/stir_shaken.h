@@ -12,6 +12,9 @@
 // For cert downloading
 #include <curl/curl.h>
 
+// For JSON Web Token
+#include <jwt.h>
+
 #include <pthread.h>
 
 #define PBUF_LEN 800
@@ -222,6 +225,19 @@ typedef struct stir_shaken_passport_params_s {
 	const char  *origid;
 	uint8_t     ppt_ignore;     // Should skip ppt field?
 } stir_shaken_passport_params_t;
+
+/**
+ * New PASSporT implementation will simply wrap @jwt.
+ */
+typedef struct stir_shaken_jwt_passport {
+	jwt_t *jwt;			// PASSport JSON Web Token
+} stir_shaken_jwt_passport_t;
+
+stir_shaken_status_t		stir_shaken_jwt_passport_jwt_init(jwt_t *jwt, stir_shaken_passport_params_t *params);
+jwt_t*						stir_shaken_jwt_passport_jwt_create_new(stir_shaken_passport_params_t *params);
+stir_shaken_status_t		stir_shaken_jwt_passport_init(stir_shaken_jwt_passport_t *where, stir_shaken_passport_params_t *params);
+stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_passport_params_t *params);
+stir_shaken_status_t		stir_shaken_jwt_passport_sign(stir_shaken_jwt_passport_t *passport, EVP_PKEY *pkey);
 
 typedef struct stir_shaken_csr_s {
 	X509_REQ    *req;

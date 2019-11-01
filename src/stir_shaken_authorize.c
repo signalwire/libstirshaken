@@ -398,6 +398,70 @@ err:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
+stir_shaken_status_t		stir_shaken_jwt_passport_jwt_init(jwt_t *jwt, stir_shaken_passport_params_t *params)
+{
+	if (!jwt) {
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (params) {
+
+		// TODO Produce @jwt from @params
+	}
+	
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+jwt_t*	stir_shaken_jwt_passport_jwt_create_new(stir_shaken_passport_params_t *params)
+{
+	jwt_t *jwt = NULL;
+
+	if (jwt_new(&jwt) != 0) {
+		return NULL;
+	}
+
+	if (stir_shaken_jwt_passport_jwt_init(jwt, params) != STIR_SHAKEN_STATUS_OK) {
+		jwt_free(jwt);
+		return NULL;
+	}
+
+	return jwt;
+}
+
+stir_shaken_status_t		stir_shaken_jwt_passport_init(stir_shaken_jwt_passport_t *where, stir_shaken_passport_params_t *params)
+{
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_passport_params_t *params)
+{
+	stir_shaken_jwt_passport_t	*passport = NULL;
+
+	passport = malloc(sizeof(*passport));
+	if (!passport) {
+		return NULL;
+	}
+
+	if (params) {
+
+		// Create JWT from params
+		passport->jwt = stir_shaken_jwt_passport_jwt_create_new(params);
+		if (!passport->jwt) {
+			free(passport);
+			return NULL;
+		}
+	}
+
+	return passport;
+}
+
+stir_shaken_status_t		stir_shaken_jwt_passport_sign(stir_shaken_jwt_passport_t *passport, EVP_PKEY *pkey)
+{
+	if (!passport || !pkey) return STIR_SHAKEN_STATUS_TERM;
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 void stir_shaken_passport_destroy(stir_shaken_passport_t *passport)
 {
     if (!passport) {
