@@ -398,7 +398,7 @@ err:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t		stir_shaken_jwt_passport_jwt_init(jwt_t *jwt, stir_shaken_passport_params_t *params)
+stir_shaken_status_t stir_shaken_jwt_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params)
 {
 	if (!jwt) {
 		return STIR_SHAKEN_STATUS_TERM;
@@ -407,48 +407,126 @@ stir_shaken_status_t		stir_shaken_jwt_passport_jwt_init(jwt_t *jwt, stir_shaken_
 	if (params) {
 
 		// TODO Produce @jwt from @params
+
+		const char *x5u = params->x5u;
+		const char *attest = params->attest;
+		const char *desttn_key = params->desttn_key;
+		const char *desttn_val = params->desttn_val;
+		int iat = params->iat;
+		const char *origtn_key = params->origtn_key;
+		const char *origtn_val = params->origtn_val;
+		const char *origid = params->origid;
+		uint8_t ppt_ignore = params->ppt_ignore;
+
+		// TODO set key
+		unsigned char key256[32] = "012345678901234567890123456789XY";
+
+		// Header
+
+		/**if (jwt_add_header(jwt, "alg", "es256") != 0) {
+			return STIR_SHAKEN_STATUS_ERR;
+		}**/
+
+		printf("SS JWT:\n%s\n", jwt_dump_str(jwt, 1));
+		
+		/**if(jwt_set_alg(jwt, JWT_ALG_ES256, key256, sizeof(key256)) != 0) {
+			return STIR_SHAKEN_STATUS_ERR;
+		}
+		printf("SS JWT ALG:\n%s\n", jwt_dump_str(jwt, 1));**/
+
+		if (jwt_add_header(jwt, "ppt", "shaken") != 0) {
+			return STIR_SHAKEN_STATUS_ERR;
+		}
+		printf("SS JWT PPT:\n%s\n", jwt_dump_str(jwt, 1));
+
+		jwt_del_headers(jwt, NULL);
+		printf("SS JWT DEL all:\n%s\n", jwt_dump_str(jwt, 1));
+		jwt_del_headers(jwt, "typ");
+		printf("SS JWT DEL typ:\n%s\n", jwt_dump_str(jwt, 1));
+
+		if (jwt_add_header(jwt, "typ", "passport") != 0) {
+			return STIR_SHAKEN_STATUS_ERR;
+		}
+		printf("SS JWT typ:\n%s\n", jwt_dump_str(jwt, 1));
+		if (jwt_add_header(jwt, "x5u", x5u) != 0) {
+			return STIR_SHAKEN_STATUS_ERR;
+		}
+		printf("SS JWT x5u:\n%s\n", jwt_dump_str(jwt, 1));
+		
+		if(jwt_set_alg(jwt, JWT_ALG_ES256, key256, sizeof(key256)) != 0) {
+			return STIR_SHAKEN_STATUS_ERR;
+		}
+		printf("SS JWT ALG:\n%s\n", jwt_dump_str(jwt, 1));
+
+		// Payload
+
+		if (jwt_add_header_int(jwt, "iat", (long)time(NULL)) != 0) {
+		}
 	}
-	
 
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-jwt_t*	stir_shaken_jwt_passport_jwt_create_new(stir_shaken_passport_params_t *params)
+jwt_t* stir_shaken_jwt_passport_jwt_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params)
 {
 	jwt_t *jwt = NULL;
 
 	if (jwt_new(&jwt) != 0) {
+
+		stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
 		return NULL;
 	}
 
-	if (stir_shaken_jwt_passport_jwt_init(jwt, params) != STIR_SHAKEN_STATUS_OK) {
-		jwt_free(jwt);
-		return NULL;
+	if (params) {
+
+		if (stir_shaken_jwt_passport_jwt_init(ss, jwt, params) != STIR_SHAKEN_STATUS_OK) {
+			jwt_free(jwt);
+			stir_shaken_set_error_if_clear(ss, "Cannot init JWT", STIR_SHAKEN_ERROR_GENERAL);
+			return NULL;
+		}
 	}
 
 	return jwt;
 }
 
-stir_shaken_status_t		stir_shaken_jwt_passport_init(stir_shaken_jwt_passport_t *where, stir_shaken_passport_params_t *params)
+stir_shaken_status_t stir_shaken_jwt_passport_init(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *where, stir_shaken_passport_params_t *params)
 {
+	if (!where) return STIR_SHAKEN_STATUS_TERM;
+
+	if (!where->jwt) {
+		
+		if ((where->jwt = stir_shaken_jwt_passport_jwt_create_new(ss, params)) == NULL) {
+			return STIR_SHAKEN_STATUS_RESTART;
+		}
+
+	} else {
+
+		if (stir_shaken_jwt_passport_jwt_init(ss, where->jwt, params) != STIR_SHAKEN_STATUS_OK) {
+			stir_shaken_set_error_if_clear(ss, "Cannot init JWT", STIR_SHAKEN_ERROR_GENERAL);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+	}
+
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_passport_params_t *params)
+stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params)
 {
 	stir_shaken_jwt_passport_t	*passport = NULL;
 
 	passport = malloc(sizeof(*passport));
 	if (!passport) {
+		stir_shaken_set_error_if_clear(ss, "Out of memory", STIR_SHAKEN_ERROR_GENERAL);
 		return NULL;
 	}
 
 	if (params) {
 
 		// Create JWT from params
-		passport->jwt = stir_shaken_jwt_passport_jwt_create_new(params);
+		passport->jwt = stir_shaken_jwt_passport_jwt_create_new(ss, params);
 		if (!passport->jwt) {
 			free(passport);
+			stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
 			return NULL;
 		}
 	}
@@ -456,10 +534,16 @@ stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_pass
 	return passport;
 }
 
-stir_shaken_status_t		stir_shaken_jwt_passport_sign(stir_shaken_jwt_passport_t *passport, EVP_PKEY *pkey)
+stir_shaken_status_t stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, EVP_PKEY *pkey)
 {
 	if (!passport || !pkey) return STIR_SHAKEN_STATUS_TERM;
 	return STIR_SHAKEN_STATUS_OK;
+}
+
+void stir_shaken_jwt_passport_destroy(stir_shaken_jwt_passport_t *passport)
+{
+	if (!passport) return;
+	jwt_free(passport->jwt);
 }
 
 void stir_shaken_passport_destroy(stir_shaken_passport_t *passport)
