@@ -1160,6 +1160,8 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 	EVP_MD_CTX      *mdctx = NULL;
 	int             i = 0;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	unsigned char	*tmpsig = NULL;
+	size_t			tmpsig_len = 0;
 
 
 	stir_shaken_clear_error(ss);
@@ -1192,13 +1194,88 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 		stir_shaken_set_error(ss, "Do sign data with digest: Error in EVP_DigestSignUpdate", STIR_SHAKEN_ERROR_SSL);
 		goto err;
 	}
-	i = EVP_DigestSignFinal(mdctx, out, outlen);
-	if (i == 0 || (*outlen >= PBUF_LEN - 1)) {
+	
+	/* First, call EVP_DigestSignFinal with a NULL sig parameter to get length
+	 * of sig. Length is returned in slen */
+	if (EVP_DigestSignFinal(mdctx, NULL, &tmpsig_len) != 1) {
+		stir_shaken_set_error(ss, "Do sign data with digest: Error in EVP_DigestSignFinal while getting sig len", STIR_SHAKEN_ERROR_SSL);
+		goto err;
+	}
+
+	/* Allocate memory for signature based on returned size */
+	tmpsig = alloca(tmpsig_len);
+	if (!tmpsig) {
+		stir_shaken_set_error(ss, "Do sign data with digest: Cannot allocate memory for signature", STIR_SHAKEN_ERROR_SSL);
+		goto err;
+	}
+
+	i = EVP_DigestSignFinal(mdctx, tmpsig, &tmpsig_len);
+	if (i == 0 || (tmpsig_len >= PBUF_LEN - 1)) {
 		stir_shaken_set_error(ss, "Do sign data with digest: Error in EVP_DigestSignFinal", STIR_SHAKEN_ERROR_SSL);
 		goto err;
 	}
-	out[*outlen] = '\0';
+	tmpsig[tmpsig_len] = '\0';
 	EVP_MD_CTX_destroy(mdctx);
+
+	if (tmpsig_len > 0) {
+		
+		unsigned int	degree = 0, bn_len = 0, r_len = 0, s_len = 0, buf_len = 0;
+		unsigned char	*raw_buf = NULL, *sig = NULL;
+		size_t			slen = 0;
+		EC_KEY			*ec_key = NULL;
+		ECDSA_SIG		*ec_sig = NULL;
+		const BIGNUM	*ec_sig_r = NULL;
+		const BIGNUM	*ec_sig_s = NULL;
+
+		/* For EC we need to convert to a raw format of R/S. */
+
+		/* Get the actual ec_key */
+		ec_key = EVP_PKEY_get1_EC_KEY(pkey);
+		if (ec_key == NULL) {
+			stir_shaken_set_error(ss, "Do sign data with digest: Cannot get EC key from EVP key", STIR_SHAKEN_ERROR_SSL);
+			goto err;
+		}
+
+		degree = EC_GROUP_get_degree(EC_KEY_get0_group(ec_key));
+
+		EC_KEY_free(ec_key);
+
+		/* Get the sig from the DER encoded version. */
+		ec_sig = d2i_ECDSA_SIG(NULL, (const unsigned char **) &tmpsig, tmpsig_len);
+		if (ec_sig == NULL) {
+			stir_shaken_set_error(ss, "Do sign data with digest: Cannot get signature from DER", STIR_SHAKEN_ERROR_SSL);
+			goto err;
+		}
+
+		ECDSA_SIG_get0(ec_sig, &ec_sig_r, &ec_sig_s);
+		r_len = BN_num_bytes(ec_sig_r);
+		s_len = BN_num_bytes(ec_sig_s);
+		bn_len = (degree + 7) / 8;
+		if ((r_len > bn_len) || (s_len > bn_len)) {
+			stir_shaken_set_error(ss, "Do sign data with digest: Algorithm/key/method  misconfiguration", STIR_SHAKEN_ERROR_SSL);
+			goto err;
+		}
+
+		buf_len = 2 * bn_len;
+		raw_buf = alloca(buf_len);
+		if (raw_buf == NULL) {
+			stir_shaken_set_error(ss, "Do sign data with digest: Algorithm/key/method  misconfiguration", STIR_SHAKEN_ERROR_SSL);
+			goto err;
+		}
+
+		/* Pad the bignums with leading zeroes. */
+		memset(raw_buf, 0, buf_len);
+		BN_bn2bin(ec_sig_r, raw_buf + bn_len - r_len);
+		BN_bn2bin(ec_sig_s, raw_buf + buf_len - s_len);
+
+		if (buf_len > *outlen) {
+			stir_shaken_set_error(ss, "Do sign data with digest: Output buffer too short", STIR_SHAKEN_ERROR_GENERAL);
+			goto err;
+		}
+
+		memcpy(out, raw_buf, buf_len);
+		*outlen = buf_len;
+	}
 
 	return STIR_SHAKEN_STATUS_OK;
 
