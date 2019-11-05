@@ -1259,7 +1259,7 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 		buf_len = 2 * bn_len;
 		raw_buf = alloca(buf_len);
 		if (raw_buf == NULL) {
-			stir_shaken_set_error(ss, "Do sign data with digest: Algorithm/key/method  misconfiguration", STIR_SHAKEN_ERROR_SSL);
+			stir_shaken_set_error(ss, "Do sign data with digest: Out of mem", STIR_SHAKEN_ERROR_GENERAL);
 			goto err;
 		}
 
@@ -1294,6 +1294,8 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
 	int res = -1;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	const char      *digest_name = "sha256";
+	unsigned char	*tmpsig = NULL;
+	size_t			tmpsig_len = 0;
 
 	stir_shaken_clear_error(ss);
 
@@ -1304,6 +1306,64 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
 
 	bio_err = BIO_new(BIO_s_file());
 	BIO_set_fp(bio_err, stdout, BIO_NOCLOSE | BIO_FP_TEXT);
+	
+	/* Convert EC sigs back to ASN1. */
+	if (sig) {
+
+		ECDSA_SIG *ec_sig = NULL;
+		BIGNUM *ec_sig_r = NULL;
+		BIGNUM *ec_sig_s = NULL;
+		unsigned int degree = 0, bn_len = 0;
+		unsigned char *p = NULL;
+		EC_KEY *ec_key = NULL;
+
+		ec_sig = ECDSA_SIG_new();
+		if (ec_sig == NULL) {
+			stir_shaken_set_error(ss, "Do verify data: Cannot create EC signature", STIR_SHAKEN_ERROR_SSL);
+			goto err;
+		}
+
+		/* Get the actual ec_key */
+		ec_key = EVP_PKEY_get1_EC_KEY(public_key);
+		if (ec_key == NULL) {
+			stir_shaken_set_error(ss, "Do verify data: Cannot create EC key", STIR_SHAKEN_ERROR_SSL);
+			goto err;
+		}
+
+		degree = EC_GROUP_get_degree(EC_KEY_get0_group(ec_key));
+
+		EC_KEY_free(ec_key);
+
+		bn_len = (degree + 7) / 8;
+		if ((bn_len * 2) != siglen) {
+			stir_shaken_set_error(ss, "Do verify data: Bad EC key", STIR_SHAKEN_ERROR_SSL);
+			goto err;
+		}
+
+		ec_sig_r = BN_bin2bn(sig, bn_len, NULL);
+		ec_sig_s = BN_bin2bn(sig + bn_len, bn_len, NULL);
+		if (ec_sig_r  == NULL || ec_sig_s == NULL) {
+			stir_shaken_set_error(ss, "Do sign data with digest: Algorithm/key/method  misconfiguration", STIR_SHAKEN_ERROR_SSL);
+			goto err;
+		}
+
+		ECDSA_SIG_set0(ec_sig, ec_sig_r, ec_sig_s);
+
+		tmpsig_len = i2d_ECDSA_SIG(ec_sig, NULL);
+		tmpsig = alloca(tmpsig_len);
+		if (tmpsig == NULL) {
+			stir_shaken_set_error(ss, "Do sign data with digest: Out of mem", STIR_SHAKEN_ERROR_GENERAL);
+			goto err;
+		}
+
+		p = tmpsig;
+		tmpsig_len = i2d_ECDSA_SIG(ec_sig, &p);
+
+		if (tmpsig_len == 0) {
+			stir_shaken_set_error(ss, "Do sign data with digest: Algorithm/key/method  misconfiguration", STIR_SHAKEN_ERROR_SSL);
+			goto err;
+		}
+	}
 
 	md = EVP_get_digestbyname(digest_name);
 	if (!md) {
@@ -1330,7 +1390,7 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
 		goto err;
 	}
 
-	r = EVP_DigestVerifyFinal(mctx, (unsigned char*)sig, (unsigned int)siglen);
+	r = EVP_DigestVerifyFinal(mctx, (unsigned char*)tmpsig, (unsigned int)tmpsig_len);
 	if (r > 0) {
 		// OK
 		res = 0;
