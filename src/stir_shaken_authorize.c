@@ -423,44 +423,134 @@ stir_shaken_status_t stir_shaken_jwt_passport_jwt_init(stir_shaken_context_t *ss
 
 		// Header
 
-		/**if (jwt_add_header(jwt, "alg", "es256") != 0) {
-			return STIR_SHAKEN_STATUS_ERR;
-		}**/
-
-		printf("SS JWT:\n%s\n", jwt_dump_str(jwt, 1));
-		
-		/**if(jwt_set_alg(jwt, JWT_ALG_ES256, key256, sizeof(key256)) != 0) {
-			return STIR_SHAKEN_STATUS_ERR;
-		}
-		printf("SS JWT ALG:\n%s\n", jwt_dump_str(jwt, 1));**/
-
 		if (jwt_add_header(jwt, "ppt", "shaken") != 0) {
 			return STIR_SHAKEN_STATUS_ERR;
 		}
-		printf("SS JWT PPT:\n%s\n", jwt_dump_str(jwt, 1));
-
-		jwt_del_headers(jwt, NULL);
-		printf("SS JWT DEL all:\n%s\n", jwt_dump_str(jwt, 1));
-		jwt_del_headers(jwt, "typ");
-		printf("SS JWT DEL typ:\n%s\n", jwt_dump_str(jwt, 1));
 
 		if (jwt_add_header(jwt, "typ", "passport") != 0) {
 			return STIR_SHAKEN_STATUS_ERR;
 		}
-		printf("SS JWT typ:\n%s\n", jwt_dump_str(jwt, 1));
+
 		if (jwt_add_header(jwt, "x5u", x5u) != 0) {
 			return STIR_SHAKEN_STATUS_ERR;
 		}
-		printf("SS JWT x5u:\n%s\n", jwt_dump_str(jwt, 1));
 		
 		if(jwt_set_alg(jwt, JWT_ALG_ES256, key256, sizeof(key256)) != 0) {
 			return STIR_SHAKEN_STATUS_ERR;
 		}
-		printf("SS JWT ALG:\n%s\n", jwt_dump_str(jwt, 1));
 
 		// Payload
 
-		if (jwt_add_header_int(jwt, "iat", (long)time(NULL)) != 0) {
+		if (jwt_add_grant_int(jwt, "iat", iat) != 0) {
+			return STIR_SHAKEN_STATUS_ERR;
+		}
+
+		if (attest && (*attest == 'A' || *attest == 'B' || *attest == 'C')) {
+			if (jwt_add_grant(jwt, "attest", attest) != 0) {
+				return STIR_SHAKEN_STATUS_ERR;
+			}
+		}
+
+		if (origid) {
+			if (jwt_add_grant(jwt, "origid", origid) != 0) {
+				return STIR_SHAKEN_STATUS_ERR;
+			}
+		}
+
+		if (!origtn_key || !origtn_val) {
+
+			return STIR_SHAKEN_STATUS_ERR;
+
+		} else {
+
+			cJSON *orig = NULL, *tn = NULL, *e = NULL;
+			char *jstr = NULL;
+
+			orig = cJSON_CreateObject();
+			if (!orig) {
+				stir_shaken_set_error(ss, "Passport create json: Error in cjson, @orig", STIR_SHAKEN_ERROR_CJSON);
+				return STIR_SHAKEN_STATUS_ERR;
+			}
+
+			if (!strcmp(origtn_key, "uri")) {
+			
+				tn = cJSON_CreateArray();
+				if (!tn) {
+					stir_shaken_set_error(ss, "Passport create json: Error in cjson, @origtn [key]", STIR_SHAKEN_ERROR_CJSON);
+					cJSON_Delete(orig);
+					return STIR_SHAKEN_STATUS_ERR;
+				}
+				cJSON_AddItemToObject(orig, origtn_key, tn);
+
+				e = cJSON_CreateString(origtn_val);
+				if (!e) {
+					stir_shaken_set_error(ss, "Passport create json: Error in cjson, @origtn [val]", STIR_SHAKEN_ERROR_CJSON);
+					cJSON_Delete(orig);
+					return STIR_SHAKEN_STATUS_ERR;
+				}
+				cJSON_AddItemToArray(tn, e);
+			
+			} else {
+			
+				cJSON_AddStringToObject(orig, "tn", origtn_val);
+			}
+
+			jstr = cJSON_PrintUnformatted(orig);
+			if (!jstr || (jwt_add_grant(jwt, "orig", jstr) != 0)) {
+				cJSON_Delete(orig);
+				return STIR_SHAKEN_STATUS_ERR;
+			}
+
+			cJSON_Delete(orig);
+			free(jstr);
+		}
+	
+		if (!desttn_key || !desttn_val) {
+
+			return STIR_SHAKEN_STATUS_ERR;
+
+		} else {
+
+			cJSON *dest = NULL, *tn = NULL, *e = NULL;
+			char *jstr = NULL;
+
+			dest = cJSON_CreateObject();
+			if (!dest) {
+				stir_shaken_set_error(ss, "Passport create json: Error in cjson, @dest", STIR_SHAKEN_ERROR_CJSON);
+				return STIR_SHAKEN_STATUS_ERR;
+			}
+
+			if (!strcmp(desttn_key, "uri")) {
+
+				tn = cJSON_CreateArray();
+				if (!tn) {
+					stir_shaken_set_error(ss, "Passport create json: Error in cjson, @desttn [key]", STIR_SHAKEN_ERROR_CJSON);
+					cJSON_Delete(dest);
+					return STIR_SHAKEN_STATUS_ERR;
+				}
+				cJSON_AddItemToObject(dest, desttn_key, tn);
+
+				e = cJSON_CreateString(desttn_val);
+				if (!e) {
+					stir_shaken_set_error(ss, "Passport create json: Error in cjson, @desttn [val]", STIR_SHAKEN_ERROR_CJSON);
+					cJSON_Delete(dest);
+					return STIR_SHAKEN_STATUS_ERR;
+				}
+				cJSON_AddItemToArray(tn, e);
+
+			} else {
+
+				cJSON_AddStringToObject(dest, "tn", desttn_val);
+			}
+
+			jstr = cJSON_PrintUnformatted(dest);
+			if (!jstr || (jwt_add_grant(jwt, "dest", jstr) != 0)) {
+				cJSON_Delete(dest);
+				return STIR_SHAKEN_STATUS_ERR;
+			}
+
+			cJSON_Delete(dest);
+			free(jstr);
 		}
 	}
 
