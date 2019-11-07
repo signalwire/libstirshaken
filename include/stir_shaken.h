@@ -19,6 +19,7 @@
 
 #define PBUF_LEN 800
 #define STIR_SHAKEN_ERROR_BUF_LEN 1500
+#define STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN 1000
 
 #include <openssl/crypto.h>
 #include <openssl/pem.h>
@@ -233,12 +234,12 @@ typedef struct stir_shaken_jwt_passport {
 	jwt_t *jwt;			// PASSport JSON Web Token
 } stir_shaken_jwt_passport_t;
 
-stir_shaken_status_t		stir_shaken_jwt_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params);
-jwt_t*						stir_shaken_jwt_passport_jwt_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params);
-stir_shaken_status_t		stir_shaken_jwt_passport_init(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *where, stir_shaken_passport_params_t *params);
-stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params);
+stir_shaken_status_t		stir_shaken_jwt_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
+jwt_t*						stir_shaken_jwt_passport_jwt_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
+stir_shaken_status_t		stir_shaken_jwt_passport_init(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *where, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
+stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 void						stir_shaken_jwt_passport_destroy(stir_shaken_jwt_passport_t *passport);
-stir_shaken_status_t		stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, EVP_PKEY *pkey);
+stir_shaken_status_t stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen, char **out);
 
 typedef struct stir_shaken_csr_s {
 	X509_REQ    *req;
@@ -267,6 +268,8 @@ typedef struct stir_shaken_ssl_keys {
     EC_KEY		*ec_key;
     EVP_PKEY	*private_key;
     EVP_PKEY	*public_key;
+	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
+	uint32_t		priv_raw_len;
 } stir_shaken_ssl_keys_t;
 
 typedef struct curl_slist curl_slist_t;
@@ -336,7 +339,7 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 /**
  * Generate new keys. Always removes old files.
  */
-stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name);
+stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name, unsigned char *priv_raw, uint32_t *priv_raw_len);
 
 /**
  * Call SSL destructors and release memory used for SSL keys.
@@ -384,7 +387,7 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *s
 stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_mem_through_file(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_file(stir_shaken_context_t *ss, X509 **x, const char *cert_tmp_name);
-stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey);
+stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey, unsigned char *priv_raw, uint32_t *priv_raw_len);
 stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss);
 void stir_shaken_deinit_ssl(void);
 

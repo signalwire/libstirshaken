@@ -32,6 +32,9 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(voi
     EVP_PKEY *private_key = NULL;
     EVP_PKEY *public_key = NULL;
 
+	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
+	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
+
 
 	sprintf(private_key_name, "%s%c%s", path, '/', "u5_private_key.pem");
 	sprintf(public_key_name, "%s%c%s", path, '/', "u5_public_key.pem");
@@ -39,7 +42,7 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(voi
     printf("=== Unit testing: STIR/Shaken SIP Identity Header (keep passport) creation [stir_shaken_unit_test_sip_identity_header_keep_passport]\n\n");
     
     // Generate new keys for this test
-    status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name);
+    status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
     stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key\n\n");
     stir_shaken_assert(private_key != NULL, "Err, failed to generate private key");

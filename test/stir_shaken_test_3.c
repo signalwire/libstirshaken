@@ -33,6 +33,9 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
     unsigned char signature[BUF_LEN] = {0};
     int len = 0, i = -1;
 
+	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
+	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
+
     stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat, .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid, .ppt_ignore = ppt_ignore};
 
     
@@ -42,7 +45,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
     printf("=== Unit testing: STIR/Shaken PASSporT create/verify signature [stir_shaken_unit_test_passport_create_verify_signature]\n\n");
     
     // Generate new keys for this test
-    status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name);
+    status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
     stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key\n\n");
     stir_shaken_assert(private_key != NULL, "Err, failed to generate private key");

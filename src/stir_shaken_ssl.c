@@ -873,7 +873,7 @@ stir_shaken_status_t stir_shaken_load_cert_from_file(stir_shaken_context_t *ss, 
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey)
+stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey, unsigned char *priv_raw, uint32_t *priv_raw_len)
 {
 	X509            *x = NULL;
 	BIO             *in = NULL;
@@ -948,6 +948,55 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 	}
 	BIO_free(in);
 
+	if (priv_raw) {
+
+		FILE *fp = NULL;
+		uint32_t raw_key_len = 0, sz = 0;
+
+		if (!priv_raw_len || *priv_raw_len == 0) {
+			
+			sprintf(err_buf, "Generate keys: Buffer for %s invalid", private_key_name);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+			goto err;
+		}
+
+		// Read raw private key into buffer
+		fp = fopen(private_key_name, "r");
+		if (!fp) {
+
+			sprintf(err_buf, "Generate keys: Cannot open private key %s for reading", private_key_name);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+			goto err;
+		}
+
+		fseek(fp, 0, SEEK_END);
+		sz = ftell(fp);
+		rewind(fp);
+		
+		if (*priv_raw_len <= sz) {
+			
+			sprintf(err_buf, "Generate keys: Buffer for %s too short", private_key_name);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+			goto err;
+		}
+
+		// TODO remove
+		printf("Reading raw key from: %s, which is %zu bytes\n", private_key_name, sz);
+
+		raw_key_len = fread(priv_raw, 1, *priv_raw_len, fp);
+		if (raw_key_len != sz || ferror(fp)) {
+
+			sprintf(err_buf, "Generate keys: Error reading private key %s, which is %zu bytes", private_key_name, sz);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+			goto err;
+		}
+
+		fclose(fp);
+
+		priv_raw[raw_key_len] = '\0';
+		*priv_raw_len = raw_key_len;
+	}
+
 
 	in = BIO_new(BIO_s_file());
 	if (!in) {
@@ -986,13 +1035,14 @@ err:
 }
 
 
-stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name)
+stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name, unsigned char *priv_raw, uint32_t *priv_raw_len)
 {
 	EC_KEY                  *ec_key = NULL;
 	EVP_PKEY                *pk = NULL;
 	BIO                     *out = NULL, *bio = NULL, *key = NULL;
 	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	int						pkey_type = EVP_PKEY_EC;
+	FILE					*fp = NULL;
 
 
 	stir_shaken_clear_error(ss);
@@ -1064,7 +1114,7 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 	bio = NULL;
 
 	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Saved private key: %s\n", private_key_full_name); printf("STIR-Shaken: SSL: Saved public key: %s\n", public_key_full_name);
-
+	
 	key = BIO_new(BIO_s_file());
 	if (BIO_read_filename(key, private_key_full_name) <= 0) {
 		stir_shaken_set_error(ss, "Generate keys: SSL ERR: Err, bio read priv key", STIR_SHAKEN_ERROR_SSL);
@@ -1084,7 +1134,6 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 
 		sprintf(err_buf, "Generate keys: Private key is not EVP_PKEY_EC type");
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-
 		goto fail;
 	}
 	
@@ -1093,6 +1142,55 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 
 	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Loaded pkey from: %s\n", private_key_full_name);
 	BIO_free_all(key);
+
+	if (priv_raw) {
+
+		FILE *fp = NULL;
+		uint32_t raw_key_len = 0, sz = 0;
+
+		if (!priv_raw_len || *priv_raw_len == 0) {
+			
+			sprintf(err_buf, "Generate keys: Buffer for %s invalid", private_key_full_name);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+			goto fail;
+		}
+
+		// Read raw private key into buffer
+		fp = fopen(private_key_full_name, "r");
+		if (!fp) {
+
+			sprintf(err_buf, "Generate keys: Cannot open private key %s for reading", private_key_full_name);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+			goto fail;
+		}
+
+		fseek(fp, 0, SEEK_END);
+		sz = ftell(fp);
+		rewind(fp);
+		
+		if (*priv_raw_len <= sz) {
+			
+			sprintf(err_buf, "Generate keys: Buffer for %s too short", private_key_full_name);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+			goto fail;
+		}
+
+		// TODO remove
+		printf("Reading raw key from: %s, which is %zu bytes\n", private_key_full_name, sz);
+
+		raw_key_len = fread(priv_raw, 1, *priv_raw_len, fp);
+		if (raw_key_len != sz || ferror(fp)) {
+
+			sprintf(err_buf, "Generate keys: Error reading private key %s, which is %zu bytes", private_key_full_name, sz);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+			goto fail;
+		}
+
+		fclose(fp);
+
+		priv_raw[raw_key_len] = '\0';
+		*priv_raw_len = raw_key_len;
+	}
 
 	key = BIO_new(BIO_s_file());
 	if (BIO_read_filename(key, public_key_full_name) <= 0) {

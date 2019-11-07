@@ -38,6 +38,9 @@ stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void)
     const char *spoofed_origtn_val = "07643866222";
     cJSON *jwt = NULL, *jPayload = NULL, *orig = NULL;
 
+	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
+	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
+
 
 	sprintf(private_key_name, "%s%c%s", path, '/', "u9_private_key.pem");
 	sprintf(public_key_name, "%s%c%s", path, '/', "u9_public_key.pem");
@@ -49,7 +52,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void)
     printf("=== Unit testing: STIR/Shaken Verification against good and spoofed SIP Identity Header [stir_shaken_unit_test_verify]\n\n");
     
     // Generate new keys for this test
-    status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name);
+    status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
     stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key\n\n");
     stir_shaken_assert(private_key != NULL, "Err, failed to generate private key");

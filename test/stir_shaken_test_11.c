@@ -42,6 +42,9 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_passport_create(void)
     EVP_PKEY *private_key = NULL;
     EVP_PKEY *public_key = NULL;
 
+	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
+	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
+
     stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat, .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid, .ppt_ignore = ppt_ignore};
 
 	sprintf(private_key_name, "%s%c%s", path, '/', "u11_private_key.pem");
@@ -50,7 +53,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_passport_create(void)
     printf("=== Unit testing: STIR/Shaken PASSporT creation [stir_shaken_unit_test_jwt_passport_create]\n\n");
     
     // Generate new keys for this test
-	status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name);
+	status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);
 
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
 	stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key");
@@ -58,7 +61,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_passport_create(void)
 	stir_shaken_assert(public_key != NULL, "Err, failed to generate public key");
 
     /* Test */
-	status = stir_shaken_jwt_passport_init(NULL, &passport, &params);
+	status = stir_shaken_jwt_passport_init(NULL, &passport, &params, priv_raw, priv_raw_len);
 
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
     stir_shaken_assert(passport.jwt != NULL, "JWT has not been created");
@@ -66,8 +69,21 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_passport_create(void)
 	jwt_free_str(s); s = NULL;
 
     // Encode
-	printf("2. Encoded:\n%s\n", (s = jwt_encode_str(passport.jwt)));
-	free(s); s = NULL;
+	status = stir_shaken_jwt_passport_sign(NULL, &passport, NULL, 0, &s);
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign using ES 256");
+	stir_shaken_assert(s != NULL, "Failed to sign using ES 256, NULL string");
+	printf("2. Encoded:\n%s\n", s);
+	jwt_free_str(s); s = NULL;
+	
+	// Encode using supplied key
+	status = stir_shaken_jwt_passport_sign(NULL, &passport, priv_raw, priv_raw_len, &s);
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign using ES 256");
+	stir_shaken_assert(s != NULL, "Failed to sign using ES 256, NULL string");
+	printf("3. Encoded using supplied key:\n%s\n", s);
+	jwt_free_str(s); s = NULL;
+
+	printf("4. Encoded via jwt call:\n%s\n", (s = jwt_encode_str(passport.jwt)));
+	jwt_free_str(s); s = NULL;
 
 	stir_shaken_jwt_passport_destroy(&passport);
 	
