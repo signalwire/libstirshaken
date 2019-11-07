@@ -33,6 +33,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_passport_create(void)
 
 	jwt_t	*jwtpass = NULL;	// PASSporT as a JWT
     cJSON	*jsonpass = NULL;	// PASSporT as a JSON
+	char *s = NULL;
     
 	char private_key_name[300] = { 0 };
 	char public_key_name[300] = { 0 };
@@ -61,11 +62,12 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_passport_create(void)
 
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
     stir_shaken_assert(passport.jwt != NULL, "JWT has not been created");
-	printf("JWT:\n%s\n", jwt_dump_str(passport.jwt, 1));
+	printf("1. JWT:\n%s\n", (s = jwt_dump_str(passport.jwt, 1)));
+	jwt_free_str(s); s = NULL;
 
-    // 1. Test serialisation
-    printf("1. Test serialisation\n\n");
-    printf("OK\n\n");
+    // Encode
+	printf("2. Encoded:\n%s\n", (s = jwt_encode_str(passport.jwt)));
+	free(s); s = NULL;
 
 	stir_shaken_jwt_passport_destroy(&passport);
 	

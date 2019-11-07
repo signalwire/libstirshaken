@@ -992,6 +992,7 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 	EVP_PKEY                *pk = NULL;
 	BIO                     *out = NULL, *bio = NULL, *key = NULL;
 	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	int						pkey_type = EVP_PKEY_EC;
 
 
 	stir_shaken_clear_error(ss);
@@ -1078,6 +1079,17 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 		goto fail;
 	}
 	*priv = pk;
+	pkey_type = EVP_PKEY_id(pk);
+	if (pkey_type != EVP_PKEY_EC) {
+
+		sprintf(err_buf, "Generate keys: Private key is not EVP_PKEY_EC type");
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+
+		goto fail;
+	}
+	
+	// TODO remove
+	printf("Generate keys: Private key is EVP_PKEY_EC type\n");
 
 	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Loaded pkey from: %s\n", private_key_full_name);
 	BIO_free_all(key);
@@ -1096,6 +1108,17 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 		goto fail;
 	}
 	*pub = pk;
+	pkey_type = EVP_PKEY_id(pk);
+	if (pkey_type != EVP_PKEY_EC) {
+
+		sprintf(err_buf, "Generate keys: Public key is not EVP_PKEY_EC type");
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+
+		goto fail;
+	}
+	
+	// TODO remove
+	printf("Generate keys: Public key is EVP_PKEY_EC type\n");
 
 	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Loaded pkey from: %s\n", public_key_full_name);
 
