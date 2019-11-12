@@ -280,22 +280,23 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 
 	stir_shaken_clear_error(ss);
 
-    if (!passport || !passport->jwt || !key || !keylen) {
+    if (!passport || !passport->jwt) {
 		stir_shaken_set_error(ss, "SIP Identity create: Bad params", STIR_SHAKEN_ERROR_GENERAL);
-		return NULL;
-	}
-
-	info = jwt_get_header(passport->jwt, "info");
-	alg = jwt_get_header(passport->jwt, "alg");
-	ppt = jwt_get_header(passport->jwt, "ppt");
-
-	if (!info || !alg || !ppt) {
-		stir_shaken_set_error(ss, "SIP Identity create: Bad JWT", STIR_SHAKEN_ERROR_GENERAL);
 		return NULL;
 	}
 
 	if ((stir_shaken_jwt_passport_sign(ss, passport, key, keylen, &token) != STIR_SHAKEN_STATUS_OK) || !token) {
 		stir_shaken_set_error(ss, "SIP Identity create: Failed to sign JWT", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	info = jwt_get_header(passport->jwt, "x5u");
+	alg = jwt_get_header(passport->jwt, "alg");
+	ppt = jwt_get_header(passport->jwt, "ppt");
+
+	if (!info || !alg || !ppt) {
+		stir_shaken_set_error(ss, "SIP Identity create: Bad JWT", STIR_SHAKEN_ERROR_GENERAL);
+		jwt_free_str(token);
 		return NULL;
 	}
 
@@ -316,163 +317,6 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 }
 
 /*
- * Sign the call data with the @key, and keep pointer to created PASSporT (if @keep_passport is true). 
- * SIP Identity header is returned (and PASSporT if @keep_passport is true).
- * @ss - (in) context to set error if any
- * @params - (in) describe PASSporT content
- * @key - (in) EC raw key used to sign the JWT token 
- * @keylen - (in) length of the EC raw key used to sign the JWT token 
- * @passport - (out) will point to created PASSporT
- * @keep_passport - (in) false if PASSporT is not needed (is destroyed then inside this method after SIP Identity Header is returned), true if PASSporT should not be destroyed (@passport points then to it)
- *
- * Note: If @keep_passport is true, the PASSporT returned from this function must be destroyed later.
- */
-char* stir_shaken_jwt_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_jwt_passport_t **passport, uint8_t keep_passport)
-{
-    char					*sih = NULL;
-    stir_shaken_jwt_passport_t	local_passport = {0};   // It will only allow you to cross this function's border
-	
-	
-	stir_shaken_clear_error(ss);
-
-    if (!key || !keylen || !params) {
-		stir_shaken_set_error(ss, "JWT Do sign keep passport: Bad params", STIR_SHAKEN_ERROR_GENERAL);
-        return NULL;
-	}
-
-    // Create PASSporT
-    if (keep_passport) {
-
-        *passport = stir_shaken_jwt_passport_create_new(ss, params, key, keylen);
-        if (!*passport) {
-			stir_shaken_set_error(ss, "JWT Do sign keep passport: Failed to create new PASSporT", STIR_SHAKEN_ERROR_GENERAL);
-            goto err;
-		}
-
-        // Sign PASSpoprT and create SIP Identity header
-        sih = stir_shaken_jwt_sip_identity_create(ss, *passport, key, keylen);
-        if (!sih) {
-			stir_shaken_set_error_if_clear(ss, "JWT Do sign keep passport: SIP Identity create failed [1]", STIR_SHAKEN_ERROR_GENERAL);
-            goto err;
-        }
-
-    } else {
-
-        if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_passport_init(ss, &local_passport, params, key, keylen)) {
-			stir_shaken_set_error_if_clear(ss, "JWT Do sign keep passport: jwt passport init failed", STIR_SHAKEN_ERROR_GENERAL);
-            return NULL;
-        }
-
-        // Create SIP Identity header
-        sih = stir_shaken_jwt_sip_identity_create(ss, &local_passport, key, keylen);
-        if (!sih) {
-			stir_shaken_jwt_passport_destroy(&local_passport);
-			stir_shaken_set_error_if_clear(ss, "JWT Do sign keep passport: SIP Identity create failed [2]", STIR_SHAKEN_ERROR_GENERAL);
-            return NULL;
-        }
-
-		stir_shaken_jwt_passport_destroy(&local_passport);
-    }
-
-    return sih;
-
-err:
-	if (*passport) {
-		stir_shaken_jwt_passport_destroy(*passport);
-		free(*passport);
-		*passport = NULL;
-	}
-	stir_shaken_set_error_if_clear(ss, "JWT Do sign keep passport: Error", STIR_SHAKEN_ERROR_GENERAL);
-
-    return NULL;
-}
-
-/*
- * Sign the call data with the @key. 
- * Local PASSporT object is created and destroyed. Only SIP Identity header is returned.
- * If you want to keep the PASSporT, then use stir_shaken_jwt_do_sign_keep_passport instead.
- *
- * External parameters that must be given to this method to be able to sign the SDP:
- * X means "needed"
- *
- *      // Signed JSON web token (JWT)
- *          // JSON JOSE Header (alg, ppt, typ, x5u)
- *              // alg      This value indicates the encryption algorithm. Must be 'ES256'.
- *              // ppt      This value indicates the extension used. Must be 'shaken'.
- *              // typ      This value indicates the token type. Must be 'passport'.
- * X            // x5u      This value indicates the location of the certificate used to sign the token.
- *          // JWS Payload (grants)
- * X            // attest   This value indicates the attestation level. Must be either A, B, or C.
- * X            // dest     This value indicates the called number(s) or called Uniform Resource Identifier(s).
- *              // iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
- * X            // orig     This value indicates the calling number or calling Uniform Resource Identifier.
- * X            // origid   This value indicates the origination identifier.
- *          // JWS Signature
- *
- *      // Parameters
- *          //Alg
- * X(==x5u) //Info
- *          //PPT
- */ 
-char* stir_shaken_jwt_do_sign(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
-{
-	stir_shaken_clear_error(ss);
-
-    if (!key || !keylen ||  !params) {
-		
-		stir_shaken_set_error(ss, "JWT Do sign: Bad params", STIR_SHAKEN_ERROR_GENERAL);
-		return NULL;
-	}
-
-    return stir_shaken_jwt_do_sign_keep_passport(ss, params, key, keylen, NULL, 0);
-}
-
-/*
- * Authorize (assert/sign) call identity with cert of Service Provider.
- * If @keep_passport is true then keep pointer to PASSporT.
- * 
- * @ss - (in) context to set error if any
- * @sih - (out) on success points to SIP Identity Header which is authentication of the call
- * @params - (in) describe PASSporT content
- * @passport - (out) will point to created PASSporT
- * @keep_passport - (in) false if PASSporT is not needed (is destroyed then inside this method after SIP Identity Header is returned), true if PASSporT should not be destroyed (@passport points then to it)
- * @key - (in) EC raw key used to sign the JWT token 
- * @keylen - (in) length of the EC raw key used to sign the JWT token 
- *
- * Note: If @keep_passport is true, the PASSporT returned from this function must be destroyed later.
- */
-stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, stir_shaken_jwt_passport_t **passport, uint8_t keep_passport, unsigned char *key, uint32_t keylen, stir_shaken_cert_t *cert)
-{
-    /* Let's start from this. */
-    *sih = NULL;
-	
-	stir_shaken_clear_error(ss);
-
-    if (!params || !params->attest || (*params->attest != 'A' && *params->attest != 'B' && *params->attest != 'C') || !key || !keylen) {
-		
-		stir_shaken_set_error(ss, "JWT Authorize keep passport: Bad params", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-
-    /* Assert/sign call identity with a private key associated with cert. */
-    
-    *sih = stir_shaken_jwt_do_sign_keep_passport(ss, params, key, keylen, passport, keep_passport);
-    if (!*sih) {
-		
-		stir_shaken_set_error_if_clear(ss, "JWT Authorize keep passport: JWT Do sign keep passport failed", STIR_SHAKEN_ERROR_GENERAL);
-        goto err;
-    }
-
-    return STIR_SHAKEN_STATUS_OK;
-
-err:
-    
-	stir_shaken_set_error_if_clear(ss, "JWT Authorize keep passport: Error", STIR_SHAKEN_ERROR_GENERAL);
-
-    return STIR_SHAKEN_STATUS_FALSE;
-}
-
-/*
  * Authorize the call, forget PASSporT (local PASSporT used and destroyed).
  *
  * Authorize (assert/sign) call identity with cert of Service Provider.
@@ -485,9 +329,24 @@ err:
  *
  * Note: If @keep_passport is true, the PASSporT returned from this function must be destroyed later.
  */
-stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_cert_t *cert)
+stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
 {
-    return stir_shaken_jwt_authorize_keep_passport(ss, sih, params, NULL, 0, key, keylen, cert);
+	stir_shaken_jwt_passport_t	local_passport = {0};   // It will only allow you to cross this function's border
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_passport_init(ss, &local_passport, params, key, keylen)) {
+		stir_shaken_set_error_if_clear(ss, "JWT Authorize: jwt passport init failed", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	*sih = stir_shaken_jwt_sip_identity_create(ss, &local_passport, key, keylen);
+	if (!*sih) {
+		stir_shaken_set_error_if_clear(ss, "JWT Authorize: Failed to create SIP Identity Header", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_jwt_passport_destroy(&local_passport);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	stir_shaken_jwt_passport_destroy(&local_passport);
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 char* stir_shaken_jwt_passport_dump_str(stir_shaken_jwt_passport_t *passport, uint8_t pretty)

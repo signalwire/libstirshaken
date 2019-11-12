@@ -271,71 +271,28 @@ stir_shaken_status_t		stir_shaken_jwt_passport_init(stir_shaken_context_t *ss, s
 stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 void						stir_shaken_jwt_passport_destroy(stir_shaken_jwt_passport_t *passport);
 stir_shaken_status_t		stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen, char **out);
-char*						stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen);
 
 /*
- * Sign the call data with the @key, and keep pointer to created PASSporT (if @keep_passport is true). 
- * SIP Identity header is returned (and PASSporT if @keep_passport is true).
- * @ss - (in) context to set error if any
- * @params - (in) describe PASSporT content
- * @key - (in) EC raw key used to sign the JWT token 
- * @keylen - (in) length of the EC raw key used to sign the JWT token 
- * @passport - (out) will point to created PASSporT
- * @keep_passport - (in) false if PASSporT is not needed (is destroyed then inside this method after SIP Identity Header is returned), true if PASSporT should not be destroyed (@passport points then to it)
- *
- * Note: If @keep_passport is true, the PASSporT returned from this function must be destroyed later.
- */
-char* stir_shaken_jwt_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_jwt_passport_t **passport, uint8_t keep_passport);
-
-/*
- * Sign the call data with the @key. 
- * Local PASSporT object is created and destroyed. Only SIP Identity header is returned.
- * If you want to keep the PASSporT, then use stir_shaken_jwt_do_sign_keep_passport instead.
- *
- * External parameters that must be given to this method to be able to sign the SDP:
- * X means "needed"
- *
- *      // Signed JSON web token (JWT)
- *          // JSON JOSE Header (alg, ppt, typ, x5u)
- *              // alg      This value indicates the encryption algorithm. Must be 'ES256'.
- *              // ppt      This value indicates the extension used. Must be 'shaken'.
- *              // typ      This value indicates the token type. Must be 'passport'.
- * X            // x5u      This value indicates the location of the certificate used to sign the token.
- *          // JWS Payload (grants)
- * X            // attest   This value indicates the attestation level. Must be either A, B, or C.
- * X            // dest     This value indicates the called number(s) or called Uniform Resource Identifier(s).
- *              // iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
- * X            // orig     This value indicates the calling number or calling Uniform Resource Identifier.
- * X            // origid   This value indicates the origination identifier.
- *          // JWS Signature
- *
- *      // Parameters
- *          //Alg
- * X(==x5u) //Info
- *          //PPT
- */ 
-char* stir_shaken_jwt_do_sign(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
-
-/*
- * Authorize (assert/sign) call identity with cert of Service Provider.
- * If @keep_passport is true then keep pointer to PASSporT.
+ * Sign the call with @passport and @key.
+ * Creates JWT from @passport, signs it with @key and creates SIP Identity Header from that.
  * 
+ * Returns: SIP Identity Header
+ *
  * @ss - (in) context to set error if any
- * @sih - (out) on success points to SIP Identity Header which is authentication of the call
- * @params - (in) describe PASSporT content
- * @passport - (out) will point to created PASSporT
- * @keep_passport - (in) false if PASSporT is not needed (is destroyed then inside this method after SIP Identity Header is returned), true if PASSporT should not be destroyed (@passport points then to it)
  * @key - (in) EC raw key used to sign the JWT token 
  * @keylen - (in) length of the EC raw key used to sign the JWT token 
+ * @passport - (in) PASSporT to be used for SIP Identity Header
  *
- * Note: If @keep_passport is true, the PASSporT returned from this function must be destroyed later.
+ * NOTE: caller must free SIP Identity Header.
  */
-stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, stir_shaken_jwt_passport_t **passport, uint8_t keep_passport, unsigned char *key, uint32_t keylen, stir_shaken_cert_t *cert);
+char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen);
 
 /*
  * Authorize the call, forget PASSporT (local PASSporT used and destroyed).
+ * Creates local JWT PASSporT from @params, signs it with @key
+ * and creates SIP Identity Header from that, destroys JWT/PASSporT.
  *
- * Authorize (assert/sign) call identity with cert of Service Provider.
+ * Returns: SIP Identity Header
  * 
  * @ss - (in) context to set error if any
  * @sih - (out) on success points to SIP Identity Header which is authentication of the call
@@ -343,9 +300,9 @@ stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context
  * @key - (in) EC raw key used to sign the JWT token 
  * @keylen - (in) length of the EC raw key used to sign the JWT token 
  *
- * Note: If @keep_passport is true, the PASSporT returned from this function must be destroyed later.
+ * NOTE: caller must free SIP Identity Header.
  */
-stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 
 char* stir_shaken_jwt_passport_dump_str(stir_shaken_jwt_passport_t *passport, uint8_t pretty);
 void stir_shaken_jwt_passport_free_str(char *s);

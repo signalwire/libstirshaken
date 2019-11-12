@@ -33,7 +33,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_passport_create(void)
 
 	jwt_t	*jwtpass = NULL;	// PASSporT as a JWT
     cJSON	*jsonpass = NULL;	// PASSporT as a JSON
-	char *s = NULL;
+	char *s = NULL, *sih = NULL;
     
 	char private_key_name[300] = { 0 };
 	char public_key_name[300] = { 0 };
@@ -68,24 +68,43 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_passport_create(void)
 	printf("1. JWT:\n%s\n", (s = jwt_dump_str(passport.jwt, 1)));
 	jwt_free_str(s); s = NULL;
 
-    // Encode
+    // Encode using default key
 	status = stir_shaken_jwt_passport_sign(NULL, &passport, NULL, 0, &s);
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign using ES 256");
 	stir_shaken_assert(s != NULL, "Failed to sign using ES 256, NULL string");
-	printf("2. Encoded:\n%s\n", s);
+	printf("2. Encoded (using default key):\n%s\n", s);
 	jwt_free_str(s); s = NULL;
 	
-	// Encode using supplied key
+	// Encode using given key
 	status = stir_shaken_jwt_passport_sign(NULL, &passport, priv_raw, priv_raw_len, &s);
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign using ES 256");
 	stir_shaken_assert(s != NULL, "Failed to sign using ES 256, NULL string");
-	printf("3. Encoded using supplied key:\n%s\n", s);
+	printf("3. Encoded (using given key):\n%s\n", s);
 	jwt_free_str(s); s = NULL;
 
-	printf("4. Encoded via jwt call:\n%s\n", (s = jwt_encode_str(passport.jwt)));
+	printf("4. Encoded via jwt call:\n%s\n\n", (s = jwt_encode_str(passport.jwt)));
 	jwt_free_str(s); s = NULL;
+
+	// Test call authorization with given PASSporT and key
+	sih = stir_shaken_jwt_sip_identity_create(NULL, &passport, priv_raw, priv_raw_len);
+	stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
+    printf("5.1 SIP Identity Header (call authorization with given PASSporT and key):\n%s\n\n", sih);
+	free(sih); sih = NULL;
+	
+	// Test call authorization with given PASSporT and implicit key
+	sih = stir_shaken_jwt_sip_identity_create(NULL, &passport, NULL, 0);
+	stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
+    printf("5.2 SIP Identity Header (call authorization with given PASSporT and implicit key):\n%s\n\n", sih);
+	free(sih); sih = NULL;
 
 	stir_shaken_jwt_passport_destroy(&passport);
+	
+	// Test call authorization with implicit PASSporT
+	status = stir_shaken_jwt_authorize(NULL, &sih, &params, priv_raw, priv_raw_len);
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to authorize (status)");
+	stir_shaken_assert(sih != NULL, "Failed to authorize (SIP Identity Header)");
+    printf("5.3 SIP Identity Header (call authorization with implicit PASSporT):\n%s\n\n", sih);
+	free(sih); sih = NULL;
 	
 	pthread_mutex_lock(&stir_shaken_globals.mutex);
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
