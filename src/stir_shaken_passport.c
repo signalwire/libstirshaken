@@ -175,7 +175,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_jwt_init(stir_shaken_context_t *ss
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-jwt_t* stir_shaken_jwt_passport_jwt_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
+jwt_t* stir_shaken_jwt_passport_jwt_create_new(stir_shaken_context_t *ss)
 {
 	jwt_t *jwt = NULL;
 
@@ -183,15 +183,6 @@ jwt_t* stir_shaken_jwt_passport_jwt_create_new(stir_shaken_context_t *ss, stir_s
 
 		stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
 		return NULL;
-	}
-
-	if (params) {
-
-		if (stir_shaken_jwt_passport_jwt_init(ss, jwt, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
-			jwt_free(jwt);
-			stir_shaken_set_error_if_clear(ss, "Cannot init JWT", STIR_SHAKEN_ERROR_GENERAL);
-			return NULL;
-		}
 	}
 
 	return jwt;
@@ -202,12 +193,15 @@ stir_shaken_status_t stir_shaken_jwt_passport_init(stir_shaken_context_t *ss, st
 	if (!where) return STIR_SHAKEN_STATUS_TERM;
 
 	if (!where->jwt) {
-		
-		if ((where->jwt = stir_shaken_jwt_passport_jwt_create_new(ss, params, key, keylen)) == NULL) {
+
+		where->jwt = stir_shaken_jwt_passport_jwt_create_new(ss);
+		if (!where->jwt) {
+			stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_RESTART;
 		}
+	}
 
-	} else {
+	if (params) {
 
 		if (stir_shaken_jwt_passport_jwt_init(ss, where->jwt, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
 			stir_shaken_set_error_if_clear(ss, "Cannot init JWT", STIR_SHAKEN_ERROR_GENERAL);
@@ -228,18 +222,34 @@ stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_cont
 		return NULL;
 	}
 
-	if (params) {
+	passport->jwt = stir_shaken_jwt_passport_jwt_create_new(ss);
+	if (!passport->jwt) {
+		stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
+	}
 
-		// Create JWT from params
-		passport->jwt = stir_shaken_jwt_passport_jwt_create_new(ss, params, key, keylen);
-		if (!passport->jwt) {
-			free(passport);
-			stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
-			return NULL;
-		}
+	if (stir_shaken_jwt_passport_init(ss, passport, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_if_clear(ss, "Failed init PASSporT", STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
 	}
 
 	return passport;
+
+fail:
+	if (passport) {
+		stir_shaken_jwt_passport_destroy(passport);
+		free(passport);
+		passport = NULL;
+	}
+	stir_shaken_set_error_if_clear(ss, "Failed create new PASSporT", STIR_SHAKEN_ERROR_GENERAL);
+	return NULL;
+}
+
+void stir_shaken_jwt_passport_destroy(stir_shaken_jwt_passport_t *passport)
+{
+	if (!passport) return;
+	if (passport->jwt) jwt_free(passport->jwt);
+	passport->jwt = NULL;
 }
 
 stir_shaken_status_t stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen, char **out)
@@ -261,13 +271,6 @@ stir_shaken_status_t stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, st
 	}
 
 	return STIR_SHAKEN_STATUS_OK;
-}
-
-void stir_shaken_jwt_passport_destroy(stir_shaken_jwt_passport_t *passport)
-{
-	if (!passport) return;
-	jwt_free(passport->jwt);
-	passport->jwt = NULL;
 }
 
 // TODO Mallocs memory for identity header, free later
