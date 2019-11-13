@@ -175,6 +175,39 @@ stir_shaken_status_t stir_shaken_jwt_passport_jwt_init(stir_shaken_context_t *ss
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+stir_shaken_status_t stir_shaken_jwt_passport_jwt_init_from_json(stir_shaken_context_t *ss, jwt_t *jwt, const char *headers_json, const char *grants_json, unsigned char *key, uint32_t keylen)
+{
+	if (!jwt) {
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (headers_json) {
+
+		if (jwt_add_headers_json(jwt, headers_json) != 0) {
+			stir_shaken_set_error_if_clear(ss, "JWT init from JSON: Failed to add headers from json", STIR_SHAKEN_ERROR_GENERAL);
+			return STIR_SHAKEN_STATUS_TERM;
+		}
+	}
+
+	if (grants_json) {
+
+		if (jwt_add_grants_json(jwt, grants_json) != 0) {
+			stir_shaken_set_error_if_clear(ss, "JWT init from JSON: Failed to add grants from json", STIR_SHAKEN_ERROR_GENERAL);
+			return STIR_SHAKEN_STATUS_TERM;
+		}
+	}
+
+	if (key && keylen) {		
+
+		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
+			stir_shaken_set_error_if_clear(ss, "JWT init from JSON: Failed to set algorithm and key", STIR_SHAKEN_ERROR_GENERAL);
+			return STIR_SHAKEN_STATUS_ERR;
+		}
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 jwt_t* stir_shaken_jwt_passport_jwt_create_new(stir_shaken_context_t *ss)
 {
 	jwt_t *jwt = NULL;

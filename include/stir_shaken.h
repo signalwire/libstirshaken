@@ -268,6 +268,7 @@ typedef struct stir_shaken_jwt_passport {
 stir_shaken_status_t		stir_shaken_jwt_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 jwt_t*						stir_shaken_jwt_passport_jwt_create_new(stir_shaken_context_t *ss);
 stir_shaken_status_t		stir_shaken_jwt_passport_init(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *where, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
+stir_shaken_status_t		stir_shaken_jwt_passport_jwt_init_from_json(stir_shaken_context_t *ss, jwt_t *jwt, const char *headers_json, const char *grants_json, unsigned char *key, uint32_t keylen);
 stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 void						stir_shaken_jwt_passport_destroy(stir_shaken_jwt_passport_t *passport);
 stir_shaken_status_t		stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen, char **out);
