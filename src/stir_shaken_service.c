@@ -149,12 +149,37 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+void stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req)
+{
+	if (!http_req) return;
+
+	if (http_req->url) {
+		free((char *) http_req->url);
+		http_req->url = NULL;
+	}
+
+	if (http_req->data) {
+		free((char *) http_req->data);
+		http_req->data = NULL;
+	}
+
+	if (http_req->response.mem.mem) {
+		free(http_req->response.mem.mem);
+		http_req->response.mem.mem = NULL;
+	}
+
+	if (http_req->headers) {
+		curl_slist_free_all(http_req->headers);
+		http_req->headers = NULL;
+	}
+}
+
 /**
  * @http_req - (out) will contain HTTP response
  * @url - (in) POST url
  * @fingerprint - POST body, should be fingerprint of the STI-SP's public key certificate
  */
-stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, void *fingerprint)
+stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, const char *fingerprint)
 {
 	if (!http_req || !url || !fingerprint) {
 		return STIR_SHAKEN_STATUS_FALSE;
@@ -163,9 +188,9 @@ stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_conte
 	memset(http_req, 0, sizeof(*http_req));
 
 	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
-	http_req->data = fingerprint; // TODO change to JSON if it is not JSON already
+	http_req->data = strdup(fingerprint); // TODO change to JSON if it is not JSON already
 	http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
-	http_req->url = url;	// this should be similar to http://my-sti-pa.com/sti-pa/account/:id/token
+	http_req->url = strdup(url);	// this should be similar to http://my-sti-pa.com/sti-pa/account/:id/token
 
 	return stir_shaken_make_http_req(ss, http_req);
 }
