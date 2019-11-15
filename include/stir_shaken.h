@@ -170,6 +170,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_SIP_437_UNSUPPORTED_CREDENTIAL,
 	STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER,
 	STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER_SIGNATURE,
+	STIR_SHAKEN_ERROR_HTTP_403_FORBIDDEN,
+	STIR_SHAKEN_ERROR_HTTP_404_INVALID,
 } stir_shaken_error_t;
 
 typedef enum stir_shaken_http_req_type {
@@ -549,6 +551,11 @@ void					stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req);
  * @http_req - (out) will contain HTPP response
  */
 stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, const char *fingerprint);
+
+/**
+ * Download certificate from STI-CA.
+ */
+stir_shaken_status_t stir_shaken_stisp_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
 
 // Utility
 

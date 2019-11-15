@@ -445,10 +445,11 @@ stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const ch
 
 stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url)
 {
-	stir_shaken_cert_t cert = {0};
-    mem_chunk_t chunk = { .mem = NULL, .size = 0};
-	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
-	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	stir_shaken_cert_t		cert = {0};
+	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
+	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	stir_shaken_http_req_t	http_req = { 0 };
+	long					res = CURLE_OK;
 	
 	stir_shaken_clear_error(ss);
 	
@@ -470,10 +471,62 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	// TODO remove
 	printf("STIR-Shaken: Verify: downloading cert...\n");
 
-	if (stir_shaken_download_cert(ss, cert_url, &chunk) != STIR_SHAKEN_STATUS_OK) {
-		sprintf(err_buf, "Verify: Cannot download certificate using URL: %s", cert_url);
-		stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+	memset(&http_req, 0, sizeof(http_req));
+
+	if (stir_shaken_stisp_download_cert(ss, &http_req, cert_url) != STIR_SHAKEN_STATUS_OK) {
+
+		sprintf(err_buf, "Verify: Failed to download certificate using URL: %s", cert_url);
+
+		// On fail, http_req->response.code is CURLcode
+		res = http_req.response.code;
+		
+		if (res == CURLE_COULDNT_RESOLVE_HOST || res == CURLE_COULDNT_RESOLVE_PROXY || res == CURLE_COULDNT_CONNECT || res != CURLE_REMOTE_ACCESS_DENIED) {
+			
+			// Cannot access
+			sprintf(err_buf, "Verify: Cannot conenct to URL: %s", cert_url);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+
+		} else if (res == CURLE_REMOTE_ACCESS_DENIED) {
+
+			// Access denied
+			sprintf(err_buf, "Verify: Access denied for URL: %s", cert_url);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CURL);
+
+		} else {
+
+			// All other erros
+			sprintf(err_buf, "Verify: Failed to download certificate using URL: %s", cert_url);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CURL);
+		}
+
 		goto fail;
+
+	} else {
+
+		// On success, http_req->response.code is HTTP response code (200, 403, 404, etc...)
+		res = http_req.response.code;
+
+		// TODO remove
+		printf("Download: Got %zu bytes\n", http_req.response.mem.size);
+		printf("Got response to download cert request:\ncode:\t%ld\ndata:\t%s\n", http_req.response.code, http_req.response.mem.mem);
+
+		switch (res) {
+
+			case 200:
+
+				// TODO remove
+				printf("HTTP 200 OK\n");
+				break;
+
+			case 403:
+				stir_shaken_set_error(ss, "HTTP 403 Forbidden", STIR_SHAKEN_ERROR_HTTP_403_FORBIDDEN);
+				goto fail;
+
+			case 404:
+			default:
+				stir_shaken_set_error(ss, "HTTP 404 Invalid request", STIR_SHAKEN_ERROR_HTTP_404_INVALID);
+				goto fail;
+		}
 	}
 
 	// Load into X509
@@ -481,21 +534,21 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	// TODO remove
 	printf("STIR-Shaken: Verify: loading cert from memory into X509...\n");
 
-    if (stir_shaken_load_cert_from_mem(ss, &cert.x, chunk.mem, chunk.size) != STIR_SHAKEN_STATUS_OK) {
+    if (stir_shaken_load_cert_from_mem(ss, &cert.x, http_req.response.mem.mem, http_req.response.mem.size) != STIR_SHAKEN_STATUS_OK) {
 	
 		stir_shaken_set_error_if_clear(ss, "Verify: error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
     }
 	
 	// TODO copy cert into cert.body
-	cert.body = malloc(chunk.size);
+	cert.body = malloc(http_req.response.mem.size);
 	if (!cert.body) {
 	
 		stir_shaken_set_error(ss, "Verify: out of memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
-	memcpy(cert.body, chunk.mem, chunk.size);
-	cert.len = chunk.size;
+	memcpy(cert.body, http_req.response.mem.mem, http_req.response.mem.size);
+	cert.len = http_req.response.mem.size;
 
 	// Verify signature
 
@@ -504,9 +557,9 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	// TODO remove
 	printf("STIR-Shaken: Verify: checking signature...\n");
 
-	status = stir_shaken_verify_with_cert(ss, sih, &cert);
+	ss_status = stir_shaken_verify_with_cert(ss, sih, &cert);
 	
-	switch (status) {
+	switch (ss_status) {
 	   
 		case STIR_SHAKEN_STATUS_OK:
 
@@ -539,11 +592,8 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
     
 fail:
 
-    if (chunk.mem) {
-        
-		free(chunk.mem);
-		chunk.mem = NULL;
-    }
+	// Release all memory used by http_req
+	stir_shaken_destroy_http_request(&http_req);
 
-	return status;
+	return ss_status;
 }

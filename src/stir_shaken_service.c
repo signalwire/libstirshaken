@@ -46,6 +46,13 @@ static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nm
 	return realsize;
 }
 
+/*
+ * Make HTTP request with CURL.
+ *
+ * On fail, http_req->response.code is CURLcode explaining the reason (CURLE_COULDNT_RESOLVE_HOST, 
+ * CURLE_COULDNT_RESOLVE_PROXY, CURLE_COULDNT_CONNECT, CURLE_REMOTE_ACCESS_DENIED, etc...).
+ * On success, http_req->response.code is HTTP response code (200, 403, 404, etc...).
+ */
 stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
 	CURLcode		res = 0;
@@ -53,16 +60,13 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 	curl_slist_t	*headers = NULL;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
-	if (!http_req || !http_req->url) return STIR_SHAKEN_STATUS_FALSE;
+	if (!http_req || !http_req->url) return STIR_SHAKEN_STATUS_RESTART;
 
 	if (ss) stir_shaken_clear_error(ss);
 
 	curl_global_init(CURL_GLOBAL_ALL);
 	curl_handle = curl_easy_init();
-	if (!curl_handle) {
-		// TODO panic
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
+	if (!curl_handle) return STIR_SHAKEN_STATUS_TERM;
 
 	curl_easy_setopt(curl_handle, CURLOPT_URL, http_req->url);
 
@@ -123,6 +127,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 	}
 
 	res = curl_easy_perform(curl_handle);
+	http_req->response.code = res;
 
 	if (res != CURLE_OK) {
 
@@ -136,6 +141,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 			curl_slist_free_all(headers);
 		}
 
+		// On fail, http_req->response.code is CURLcode
         return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -146,6 +152,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 		curl_slist_free_all(headers);
 	}
 
+	// On success, http_req->response.code is HTTP response code (200, 403, 404, etc...)
 	return STIR_SHAKEN_STATUS_OK;
 }
 
@@ -191,6 +198,20 @@ stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_conte
 	http_req->data = strdup(fingerprint); // TODO change to JSON if it is not JSON already
 	http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
 	http_req->url = strdup(url);	// this should be similar to http://my-sti-pa.com/sti-pa/account/:id/token
+
+	return stir_shaken_make_http_req(ss, http_req);
+}
+
+stir_shaken_status_t stir_shaken_stisp_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url)
+{
+	if (!http_req || !url) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	memset(http_req, 0, sizeof(*http_req));
+
+	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_GET;
+	http_req->url = strdup(url);
 
 	return stir_shaken_make_http_req(ss, http_req);
 }
