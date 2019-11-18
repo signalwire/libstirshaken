@@ -280,6 +280,37 @@ fail:
 	return status;
 }
 
+stir_shaken_status_t stir_shaken_sih_to_jwt(stir_shaken_context_t *ss, const char *identity_header, jwt_t **jwt)
+{
+	char *p = NULL;
+	int len = 0;
+
+
+	if (!identity_header || !jwt) return STIR_SHAKEN_STATUS_TERM;
+    
+	p = strchr(identity_header, ';');
+    if (p) {
+
+		len = identity_header - p + 1;
+		if (!(p = alloca(len))) {
+			
+			stir_shaken_set_error(ss, "Sih to jwt: Out of memory", STIR_SHAKEN_ERROR_GENERAL);
+			return STIR_SHAKEN_STATUS_RESTART;
+		}
+
+		memcpy(p, identity_header, len);
+		p[len - 1] = '\0';
+
+		if (jwt_new(jwt) == 0) {
+
+			stir_shaken_set_error(ss, "Sih to jwt: jwt_new failed, bad token?", STIR_SHAKEN_ERROR_GENERAL);
+			return STIR_SHAKEN_STATUS_OK;
+		}
+    }
+
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
 static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
 {
 	char *m = NULL;

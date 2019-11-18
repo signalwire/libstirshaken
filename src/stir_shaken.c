@@ -321,16 +321,19 @@ char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, con
 	return stir_shaken_remove_multiple_adjacent(buf, *path_separator);
 }
 
-void stir_shaken_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error)
+void stir_shaken_do_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error, char *file, int line)
 {
-	int i = 0;
+	int i = 0, j = 0;
 
 	if (!ss) return;
 	memset(ss->err_buf, 0, STIR_SHAKEN_ERROR_BUF_LEN);
+	sprintf(ss->err_buf, "%s:%d\t", file, line);
+	i = strlen(ss->err_buf);
 
-	while ((i < STIR_SHAKEN_ERROR_BUF_LEN - 1) && (description[i] != '\0')) {
-		ss->err_buf[i] = description[i];
+	while ((i < STIR_SHAKEN_ERROR_BUF_LEN - 1) && (description[j] != '\0')) {
+		ss->err_buf[i] = description[j];
 		++i;
+		++j;
 	}
 
 	ss->err_buf[i] = '\0';
@@ -338,12 +341,12 @@ void stir_shaken_set_error(stir_shaken_context_t *ss, const char *description, s
 	ss->got_error = 1;
 }
 
-void stir_shaken_set_error_if_clear(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error)
+void stir_shaken_do_set_error_if_clear(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error, char *file, int line)
 {
 	if (ss) {
 
 		if (!ss->got_error) {
-			stir_shaken_set_error(ss, description, error);
+			stir_shaken_do_set_error(ss, description, error, file, line);
 		}
 	}
 }

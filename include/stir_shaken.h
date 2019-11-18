@@ -570,11 +570,14 @@ char* stir_shaken_remove_multiple_adjacent(char *in, char what);
 char* stir_shaken_get_dir_path(const char *path);
 char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, const char *file, const char *path_separator);
 
-void stir_shaken_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error);
-void stir_shaken_set_error_if_clear(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error);
+void stir_shaken_do_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error, char *file, int line);
+void stir_shaken_do_set_error_if_clear(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error, char *file, int line);
 void stir_shaken_clear_error(stir_shaken_context_t *ss);
 uint8_t stir_shaken_is_error_set(stir_shaken_context_t *ss);
 const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t *error);
+
+#define stir_shaken_set_error(ss, description, error) stir_shaken_do_set_error(ss, description, error, __FILE__, __LINE__)
+#define stir_shaken_set_error_if_clear(ss, description, error) stir_shaken_do_set_error_if_clear(ss, description, error, __FILE__, __LINE__)
 
 
 // TEST
