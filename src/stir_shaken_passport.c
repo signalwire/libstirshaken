@@ -294,12 +294,14 @@ stir_shaken_status_t stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, st
 		// Install new key
 
 		if(jwt_set_alg(passport->jwt, JWT_ALG_ES256, key, keylen) != 0) {
+			stir_shaken_set_error(ss, "JWT PASSporT Sign: Failed to set key and algorithm on JWT", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 	}
 
 	*out = jwt_encode_str(passport->jwt);
 	if (!*out) {
+		stir_shaken_set_error_if_clear(ss, "JWT PASSporT Sign: Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
@@ -361,28 +363,39 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
  * @sih - (out) on success points to SIP Identity Header which is authentication of the call
  * @params - (in) describe PASSporT content
  * @key - (in) EC raw key used to sign the JWT token 
- * @keylen - (in) length of the EC raw key used to sign the JWT token 
+ * @keylen - (in) length of the EC raw key used to sign the JWT token
+ * @passport - (out) result PASSporT 
  *
- * Note: If @keep_passport is true, the PASSporT returned from this function must be destroyed later.
  */
-stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
+stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_jwt_passport_t *passport)
 {
-	stir_shaken_jwt_passport_t	local_passport = {0};   // It will only allow you to cross this function's border
+	if (!passport) return STIR_SHAKEN_STATUS_TERM;
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_passport_init(ss, &local_passport, params, key, keylen)) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_passport_init(ss, passport, params, key, keylen)) {
 		stir_shaken_set_error_if_clear(ss, "JWT Authorize: jwt passport init failed", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	*sih = stir_shaken_jwt_sip_identity_create(ss, &local_passport, key, keylen);
+	*sih = stir_shaken_jwt_sip_identity_create(ss, passport, key, keylen);
 	if (!*sih) {
-		stir_shaken_set_error_if_clear(ss, "JWT Authorize: Failed to create SIP Identity Header", STIR_SHAKEN_ERROR_GENERAL);
-		stir_shaken_jwt_passport_destroy(&local_passport);
+		stir_shaken_set_error_if_clear(ss, "JWT Authorize: Failed to create SIP Identity Header from JWT PASSporT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_jwt_passport_destroy(passport);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	stir_shaken_jwt_passport_destroy(&local_passport);
 	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
+{
+	stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
+	stir_shaken_jwt_passport_t	local_passport = {0};   // It will only allow you to cross this function's border
+
+	status = stir_shaken_jwt_authorize_keep_passport(ss, sih, params, key, keylen, &local_passport);
+
+	stir_shaken_jwt_passport_destroy(&local_passport);
+
+	return status;
 }
 
 char* stir_shaken_jwt_passport_dump_str(stir_shaken_jwt_passport_t *passport, uint8_t pretty)
@@ -396,4 +409,13 @@ void stir_shaken_jwt_passport_free_str(char *s)
 {
 	if (!s) return;
 	jwt_free_str(s);
+}
+
+/*
+ * NOTE: @passport takes sownership of @jwt.
+ */
+void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_jwt_passport_t *passport)
+{
+	if (!passport) return;
+	passport->jwt = jwt;
 }

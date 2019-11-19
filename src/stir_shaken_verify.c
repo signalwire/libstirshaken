@@ -280,16 +280,11 @@ fail:
 	return status;
 }
 
-stir_shaken_status_t stir_shaken_jwt_do_verify_with_cert(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_cert_t *cert)
-{
-	return STIR_SHAKEN_STATUS_FALSE;
-}
-
 /*
  * @jwt_encoded - (out) buffer for encoded JWT
  * @jwt_encoded_len - (in) buffer length
  */
-stir_shaken_status_t stir_shaken_jwt_sih_to_jwt(stir_shaken_context_t *ss, const char *identity_header, unsigned char *jwt_encoded, int jwt_encoded_len)
+static stir_shaken_status_t stir_shaken_jwt_sih_to_jwt_encoded(stir_shaken_context_t *ss, const char *identity_header, unsigned char *jwt_encoded, int jwt_encoded_len)
 {
 	char *p = NULL;
 	int len = 0;
@@ -304,7 +299,7 @@ stir_shaken_status_t stir_shaken_jwt_sih_to_jwt(stir_shaken_context_t *ss, const
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
-	len = identity_header - p + 1;
+	len = p - identity_header + 1;
 
 	if (len > jwt_encoded_len) {
 
@@ -322,7 +317,7 @@ stir_shaken_status_t stir_shaken_jwt_sih_to_jwt(stir_shaken_context_t *ss, const
  * @key - (out) buffer for raw public key from cert
  * @key_len - (in/out) on entry buffer length, on return read key length
  */
-stir_shaken_status_t stir_shaken_get_pubkey_raw(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, unsigned char *key, int *key_len)
+static stir_shaken_status_t stir_shaken_get_pubkey_raw(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, unsigned char *key, int *key_len)
 {
 	BIO *bio = NULL;
 	EVP_PKEY *pk = NULL;
@@ -357,16 +352,17 @@ stir_shaken_status_t stir_shaken_get_pubkey_raw(stir_shaken_context_t *ss, stir_
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert)
+stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, jwt_t **jwt)
 {
-	jwt_t *jwt = NULL;
 	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
 	unsigned char jwt_encoded[3000] = { 0 };
-	int key_len = 0;
+	int key_len = 3000;
+
+	*jwt = NULL;
 
 	if (!identity_header || !cert) return STIR_SHAKEN_STATUS_TERM;
 
-	if (stir_shaken_jwt_sih_to_jwt(ss, identity_header, &jwt_encoded[0], 3000) != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_jwt_sih_to_jwt_encoded(ss, identity_header, &jwt_encoded[0], 3000) != STIR_SHAKEN_STATUS_OK) {
 
 		stir_shaken_set_error_if_clear(ss, "JWT verify with cert: failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
@@ -376,18 +372,15 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 	if (stir_shaken_get_pubkey_raw(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
 
 		stir_shaken_set_error_if_clear(ss, "JWT verify with cert: failed to get public key in raw format from remote STI-SP certificate", STIR_SHAKEN_ERROR_GENERAL);
-		jwt_free(jwt);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	if (jwt_decode(&jwt, jwt_encoded, key, key_len)) {
+	if (jwt_decode(jwt, jwt_encoded, key, key_len)) {
 
 		stir_shaken_set_error_if_clear(ss, "JWT verify with cert: JWT did not pass verification", STIR_SHAKEN_ERROR_GENERAL);
-		jwt_free(jwt);
+		jwt_free(*jwt);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
-
-	jwt_free(jwt);
 
 	return STIR_SHAKEN_STATUS_OK;
 }
@@ -555,13 +548,14 @@ stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const ch
 // In addition, if any of the base claims or SHAKEN extension claims are missing from the PASSporT token claims,
 // the verification service shall treat this as a 438 Invalid Identity Header error and proceed as defined above.
 
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url)
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport)
 {
 	stir_shaken_cert_t		cert = {0};
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	stir_shaken_http_req_t	http_req = { 0 };
 	long					res = CURLE_OK;
+	jwt_t					*jwt = NULL;
 	
 	stir_shaken_clear_error(ss);
 	
@@ -572,6 +566,11 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	
 	if (!cert_url) {
 		stir_shaken_set_error(ss, "Verify: Cert URL not set", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+		goto fail;
+	}
+
+	if (!passport) {
+		stir_shaken_set_error(ss, "Verify: PASSporT not set", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 
@@ -669,13 +668,14 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	// TODO remove
 	printf("STIR-Shaken: Verify: checking signature...\n");
 
-	ss_status = stir_shaken_verify_with_cert(ss, sih, &cert);
+	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, &cert, &jwt);
 	
 	switch (ss_status) {
 	   
 		case STIR_SHAKEN_STATUS_OK:
 
-			// Passed	
+			// Passed
+			stir_shaken_jwt_move_to_passport(jwt, passport);
 			break;
 
 		case STIR_SHAKEN_STATUS_FALSE:

@@ -43,7 +43,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
     cJSON *jwt = NULL, *jPayload = NULL, *orig = NULL;
 
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
-	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
+	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
+	stir_shaken_jwt_passport_t jpass = { 0 };
 	
 	
 	memset(&ss, 0, sizeof(ss));
@@ -101,7 +102,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 
 	// Test 1: Test case: Cannot download referenced certificate
     printf("=== Testing case [1]: Cannot download referenced certificate\n");
-    status = stir_shaken_verify(&ss, sih, "Bad cert URL");
+    status = stir_shaken_verify(&ss, sih, "Bad cert URL", &jpass);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Err, should return STATUS_FALSE");
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 1, "Err, error condition not set (but should be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
@@ -171,6 +172,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	sih_malformed = NULL;
 	
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
+	stir_shaken_jwt_passport_destroy(&jpass);
     
     return STIR_SHAKEN_STATUS_OK;
 }

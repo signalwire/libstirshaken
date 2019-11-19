@@ -292,7 +292,27 @@ stir_shaken_status_t		stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, s
 char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen);
 
 /*
+ * Authorize the call, and return used/created PASSporT.
+ * Authorize (assert/sign) call identity with cert of Service Provider.
+ * Creates JWT PASSporT from @params, signs it with @key
+ * and creates SIP Identity Header from that.
+ *
+ * Returns: SIP Identity Header and PASSporT
+ * 
+ * @ss - (in) context to set error if any
+ * @sih - (out) on success points to SIP Identity Header which is authentication of the call
+ * @params - (in) describe PASSporT content
+ * @key - (in) EC raw key used to sign the JWT token 
+ * @keylen - (in) length of the EC raw key used to sign the JWT token 
+ * @passport - (out) result PASSporT 
+ *
+ * NOTE: caller must free SIP Identity Header and destroy the PASSporT.
+ */
+stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_jwt_passport_t *passport);
+
+/*
  * Authorize the call, forget PASSporT (local PASSporT used and destroyed).
+ * Authorize (assert/sign) call identity with cert of Service Provider.
  * Creates local JWT PASSporT from @params, signs it with @key
  * and creates SIP Identity Header from that, destroys JWT/PASSporT.
  *
@@ -310,6 +330,7 @@ stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char *
 
 char* stir_shaken_jwt_passport_dump_str(stir_shaken_jwt_passport_t *passport, uint8_t pretty);
 void stir_shaken_jwt_passport_free_str(char *s);
+void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_jwt_passport_t *passport);
 
 typedef struct curl_slist curl_slist_t;
 
@@ -439,7 +460,6 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
 
 stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const char *url, mem_chunk_t *chunk);
 stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const char *file);
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url);
 
 /**
  * Verify (check/authenticate) call identity.
@@ -454,8 +474,14 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
  * This will attempt to obtain certificate referenced by SIP @identity_header
  * and if successfull then will verify signature from that header against data from PASSporT
  * (where the challenge is header and payload [base 64]) using public key from cert.
+ * If successful retrieved PASSporT is returned in @passport.
+ *
+ * NOTE: @passport should point to allocated memory big enough to create PASSporT.
  */
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url);
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport);
+
+/* Verification using libjwt for JWT. */
+stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, jwt_t **jwt);
 
 
 // Authorization service
