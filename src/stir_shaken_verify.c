@@ -280,35 +280,116 @@ fail:
 	return status;
 }
 
-stir_shaken_status_t stir_shaken_sih_to_jwt(stir_shaken_context_t *ss, const char *identity_header, jwt_t **jwt)
+stir_shaken_status_t stir_shaken_jwt_do_verify_with_cert(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_cert_t *cert)
+{
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+/*
+ * @jwt_encoded - (out) buffer for encoded JWT
+ * @jwt_encoded_len - (in) buffer length
+ */
+stir_shaken_status_t stir_shaken_jwt_sih_to_jwt(stir_shaken_context_t *ss, const char *identity_header, unsigned char *jwt_encoded, int jwt_encoded_len)
 {
 	char *p = NULL;
 	int len = 0;
 
 
-	if (!identity_header || !jwt) return STIR_SHAKEN_STATUS_TERM;
+	if (!identity_header) return STIR_SHAKEN_STATUS_TERM;
     
 	p = strchr(identity_header, ';');
-    if (p) {
+	if (!p) {
 
-		len = identity_header - p + 1;
-		if (!(p = alloca(len))) {
-			
-			stir_shaken_set_error(ss, "Sih to jwt: Out of memory", STIR_SHAKEN_ERROR_GENERAL);
-			return STIR_SHAKEN_STATUS_RESTART;
-		}
+		stir_shaken_set_error(ss, "Sih to jwt: Invalid PASSporT token, ';' not found", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
 
-		memcpy(p, identity_header, len);
-		p[len - 1] = '\0';
+	len = identity_header - p + 1;
 
-		if (jwt_new(jwt) == 0) {
+	if (len > jwt_encoded_len) {
 
-			stir_shaken_set_error(ss, "Sih to jwt: jwt_new failed, bad token?", STIR_SHAKEN_ERROR_GENERAL);
-			return STIR_SHAKEN_STATUS_OK;
-		}
-    }
+		stir_shaken_set_error(ss, "Sih to jwt: buffer for encoded JWT too short", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
 
-	return STIR_SHAKEN_STATUS_FALSE;
+	memcpy(jwt_encoded, identity_header, len);
+	jwt_encoded[len - 1] = '\0';
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+/*
+ * @key - (out) buffer for raw public key from cert
+ * @key_len - (in/out) on entry buffer length, on return read key length
+ */
+stir_shaken_status_t stir_shaken_get_pubkey_raw(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, unsigned char *key, int *key_len)
+{
+	BIO *bio = NULL;
+	EVP_PKEY *pk = NULL;
+
+	if (!cert || !key || !key_len) return STIR_SHAKEN_STATUS_TERM;
+
+	if (!(pk = X509_get_pubkey(cert->x))) {
+
+		stir_shaken_set_error(ss, "Get pubkey raw: Failed to read EVP_PKEY from cert", STIR_SHAKEN_ERROR_SSL);
+		BIO_free_all(bio);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+	
+	bio = BIO_new(BIO_s_mem());
+
+	if (!bio || (PEM_write_bio_PUBKEY(bio, pk) <= 0)) {
+
+		stir_shaken_set_error(ss, "Get pubkey raw: Failed to write from EVP_PKEY into memory BIO", STIR_SHAKEN_ERROR_SSL);
+		BIO_free_all(bio);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	*key_len = BIO_read(bio, key, *key_len);
+	if (*key_len <= 0) {
+
+		stir_shaken_set_error(ss, "Get pubkey raw: Failed to read from output memory BIO", STIR_SHAKEN_ERROR_SSL);
+		BIO_free_all(bio);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	BIO_free_all(bio);
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert)
+{
+	jwt_t *jwt = NULL;
+	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+	unsigned char jwt_encoded[3000] = { 0 };
+	int key_len = 0;
+
+	if (!identity_header || !cert) return STIR_SHAKEN_STATUS_TERM;
+
+	if (stir_shaken_jwt_sih_to_jwt(ss, identity_header, &jwt_encoded[0], 3000) != STIR_SHAKEN_STATUS_OK) {
+
+		stir_shaken_set_error_if_clear(ss, "JWT verify with cert: failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	// Get raw public key from cert
+	if (stir_shaken_get_pubkey_raw(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
+
+		stir_shaken_set_error_if_clear(ss, "JWT verify with cert: failed to get public key in raw format from remote STI-SP certificate", STIR_SHAKEN_ERROR_GENERAL);
+		jwt_free(jwt);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (jwt_decode(&jwt, jwt_encoded, key, key_len)) {
+
+		stir_shaken_set_error_if_clear(ss, "JWT verify with cert: JWT did not pass verification", STIR_SHAKEN_ERROR_GENERAL);
+		jwt_free(jwt);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	jwt_free(jwt);
+
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
@@ -624,7 +705,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 fail:
 
 	// Release all memory used by http_req
-	stir_shaken_destroy_http_request(&http_req);
+	//stir_shaken_destroy_http_request(&http_req);
 
 	return ss_status;
 }

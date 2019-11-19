@@ -208,7 +208,7 @@ stir_shaken_status_t stir_shaken_stisp_download_cert(stir_shaken_context_t *ss, 
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	memset(http_req, 0, sizeof(*http_req));
+	memset(http_req, 0, sizeof(stir_shaken_http_req_t));
 
 	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_GET;
 	http_req->url = strdup(url);

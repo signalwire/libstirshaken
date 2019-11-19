@@ -17,9 +17,10 @@
 
 #include <pthread.h>
 
-#define PBUF_LEN 800
-#define STIR_SHAKEN_ERROR_BUF_LEN 1500
-#define STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN 1000
+#define PBUF_LEN 1000
+#define STIR_SHAKEN_ERROR_BUF_LEN 1000
+#define STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN 2000
+#define STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN 2000
 
 #include <openssl/crypto.h>
 #include <openssl/pem.h>
