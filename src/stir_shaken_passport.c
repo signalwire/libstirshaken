@@ -417,5 +417,6 @@ void stir_shaken_jwt_passport_free_str(char *s)
 void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_jwt_passport_t *passport)
 {
 	if (!passport) return;
+	if (passport->jwt) jwt_free(passport->jwt);
 	passport->jwt = jwt;
 }

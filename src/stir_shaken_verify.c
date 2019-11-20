@@ -352,13 +352,16 @@ static stir_shaken_status_t stir_shaken_get_pubkey_raw(stir_shaken_context_t *ss
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, jwt_t **jwt)
+/*
+ * @passport - (in/out) should point to memory prepared for new PASSporT,
+ *				on exit retrieved and verified PASSporT JWT is moved into that @passport
+ */ 
+stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_jwt_passport_t *passport)
 {
 	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
 	unsigned char jwt_encoded[3000] = { 0 };
 	int key_len = 3000;
-
-	*jwt = NULL;
+	jwt_t *jwt = NULL;
 
 	if (!identity_header || !cert) return STIR_SHAKEN_STATUS_TERM;
 
@@ -375,12 +378,14 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	if (jwt_decode(jwt, jwt_encoded, key, key_len)) {
+	if (jwt_decode(&jwt, jwt_encoded, key, key_len)) {
 
 		stir_shaken_set_error_if_clear(ss, "JWT verify with cert: JWT did not pass verification", STIR_SHAKEN_ERROR_GENERAL);
-		jwt_free(*jwt);
+		jwt_free(jwt);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
+
+	stir_shaken_jwt_move_to_passport(jwt, passport);
 
 	return STIR_SHAKEN_STATUS_OK;
 }
@@ -555,7 +560,6 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	stir_shaken_http_req_t	http_req = { 0 };
 	long					res = CURLE_OK;
-	jwt_t					*jwt = NULL;
 	
 	stir_shaken_clear_error(ss);
 	
@@ -668,14 +672,13 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	// TODO remove
 	printf("STIR-Shaken: Verify: checking signature...\n");
 
-	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, &cert, &jwt);
+	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, &cert, passport);
 	
 	switch (ss_status) {
 	   
 		case STIR_SHAKEN_STATUS_OK:
 
 			// Passed
-			stir_shaken_jwt_move_to_passport(jwt, passport);
 			break;
 
 		case STIR_SHAKEN_STATUS_FALSE:

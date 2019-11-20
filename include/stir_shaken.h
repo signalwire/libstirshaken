@@ -471,17 +471,21 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
 /**
  * Perform STIR-Shaken verification of the @identity_header.
  *
- * This will attempt to obtain certificate referenced by SIP @identity_header
- * and if successfull then will verify signature from that header against data from PASSporT
- * (where the challenge is header and payload [base 64]) using public key from cert.
- * If successful retrieved PASSporT is returned in @passport.
+ * This will first process @identity_header into JWT token and parameters including cert URL.
+ * This will then attempt to obtain certificate referenced by SIP @identity_header
+ * and if successful then will verify JWT against public key from cert.
+ * If successful retrieved PASSporT is returned via @passport.
  *
  * NOTE: @passport should point to allocated memory big enough to create PASSporT.
  */
 stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport);
 
-/* Verification using libjwt for JWT. */
-stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, jwt_t **jwt);
+/* Verification using libjwt for JWT.
+ *
+ * @passport - (in/out) should point to memory prepared for new PASSporT,
+ *				on exit retrieved and verified PASSporT JWT is moved into that @passport
+ */ 
+stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_jwt_passport_t *passport);
 
 
 // Authorization service

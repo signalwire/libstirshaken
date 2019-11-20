@@ -39,7 +39,6 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_verify_with_cert(void)
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
 	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
 
-	jwt_t *jwt = NULL;
 	char *p = NULL, *r = NULL;
 	stir_shaken_jwt_passport_t passport = { 0 };
 
@@ -78,20 +77,20 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_verify_with_cert(void)
     printf("SIP Identity Header:\n%s\n\n", sih);
 
     printf("Verifying SIP Identity Header's signature with Cert (implicit PASSporT)...\n\n");
-    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &jwt);
+    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
 		printf("Error code is: '%d'\n", error_code);
 	}
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, verifying");
-	stir_shaken_assert(jwt, "Err, verifying: JWT not returned");
-	p = jwt_dump_str(jwt, 1);
+	stir_shaken_assert(passport.jwt, "Err, verifying: JWT not returned");
+	p = stir_shaken_jwt_passport_dump_str(&passport, 1);
     printf("PASSporT (decoded from SIH) is:\n%s\n\n", p);
-	jwt_free_str(p);
+	stir_shaken_jwt_passport_free_str(p);
 	p = NULL;
 
-	jwt_free(jwt);
+	stir_shaken_jwt_passport_destroy(&passport);
 	free(sih);
 	sih = NULL;
     
@@ -108,25 +107,25 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_verify_with_cert(void)
     printf("PASSporT:\n%s\n", r);
 
     printf("Verifying SIP Identity Header's signature with Cert (implicit PASSporT)...\n\n");
-    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &jwt);
+    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
 		printf("Error code is: '%d'\n", error_code);
 	}
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, verifying");
-	stir_shaken_assert(jwt, "Err, verifying: JWT not returned");
-	p = jwt_dump_str(jwt, 1);
+	stir_shaken_assert(passport.jwt, "Err, verifying: JWT not returned");
+	p = stir_shaken_jwt_passport_dump_str(&passport, 1);
     printf("PASSporT (decoded from SIH) is:\n%s\n\n", p);
 
 	// And now...
     printf("Checking retrieved PASSporT (comparing with source PASSporT used to create SIH)...\n");
 	stir_shaken_assert(strcmp(r, p) == 0, "Err, PASSporT retrieved is different from used to create it...");
 	
-	jwt_free_str(p);
+	stir_shaken_jwt_passport_free_str(p);
 	p = NULL;
 
-	jwt_free(jwt);
+	stir_shaken_jwt_passport_destroy(&passport);
 	free(sih);
 	sih = NULL;
 	stir_shaken_jwt_passport_free_str(r);
