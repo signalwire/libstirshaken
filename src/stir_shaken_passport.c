@@ -23,8 +23,6 @@ stir_shaken_status_t stir_shaken_jwt_passport_jwt_init(stir_shaken_context_t *ss
 
 	if (params) {
 
-		// TODO Produce @jwt from @params
-
 		const char *x5u = params->x5u;
 		const char *attest = params->attest;
 		const char *desttn_key = params->desttn_key;
@@ -184,7 +182,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_jwt_init_from_json(stir_shaken_con
 	if (headers_json) {
 
 		if (jwt_add_headers_json(jwt, headers_json) != 0) {
-			stir_shaken_set_error_if_clear(ss, "JWT init from JSON: Failed to add headers from json", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error(ss, "JWT init from JSON: Failed to add headers from json", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_TERM;
 		}
 	}
@@ -192,7 +190,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_jwt_init_from_json(stir_shaken_con
 	if (grants_json) {
 
 		if (jwt_add_grants_json(jwt, grants_json) != 0) {
-			stir_shaken_set_error_if_clear(ss, "JWT init from JSON: Failed to add grants from json", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error(ss, "JWT init from JSON: Failed to add grants from json", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_TERM;
 		}
 	}
@@ -200,7 +198,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_jwt_init_from_json(stir_shaken_con
 	if (key && keylen) {		
 
 		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
-			stir_shaken_set_error_if_clear(ss, "JWT init from JSON: Failed to set algorithm and key", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error(ss, "JWT init from JSON: Failed to set algorithm and key", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 	}
@@ -214,7 +212,7 @@ jwt_t* stir_shaken_jwt_passport_jwt_create_new(stir_shaken_context_t *ss)
 
 	if (jwt_new(&jwt) != 0) {
 
-		stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
 		return NULL;
 	}
 
@@ -229,7 +227,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_init(stir_shaken_context_t *ss, st
 
 		where->jwt = stir_shaken_jwt_passport_jwt_create_new(ss);
 		if (!where->jwt) {
-			stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_RESTART;
 		}
 	}
@@ -237,7 +235,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_init(stir_shaken_context_t *ss, st
 	if (params) {
 
 		if (stir_shaken_jwt_passport_jwt_init(ss, where->jwt, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
-			stir_shaken_set_error_if_clear(ss, "Cannot init JWT", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error(ss, "Cannot init JWT", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
 	}
@@ -251,18 +249,18 @@ stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_cont
 
 	passport = malloc(sizeof(*passport));
 	if (!passport) {
-		stir_shaken_set_error_if_clear(ss, "Out of memory", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Out of memory", STIR_SHAKEN_ERROR_GENERAL);
 		return NULL;
 	}
 
 	passport->jwt = stir_shaken_jwt_passport_jwt_create_new(ss);
 	if (!passport->jwt) {
-		stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 
 	if (stir_shaken_jwt_passport_init(ss, passport, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
-		stir_shaken_set_error_if_clear(ss, "Failed init PASSporT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Failed init PASSporT", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 
@@ -301,7 +299,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, st
 
 	*out = jwt_encode_str(passport->jwt);
 	if (!*out) {
-		stir_shaken_set_error_if_clear(ss, "JWT PASSporT Sign: Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "JWT PASSporT Sign: Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
@@ -405,7 +403,7 @@ char* stir_shaken_jwt_passport_dump_str(stir_shaken_jwt_passport_t *passport, ui
 	return jwt_dump_str(passport->jwt, pretty);
 }
 
-void stir_shaken_jwt_passport_free_str(char *s)
+void stir_shaken_free_jwt_str(char *s)
 {
 	if (!s) return;
 	jwt_free_str(s);

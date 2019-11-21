@@ -588,7 +588,8 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 
 	memset(&http_req, 0, sizeof(http_req));
 
-	if (stir_shaken_stisp_download_cert(ss, &http_req, cert_url) != STIR_SHAKEN_STATUS_OK) {
+	// Download cert of the STI-SP claiming to athenticate this call
+	if (stir_shaken_make_http_get_req(ss, &http_req, cert_url) != STIR_SHAKEN_STATUS_OK) {
 
 		sprintf(err_buf, "Verify: Failed to download certificate using URL: %s", cert_url);
 

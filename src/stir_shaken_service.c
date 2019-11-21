@@ -1,6 +1,108 @@
 #include "stir_shaken.h"
 
 
+/*
+ * JWT:
+ *
+ * {
+ *	"protected": base64url({
+ *		"alg": "ES256",
+ *		"kid": " https://sti-ca.com/acme/acct/1",
+ *		"nonce": "5XJ1L3lEkMG7tR6pA00clA",
+ *		"url": " https://sti-ca.com/acme/new-order"
+ *		})
+ *	"payload": base64url({
+ *		"csr": "5jNudRx6Ye4HzKEqT5...FS6aKdZeGsysoCo4H9P",
+ *		"notBefore": "2016-01-01T00:00:00Z",
+ *		"notAfter": "2016-01-08T00:00:00Z"
+ *		}),
+ *	"signature": "H6ZXtGjTZyUnPeKn...wEA4TklBdh3e454g"
+ * }
+*/
+char* stir_shaken_stisp_generate_cert_req_payload(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *csr_b64, char *nb, char *na, unsigned char *key, uint32_t keylen, char **json)
+{
+	char	*out = NULL;
+	jwt_t	*jwt = NULL;
+
+	if (jwt_new(&jwt) != 0) {
+
+		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	// Header
+
+	if (key && keylen) {		
+
+		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
+			goto exit;
+		}
+	}
+
+	if (kid) {
+
+		if (jwt_add_header(jwt, "kid", kid) != 0) {
+			goto exit;
+		}
+	}
+
+	if (nonce) {
+
+		if (jwt_add_header(jwt, "nonce", "nonce") != 0) {
+			goto exit;
+		}
+	}
+
+	if (url) {
+
+		if (jwt_add_header(jwt, "url", url) != 0) {
+			goto exit;
+		}
+	}
+
+	// Payload
+
+	if (csr_b64) {
+
+		if (jwt_add_grant(jwt, "csr", csr_b64) != 0) {
+			goto exit;
+		}
+	}
+
+	if (nb) {
+
+		if (jwt_add_grant(jwt, "notBefore", nb) != 0) {
+			goto exit;
+		}
+	}
+
+	if (na) {
+
+		if (jwt_add_grant(jwt, "notAfter", na) != 0) {
+			goto exit;
+		}
+	}
+
+	if (*json) {
+
+		*json = jwt_dump_str(jwt, 1);
+		if (!*json) {
+			stir_shaken_set_error(ss, "Failed to dump JWT", STIR_SHAKEN_ERROR_GENERAL);
+			goto exit;
+		}
+	}
+
+	out = jwt_encode_str(jwt);
+	if (!out) {
+		stir_shaken_set_error(ss, "Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
+		goto exit;
+	}
+
+exit:
+	if (jwt) jwt_free(jwt);
+	return out;
+}
+
 static size_t stir_shaken_curl_write_callback(void *contents, size_t size, size_t nmemb, void *p)
 {
 	char *m = NULL;
@@ -202,7 +304,7 @@ stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_conte
 	return stir_shaken_make_http_req(ss, http_req);
 }
 
-stir_shaken_status_t stir_shaken_stisp_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url)
+stir_shaken_status_t stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url)
 {
 	if (!http_req || !url) {
 		return STIR_SHAKEN_STATUS_FALSE;
@@ -211,6 +313,24 @@ stir_shaken_status_t stir_shaken_stisp_download_cert(stir_shaken_context_t *ss, 
 	memset(http_req, 0, sizeof(stir_shaken_http_req_t));
 
 	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_GET;
+	http_req->url = strdup(url);
+
+	return stir_shaken_make_http_req(ss, http_req);
+}
+
+stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data)
+{
+	if (!http_req || !url) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	memset(http_req, 0, sizeof(*http_req));
+
+	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
+	http_req->data = strdup(data);
+
+	// TODO enable TYPE_JSON
+	http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
 	http_req->url = strdup(url);
 
 	return stir_shaken_make_http_req(ss, http_req);

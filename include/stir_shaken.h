@@ -329,7 +329,7 @@ stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context
 stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 
 char* stir_shaken_jwt_passport_dump_str(stir_shaken_jwt_passport_t *passport, uint8_t pretty);
-void stir_shaken_jwt_passport_free_str(char *s);
+void stir_shaken_free_jwt_str(char *s);
 void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_jwt_passport_t *passport);
 
 typedef struct curl_slist curl_slist_t;
@@ -573,8 +573,10 @@ char* stir_shaken_sip_identity_create(stir_shaken_context_t *ss, stir_shaken_pas
  */
 char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, EVP_PKEY *pkey, stir_shaken_passport_t **passport, uint8_t keep_passport);
 
+
 // Service
 
+char*					stir_shaken_stisp_generate_cert_req_payload(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *csr_b64, char *nb, char *na, unsigned char *key, uint32_t keylen, char **json);
 stir_shaken_status_t	stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
 void					stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req);
 
@@ -583,10 +585,8 @@ void					stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req);
  */
 stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, const char *fingerprint);
 
-/**
- * Download certificate from STI-CA.
- */
-stir_shaken_status_t stir_shaken_stisp_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
+stir_shaken_status_t stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
+stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data);
 
 // Utility
 

@@ -87,7 +87,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_verify_with_cert(void)
 	stir_shaken_assert(passport.jwt, "Err, verifying: JWT not returned");
 	p = stir_shaken_jwt_passport_dump_str(&passport, 1);
     printf("PASSporT (decoded from SIH) is:\n%s\n\n", p);
-	stir_shaken_jwt_passport_free_str(p);
+	stir_shaken_free_jwt_str(p);
 	p = NULL;
 
 	stir_shaken_jwt_passport_destroy(&passport);
@@ -122,13 +122,13 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_verify_with_cert(void)
     printf("Checking retrieved PASSporT (comparing with source PASSporT used to create SIH)...\n");
 	stir_shaken_assert(strcmp(r, p) == 0, "Err, PASSporT retrieved is different from used to create it...");
 	
-	stir_shaken_jwt_passport_free_str(p);
+	stir_shaken_free_jwt_str(p);
 	p = NULL;
 
 	stir_shaken_jwt_passport_destroy(&passport);
 	free(sih);
 	sih = NULL;
-	stir_shaken_jwt_passport_free_str(r);
+	stir_shaken_free_jwt_str(r);
 	r = NULL;
 
 	X509_REQ_free(csr.req);
