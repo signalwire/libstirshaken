@@ -19,10 +19,14 @@
  *	"signature": "H6ZXtGjTZyUnPeKn...wEA4TklBdh3e454g"
  * }
 */
-char* stir_shaken_stisp_generate_cert_req_payload(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *csr_b64, char *nb, char *na, unsigned char *key, uint32_t keylen, char **json)
+char* stir_shaken_stisp_generate_cert_req_payload(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, X509_REQ *req, char *nb, char *na, unsigned char *key, uint32_t keylen, char **json)
 {
 	char	*out = NULL;
 	jwt_t	*jwt = NULL;
+	unsigned char	csr_raw[1000] = { 0 };
+	int				csr_raw_len = 1000;
+	char			csr_b64[1500] = { 0 };
+	int				csr_b64_len = 1500;
 
 	if (jwt_new(&jwt) != 0) {
 
@@ -62,7 +66,19 @@ char* stir_shaken_stisp_generate_cert_req_payload(stir_shaken_context_t *ss, cha
 
 	// Payload
 
-	if (csr_b64) {
+	if (req) {
+
+		if (stir_shaken_get_csr_raw(ss, req, &csr_raw[0], &csr_raw_len) != STIR_SHAKEN_STATUS_OK) {
+
+			stir_shaken_set_error_if_clear(ss, "Cannot get CSR raw", STIR_SHAKEN_ERROR_SSL);
+			goto exit;
+		}
+
+		if (stir_shaken_b64_encode(csr_raw, csr_raw_len, csr_b64, csr_b64_len) != STIR_SHAKEN_STATUS_OK) {
+
+			stir_shaken_set_error_if_clear(ss, "Cannot base 64 encode CSR raw", STIR_SHAKEN_ERROR_SSL);
+			goto exit;
+		}
 
 		if (jwt_add_grant(jwt, "csr", csr_b64) != 0) {
 			goto exit;
@@ -83,7 +99,7 @@ char* stir_shaken_stisp_generate_cert_req_payload(stir_shaken_context_t *ss, cha
 		}
 	}
 
-	if (*json) {
+	if (json) {
 
 		*json = jwt_dump_str(jwt, 1);
 		if (!*json) {
@@ -327,7 +343,9 @@ stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, s
 	memset(http_req, 0, sizeof(*http_req));
 
 	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
-	http_req->data = strdup(data);
+	if (data) {
+		http_req->data = strdup(data);
+	}
 
 	// TODO enable TYPE_JSON
 	http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
