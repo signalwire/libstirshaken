@@ -19,7 +19,7 @@
  *	"signature": "H6ZXtGjTZyUnPeKn...wEA4TklBdh3e454g"
  * }
 */
-char* stir_shaken_stisp_generate_cert_req_payload(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, X509_REQ *req, char *nb, char *na, unsigned char *key, uint32_t keylen, char **json)
+char* stir_shaken_stisp_acme_generate_cert_req_payload(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, X509_REQ *req, char *nb, char *na, unsigned char *key, uint32_t keylen, char **json)
 {
 	char	*out = NULL;
 	jwt_t	*jwt = NULL;
@@ -95,6 +95,101 @@ char* stir_shaken_stisp_generate_cert_req_payload(stir_shaken_context_t *ss, cha
 	if (na) {
 
 		if (jwt_add_grant(jwt, "notAfter", na) != 0) {
+			goto exit;
+		}
+	}
+
+	if (json) {
+
+		*json = jwt_dump_str(jwt, 1);
+		if (!*json) {
+			stir_shaken_set_error(ss, "Failed to dump JWT", STIR_SHAKEN_ERROR_GENERAL);
+			goto exit;
+		}
+	}
+
+	out = jwt_encode_str(jwt);
+	if (!out) {
+		stir_shaken_set_error(ss, "Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
+		goto exit;
+	}
+
+exit:
+	if (jwt) jwt_free(jwt);
+	return out;
+}
+
+/**
+ * JWT:
+ *
+ * {
+ *	"protected": base64url({
+ *		"alg": "ES256",
+ *		"kid": "https://sti-ca.com/acme/acct/1",
+ *		"nonce": "Q_s3MWoqT05TrdkM2MTDcw",
+ *		"url": "https://sti-ca.com/acme/authz/1234/0"
+ *	}),
+ *	"payload": base64url({
+ *		"type": "spc-token",
+ *		"keyAuthorization": "IlirfxKKXA...vb29HhjjLPSggwiE"
+ *	}),
+ *	"signature": "9cbg5JO1Gf5YLjjz...SpkUfcdPai9uVYYQ"
+ * }
+ */
+char* stir_shaken_stisp_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *sp_code_token, unsigned char *key, uint32_t keylen, char **json)
+{
+	char	*out = NULL;
+	jwt_t	*jwt = NULL;
+	unsigned char	csr_raw[1000] = { 0 };
+	int				csr_raw_len = 1000;
+	char			csr_b64[1500] = { 0 };
+	int				csr_b64_len = 1500;
+
+	if (jwt_new(&jwt) != 0) {
+
+		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	// Header
+
+	if (key && keylen) {		
+
+		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
+			goto exit;
+		}
+	}
+
+	if (kid) {
+
+		if (jwt_add_header(jwt, "kid", kid) != 0) {
+			goto exit;
+		}
+	}
+
+	if (nonce) {
+
+		if (jwt_add_header(jwt, "nonce", "nonce") != 0) {
+			goto exit;
+		}
+	}
+
+	if (url) {
+
+		if (jwt_add_header(jwt, "url", url) != 0) {
+			goto exit;
+		}
+	}
+
+	// Payload
+
+	if (jwt_add_grant(jwt, "type", "spc-token") != 0) {
+		goto exit;
+	}
+
+	if (sp_code_token) {
+
+		if (jwt_add_grant(jwt, "keyAuthorization", sp_code_token) != 0) {
 			goto exit;
 		}
 	}

@@ -577,7 +577,8 @@ char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_
 
 // Service
 
-char*					stir_shaken_stisp_generate_cert_req_payload(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, X509_REQ *req, char *nb, char *na, unsigned char *key, uint32_t keylen, char **json);
+char*					stir_shaken_stisp_acme_generate_cert_req_payload(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, X509_REQ *req, char *nb, char *na, unsigned char *key, uint32_t keylen, char **json);
+char*					stir_shaken_stisp_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *sp_code_token, unsigned char *key, uint32_t keylen, char **json);
 stir_shaken_status_t	stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
 void					stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req);
 
