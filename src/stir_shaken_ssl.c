@@ -1576,6 +1576,33 @@ stir_shaken_status_t stir_shaken_get_csr_raw(stir_shaken_context_t *ss, X509_REQ
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+stir_shaken_status_t stir_shaken_get_cert_raw(stir_shaken_context_t *ss, X509 *x, unsigned char *raw, int *raw_len)
+{
+	BIO *bio = NULL;
+
+	if (!x || !raw || !raw_len) return STIR_SHAKEN_STATUS_TERM;
+
+	bio = BIO_new(BIO_s_mem());
+
+	if (!bio || (PEM_write_bio_X509(bio, x) <= 0)) {
+
+		stir_shaken_set_error(ss, "Get cert raw: Failed to write from X509 into memory BIO", STIR_SHAKEN_ERROR_SSL);
+		BIO_free_all(bio);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	*raw_len = BIO_read(bio, raw, *raw_len);
+	if (*raw_len <= 0) {
+
+		stir_shaken_set_error(ss, "Get cert raw: Failed to read from output memory BIO", STIR_SHAKEN_ERROR_SSL);
+		BIO_free_all(bio);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	BIO_free_all(bio);
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 /**
  * Setup OpenSSL lib.
  * Must be called locked.
