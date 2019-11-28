@@ -189,6 +189,12 @@ char* stir_shaken_stisp_acme_generate_auth_challenge_token(stir_shaken_context_t
 
 	if (sp_code_token) {
 
+		// TODO Need more details here
+		//
+		// "This challenge response JWS payload shall include the SHAKEN certificate framework specific challenge type of
+		// “spc-token” and the “keyAuthorization” field containing the “token” for the challenge concatenated with the value of
+		// the Service Provider Code token."
+
 		if (jwt_add_grant(jwt, "keyAuthorization", sp_code_token) != 0) {
 			goto exit;
 		}
