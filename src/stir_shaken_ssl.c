@@ -1603,6 +1603,52 @@ stir_shaken_status_t stir_shaken_get_cert_raw(stir_shaken_context_t *ss, X509 *x
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *ec_key, cJSON **jwk)
+{
+	cJSON *j = NULL;
+	BIGNUM *x = NULL, *y = NULL;
+	const EC_GROUP *group = NULL;
+	const EC_POINT *point = NULL;
+	char *x_b64 = "";
+	char *y_b64 = "";
+
+	if (!ec_key || !jwk) return STIR_SHAKEN_STATUS_TERM;
+
+	point = EC_KEY_get0_public_key(ec_key);
+	if (!point) {
+		stir_shaken_set_error(ss, "Cannot get EC point from EC key", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_ERR;
+	}
+
+	group = EC_KEY_get0_group(ec_key);
+	if (!group) {
+		stir_shaken_set_error(ss, "Cannot get EC group from EC key", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_ERR;
+	}
+
+	if (EC_POINT_get_affine_coordinates(group, point, x, y, NULL) != 1) {
+		stir_shaken_set_error(ss, "Cannot get affine coordinates from EC key", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_ERR;
+	}
+
+	// TODO need to get x and y coordinates in base 64
+
+	j = cJSON_CreateObject();
+	if (!j) {
+		stir_shaken_set_error(ss, "Error in cjson, cannot create object", STIR_SHAKEN_ERROR_CJSON);
+		return STIR_SHAKEN_STATUS_ERR;
+	}
+
+	cJSON_AddStringToObject(j, "kty", "EC");
+	cJSON_AddStringToObject(j, "crv", "P-256");
+	cJSON_AddStringToObject(j, "x", x_b64);
+	cJSON_AddStringToObject(j, "y", y_b64);
+	cJSON_AddStringToObject(j, "kid", "sp.com Reg Public key 123XYZ"); // TODO create the @kid value
+	*jwk = j;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 /**
  * Setup OpenSSL lib.
  * Must be called locked.
