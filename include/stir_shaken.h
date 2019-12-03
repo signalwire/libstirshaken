@@ -178,7 +178,8 @@ typedef enum stir_shaken_error {
 typedef enum stir_shaken_http_req_type {
 	STIR_SHAKEN_HTTP_REQ_TYPE_GET,
 	STIR_SHAKEN_HTTP_REQ_TYPE_POST,
-	STIR_SHAKEN_HTTP_REQ_TYPE_PUT
+	STIR_SHAKEN_HTTP_REQ_TYPE_PUT,
+	STIR_SHAKEN_HTTP_REQ_TYPE_HEAD
 } stir_shaken_http_req_type_t;
 
 typedef struct stir_shaken_context_s {
@@ -589,8 +590,10 @@ void					stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req);
  */
 stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, const char *fingerprint);
 
-stir_shaken_status_t stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
-stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data);
+stir_shaken_status_t	stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
+stir_shaken_status_t	stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data);
+stir_shaken_status_t	stir_shaken_make_http_head_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data);
+char*					stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name);
 
 // Utility
 

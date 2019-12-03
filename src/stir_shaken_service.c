@@ -330,6 +330,16 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 		case STIR_SHAKEN_HTTP_REQ_TYPE_PUT:
 			break;
 
+		case STIR_SHAKEN_HTTP_REQ_TYPE_HEAD:	
+
+			// TODO check if this is necessary to make HEAD req
+			//curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, "HEAD");
+
+			// Get the resource without a body
+			curl_easy_setopt(curl_handle, CURLOPT_NOBODY, 1L);
+
+			break;
+
 		default:
 			break;
 	}
@@ -453,4 +463,86 @@ stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, s
 	http_req->url = strdup(url);
 
 	return stir_shaken_make_http_req(ss, http_req);
+}
+
+stir_shaken_status_t stir_shaken_make_http_head_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data)
+{
+	if (!http_req || !url) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	memset(http_req, 0, sizeof(*http_req));
+
+	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_HEAD;
+	if (data) {
+		http_req->data = strdup(data);
+	}
+
+	// TODO enable TYPE_JSON
+	http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
+	http_req->url = strdup(url);
+
+	return stir_shaken_make_http_req(ss, http_req);
+}
+
+/**
+ * Return header's value if found.
+ * Note: pointer is valid as long as http_req's headers are valid.
+ */ 
+char* stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name)
+{
+	char *data = NULL, *found = NULL;
+	curl_slist_t *header = NULL;
+
+	if (!http_req || !name) return NULL;
+
+	header = http_req->response.headers;
+
+	// Parse header data
+	while (header) {
+		
+		// Remove trailing \r
+		if ((data =  strrchr(header->data, '\r'))) {
+			*data = '\0';
+		}
+
+		if (!header->data || *header->data == '\0') {
+			header = header->next;
+			continue;
+		}
+
+		if ((data = strchr(header->data, ':'))) {
+
+			*data = '\0';
+			data++;
+			while (*data == ' ' && *data != '\0') {
+				data++;
+			}
+
+			// TODO remove
+			printf("key:\t\t%s\n", header->data);
+			printf("value:\t\t%s\n\n", data);
+
+			if (!strcmp(header->data, name)) {
+
+				// found
+				found = data;
+			}
+
+		} else {
+
+			if (!strncmp("HTTP", header->data, 4)) {
+
+				// TODO remove
+				printf("Starts with HTTP: %s\n", header->data);
+			} else {
+
+				// TODO remove
+				printf("Unparsable header: %s\n", header->data);
+			}
+		}
+		header = header->next;
+	}
+
+	return found;
 }
