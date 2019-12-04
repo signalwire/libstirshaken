@@ -1626,7 +1626,7 @@ stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *e
 		return STIR_SHAKEN_STATUS_ERR;
 	}
 
-	if (EC_POINT_get_affine_coordinates(group, point, x, y, NULL) != 1) {
+	if (EC_POINT_get_affine_coordinates_GFp(group, point, x, y, NULL) != 1) {
 		stir_shaken_set_error(ss, "Cannot get affine coordinates from EC key", STIR_SHAKEN_ERROR_SSL);
 		return STIR_SHAKEN_STATUS_ERR;
 	}
