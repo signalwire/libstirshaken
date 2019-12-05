@@ -220,6 +220,131 @@ exit:
 	return out;
 }
 
+/*
+ * JWT:
+ *
+ * {
+ *	"protected": base64url({
+ *		"alg": "ES256",
+ *		"jwk": {...},
+ *		"nonce": "6S8IqOGY7eL2lsGoTZYifg",
+ *		"url": "https://sti-ca.com/acme/new-reg"
+ *		}),
+ *	"payload": base64url({
+ *		"contact": [
+ *			"mailto:cert-admin-sp-kms01@sp.com",
+ *			"tel:+12155551212"
+ *			]
+ *		}),
+ *	"signature": "RZPOnYoPs1PhjszF...-nh6X1qtOFPB519I"
+ * }
+*/
+char* stir_shaken_stisp_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json)
+{
+	char	*out = NULL;
+	jwt_t	*jwt = NULL;
+
+	if (jwt_new(&jwt) != 0) {
+
+		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	// Header
+
+	if (key && keylen) {		
+
+		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
+			goto exit;
+		}
+	}
+
+	if (jwk) {
+
+		if (jwt_add_header(jwt, "jwk", jwk) != 0) {
+			goto exit;
+		}
+	}
+
+	if (nonce) {
+
+		if (jwt_add_header(jwt, "nonce", "nonce") != 0) {
+			goto exit;
+		}
+	}
+
+	if (url) {
+
+		if (jwt_add_header(jwt, "url", url) != 0) {
+			goto exit;
+		}
+	}
+
+	// Payload
+
+	if (contact_mail || contact_tel) {
+
+		cJSON *contact = NULL, *e = NULL;
+		char *jstr = NULL;
+
+		contact = cJSON_CreateArray();
+		if (!contact) {
+			stir_shaken_set_error(ss, "Passport create json: Error in cjson, @contact", STIR_SHAKEN_ERROR_CJSON);
+			goto exit;
+		}
+
+		if (contact_mail) {
+
+			e = cJSON_CreateString(contact_mail);
+			if (!e) {
+				stir_shaken_set_error(ss, "Passport create json: Error in cjson, @contact_mail", STIR_SHAKEN_ERROR_CJSON);
+				cJSON_Delete(contact);
+				goto exit;
+			}
+			cJSON_AddItemToArray(contact, e);
+		}
+
+		if (contact_tel) {
+
+			e = cJSON_CreateString(contact_tel);
+			if (!e) {
+				stir_shaken_set_error(ss, "Passport create json: Error in cjson, @contact_tel", STIR_SHAKEN_ERROR_CJSON);
+				cJSON_Delete(contact);
+				goto exit;
+			}
+			cJSON_AddItemToArray(contact, e);
+		}
+
+		jstr = cJSON_PrintUnformatted(contact);
+		if (!jstr || (jwt_add_grant(jwt, "contact", jstr) != 0)) {
+			cJSON_Delete(contact);
+			goto exit;
+		}
+
+		cJSON_Delete(contact);
+		free(jstr);
+	}
+
+	if (json) {
+
+		*json = jwt_dump_str(jwt, 1);
+		if (!*json) {
+			stir_shaken_set_error(ss, "Failed to dump JWT", STIR_SHAKEN_ERROR_GENERAL);
+			goto exit;
+		}
+	}
+
+	out = jwt_encode_str(jwt);
+	if (!out) {
+		stir_shaken_set_error(ss, "Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
+		goto exit;
+	}
+
+exit:
+	if (jwt) jwt_free(jwt);
+	return out;
+}
+
 static size_t stir_shaken_curl_write_callback(void *contents, size_t size, size_t nmemb, void *p)
 {
 	char *m = NULL;
