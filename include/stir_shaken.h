@@ -71,6 +71,7 @@ typedef struct stir_shaken_cert_s {
 	EVP_PKEY            *private_key;
 } stir_shaken_cert_t;
 
+// ACME credentials
 typedef struct stir_shaken_ssl_keys {
     EC_KEY		*ec_key;
     EVP_PKEY	*private_key;
