@@ -556,6 +556,67 @@ stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_conte
 	return stir_shaken_make_http_req(ss, http_req);
 }
 
+/**
+ * The STI-PA manages an active, secure list of approved STI-CAs in the form of their public key certificates.
+ * The STI-PA provides this list of approved STI-CAs to the service providers via a Hypertext Transfer Protocol
+ * Secure (HTTPS) interface. The SHAKEN-defined Secure Telephone Identity Verification Service (STI-VS) can then use
+ * a public key certificate to validate the root of the digital signature in the STI certificate by determining
+ * whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs. Note that the details
+ * associated with the structure and management of this list require further specification.
+ */
+stir_shaken_status_t stir_shaken_stisp_make_stica_list_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url)
+{
+	if (!http_req || !url) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	memset(http_req, 0, sizeof(*http_req));
+
+	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_GET;
+	http_req->url = strdup(url);
+
+	return stir_shaken_make_http_req(ss, http_req);
+}
+
+/**
+ * Verify STI-CA agaist list (array).
+ *
+ * Validate the root of the digital signature in the STI certificate
+ * by determining whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs
+ */
+stir_shaken_status_t stir_shaken_stisp_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, cJSON *array)
+{
+	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+	int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
+	cJSON *iterator = NULL;
+
+	if (!cert || !array) return STIR_SHAKEN_STATUS_TERM;
+
+	if (stir_shaken_get_pubkey_raw(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
+
+		stir_shaken_set_error(ss, "Cannot get public key from cert", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	cJSON_ArrayForEach(iterator, array) {
+
+		if (iterator->type == cJSON_String) {
+
+			// TODO remove
+			printf("%s\n", iterator->valuestring);
+
+			if (strcmp(key, iterator->valuestring)) {
+				return STIR_SHAKEN_STATUS_OK;
+			}
+		} else {
+
+			printf("invalid\n");
+		}
+	}
+
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
 stir_shaken_status_t stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url)
 {
 	if (!http_req || !url) {

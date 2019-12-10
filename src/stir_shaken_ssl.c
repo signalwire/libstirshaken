@@ -1034,7 +1034,6 @@ err:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-
 stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name, unsigned char *priv_raw, uint32_t *priv_raw_len)
 {
 	EC_KEY                  *ec_key = NULL;

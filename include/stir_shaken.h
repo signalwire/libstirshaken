@@ -166,6 +166,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_GENERAL,
 	STIR_SHAKEN_ERROR_CJSON,
 	STIR_SHAKEN_ERROR_CURL,
+	STIR_SHAKEN_ERROR_STICA_NOT_APPROVED,
 	STIR_SHAKEN_ERROR_SSL,
 	STIR_SHAKEN_ERROR_SIP_403_STALE_DATE,
 	STIR_SHAKEN_ERROR_SIP_428_USE_IDENTITY_HEADER,
@@ -460,6 +461,7 @@ void stir_shaken_deinit_ssl(void);
 
 // Verification service
 
+stir_shaken_status_t stir_shaken_stisp_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, cJSON *array);
 int stir_shaken_verify_data(stir_shaken_context_t *ss, const char *data, const char *signature, size_t siglen, EVP_PKEY *pkey);
 int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);
 int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size_t datalen, const unsigned char *sig, size_t siglen, EVP_PKEY *public_key);
@@ -484,14 +486,18 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
  *
  * NOTE: @passport should point to allocated memory big enough to create PASSporT.
  */
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport);
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport, cJSON *stica_array);
 
-/* Verification using libjwt for JWT.
+stir_shaken_status_t stir_shaken_get_pubkey_raw(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, unsigned char *key, int *key_len);
+
+/* PASSporT verification.
  *
  * @passport - (in/out) should point to memory prepared for new PASSporT,
  *				on exit retrieved and verified PASSporT JWT is moved into that @passport
+ * @stica_array - if not NULL then validate the root of the digital signature in the STI certificate
+ *				by determining whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs
  */ 
-stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_jwt_passport_t *passport);
+stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_jwt_passport_t *passport, cJSON *stica_array);
 
 
 // Authorization service
@@ -589,9 +595,19 @@ stir_shaken_status_t	stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 void					stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req);
 
 /**
- * @http_req - (out) will contain HTPP response
+ * @http_req - (out) will contain HTTP response
  */
 stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, const char *fingerprint);
+
+/**
+ * The STI-PA manages an active, secure list of approved STI-CAs in the form of their public key certificates.
+ * The STI-PA provides this list of approved STI-CAs to the service providers via a Hypertext Transfer Protocol
+ * Secure (HTTPS) interface. The SHAKEN-defined Secure Telephone Identity Verification Service (STI-VS) can then use
+ * a public key certificate to validate the root of the digital signature in the STI certificate by determining
+ * whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs. Note that the details
+ * associated with the structure and management of this list require further specification.
+ */
+stir_shaken_status_t stir_shaken_stisp_make_stica_list_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
 
 stir_shaken_status_t	stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
 stir_shaken_status_t	stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data);

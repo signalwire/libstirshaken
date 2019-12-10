@@ -3,6 +3,13 @@
 #undef BUFSIZE
 #define BUFSIZE 1024*8
 
+
+stir_shaken_status_t stir_shaken_stisp_verify_stica_against_list(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
+{
+	if (!cert) return STIR_SHAKEN_STATUS_FALSE;
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_filename, const char *signature_filename, EVP_PKEY *public_key)
 {
     BIO *in = NULL, *inp = NULL, *bmd = NULL, *sigbio = NULL, *bio_err = NULL;
@@ -317,7 +324,7 @@ static stir_shaken_status_t stir_shaken_jwt_sih_to_jwt_encoded(stir_shaken_conte
  * @key - (out) buffer for raw public key from cert
  * @key_len - (in/out) on entry buffer length, on return read key length
  */
-static stir_shaken_status_t stir_shaken_get_pubkey_raw(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, unsigned char *key, int *key_len)
+stir_shaken_status_t stir_shaken_get_pubkey_raw(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, unsigned char *key, int *key_len)
 {
 	BIO *bio = NULL;
 	EVP_PKEY *pk = NULL;
@@ -353,34 +360,49 @@ static stir_shaken_status_t stir_shaken_get_pubkey_raw(stir_shaken_context_t *ss
 }
 
 /*
+ * PASSporT veerification.
+ *
  * @passport - (in/out) should point to memory prepared for new PASSporT,
  *				on exit retrieved and verified PASSporT JWT is moved into that @passport
+ * @stica_array - if not NULL then validate the root of the digital signature in the STI certificate
+ *				by determining whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs
  */ 
-stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_jwt_passport_t *passport)
+stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_jwt_passport_t *passport, cJSON *stica_array)
 {
 	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-	unsigned char jwt_encoded[3000] = { 0 };
-	int key_len = 3000;
+	unsigned char jwt_encoded[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+	int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
 	jwt_t *jwt = NULL;
 
 	if (!identity_header || !cert) return STIR_SHAKEN_STATUS_TERM;
 
-	if (stir_shaken_jwt_sih_to_jwt_encoded(ss, identity_header, &jwt_encoded[0], 3000) != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_jwt_sih_to_jwt_encoded(ss, identity_header, &jwt_encoded[0], STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN) != STIR_SHAKEN_STATUS_OK) {
 
-		stir_shaken_set_error_if_clear(ss, "JWT verify with cert: failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "Failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (stica_array) {
+
+		// Validate the root of the digital signature in the STI certificate
+		// by determining whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs
+		if (stir_shaken_stisp_verify_stica(ss, cert, stica_array) != STIR_SHAKEN_STATUS_OK) {
+
+			stir_shaken_set_error(ss, "STI-CA is not in a trusted list of approved STI-CAs", STIR_SHAKEN_ERROR_STICA_NOT_APPROVED);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
 	}
 
 	// Get raw public key from cert
 	if (stir_shaken_get_pubkey_raw(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
 
-		stir_shaken_set_error_if_clear(ss, "JWT verify with cert: failed to get public key in raw format from remote STI-SP certificate", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "Failed to get public key in raw format from remote STI-SP certificate", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	if (jwt_decode(&jwt, jwt_encoded, key, key_len)) {
 
-		stir_shaken_set_error_if_clear(ss, "JWT verify with cert: JWT did not pass verification", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_GENERAL);
 		jwt_free(jwt);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
@@ -553,7 +575,7 @@ stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const ch
 // In addition, if any of the base claims or SHAKEN extension claims are missing from the PASSporT token claims,
 // the verification service shall treat this as a 438 Invalid Identity Header error and proceed as defined above.
 
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport)
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport, cJSON *stica_array)
 {
 	stir_shaken_cert_t		cert = {0};
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
@@ -666,14 +688,14 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	memcpy(cert.body, http_req.response.mem.mem, http_req.response.mem.size);
 	cert.len = http_req.response.mem.size;
 
-	// Verify signature
+	// Verify signature and root of certificate
 
 	// TODO Handle STIR_SHAKEN_ERROR_SIP_403_STALE_DATE
 	
 	// TODO remove
-	printf("STIR-Shaken: Verify: checking signature...\n");
+	printf("STIR-Shaken: Verify: checking SIH signature with cert...\n");
 
-	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, &cert, passport);
+	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, &cert, passport, stica_array);
 	
 	switch (ss_status) {
 	   
