@@ -557,28 +557,6 @@ stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_conte
 }
 
 /**
- * The STI-PA manages an active, secure list of approved STI-CAs in the form of their public key certificates.
- * The STI-PA provides this list of approved STI-CAs to the service providers via a Hypertext Transfer Protocol
- * Secure (HTTPS) interface. The SHAKEN-defined Secure Telephone Identity Verification Service (STI-VS) can then use
- * a public key certificate to validate the root of the digital signature in the STI certificate by determining
- * whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs. Note that the details
- * associated with the structure and management of this list require further specification.
- */
-stir_shaken_status_t stir_shaken_stisp_make_stica_list_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url)
-{
-	if (!http_req || !url) {
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-
-	memset(http_req, 0, sizeof(*http_req));
-
-	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_GET;
-	http_req->url = strdup(url);
-
-	return stir_shaken_make_http_req(ss, http_req);
-}
-
-/**
  * Verify STI-CA agaist list (array).
  *
  * Validate the root of the digital signature in the STI certificate
@@ -631,7 +609,7 @@ stir_shaken_status_t stir_shaken_make_http_get_req(stir_shaken_context_t *ss, st
 	return stir_shaken_make_http_req(ss, http_req);
 }
 
-stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data)
+stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data, uint8_t is_json)
 {
 	if (!http_req || !url) {
 		return STIR_SHAKEN_STATUS_FALSE;
@@ -645,7 +623,12 @@ stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, s
 	}
 
 	// TODO enable TYPE_JSON
-	http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
+	if (is_json) {
+		http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
+	} else {
+		http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
+	}
+
 	http_req->url = strdup(url);
 
 	return stir_shaken_make_http_req(ss, http_req);

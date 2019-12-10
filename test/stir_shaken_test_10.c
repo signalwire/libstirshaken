@@ -102,7 +102,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 
 	// Test 1: Test case: Cannot download referenced certificate
     printf("=== Testing case [1]: Cannot download referenced certificate\n");
-    status = stir_shaken_verify(&ss, sih, "Bad cert URL", &jpass);
+    status = stir_shaken_verify(&ss, sih, "Bad cert URL", &jpass, NULL);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Err, should return STATUS_FALSE");
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 1, "Err, error condition not set (but should be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);

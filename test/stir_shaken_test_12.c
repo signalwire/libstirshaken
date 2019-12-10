@@ -77,7 +77,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_verify_with_cert(void)
     printf("SIP Identity Header:\n%s\n\n", sih);
 
     printf("Verifying SIP Identity Header's signature with Cert (implicit PASSporT)...\n\n");
-    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport);
+    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport, NULL);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -107,7 +107,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_verify_with_cert(void)
     printf("PASSporT:\n%s\n", r);
 
     printf("Verifying SIP Identity Header's signature with Cert (implicit PASSporT)...\n\n");
-    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport);
+    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport, NULL);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);

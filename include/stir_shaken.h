@@ -610,7 +610,7 @@ stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_conte
 stir_shaken_status_t stir_shaken_stisp_make_stica_list_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
 
 stir_shaken_status_t	stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
-stir_shaken_status_t	stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data);
+stir_shaken_status_t	stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data, uint8_t json);
 stir_shaken_status_t	stir_shaken_make_http_head_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data);
 char*					stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name);
 
