@@ -266,7 +266,24 @@ typedef struct stir_shaken_passport_params_s {
 } stir_shaken_passport_params_t;
 
 /**
- * New PASSporT implementation will simply wrap @jwt.
+ * The Personal Assertion Token, PASSporT: https://tools.ietf.org/html/rfc8225
+ * PASSporT implementation wrapping @jwt.
+ *
+ * Example:
+ * {
+ *	"alg": "ES256",
+ *	"ppt": "shaken",
+ *	"typ": "passport",
+ *	"x5u": "http://192.168.1.4/stir-shaken/fs_stir_shaken.crt"
+ * }
+ * .
+ * {
+ *	"attest": "B",
+ *	"dest": "{\"tn\":\"shaken\"}",
+ *	"iat": 1234567890,
+ *	"orig": "{\"tn\":\"9005551212\"}",
+ *	"origid": "986279842-79894328-45254-42543525243"
+ * }
  */
 typedef struct stir_shaken_jwt_passport {
 	jwt_t *jwt;			// PASSport JSON Web Token
@@ -279,6 +296,10 @@ stir_shaken_status_t		stir_shaken_jwt_passport_jwt_init_from_json(stir_shaken_co
 stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 void						stir_shaken_jwt_passport_destroy(stir_shaken_jwt_passport_t *passport);
 stir_shaken_status_t		stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen, char **out);
+const char*					stir_shaken_jwt_passport_get_header(stir_shaken_jwt_passport_t *passport, const char* key);
+const char*					stir_shaken_jwt_passport_get_headers_json(stir_shaken_jwt_passport_t *passport, const char* key);
+const char*					stir_shaken_jwt_passport_get_payload(stir_shaken_jwt_passport_t *passport, const char* key);
+char*						stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport);
 
 /*
  * Sign the call with @passport and @key.

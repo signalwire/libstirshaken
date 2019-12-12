@@ -418,3 +418,85 @@ void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_jwt_passport_t *pa
 	if (passport->jwt) jwt_free(passport->jwt);
 	passport->jwt = jwt;
 }
+
+const char* stir_shaken_jwt_passport_get_header(stir_shaken_jwt_passport_t *passport, const char* key)
+{
+	if (!passport || !key) return NULL;
+	return jwt_get_header(passport->jwt, key);
+
+}
+
+const char* stir_shaken_jwt_passport_get_headers_json(stir_shaken_jwt_passport_t *passport, const char* key)
+{
+	if (!passport || !key) return NULL;
+	return jwt_get_headers_json(passport->jwt, key);
+}
+
+const char* stir_shaken_jwt_passport_get_payload(stir_shaken_jwt_passport_t *passport, const char* key)
+{
+	if (!passport || !key) return NULL;
+	return jwt_get_grant(passport->jwt, key);
+}
+
+/**
+ * Returns id if found. Must be freed by caller.
+ */
+char* stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport)
+{
+	char *id = NULL;
+	const char *orig = NULL;
+
+	if (!passport) return NULL;
+
+	orig = stir_shaken_jwt_passport_get_payload(passport, "orig");
+	if (orig) {
+
+		cJSON *origjson = cJSON_Parse(orig);
+		if (!origjson) {
+			stir_shaken_set_error(ss, "Failed to convert 'orig'to JSON", STIR_SHAKEN_ERROR_CJSON);
+			return NULL;
+		}
+
+		if (origjson->type == cJSON_Array) {
+
+			// uri form
+			cJSON *uri = cJSON_GetArrayItem(origjson, 0);
+
+			if (!uri) {
+				stir_shaken_set_error(ss, "No 'uri' in 'orig' but it's an array. Array should have 'uri' item", STIR_SHAKEN_ERROR_GENERAL);
+				cJSON_Delete(origjson);
+				return NULL;
+			}
+
+			if (uri->type != cJSON_String) {
+				stir_shaken_set_error(ss, "'uri' in 'orig' array is not a string", STIR_SHAKEN_ERROR_GENERAL);
+				cJSON_Delete(origjson);
+				return NULL;
+			}
+
+			id = strdup(uri->valuestring);
+
+		} else {
+
+			// tn form
+
+			cJSON *tn = cJSON_GetObjectItem(origjson, "tn");
+			if (!tn) {
+				stir_shaken_set_error(ss, "No 'tn' in 'orig'", STIR_SHAKEN_ERROR_GENERAL);
+				cJSON_Delete(origjson);
+				return NULL;
+			}
+
+			if (tn->type != cJSON_String) {
+				stir_shaken_set_error(ss, "'tn' in 'orig' is not a string", STIR_SHAKEN_ERROR_GENERAL);
+				cJSON_Delete(origjson);
+				return NULL;
+			}
+
+			id = strdup(tn->valuestring);
+		}
+
+		cJSON_Delete(origjson);
+		return id;
+	}
+}
