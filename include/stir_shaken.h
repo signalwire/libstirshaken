@@ -80,6 +80,8 @@ typedef struct stir_shaken_ssl_keys {
 	uint32_t		priv_raw_len;
 } stir_shaken_ssl_keys_t;
 
+typedef struct curl_slist curl_slist_t;
+
 // 5.3.2 Verification Error Conditions
 // If the authentication service functions correctly, and the certificate is valid and available to the verification service,
 // the SIP message can be delivered successfully. However, if these conditions are not satisfied, errors can be
@@ -197,6 +199,29 @@ typedef struct mem_chunk_s {
 	stir_shaken_context_t	*ss;
 } mem_chunk_t;
 
+// HTTP
+
+typedef enum stir_shaken_http_req_content_type {
+	STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON,
+	STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED
+} stir_shaken_http_req_content_type_t;
+
+typedef struct stir_shaken_http_response_s {
+	long			code;
+	mem_chunk_t		mem;
+	curl_slist_t	*headers;
+} stir_shaken_http_response_t;
+
+typedef struct stir_shaken_http_req_s {
+	const char					*url;
+	stir_shaken_http_req_type_t	type;
+	const char					*data;
+	curl_slist_t				*tx_headers;
+	curl_slist_t				*rx_headers;
+	stir_shaken_http_req_content_type_t content_type;
+	stir_shaken_http_response_t	response;
+} stir_shaken_http_req_t;
+
 
 /**
  * https://tools.ietf.org/html/rfc8225, 3. PASSporT Overview
@@ -300,6 +325,7 @@ const char*					stir_shaken_jwt_passport_get_header(stir_shaken_jwt_passport_t *
 const char*					stir_shaken_jwt_passport_get_headers_json(stir_shaken_jwt_passport_t *passport, const char* key);
 const char*					stir_shaken_jwt_passport_get_payload(stir_shaken_jwt_passport_t *passport, const char* key);
 char*						stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, int *is_tn);
+void						stir_shaken_http_add_header(stir_shaken_http_req_t *http_req, const char *h);
 
 /*
  * Sign the call with @passport and @key.
@@ -356,29 +382,6 @@ stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char *
 char* stir_shaken_jwt_passport_dump_str(stir_shaken_jwt_passport_t *passport, uint8_t pretty);
 void stir_shaken_free_jwt_str(char *s);
 void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_jwt_passport_t *passport);
-
-typedef struct curl_slist curl_slist_t;
-
-// HTTP
-typedef enum stir_shaken_http_req_content_type {
-	STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON,
-	STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED
-} stir_shaken_http_req_content_type_t;
-
-typedef struct stir_shaken_http_response_s {
-	long			code;
-	mem_chunk_t		mem;
-	curl_slist_t	*headers;
-} stir_shaken_http_response_t;
-
-typedef struct stir_shaken_http_req_s {
-	const char					*url;
-	stir_shaken_http_req_type_t	type;
-	const char					*data;
-	curl_slist_t				*headers;
-	stir_shaken_http_req_content_type_t content_type;
-	stir_shaken_http_response_t	response;
-} stir_shaken_http_req_t;
 
 /* Global Values */
 typedef struct stir_shaken_globals_s {

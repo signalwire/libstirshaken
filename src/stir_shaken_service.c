@@ -385,7 +385,7 @@ static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nm
 	memcpy(header, ptr, realsize);
 	header[realsize] = '\0';
 
-	http_req->headers = curl_slist_append(http_req->headers, header);
+	http_req->rx_headers = curl_slist_append(http_req->rx_headers, header);
 
 	return realsize;
 }
@@ -401,7 +401,6 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 {
 	CURLcode		res = 0;
 	CURL			*curl_handle = NULL;
-	curl_slist_t	*headers = NULL;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 	if (!http_req || !http_req->url) return STIR_SHAKEN_STATUS_RESTART;
@@ -442,7 +441,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 
 				case STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON:
 					
-					headers = curl_slist_append(headers, "Content-Type: application/json");
+					http_req->tx_headers = curl_slist_append(http_req->tx_headers, "Content-Type: application/json");
 					break;
 
 				case STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED:
@@ -469,8 +468,8 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 			break;
 	}
 
-	if (headers) {
-		curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, headers);
+	if (http_req->tx_headers) {
+		curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, http_req->tx_headers);
 	}
 
 	// TODO remove
@@ -491,10 +490,6 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 		// Do not curl_global_cleanup in case of error, cause otherwise (if also curl_global_cleanup) SSL starts to mulfunction ???? (EVP_get_digestbyname("sha256") in stir_shaken_do_verify_data returns NULL)
 		curl_easy_cleanup(curl_handle);
 		
-		if (headers) {
-			curl_slist_free_all(headers);
-		}
-
 		// On fail, http_req->response.code is CURLcode
         return STIR_SHAKEN_STATUS_FALSE;
 	}
@@ -502,10 +497,6 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 	curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &http_req->response.code);
 	curl_easy_cleanup(curl_handle);
 	
-	if (headers) {
-		curl_slist_free_all(headers);
-	}
-
 	// On success, http_req->response.code is HTTP response code (200, 403, 404, etc...)
 	return STIR_SHAKEN_STATUS_OK;
 }
@@ -529,9 +520,14 @@ void stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req)
 		http_req->response.mem.mem = NULL;
 	}
 
-	if (http_req->headers) {
-		curl_slist_free_all(http_req->headers);
-		http_req->headers = NULL;
+	if (http_req->tx_headers) {
+		curl_slist_free_all(http_req->tx_headers);
+		http_req->tx_headers = NULL;
+	}
+
+	if (http_req->rx_headers) {
+		curl_slist_free_all(http_req->rx_headers);
+		http_req->rx_headers = NULL;
 	}
 }
 
@@ -545,8 +541,6 @@ stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_conte
 	if (!http_req || !url || !fingerprint) {
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
-
-	memset(http_req, 0, sizeof(*http_req));
 
 	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
 	http_req->data = strdup(fingerprint); // TODO change to JSON if it is not JSON already
@@ -601,8 +595,6 @@ stir_shaken_status_t stir_shaken_make_http_get_req(stir_shaken_context_t *ss, st
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	memset(http_req, 0, sizeof(stir_shaken_http_req_t));
-
 	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_GET;
 	http_req->url = strdup(url);
 
@@ -614,8 +606,6 @@ stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, s
 	if (!http_req || !url) {
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
-
-	memset(http_req, 0, sizeof(*http_req));
 
 	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
 	if (data) {
@@ -640,8 +630,6 @@ stir_shaken_status_t stir_shaken_make_http_head_req(stir_shaken_context_t *ss, s
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	memset(http_req, 0, sizeof(*http_req));
-
 	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_HEAD;
 	if (data) {
 		http_req->data = strdup(data);
@@ -652,6 +640,14 @@ stir_shaken_status_t stir_shaken_make_http_head_req(stir_shaken_context_t *ss, s
 	http_req->url = strdup(url);
 
 	return stir_shaken_make_http_req(ss, http_req);
+}
+
+void stir_shaken_http_add_header(stir_shaken_http_req_t *http_req, const char *h)
+{
+	if (!http_req || !h) return;
+
+	/* Add a custom header */
+	http_req->tx_headers = curl_slist_append(http_req->tx_headers, h);
 }
 
 /**
