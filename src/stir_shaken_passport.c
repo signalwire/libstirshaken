@@ -441,10 +441,11 @@ const char* stir_shaken_jwt_passport_get_payload(stir_shaken_jwt_passport_t *pas
 /**
  * Returns id if found. Must be freed by caller.
  */
-char* stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport)
+char* stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, int *is_tn)
 {
 	char *id = NULL;
 	const char *orig = NULL;
+	int tn_form = 0;
 
 	if (!passport) return NULL;
 
@@ -475,6 +476,7 @@ char* stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shak
 			}
 
 			id = strdup(uri->valuestring);
+			tn_form = 0;
 
 		} else {
 
@@ -494,8 +496,10 @@ char* stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shak
 			}
 
 			id = strdup(tn->valuestring);
+			tn_form = 1;
 		}
 
+		if (is_tn) *is_tn = tn_form;
 		cJSON_Delete(origjson);
 		return id;
 	}

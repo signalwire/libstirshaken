@@ -299,7 +299,7 @@ stir_shaken_status_t		stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, s
 const char*					stir_shaken_jwt_passport_get_header(stir_shaken_jwt_passport_t *passport, const char* key);
 const char*					stir_shaken_jwt_passport_get_headers_json(stir_shaken_jwt_passport_t *passport, const char* key);
 const char*					stir_shaken_jwt_passport_get_payload(stir_shaken_jwt_passport_t *passport, const char* key);
-char*						stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport);
+char*						stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, int *is_tn);
 
 /*
  * Sign the call with @passport and @key.
