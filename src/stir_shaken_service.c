@@ -612,7 +612,6 @@ stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, s
 		http_req->data = strdup(data);
 	}
 
-	// TODO enable TYPE_JSON
 	if (is_json) {
 		http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
 	} else {
@@ -624,7 +623,7 @@ stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, s
 	return stir_shaken_make_http_req(ss, http_req);
 }
 
-stir_shaken_status_t stir_shaken_make_http_head_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data)
+stir_shaken_status_t stir_shaken_make_http_head_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data, uint8_t is_json)
 {
 	if (!http_req || !url) {
 		return STIR_SHAKEN_STATUS_FALSE;
@@ -635,8 +634,11 @@ stir_shaken_status_t stir_shaken_make_http_head_req(stir_shaken_context_t *ss, s
 		http_req->data = strdup(data);
 	}
 
-	// TODO enable TYPE_JSON
-	http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
+	if (is_json) {
+		http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
+	} else {
+		http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
+	}
 	http_req->url = strdup(url);
 
 	return stir_shaken_make_http_req(ss, http_req);
