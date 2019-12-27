@@ -1602,7 +1602,7 @@ stir_shaken_status_t stir_shaken_get_cert_raw(stir_shaken_context_t *ss, X509 *x
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *ec_key, cJSON **jwk)
+stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *ec_key, const char *kid, cJSON **jwk)
 {
 	cJSON *j = NULL;
 	BIGNUM *x = NULL, *y = NULL;
@@ -1642,7 +1642,10 @@ stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *e
 	cJSON_AddStringToObject(j, "crv", "P-256");
 	cJSON_AddStringToObject(j, "x", x_b64);
 	cJSON_AddStringToObject(j, "y", y_b64);
-	cJSON_AddStringToObject(j, "kid", "sp.com Reg Public key 123XYZ"); // TODO create the @kid value
+	if (kid) {
+		cJSON_AddStringToObject(j, "kid", kid); // kid should be something like "sp.com Reg Public key 123XYZ"
+	}
+
 	*jwk = j;
 
 	return STIR_SHAKEN_STATUS_OK;
