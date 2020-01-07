@@ -1057,6 +1057,20 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
+	// Keys should be NULL, otherwise we could overwrite them, but probably better to require user to know that it is not going to happen
+	if (*eck) {
+		stir_shaken_set_error(ss, "Generate keys: Bad params: EC KEY is set but should be NULL", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+	if (*pub) {
+		stir_shaken_set_error(ss, "Generate keys: Bad params: EVP KEY (public) is set but should be NULL", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+	if (*priv) {
+		stir_shaken_set_error(ss, "Generate keys: Bad params: EVP KEY (private) is set but should be NULL", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
 	// file_remove(private_key_full_name, NULL);
 	// file_remove(public_key_full_name, NULL);
 
@@ -1249,6 +1263,10 @@ void stir_shaken_destroy_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub)
 		EVP_PKEY_free(*pub);
 		*pub = NULL;
 	}
+	ERR_free_strings();
+    EVP_cleanup();
+	CRYPTO_cleanup_all_ex_data();
+	ENGINE_cleanup();
 }
 
 /**
@@ -1282,6 +1300,7 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	unsigned char	*tmpsig = NULL;
 	size_t			tmpsig_len = 0;
+	ECDSA_SIG		*ec_sig = NULL;
 
 
 	stir_shaken_clear_error(ss);
@@ -1336,6 +1355,7 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 	}
 	tmpsig[tmpsig_len] = '\0';
 	EVP_MD_CTX_destroy(mdctx);
+	mdctx = NULL;
 
 	if (tmpsig_len > 0) {
 		
@@ -1343,7 +1363,6 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 		unsigned char	*raw_buf = NULL, *sig = NULL;
 		size_t			slen = 0;
 		EC_KEY			*ec_key = NULL;
-		ECDSA_SIG		*ec_sig = NULL;
 		const BIGNUM	*ec_sig_r = NULL;
 		const BIGNUM	*ec_sig_s = NULL;
 
@@ -1393,14 +1412,44 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 			goto err;
 		}
 
+		if (ec_sig) {
+			ECDSA_SIG_free(ec_sig);
+			ec_sig = NULL;
+		}
+
 		memcpy(out, raw_buf, buf_len);
 		*outlen = buf_len;
 	}
+
+	if (mdctx) {
+		EVP_MD_CTX_destroy(mdctx);
+		mdctx = NULL;
+	}
+	if (ec_sig) {
+		ECDSA_SIG_free(ec_sig);
+		ec_sig = NULL;
+	}
+	ERR_free_strings();
+    EVP_cleanup();
+	CRYPTO_cleanup_all_ex_data();
+	ENGINE_cleanup();
 
 	return STIR_SHAKEN_STATUS_OK;
 
 err:
 	stir_shaken_set_error_if_clear(ss, "Do sign data with digest: Error", STIR_SHAKEN_ERROR_SSL);
+	if (ec_sig) {
+		ECDSA_SIG_free(ec_sig);
+		ec_sig = NULL;
+	}
+	if (mdctx) {
+		EVP_MD_CTX_destroy(mdctx);
+		mdctx = NULL;
+	}
+	ERR_free_strings();
+    EVP_cleanup();
+	CRYPTO_cleanup_all_ex_data();
+	ENGINE_cleanup();
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
@@ -1416,6 +1465,7 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
 	const char      *digest_name = "sha256";
 	unsigned char	*tmpsig = NULL;
 	size_t			tmpsig_len = 0;
+	ECDSA_SIG		*ec_sig = NULL;
 
 	stir_shaken_clear_error(ss);
 
@@ -1430,7 +1480,6 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
 	/* Convert EC sigs back to ASN1. */
 	if (sig) {
 
-		ECDSA_SIG *ec_sig = NULL;
 		BIGNUM *ec_sig_r = NULL;
 		BIGNUM *ec_sig_s = NULL;
 		unsigned int degree = 0, bn_len = 0;
@@ -1527,10 +1576,19 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
 
 	if (mctx) {
 		EVP_MD_CTX_destroy(mctx);
+		mctx = NULL;
 	}
 	if (bio_err) {
 		BIO_free(bio_err);
 	}
+	if (ec_sig) {
+		ECDSA_SIG_free(ec_sig);
+		ec_sig = NULL;
+	}
+	ERR_free_strings();
+    EVP_cleanup();
+	CRYPTO_cleanup_all_ex_data();
+	ENGINE_cleanup();
 	return res;
 
 err:
@@ -1540,6 +1598,17 @@ err:
 	if (bio_err) {
 		BIO_free(bio_err);
 	}
+	if (bio_err) {
+		BIO_free(bio_err);
+	}
+	if (ec_sig) {
+		ECDSA_SIG_free(ec_sig);
+		ec_sig = NULL;
+	}
+	ERR_free_strings();
+    EVP_cleanup();
+	CRYPTO_cleanup_all_ex_data();
+	ENGINE_cleanup();
 	stir_shaken_set_error_if_clear(ss, "Do verify data: Error", STIR_SHAKEN_ERROR_SSL);
 	return -1;
 }

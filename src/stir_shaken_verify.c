@@ -182,6 +182,7 @@ err:
 static int stir_shaken_verify_data_with_cert(stir_shaken_context_t *ss, const char *data, size_t datalen, const unsigned char *signature, size_t siglen, stir_shaken_cert_t *cert)
 {
     EVP_PKEY *pkey = NULL;
+	int ret = -1;
 
 
 	stir_shaken_clear_error(ss);
@@ -192,7 +193,9 @@ static int stir_shaken_verify_data_with_cert(stir_shaken_context_t *ss, const ch
         return -1;
     }
 
-    return stir_shaken_do_verify_data(ss, data, datalen, signature, siglen, pkey);
+    ret = stir_shaken_do_verify_data(ss, data, datalen, signature, siglen, pkey);
+	EVP_PKEY_free(pkey);
+	return ret;
 }
 
 
@@ -343,6 +346,7 @@ stir_shaken_status_t stir_shaken_get_pubkey_raw(stir_shaken_context_t *ss, stir_
 	if (!bio || (PEM_write_bio_PUBKEY(bio, pk) <= 0)) {
 
 		stir_shaken_set_error(ss, "Get pubkey raw: Failed to write from EVP_PKEY into memory BIO", STIR_SHAKEN_ERROR_SSL);
+		EVP_PKEY_free(pk);
 		BIO_free_all(bio);
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
@@ -352,10 +356,12 @@ stir_shaken_status_t stir_shaken_get_pubkey_raw(stir_shaken_context_t *ss, stir_
 
 		stir_shaken_set_error(ss, "Get pubkey raw: Failed to read from output memory BIO", STIR_SHAKEN_ERROR_SSL);
 		BIO_free_all(bio);
+		EVP_PKEY_free(pk);
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
 	BIO_free_all(bio);
+	EVP_PKEY_free(pk);
 	return STIR_SHAKEN_STATUS_OK;
 }
 
@@ -731,7 +737,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 fail:
 
 	// Release all memory used by http_req
-	//stir_shaken_destroy_http_request(&http_req);
+	stir_shaken_destroy_http_request(&http_req);
 
 	return ss_status;
 }
