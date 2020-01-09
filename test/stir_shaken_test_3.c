@@ -44,7 +44,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
 	sprintf(private_key_name, "%s%c%s", path, '/', "u3_private_key.pem");
 	sprintf(public_key_name, "%s%c%s", path, '/', "u3_public_key.pem");
 
-    printf("=== Unit testing: STIR/Shaken PASSporT create/verify signature [stir_shaken_unit_test_passport_create_verify_signature]\n\n");
+    printf("=== Unit testing: STIR/Shaken PASSporT create/encode/decode\n\n");
     
     // Generate new keys for this test
     status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);

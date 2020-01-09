@@ -34,7 +34,7 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void)
 	sprintf(private_key_name, "%s%c%s", path, '/', "u5_private_key.pem");
 	sprintf(public_key_name, "%s%c%s", path, '/', "u5_public_key.pem");
 
-    printf("=== Unit testing: STIR/Shaken SIP Identity Header (keep passport) creation [stir_shaken_unit_test_sip_identity_header_keep_passport]\n\n");
+    printf("=== Unit testing: STIR/Shaken SIP Identity Header\n\n");
     
     // Generate new keys for this test
     status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);

@@ -660,13 +660,14 @@ char* stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name)
 {
 	char *data = NULL, *found = NULL;
 	curl_slist_t *header = NULL;
+	int sanity = 10000;
 
 	if (!http_req || !name) return NULL;
 
 	header = http_req->response.headers;
 
 	// Parse header data
-	while (header) {
+	while (header && sanity--) {
 		
 		// Remove trailing \r
 		if ((data =  strrchr(header->data, '\r'))) {
