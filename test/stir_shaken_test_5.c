@@ -2,10 +2,10 @@
 
 const char *path = "./test/run";
 
-stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(void)
+stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void)
 {
     stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
-    stir_shaken_passport_t *passport = NULL;                          // will be allocated
+    stir_shaken_jwt_passport_t passport = { 0 };
     char *p = NULL;
     const char *x5u = "https://cert.example.org/passport.cer";      // ref
     const char *attest = NULL;                                      // ignore, ref test case doesn't include this field
@@ -16,13 +16,8 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(voi
     const char *origtn_val = "12155551212";                         // ref
     const char *origid = NULL;                                      // ignore, ref test case doesn't include this field
     uint8_t ppt_ignore = 1;                                         // ignore, ref test case doesn't include this field
-    char *sih = NULL;
+    char *s = NULL, *sih = NULL;
 
-    char sip_identity_header_ref[1500] = {0};
-    const char *sip_identity_header_ref_front = "eyJhbGciOiJFUzI1NiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9jZXJ0LmV4YW1wbGUub3JnL3Bhc3Nwb3J0LmNlciJ9.eyJkZXN0Ijp7InVyaSI6WyJzaXA6YWxpY2VAZXhhbXBsZS5jb20iXX0sImlhdCI6MTQ3MTM3NTQxOCwib3JpZyI6eyJ0biI6IjEyMTU1NTUxMjEyIn19.";
-    const char *sip_identity_header_ref_end = ";info=<https://cert.example.org/passport.cer>;alg=ES256;ppt=shaken";
-    cJSON *sig = NULL, *jwt = NULL;
-    
     stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat, .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid, .ppt_ignore = ppt_ignore};
     
 	char private_key_name[300] = { 0 };
@@ -49,35 +44,24 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(voi
     stir_shaken_assert(public_key != NULL, "Err, failed to generate public key");
 
     /* Test */
-    sih =  stir_shaken_do_sign_keep_passport(NULL, &params, private_key, &passport, 1);
-    stir_shaken_assert(passport != NULL, "PASSporT has not been created");
+	status = stir_shaken_jwt_passport_init(NULL, &passport, &params, priv_raw, priv_raw_len);
+	
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
+    stir_shaken_assert(passport.jwt != NULL, "JWT has not been created");
+	s = stir_shaken_jwt_passport_dump_str(&passport, 1);
+	printf("1. JWT:\n%s\n", s);
+	stir_shaken_free_jwt_str(s); s = NULL;
+	
+	sih = stir_shaken_jwt_sip_identity_create(NULL, &passport, priv_raw, priv_raw_len);
     stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
     printf("SIP Identity Header:\n%s\n", sih);
     
-    stir_shaken_assert(passport->json != NULL, "JSON @json has not been created");
-    stir_shaken_assert(passport->info != NULL, "JSON @info has not been created");
-    
-    printf("JSON (json):\n%s\n", p = cJSON_Print(passport->json)); free(p); p = NULL;
-    printf("JSON (json) minified:\n%s\n\n", p = cJSON_PrintUnformatted(passport->json)); free(p); p = NULL;
-    printf("JSON (info):\n%s\n", p = cJSON_Print(passport->info)); free(p); p = NULL;
-    
-    jwt = cJSON_GetObjectItem(passport->json, "jwt");
-    stir_shaken_assert(jwt != NULL, "PASSporT JSON is missing \"jwt\"");
-    sig = cJSON_GetObjectItem(passport->info, "signature");
-    stir_shaken_assert(sig != NULL, "Failed to create Signature");
-    sprintf(sip_identity_header_ref, "%s%s%s", sip_identity_header_ref_front, sig->valuestring, sip_identity_header_ref_end);
-    printf("Reference SIP Identity Header:\n%s\n", sip_identity_header_ref);
-    stir_shaken_assert(!strcmp(sih, sip_identity_header_ref), "Wrong SIP Identity Header");
-    printf("OK\n\n");
+    printf("\nOK\n\n");
 
 	free(sih);
 	sih = NULL;
     
-	/* Need to free JSON object allocated by cJSON lib. */
-	stir_shaken_passport_destroy(passport);
-	free(passport);
-	passport = NULL;
-	
+	stir_shaken_jwt_passport_destroy(&passport);
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
     
     return STIR_SHAKEN_STATUS_OK;
@@ -96,7 +80,7 @@ int main(void)
 		}
 	}
 
-	if (stir_shaken_unit_test_sip_identity_header_keep_passport() != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_unit_test_sip_identity_header() != STIR_SHAKEN_STATUS_OK) {
 		
 		printf("Fail\n");
 		return -2;
