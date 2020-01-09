@@ -77,9 +77,9 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
 
     printf("\nOK\n\n");
 
-	stir_shaken_jwt_passport_destroy(&passport);
-	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
 	jwt_free_str(encoded);
+	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
+	stir_shaken_jwt_passport_destroy(&passport);
 
 	return status;
 }
