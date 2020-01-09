@@ -1671,6 +1671,62 @@ stir_shaken_status_t stir_shaken_get_cert_raw(stir_shaken_context_t *ss, X509 *x
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+/*
+ * @key - (out) buffer for raw public key
+ * @key_len - (in/out) on entry buffer length, on return read key length
+ */
+stir_shaken_status_t stir_shaken_evp_key_to_raw(stir_shaken_context_t *ss, EVP_PKEY *evp_key, unsigned char *key, int *key_len)
+{
+	BIO *bio = NULL;
+
+	if (!evp_key || !key || !key_len) return STIR_SHAKEN_STATUS_TERM;
+
+	bio = BIO_new(BIO_s_mem());
+
+	if (!bio || (PEM_write_bio_PUBKEY(bio, evp_key) <= 0)) {
+
+		stir_shaken_set_error(ss, "Get pubkey raw: Failed to write from EVP_PKEY into memory BIO", STIR_SHAKEN_ERROR_SSL);
+		BIO_free_all(bio);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	*key_len = BIO_read(bio, key, *key_len);
+	if (*key_len <= 0) {
+
+		stir_shaken_set_error(ss, "Get pubkey raw: Failed to read from output memory BIO", STIR_SHAKEN_ERROR_SSL);
+		BIO_free_all(bio);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	BIO_free_all(bio);
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+/*
+ * @key - (out) buffer for raw public key from cert
+ * @key_len - (in/out) on entry buffer length, on return read key length
+ */
+stir_shaken_status_t stir_shaken_get_pubkey_raw_from_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, unsigned char *key, int *key_len)
+{
+	BIO *bio = NULL;
+	EVP_PKEY *pk = NULL;
+	stir_shaken_status_t ret = STIR_SHAKEN_STATUS_FALSE;
+
+	if (!cert || !key || !key_len) return STIR_SHAKEN_STATUS_TERM;
+
+	if (!(pk = X509_get_pubkey(cert->x))) {
+
+		stir_shaken_set_error(ss, "Get pubkey raw: Failed to read EVP_PKEY from cert", STIR_SHAKEN_ERROR_SSL);
+		BIO_free_all(bio);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+	
+	ret = stir_shaken_evp_key_to_raw(ss, pk, key, key_len);
+	BIO_free_all(bio);
+	EVP_PKEY_free(pk);
+	return ret;
+}
+
 stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *ec_key, const char *kid, cJSON **jwk)
 {
 	cJSON *j = NULL;

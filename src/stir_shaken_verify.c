@@ -324,48 +324,6 @@ static stir_shaken_status_t stir_shaken_jwt_sih_to_jwt_encoded(stir_shaken_conte
 }
 
 /*
- * @key - (out) buffer for raw public key from cert
- * @key_len - (in/out) on entry buffer length, on return read key length
- */
-stir_shaken_status_t stir_shaken_get_pubkey_raw(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, unsigned char *key, int *key_len)
-{
-	BIO *bio = NULL;
-	EVP_PKEY *pk = NULL;
-
-	if (!cert || !key || !key_len) return STIR_SHAKEN_STATUS_TERM;
-
-	if (!(pk = X509_get_pubkey(cert->x))) {
-
-		stir_shaken_set_error(ss, "Get pubkey raw: Failed to read EVP_PKEY from cert", STIR_SHAKEN_ERROR_SSL);
-		BIO_free_all(bio);
-		return STIR_SHAKEN_STATUS_RESTART;
-	}
-	
-	bio = BIO_new(BIO_s_mem());
-
-	if (!bio || (PEM_write_bio_PUBKEY(bio, pk) <= 0)) {
-
-		stir_shaken_set_error(ss, "Get pubkey raw: Failed to write from EVP_PKEY into memory BIO", STIR_SHAKEN_ERROR_SSL);
-		EVP_PKEY_free(pk);
-		BIO_free_all(bio);
-		return STIR_SHAKEN_STATUS_RESTART;
-	}
-
-	*key_len = BIO_read(bio, key, *key_len);
-	if (*key_len <= 0) {
-
-		stir_shaken_set_error(ss, "Get pubkey raw: Failed to read from output memory BIO", STIR_SHAKEN_ERROR_SSL);
-		BIO_free_all(bio);
-		EVP_PKEY_free(pk);
-		return STIR_SHAKEN_STATUS_RESTART;
-	}
-
-	BIO_free_all(bio);
-	EVP_PKEY_free(pk);
-	return STIR_SHAKEN_STATUS_OK;
-}
-
-/*
  * PASSporT veerification.
  *
  * @passport - (in/out) should point to memory prepared for new PASSporT,
@@ -400,7 +358,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 	}
 
 	// Get raw public key from cert
-	if (stir_shaken_get_pubkey_raw(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_get_pubkey_raw_from_cert(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
 
 		stir_shaken_set_error_if_clear(ss, "Failed to get public key in raw format from remote STI-SP certificate", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;

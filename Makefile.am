@@ -6,7 +6,7 @@ libstirshaken_la_SOURCES = src/stir_shaken.c src/stir_shaken_service.c src/stir_
 include_HEADERS = include/stir_shaken.h
 libstirshaken_la_LDFLAGS = -version-info 1:0:0
 
-check_PROGRAMS = stir_shaken_test_1 stir_shaken_test_2 stir_shaken_test_11 stir_shaken_test_12
+check_PROGRAMS = stir_shaken_test_1 stir_shaken_test_2 stir_shaken_test_3 stir_shaken_test_11 stir_shaken_test_12
 TESTS = $(check_PROGRAMS)
 
 LIBS += -lcjson -lcurl -lcrypto -lssl -ljwt -pthread
@@ -18,6 +18,10 @@ stir_shaken_test_1_LDFLAGS = -lstirshaken
 stir_shaken_test_2_SOURCES = test/stir_shaken_test_2.c
 stir_shaken_test_2_CFLAGS = -Iinclude
 stir_shaken_test_2_LDFLAGS = -lstirshaken
+
+stir_shaken_test_3_SOURCES = test/stir_shaken_test_3.c
+stir_shaken_test_3_CFLAGS = -Iinclude
+stir_shaken_test_3_LDFLAGS = -lstirshaken
 
 stir_shaken_test_11_SOURCES = test/stir_shaken_test_11.c
 stir_shaken_test_11_CFLAGS = -Iinclude

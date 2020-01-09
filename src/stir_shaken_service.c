@@ -564,7 +564,7 @@ stir_shaken_status_t stir_shaken_stisp_verify_stica(stir_shaken_context_t *ss, s
 
 	if (!cert || !array) return STIR_SHAKEN_STATUS_TERM;
 
-	if (stir_shaken_get_pubkey_raw(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_get_pubkey_raw_from_cert(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
 
 		stir_shaken_set_error(ss, "Cannot get public key from cert", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;

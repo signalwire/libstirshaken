@@ -8,7 +8,7 @@ const char *path = "./test/run";
 
 stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void)
 {
-    stir_shaken_passport_t passport = {0};
+    stir_shaken_jwt_passport_t passport = {0};
     stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
     const char *x5u = "https://cert.example.org/passport.cer";      // ref
     const char *attest = NULL;                                      // ignore, ref test case doesn't include this field
@@ -19,10 +19,9 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
     const char *origtn_val = "12155551212";                         // ref
     const char *origid = NULL;                                      // ignore, ref test case doesn't include this field
     uint8_t ppt_ignore = 1;                                         // ignore, ref test case doesn't include this field
-
-    cJSON *jwt = NULL;
-    cJSON *sig = NULL, *siginput = NULL;
     
+	char *s = NULL, *encoded = NULL;
+
 	char private_key_name[300] = { 0 };
 	char public_key_name[300] = { 0 };
     
@@ -31,12 +30,15 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
     EVP_PKEY *public_key = NULL;
     
     unsigned char signature[BUF_LEN] = {0};
-    int len = 0, i = -1;
+    int len = 0, i = -1, ret = -1;
 
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
 	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
+	unsigned char	pub_raw[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+	int				pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
 
     stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat, .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid, .ppt_ignore = ppt_ignore};
+	jwt_t *jwt = NULL;
 
     
 	sprintf(private_key_name, "%s%c%s", path, '/', "u3_private_key.pem");
@@ -52,42 +54,32 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
     stir_shaken_assert(public_key != NULL, "Err, failed to generate public key");
 
     /* Test */
-    status = stir_shaken_passport_create(NULL, &passport, &params, private_key);
-
-    stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
-    stir_shaken_assert(passport.json != NULL, "JSON @json has not been created");
-    stir_shaken_assert(passport.info != NULL, "JSON @info has not been created");
-
-    jwt = cJSON_GetObjectItem(passport.json, "jwt");
-    stir_shaken_assert(jwt != NULL, "PASSporT JSON is missing \"jwt\"");
-
-    // Test signature
-
-    // JWS Signature encoded in base 64
-    // JWS Signature = ES256(Main Signature)
-    // signature = base64(JWS Signature)
-    sig = cJSON_GetObjectItem(jwt, "signature");
-    stir_shaken_assert(sig != NULL, "PASSporT @jwt is missing \"signature\"");
-    printf("Signature:\n%s\n", sig->valuestring);
+	status = stir_shaken_jwt_passport_init(NULL, &passport, &params, priv_raw, priv_raw_len);
     
-    siginput = cJSON_GetObjectItem(passport.info, "main_signature");
-    stir_shaken_assert(siginput != NULL, "PASSporT @info is missing \"main_signature\"");
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
+    stir_shaken_assert(passport.jwt != NULL, "JWT has not been created");
+	s = stir_shaken_jwt_passport_dump_str(&passport, 1);
+	printf("1. JWT:\n%s\n", s);
+	stir_shaken_free_jwt_str(s); s = NULL;
 
-    // Decode from base 64
-    len = stir_shaken_b64_decode(sig->valuestring, (char*) signature, sizeof(signature));
-    stir_shaken_assert(len > 1, "Signature length");
-    len = len - 1;  // stir_shaken_b64_decode returns length of the data plus 1 for '\0' which it appends
 
-    // Verify
-    i = stir_shaken_do_verify_data(NULL, siginput->valuestring, strlen(siginput->valuestring), signature, len, public_key);
-    stir_shaken_assert(i == 0, "Err, verify failed\n\n");
+    // Test encodeing/decoding with libjwt
 
-    printf("OK\n\n");
+	encoded = jwt_encode_str(passport.jwt);
+	stir_shaken_assert(encoded, "Ooops, libjwt failed to encode string");
+	
+	ret = stir_shaken_evp_key_to_raw(NULL, public_key, pub_raw, &pub_raw_len);
+	stir_shaken_assert(ret == STIR_SHAKEN_STATUS_OK, "Failed to get public key raw from EVP KEY");
 
-    /* Need to free JSON object allocated by cJSON lib. */
-	stir_shaken_passport_destroy(&passport);
+	ret = jwt_decode(&jwt, encoded, pub_raw, pub_raw_len);
+	stir_shaken_assert(ret == STIR_SHAKEN_STATUS_OK, "JWT encode/decode does not work");
+	jwt_free(jwt);
 
+    printf("\nOK\n\n");
+
+	stir_shaken_jwt_passport_destroy(&passport);
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
+	jwt_free_str(encoded);
 
 	return status;
 }
