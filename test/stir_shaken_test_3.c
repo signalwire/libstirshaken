@@ -10,6 +10,9 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
 {
     stir_shaken_jwt_passport_t passport = {0};
     stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
+	stir_shaken_context_t ss = { 0 };
+	const char *error_description = NULL;
+	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
     const char *x5u = "https://cert.example.org/passport.cer";      // ref
     const char *attest = NULL;                                      // ignore, ref test case doesn't include this field
     const char *desttn_key = "uri";                                 // ref
@@ -47,14 +50,32 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
     printf("=== Unit testing: STIR/Shaken PASSporT create/encode/decode\n\n");
     
     // Generate new keys for this test
-    status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);
+    status = stir_shaken_generate_keys(&ss, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
     stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key\n\n");
     stir_shaken_assert(private_key != NULL, "Err, failed to generate private key");
     stir_shaken_assert(public_key != NULL, "Err, failed to generate public key");
+    stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
+	error_description = stir_shaken_get_error(&ss, &error_code);
+    stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should NULL");
 
     /* Test */
-	status = stir_shaken_jwt_passport_init(NULL, &passport, &params, priv_raw, priv_raw_len);
+	status = stir_shaken_jwt_passport_init(&ss, &passport, &params, priv_raw, priv_raw_len);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
+    stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
+	error_description = stir_shaken_get_error(&ss, &error_code);
+    stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should NULL");
     
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
     stir_shaken_assert(passport.jwt != NULL, "JWT has not been created");
@@ -68,8 +89,17 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
 	encoded = jwt_encode_str(passport.jwt);
 	stir_shaken_assert(encoded, "Ooops, libjwt failed to encode string");
 	
-	ret = stir_shaken_evp_key_to_raw(NULL, public_key, pub_raw, &pub_raw_len);
+	ret = stir_shaken_evp_key_to_raw(&ss, public_key, pub_raw, &pub_raw_len);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
 	stir_shaken_assert(ret == STIR_SHAKEN_STATUS_OK, "Failed to get public key raw from EVP KEY");
+    stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
+	error_description = stir_shaken_get_error(&ss, &error_code);
+    stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should NULL");
 
 	ret = jwt_decode(&jwt, encoded, pub_raw, pub_raw_len);
 	stir_shaken_assert(ret == STIR_SHAKEN_STATUS_OK, "JWT encode/decode does not work");

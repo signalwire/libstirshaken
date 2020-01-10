@@ -6,6 +6,9 @@ const char *path = "./test/run";
 stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
+	stir_shaken_context_t ss = { 0 };
+	const char *error_description = NULL;
+	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
 	const char *data_test_pass = "unit test 2 pass";
 	const char *data_test_fail = "unit test 2 fail";
 	size_t datalen = 0;
@@ -29,7 +32,16 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 	printf("=== Unit testing: STIR/Shaken verify data\n\n");
 
 	// Generate new keys for this test
-	status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);
+	status = stir_shaken_generate_keys(&ss, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
+    stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
+	error_description = stir_shaken_get_error(&ss, &error_code);
+    stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should NULL");
 
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
 	stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key");
@@ -45,12 +57,29 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign\n");
 
 	printf("Verifying (against good data)...\n\n");
-	i = stir_shaken_do_verify_data(NULL, data_test_pass, strlen(data_test_pass), sig, outlen, public_key);
+	i = stir_shaken_do_verify_data(&ss, data_test_pass, strlen(data_test_pass), sig, outlen, public_key);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
 	stir_shaken_assert(i == 0, "Err, verify failed");
+    stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
+	error_description = stir_shaken_get_error(&ss, &error_code);
+    stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should NULL");
 
 	printf("Verifying (against bad data)...\n\n");
-	i = stir_shaken_do_verify_data(NULL, data_test_fail, strlen(data_test_fail), sig, outlen, public_key);
+	i = stir_shaken_do_verify_data(&ss, data_test_fail, strlen(data_test_fail), sig, outlen, public_key);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
 	stir_shaken_assert(i == 1, "Err, verify failed");
+    stir_shaken_assert(stir_shaken_is_error_set(&ss) != 0, "Err, error condition should be set but it's NOT");
+	error_description = stir_shaken_get_error(&ss, &error_code);
+    stir_shaken_assert(error_description != NULL, "Err, error description NOT set");
 	
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
 
