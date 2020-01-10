@@ -2,8 +2,9 @@
 
 const char *path = "./test/run";
 
-stir_shaken_status_t stir_shaken_unit_test_verify(void)
+stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
 {
+	stir_shaken_jwt_passport_t passport = { 0 };
     const char *x5u = "https://not.here.org/passport.cer";
     const char *attest = "B";
     const char *desttn_key = "uri";
@@ -12,8 +13,11 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
     const char *origtn_key = "";
     const char *origtn_val = "07483866525";
     const char *origid = "Trump's Office";
-    char *sih = NULL;
+    char *sih = NULL, *p = NULL;
     stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
+	stir_shaken_context_t ss = { 0 };
+	const char *error_description = NULL;
+	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
 
     stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat, .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid };
     
@@ -55,7 +59,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 
     /* Test */
     printf("Authorizing...\n\n");
-    status = stir_shaken_authorize(NULL, &sih, &params, private_key, NULL);
+	status = stir_shaken_jwt_authorize(&ss, &sih, &params, priv_raw, priv_raw_len);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to create SIP Identity Header");
     stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
     
@@ -70,9 +74,21 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
     status = stir_shaken_generate_cert_from_csr(NULL, sp_code, &cert, &csr, private_key, public_key, cert_name, cert_text_name);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating Cert");
 
-    printf("Verifying SIP Identity Header's signature with Cert...\n\n");
-    status = stir_shaken_verify_with_cert(NULL, sih, &cert);
+	printf("Verifying SIP Identity Header's signature with Cert...\n\n");
+    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport, NULL);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, verifying");
+	stir_shaken_assert(passport.jwt, "Err, verifying: JWT not returned");
+	p = stir_shaken_jwt_passport_dump_str(&passport, 1);
+    printf("PASSporT (decoded from SIH) is:\n%s\n\n", p);
+	stir_shaken_free_jwt_str(p);
+	p = NULL;
+
+	stir_shaken_jwt_passport_destroy(&passport);
 
 	X509_REQ_free(csr.req);
 	csr.req = NULL;
@@ -101,7 +117,7 @@ int main(void)
 		}
 	}
 
-	if (stir_shaken_unit_test_verify() != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_unit_test_verify_with_cert() != STIR_SHAKEN_STATUS_OK) {
 		
 		printf("Fail\n");
 		return -2;
