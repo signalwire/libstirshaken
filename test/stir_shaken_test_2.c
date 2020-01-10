@@ -2,12 +2,9 @@
 
 const char *path = "./test/run";
 
-/**
- * STIR/Shaken PASSporT creation Unit test
- * According to RFC 8225:
- * "Appendix A.  Example ES256-Based PASSporT JWS Serialization and Signature"
- */
 #define BUF_LEN 1000
+
+
 stir_shaken_status_t stir_shaken_unit_test_passport_create(void)
 {
     stir_shaken_jwt_passport_t	passport = {0};

@@ -2,6 +2,7 @@
 
 const char *path = "./test/run";
 
+
 stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
 {
 	stir_shaken_jwt_passport_t passport = { 0 };
@@ -41,12 +42,12 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
 	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
 
 
-	sprintf(private_key_name, "%s%c%s", path, '/', "u8_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", path, '/', "u8_public_key.pem");
-    sprintf(csr_name, "%s%c%s", path, '/', "u8_csr.pem");
-    sprintf(csr_text_name, "%s%c%s", path, '/', "u8_csr_text.pem");
-    sprintf(cert_name, "%s%c%s", path, '/', "u8_cert.crt");
-    sprintf(cert_text_name, "%s%c%s", path, '/', "u8_cert_text.crt");
+	sprintf(private_key_name, "%s%c%s", path, '/', "u7_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u7_public_key.pem");
+    sprintf(csr_name, "%s%c%s", path, '/', "u7_csr.pem");
+    sprintf(csr_text_name, "%s%c%s", path, '/', "u7_csr_text.pem");
+    sprintf(cert_name, "%s%c%s", path, '/', "u7_cert.crt");
+    sprintf(cert_text_name, "%s%c%s", path, '/', "u7_cert_text.crt");
 
     printf("=== Unit testing: STIR/Shaken Verification [stir_shaken_unit_test_verify]\n\n");
     

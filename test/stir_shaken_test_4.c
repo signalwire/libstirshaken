@@ -2,6 +2,7 @@
 
 const char *path = "./test/run";
 
+
 stir_shaken_status_t stir_shaken_unit_test_passport_sign(void)
 {
     stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
