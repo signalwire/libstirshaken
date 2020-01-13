@@ -54,7 +54,7 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void)
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
-    stir_shaken_assert(error_description == NULL, "Err, error description set, should NULL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
     /* Test */
 	status = stir_shaken_jwt_passport_init(&ss, &passport, &params, priv_raw, priv_raw_len);
@@ -81,7 +81,7 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void)
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
-    stir_shaken_assert(error_description == NULL, "Err, error description set, should NULL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
     
     printf("\nOK\n\n");
 

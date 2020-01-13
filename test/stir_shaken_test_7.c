@@ -65,7 +65,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
-    stir_shaken_assert(error_description == NULL, "Err, error description set, should NULL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
     /* Test */
     printf("Authorizing...\n\n");
@@ -80,7 +80,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
-    stir_shaken_assert(error_description == NULL, "Err, error description set, should NULL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
     
     printf("Created SIP Identity Header\n\n");
     printf("SIP Identity Header:\n%s\n", sih);
@@ -96,7 +96,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
-    stir_shaken_assert(error_description == NULL, "Err, error description set, should NULL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
     
     printf("Creating Certificate\n");
     status = stir_shaken_generate_cert_from_csr(&ss, sp_code, &cert, &csr, private_key, public_key, cert_name, cert_text_name);
@@ -109,7 +109,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
-    stir_shaken_assert(error_description == NULL, "Err, error description set, should NULL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
 	printf("Verifying SIP Identity Header's signature with Cert...\n\n");
     status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport, NULL);
@@ -127,7 +127,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
-    stir_shaken_assert(error_description == NULL, "Err, error description set, should NULL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
 	stir_shaken_jwt_passport_destroy(&passport);
 
