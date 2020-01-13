@@ -149,7 +149,8 @@ typedef struct curl_slist curl_slist_t;
 // required claims for that extension. Sending a string along these
 // lines will help humans debugging the sending system. [RFC 8224]
 //
-// 'Invalid Identity Header' - This occurs if the signature verification fails.
+// 'Invalid Identity Header' - This occurs if the signature verification fails (for any reason).
+// In this STIR-Shaken implementation this happens when jwt_deocde fails.
 //
 // If any of the above error conditions are detected, the terminating network shall convey the response code and
 // reason phrase back to the originating network, indicating which one of the five error scenarios has occurred. How
@@ -175,7 +176,6 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO,
 	STIR_SHAKEN_ERROR_SIP_437_UNSUPPORTED_CREDENTIAL,
 	STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER,
-	STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER_SIGNATURE,
 	STIR_SHAKEN_ERROR_HTTP_403_FORBIDDEN,
 	STIR_SHAKEN_ERROR_HTTP_404_INVALID,
 } stir_shaken_error_t;
@@ -471,6 +471,7 @@ X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY 
  * STIR_SHAKEN_STATUS_SUCCESS: generated and signed new new cert
  */
 stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name);
+void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
 
 stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_mem_through_file(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);

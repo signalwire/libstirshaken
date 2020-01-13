@@ -396,6 +396,64 @@ static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nm
  * On fail, http_req->response.code is CURLcode explaining the reason (CURLE_COULDNT_RESOLVE_HOST, 
  * CURLE_COULDNT_RESOLVE_PROXY, CURLE_COULDNT_CONNECT, CURLE_REMOTE_ACCESS_DENIED, etc...).
  * On success, http_req->response.code is HTTP response code (200, 403, 404, etc...).
+ *
+ * Note.
+ *
+ * When running this function, "still reachable" memory leak may be reported by valgrind. Example:
+ *
+ * ==18899==
+ * ==18899== HEAP SUMMARY:
+ * ==18899==     in use at exit: 192 bytes in 12 blocks
+ * ==18899==   total heap usage: 7,484 allocs, 7,472 frees, 526,015 bytes allocated
+ * ==18899==
+ * ==18899== 48 bytes in 6 blocks are still reachable in loss record 1 of 2
+ * ==18899==    at 0x483577F: malloc (vg_replace_malloc.c:299)
+ * ==18899==    by 0x5959A93: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x595B07B: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x5A1F3A4: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x5A1F3F8: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x5A1F42D: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x59599D9: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x595A8CE: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x5956788: gcry_control (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x5102793: libssh2_init (in /usr/lib/x86_64-linux-gnu/libssh2.so.1.0.1)
+ * ==18899==    by 0x48AEA87: ??? (in /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4.5.0)
+ * ==18899==    by 0x486813E: stir_shaken_make_http_req (stir_shaken_service.c:410)
+ * ==18899==
+ * ==18899== 144 bytes in 6 blocks are still reachable in loss record 2 of 2
+ * ==18899==    at 0x483577F: malloc (vg_replace_malloc.c:299)
+ * ==18899==    by 0x5959A93: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x595B07B: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x5A1F3C1: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x5A1F42D: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x59599D9: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x595A8CE: ??? (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x5956788: gcry_control (in /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4)
+ * ==18899==    by 0x5102793: libssh2_init (in /usr/lib/x86_64-linux-gnu/libssh2.so.1.0.1)
+ * ==18899==    by 0x48AEA87: ??? (in /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4.5.0)
+ * ==18899==    by 0x486813E: stir_shaken_make_http_req (stir_shaken_service.c:410)
+ * ==18899==    by 0x486AE03: stir_shaken_verify (stir_shaken_verify.c:578)
+ *
+ * ==18899== LEAK SUMMARY:
+ * ==18899==    definitely lost: 0 bytes in 0 blocks
+ * ==18899==    indirectly lost: 0 bytes in 0 blocks
+ * ==18899==      possibly lost: 0 bytes in 0 blocks
+ * ==18899==    still reachable: 192 bytes in 12 blocks
+ * ==18899==         suppressed: 0 bytes in 0 blocks
+ *
+ * This is not really a leak, as the memory is freed on process exit. It is shown because some libs are missing
+ * curl_global_cleanup and therefore are not freeing up the memory used by curl.
+ *
+ * Explanation from StackOverflow ():
+ * 
+ * "libcurl links against many libraries, and some of them do not have a function like curl_global_cleanup which reverts initialization and frees all memory.
+ * This happens when libcurl is linked against NSS for TLS support, and also with libssh2 and its use of libgcrypt.
+ * GNUTLS as the TLS implementation is somewhat cleaner in this regard.
+ *
+ * In general, this is not a problem because these secondary libraries are only used on operating systems where memory is freed on process termination,
+ * so an explicit cleanup is not needed (and would even slow down process termination). Only with certain memory debuggers, the effect of missing cleanup routines is visible,
+ * and valgrind deals with this situation by differentiating between actual leaks (memory to which no pointers are left) and memory which is still reachable at process termination
+ * (so that it could have been used again if the process had not terminated)."
  */
 stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
@@ -489,6 +547,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 
 		// Do not curl_global_cleanup in case of error, cause otherwise (if also curl_global_cleanup) SSL starts to mulfunction ???? (EVP_get_digestbyname("sha256") in stir_shaken_do_verify_data returns NULL)
 		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
 		
 		// On fail, http_req->response.code is CURLcode
         return STIR_SHAKEN_STATUS_FALSE;
@@ -496,6 +555,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 
 	curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &http_req->response.code);
 	curl_easy_cleanup(curl_handle);
+	curl_global_cleanup();
 	
 	// On success, http_req->response.code is HTTP response code (200, 403, 404, etc...)
 	return STIR_SHAKEN_STATUS_OK;

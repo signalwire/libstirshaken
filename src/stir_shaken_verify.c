@@ -342,7 +342,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 
 	if (stir_shaken_jwt_sih_to_jwt_encoded(ss, identity_header, &jwt_encoded[0], STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN) != STIR_SHAKEN_STATUS_OK) {
 
-		stir_shaken_set_error_if_clear(ss, "Failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "Failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -360,13 +360,13 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 	// Get raw public key from cert
 	if (stir_shaken_get_pubkey_raw_from_cert(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
 
-		stir_shaken_set_error_if_clear(ss, "Failed to get public key in raw format from remote STI-SP certificate", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "Failed to get public key in raw format from remote STI-SP certificate", STIR_SHAKEN_ERROR_SSL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	if (jwt_decode(&jwt, jwt_encoded, key, key_len)) {
 
-		stir_shaken_set_error_if_clear(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 		jwt_free(jwt);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
@@ -696,6 +696,7 @@ fail:
 
 	// Release all memory used by http_req
 	stir_shaken_destroy_http_request(&http_req);
+	stir_shaken_destroy_cert(&cert);
 
 	return ss_status;
 }

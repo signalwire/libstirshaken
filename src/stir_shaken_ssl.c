@@ -516,6 +516,7 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 	}
 
 	BIO_free_all(out);
+	out = NULL;
 
 	if (csr_text_full_name) {
 		bio = BIO_new_file(csr_text_full_name, "w");
@@ -527,6 +528,7 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 
 		X509_REQ_print_ex(bio, req, 0, 0);
 		BIO_free_all(bio);
+		bio = NULL;
 		
 		// TODO remove
 		printf("STIR-Shaken: CSR: Written CSR in human readable form to file %s\n", csr_text_full_name);
@@ -535,14 +537,28 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 anyway:
 
 	*csr_req = req;
+	if (bio) {
+		BIO_free_all(bio);
+		bio = NULL;
+	}
 
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
 
-	if (out) BIO_free_all(out);
+	if (out) {
+		BIO_free_all(out);
+		out = NULL;
+	}
+	if (bio) {
+		BIO_free_all(bio);
+		bio = NULL;
+	}
 	//if (pkey) EVP_PKEY_free(pkey);
-	if (req) X509_REQ_free(req);
+	if (req) {
+		X509_REQ_free(req);
+		req = NULL;
+	}
 	
 	stir_shaken_set_error_if_clear(ss, "Generate CSR: Error", STIR_SHAKEN_ERROR_SSL);
 
@@ -785,9 +801,11 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *s
 anyway:
 	if (bio) {
 		BIO_free_all(bio);
+		bio = NULL;
 	}
 	if (out) {
 		BIO_free_all(out);
+		out = NULL;
 	}
 	
 	return STIR_SHAKEN_STATUS_OK;
@@ -795,9 +813,11 @@ anyway:
 fail:
 	if (bio) {
 		BIO_free_all(bio);
+		bio = NULL;
 	}
 	if (out) {
 		BIO_free_all(out);
+		out = NULL;
 	}
 	if (x) {
 		X509_free(x);
@@ -808,6 +828,44 @@ fail:
 	stir_shaken_set_error_if_clear(ss, "Generate cert from CSR: Error", STIR_SHAKEN_ERROR_GENERAL);
 
 	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
+{
+	if (cert) {
+		if (cert->x) {
+			X509_free(cert->x);
+			cert->x = NULL;
+		}
+		if (cert->body) {
+			free(cert->body);
+			cert->body = NULL;
+		}
+		if (cert->name) {
+			free(cert->name);
+			cert->name = NULL;
+		}
+		if (cert->full_name) {
+			free(cert->full_name);
+			cert->full_name = NULL;
+		}
+		if (cert->original_name) {
+			free(cert->original_name);
+			cert->original_name = NULL;
+		}
+		if (cert->install_dir) {
+			free(cert->install_dir);
+			cert->install_dir = NULL;
+		}
+		if (cert->install_url) {
+			free(cert->install_url);
+			cert->install_url = NULL;
+		}
+		if (cert->public_url) {
+			free(cert->public_url);
+			cert->public_url = NULL;
+		}
+	}
 }
 
 // TODO
@@ -841,7 +899,7 @@ stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X
 
 	*x = PEM_read_bio_X509(cbio, NULL, 0, NULL);
 
-	BIO_free(cbio);
+	BIO_free(cbio); cbio = NULL;
 	return STIR_SHAKEN_STATUS_OK;
 }
 
@@ -869,7 +927,7 @@ stir_shaken_status_t stir_shaken_load_cert_from_file(stir_shaken_context_t *ss, 
 
 	*x = PEM_read_bio_X509(in, NULL, NULL, NULL);
 
-	BIO_free(in);
+	BIO_free(in); in = NULL;
 	return STIR_SHAKEN_STATUS_OK;
 }
 
@@ -946,7 +1004,7 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 
 		goto err;
 	}
-	BIO_free(in);
+	BIO_free(in); in = NULL;
 
 	if (priv_raw) {
 
@@ -992,6 +1050,7 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 		}
 
 		fclose(fp);
+		fp = NULL;
 
 		priv_raw[raw_key_len] = '\0';
 		*priv_raw_len = raw_key_len;
@@ -1020,6 +1079,7 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 	cert->private_key = *pkey;
 
 	BIO_free(in);
+	in = NULL;
 
 	return STIR_SHAKEN_STATUS_OK;
 
@@ -1200,6 +1260,7 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 		}
 
 		fclose(fp);
+		fp = NULL;
 
 		priv_raw[raw_key_len] = '\0';
 		*priv_raw_len = raw_key_len;
@@ -1233,17 +1294,17 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 
 	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Loaded pkey from: %s\n", public_key_full_name);
 
-	BIO_free_all(key);
-	BIO_free_all(out);
-	BIO_free_all(bio);
+	BIO_free_all(key); key = NULL;
+	BIO_free_all(out); out = NULL;
+	BIO_free_all(bio); bio = NULL;
 
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
 
-	if (out) BIO_free_all(out);
-	if (bio) BIO_free_all(bio);
-	if (key) BIO_free_all(key);
+	BIO_free_all(key); key = NULL;
+	BIO_free_all(out); out = NULL;
+	BIO_free_all(bio); bio = NULL;
 	stir_shaken_set_error_if_clear(ss, "Generate keys: Error", STIR_SHAKEN_ERROR_GENERAL);
 
 	return STIR_SHAKEN_STATUS_FALSE;
@@ -1565,7 +1626,7 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
 		res = 0;
 	} else if (r == 0) {
 		sprintf(err_buf, "Signature/data-key failed verification (signature doesn't match the data-key pair)");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER_SIGNATURE); 
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER); 
 		res = 1;
 	} else {
 		sprintf(err_buf, "Unknown error while verifying data");
@@ -1594,12 +1655,11 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
 err:
 	if (mctx) {
 		EVP_MD_CTX_destroy(mctx);
+		mctx = NULL;
 	}
 	if (bio_err) {
 		BIO_free(bio_err);
-	}
-	if (bio_err) {
-		BIO_free(bio_err);
+		bio_err = NULL;
 	}
 	if (ec_sig) {
 		ECDSA_SIG_free(ec_sig);
@@ -1628,7 +1688,7 @@ stir_shaken_status_t stir_shaken_get_csr_raw(stir_shaken_context_t *ss, X509_REQ
 	if (!bio || (PEM_write_bio_X509_REQ(bio, req) <= 0)) {
 
 		stir_shaken_set_error(ss, "Get csr raw: Failed to write from X509_REQ into memory BIO", STIR_SHAKEN_ERROR_SSL);
-		BIO_free_all(bio);
+		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
@@ -1636,11 +1696,11 @@ stir_shaken_status_t stir_shaken_get_csr_raw(stir_shaken_context_t *ss, X509_REQ
 	if (*body_len <= 0) {
 
 		stir_shaken_set_error(ss, "Get csr raw: Failed to read from output memory BIO", STIR_SHAKEN_ERROR_SSL);
-		BIO_free_all(bio);
+		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
-	BIO_free_all(bio);
+	BIO_free_all(bio); bio = NULL;
 	return STIR_SHAKEN_STATUS_OK;
 }
 
@@ -1655,7 +1715,7 @@ stir_shaken_status_t stir_shaken_get_cert_raw(stir_shaken_context_t *ss, X509 *x
 	if (!bio || (PEM_write_bio_X509(bio, x) <= 0)) {
 
 		stir_shaken_set_error(ss, "Get cert raw: Failed to write from X509 into memory BIO", STIR_SHAKEN_ERROR_SSL);
-		BIO_free_all(bio);
+		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
@@ -1663,11 +1723,11 @@ stir_shaken_status_t stir_shaken_get_cert_raw(stir_shaken_context_t *ss, X509 *x
 	if (*raw_len <= 0) {
 
 		stir_shaken_set_error(ss, "Get cert raw: Failed to read from output memory BIO", STIR_SHAKEN_ERROR_SSL);
-		BIO_free_all(bio);
+		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
-	BIO_free_all(bio);
+	BIO_free_all(bio); bio = NULL;
 	return STIR_SHAKEN_STATUS_OK;
 }
 
@@ -1686,7 +1746,7 @@ stir_shaken_status_t stir_shaken_evp_key_to_raw(stir_shaken_context_t *ss, EVP_P
 	if (!bio || (PEM_write_bio_PUBKEY(bio, evp_key) <= 0)) {
 
 		stir_shaken_set_error(ss, "Get pubkey raw: Failed to write from EVP_PKEY into memory BIO", STIR_SHAKEN_ERROR_SSL);
-		BIO_free_all(bio);
+		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
@@ -1694,11 +1754,11 @@ stir_shaken_status_t stir_shaken_evp_key_to_raw(stir_shaken_context_t *ss, EVP_P
 	if (*key_len <= 0) {
 
 		stir_shaken_set_error(ss, "Get pubkey raw: Failed to read from output memory BIO", STIR_SHAKEN_ERROR_SSL);
-		BIO_free_all(bio);
+		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
-	BIO_free_all(bio);
+	BIO_free_all(bio); bio = NULL;
 	return STIR_SHAKEN_STATUS_OK;
 }
 
@@ -1717,13 +1777,13 @@ stir_shaken_status_t stir_shaken_get_pubkey_raw_from_cert(stir_shaken_context_t 
 	if (!(pk = X509_get_pubkey(cert->x))) {
 
 		stir_shaken_set_error(ss, "Get pubkey raw: Failed to read EVP_PKEY from cert", STIR_SHAKEN_ERROR_SSL);
-		BIO_free_all(bio);
+		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 	
 	ret = stir_shaken_evp_key_to_raw(ss, pk, key, key_len);
-	BIO_free_all(bio);
-	EVP_PKEY_free(pk);
+	BIO_free_all(bio); bio = NULL;
+	EVP_PKEY_free(pk); pk = NULL;
 	return ret;
 }
 
@@ -1867,12 +1927,16 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss)
 	stir_shaken_globals.curve_nid = curve_nid;
 
 	free(curves);
+	curves = NULL;
 
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
 
-	if (curves) free(curves);
+	if (curves) {
+		free(curves);
+		curves = NULL;
+	}
 	stir_shaken_set_error_if_clear(ss, "Init SSL: Error", STIR_SHAKEN_ERROR_GENERAL);
 
 	return STIR_SHAKEN_STATUS_FALSE;
