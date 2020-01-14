@@ -3,7 +3,7 @@
 const char *path = "./test/run";
 
 
-stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
+stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
 {
 	stir_shaken_jwt_passport_t passport = { 0 };
     const char *x5u = "https://not.here.org/passport.cer";
@@ -14,7 +14,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
     const char *origtn_key = "";
     const char *origtn_val = "07483866525";
     const char *origid = "Trump's Office";
-    char *sih = NULL;
+    char *sih = NULL, *p = NULL;
     stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
 	stir_shaken_context_t ss = { 0 };
 	const char *error_description = NULL;
@@ -25,45 +25,31 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
     EC_KEY *ec_key = NULL;
     EVP_PKEY *private_key = NULL;
     EVP_PKEY *public_key = NULL;
-	
+
 	char private_key_name[300] = { 0 };
 	char public_key_name[300] = { 0 };
 	char csr_name[300] = { 0 };
 	char csr_text_name[300] = { 0 };
 	char cert_name[300] = { 0 };
 	char cert_text_name[300] = { 0 };
-	char private_key_name_spoofed[300] = { 0 };
-	char public_key_name_spoofed[300] = { 0 };
 
     uint32_t sp_code = 1800;
 
     stir_shaken_csr_t csr = {0};
     stir_shaken_cert_t cert = {0};
-    
-    char *spoofed_sih = NULL, *p = NULL;
-    const char *spoofed_origtn_val = "07643866222";
-	jwt_t *jwt = NULL;
 
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
 	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
-    
-	EC_KEY *ec_key_spoofed = NULL;
-    EVP_PKEY *private_key_spoofed = NULL;
-    EVP_PKEY *public_key_spoofed = NULL;
-	unsigned char	priv_raw_spoofed[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
-	uint32_t		priv_raw_len_spoofed = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
 
 
-	sprintf(private_key_name, "%s%c%s", path, '/', "u8_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", path, '/', "u8_public_key.pem");
-    sprintf(csr_name, "%s%c%s", path, '/', "u8_csr.pem");
-    sprintf(csr_text_name, "%s%c%s", path, '/', "u8_csr_text.pem");
-    sprintf(cert_name, "%s%c%s", path, '/', "u8_cert.crt");
-    sprintf(cert_text_name, "%s%c%s", path, '/', "u8_cert_text.crt");
-	sprintf(private_key_name_spoofed, "%s%c%s", path, '/', "u8_private_key_spoofed.pem");
-	sprintf(public_key_name_spoofed, "%s%c%s", path, '/', "u8_public_key_spoofed.pem");
+	sprintf(private_key_name, "%s%c%s", path, '/', "u7_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u7_public_key.pem");
+    sprintf(csr_name, "%s%c%s", path, '/', "u7_csr.pem");
+    sprintf(csr_text_name, "%s%c%s", path, '/', "u7_csr_text.pem");
+    sprintf(cert_name, "%s%c%s", path, '/', "u7_cert.crt");
+    sprintf(cert_text_name, "%s%c%s", path, '/', "u7_cert_text.crt");
 
-    printf("=== Unit testing: STIR/Shaken Verification against good and spoofed SIP Identity Header [stir_shaken_unit_test_verify]\n\n");
+    printf("=== Unit testing: STIR/Shaken Verification [stir_shaken_unit_test_verify]\n\n");
     
     // Generate new keys for this test
     status = stir_shaken_generate_keys(&ss, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);
@@ -96,7 +82,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
     
-    printf("SIP Identity Header:\n%s\n\n", sih);
+    printf("Created SIP Identity Header\n\n");
+    printf("SIP Identity Header:\n%s\n", sih);
 
     printf("Creating CSR\n");
     status = stir_shaken_generate_csr(&ss, sp_code, &csr.req, private_key, public_key, csr_name, csr_text_name);
@@ -124,19 +111,6 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
-    printf("Verifying SIP Identity Header's signature with Cert... (against good data)\n\n");
-    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport, NULL);
-    if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
-		printf("Error description is: '%s'\n", error_description);
-		printf("Error code is: '%d'\n", error_code);
-	}
-    stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, verifying");
-    stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
-	error_description = stir_shaken_get_error(&ss, &error_code);
-    stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
-    stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
-	
 	printf("Verifying SIP Identity Header's signature with Cert...\n\n");
     status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport, NULL);
     if (stir_shaken_is_error_set(&ss)) {
@@ -150,56 +124,13 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
     printf("PASSporT (decoded from SIH) is:\n%s\n\n", p);
 	stir_shaken_free_jwt_str(p);
 	p = NULL;
-
-	stir_shaken_jwt_passport_destroy(&passport);
-
-    // Spoofed SIP Identity Header
-    
-	printf("Authorizing with Spoofed SIP Identity Header (changed Telephone Number and signed with wrong key)...\n\n");
-    
-	// This simulates spoofed Telephone Number value
-	params.origtn_val = spoofed_origtn_val;
-    
-	// Generate spoofed keys
-    status = stir_shaken_generate_keys(&ss, &ec_key_spoofed, &private_key_spoofed, &public_key_spoofed, private_key_name_spoofed, public_key_name_spoofed, priv_raw_spoofed, &priv_raw_len_spoofed);
-    stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
-    stir_shaken_assert(ec_key_spoofed != NULL, "Err, failed to generate EC key\n\n");
-    stir_shaken_assert(private_key_spoofed != NULL, "Err, failed to generate private key");
-    stir_shaken_assert(public_key_spoofed != NULL, "Err, failed to generate public key");
-
-    // Using same signature, same data, apart from spoofed Telephone Number
-	status = stir_shaken_jwt_authorize(&ss, &spoofed_sih, &params, priv_raw_spoofed, priv_raw_len_spoofed);
-    if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
-		printf("Error description is: '%s'\n", error_description);
-		printf("Error code is: '%d'\n", error_code);
-	}
-    stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to create SIP Identity Header");
-    stir_shaken_assert(spoofed_sih != NULL, "Failed to create (spoofed) SIP Identity Header");
-    printf("Spoofed SIP Identity Header:\n%s\n\n", spoofed_sih);
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
-    
-    printf("Verifying SIP Identity Header's signature with Cert... (against spoofed SIP Identity Header)\n\n");
-    status = stir_shaken_jwt_verify_with_cert(&ss, spoofed_sih, &cert, &passport, NULL);
-    if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
-		printf("Error description is: '%s'\n", error_description);
-		printf("Error code is: '%d'\n", error_code);
-	}
-    stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Err, verifying");
-	if (passport.jwt != NULL) {
-		p = stir_shaken_jwt_passport_dump_str(&passport, 1);
-		printf("Ooops, PASSporT (decoded from spoofed SIH) is:\n%s\n\n", p);
-		stir_shaken_free_jwt_str(p);
-		p = NULL;
-	}
-	stir_shaken_assert(passport.jwt == NULL, "WTF: JWT returned from spoofed call...");
 
 	stir_shaken_jwt_passport_destroy(&passport);
-	
+
 	X509_REQ_free(csr.req);
 	csr.req = NULL;
 		
@@ -209,13 +140,9 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
 	free(sih);
 	sih = NULL;
 	
-	free(spoofed_sih);
-	spoofed_sih = NULL;
-	
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
-	stir_shaken_destroy_keys(&ec_key_spoofed, &private_key_spoofed, &public_key_spoofed);
     
-    return STIR_SHAKEN_STATUS_OK;
+    return status;
 }
 
 int main(void)
@@ -231,7 +158,7 @@ int main(void)
 		}
 	}
 
-	if (stir_shaken_unit_test_verify_with_cert_spoofed() != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_unit_test_verify_with_cert() != STIR_SHAKEN_STATUS_OK) {
 		
 		printf("Fail\n");
 		return -2;

@@ -444,7 +444,7 @@ static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nm
  * This is not really a leak, as the memory is freed on process exit. It is shown because some libs are missing
  * curl_global_cleanup and therefore are not freeing up the memory used by curl.
  *
- * Explanation from StackOverflow ():
+ * Explanation from StackOverflow (https://stackoverflow.com/questions/51503838/why-libcurl-still-leaves-reachable-blocks-after-cleanup-calls):
  * 
  * "libcurl links against many libraries, and some of them do not have a function like curl_global_cleanup which reverts initialization and frees all memory.
  * This happens when libcurl is linked against NSS for TLS support, and also with libssh2 and its use of libgcrypt.

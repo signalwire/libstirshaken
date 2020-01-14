@@ -2,115 +2,149 @@
 
 const char *path = "./test/run";
 
-/**
- * STIR/Shaken PASSporT creation using libjwt, Unit test
- * According to RFC 8225:
- * "Appendix A.  Example ES256-Based PASSporT JWS Serialization and Signature"
- */
-#define BUF_LEN 1000
-stir_shaken_status_t stir_shaken_unit_test_jwt_passport_create(void)
+stir_shaken_status_t stir_shaken_unit_test_jwt_authorize_keep_passport(void)
 {
-	stir_shaken_jwt_passport_t passport = {0};
-    stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
-    const char *x5u = "https://cert.example.org/passport.cer";      // ref
-    const char *attest = NULL;                                      // ignore, ref test case doesn't include this field
-    const char *desttn_key = "uri";                                 // ref
-    const char *desttn_val = "sip:alice@example.com";               // ref
-    int iat = 1471375418;                                           // ref
-    const char *origtn_key = "tn";                                  // ref test for orig telephone number
-    const char *origtn_val = "12155551212";                         // ref
-    const char *origid = NULL;                                      // ignore, ref test case doesn't include this field
-    uint8_t ppt_ignore = 1;                                         // ignore, ref test case doesn't include this field
+    const char *x5u = "https://not.here.org/passport.cer";
+    const char *attest = "B";
+    const char *desttn_key = "uri";
+    const char *desttn_val = "sip:Obama@democrats.com";
+    int iat = 9876543;
+    const char *origtn_key = "";
+    const char *origtn_val = "07483866525";
+    const char *origid = "Trump's Office";
+    char *sih = NULL;
+    stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
+	stir_shaken_context_t ss = { 0 };
+	const char *error_description = NULL;
+	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
 
-    /* Reference test values */
-    const char *payload_serialised_ref = "{\"dest\":{\"uri\":[\"sip:alice@example.com\"]},\"iat\":1471375418,\"orig\":{\"tn\":\"12155551212\"}}";
-    const char *payload_base64_ref = "eyJkZXN0Ijp7InVyaSI6WyJzaXA6YWxpY2VAZXhhbXBsZS5jb20iXX0sImlhdCI6MTQ3MTM3NTQxOCwib3JpZyI6eyJ0biI6IjEyMTU1NTUxMjEyIn19";
-    const char *header_serialised_ref = "{\"alg\":\"ES256\",\"typ\":\"passport\",\"x5u\":\"https://cert.example.org/passport.cer\"}";
-    const char *header_base64_ref = "eyJhbGciOiJFUzI1NiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9jZXJ0LmV4YW1wbGUub3JnL3Bhc3Nwb3J0LmNlciJ9";
-    const char *signature_ref = "eyJhbGciOiJFUzI1NiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9jZXJ0LmV4YW1wbGUub3JnL3Bhc3Nwb3J0LmNlciJ9.eyJkZXN0Ijp7InVyaSI6WyJzaXA6YWxpY2VAZXhhbXBsZS5jb20iXX0sImlhdCI6MTQ3MTM3NTQxOCwib3JpZyI6eyJ0biI6IjEyMTU1NTUxMjEyIn19";
-    //const char *signature_base64_ref = "ZXlKaGJHY2lPaUpGVXpJMU5pSXNJblI1Y0NJNkluQmhjM053YjNKMElpd2llRFYxSWpvaWFIUjBjSE02THk5alpYSjBMbVY0WVcxd2JHVXViM0puTDNCaGMzTndiM0owTG1ObGNpSjkuZXlKa1pYTjBJanA3SW5WeWFTSTZXeUp6YVhBNllXeHBZMlZBWlhoaGJYQnNaUzVqYjIwaVhYMHNJbWxoZENJNk1UUTNNVE0zTlRReE9Dd2liM0pwWnlJNmV5SjBiaUk2SWpFeU1UVTFOVFV4TWpFeUluMTk=";
-    //const char *signature_encoded_ref = "VLBCIVDCaeK6M4hLJb6SHQvacAQVvoiiEOWQ_iUkqk79UD81fHQ0E1b3_GluIkba7UWYRM47ZbNFdOJquE35cw";
-
-	jwt_t	*jwtpass = NULL;	// PASSporT as a JWT
-    cJSON	*jsonpass = NULL;	// PASSporT as a JSON
-	char *s = NULL, *sih = NULL;
-    
-	char private_key_name[300] = { 0 };
-	char public_key_name[300] = { 0 };
+    stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat, .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid };
     
     EC_KEY *ec_key = NULL;
     EVP_PKEY *private_key = NULL;
     EVP_PKEY *public_key = NULL;
 
+	char private_key_name[300] = { 0 };
+	char public_key_name[300] = { 0 };
+	char csr_name[300] = { 0 };
+	char csr_text_name[300] = { 0 };
+	char cert_name[300] = { 0 };
+	char cert_text_name[300] = { 0 };
+
+    uint32_t sp_code = 1800;
+
+    stir_shaken_csr_t csr = {0};
+    stir_shaken_cert_t cert = {0};
+
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
-	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
+	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
 
-    stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat, .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid, .ppt_ignore = ppt_ignore};
+	char *passport_rx = NULL, *passport_tx = NULL;
+	stir_shaken_jwt_passport_t passport = { 0 };
 
-	sprintf(private_key_name, "%s%c%s", path, '/', "u11_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", path, '/', "u11_public_key.pem");
-    
-    printf("=== Unit testing: STIR/Shaken PASSporT creation [stir_shaken_unit_test_jwt_passport_create]\n\n");
+
+	sprintf(private_key_name, "%s%c%s", path, '/', "u8_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u8_public_key.pem");
+    sprintf(csr_name, "%s%c%s", path, '/', "u8_csr.pem");
+    sprintf(csr_text_name, "%s%c%s", path, '/', "u8_csr_text.pem");
+    sprintf(cert_name, "%s%c%s", path, '/', "u8_cert.crt");
+    sprintf(cert_text_name, "%s%c%s", path, '/', "u8_cert_text.crt");
+
+    printf("=== Unit testing: STIR/Shaken Verification [stir_shaken_unit_test_verify]\n\n");
     
     // Generate new keys for this test
-	status = stir_shaken_generate_keys(NULL, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);
-
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
-	stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key");
-	stir_shaken_assert(private_key != NULL, "Err, failed to generate private key");
-	stir_shaken_assert(public_key != NULL, "Err, failed to generate public key");
+    status = stir_shaken_generate_keys(&ss, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);
+    stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
+    stir_shaken_assert(ec_key != NULL, "Err, failed to generate EC key\n\n");
+    stir_shaken_assert(private_key != NULL, "Err, failed to generate private key");
+    stir_shaken_assert(public_key != NULL, "Err, failed to generate public key");
+    
+	printf("Creating CSR\n");
+    status = stir_shaken_generate_csr(&ss, sp_code, &csr.req, private_key, public_key, csr_name, csr_text_name);
+    stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
+    
+    printf("Creating Certificate\n");
+    status = stir_shaken_generate_cert_from_csr(NULL, sp_code, &cert, &csr, private_key, public_key, cert_name, cert_text_name);
+    printf("Err, generating Cert\n");
 
     /* Test */
-	status = stir_shaken_jwt_passport_init(NULL, &passport, &params, priv_raw, priv_raw_len);
+    printf("Test 1: Authorizing (forget PASSporT)...\n\n");
+	status = stir_shaken_jwt_authorize(&ss, &sih, &params, priv_raw, priv_raw_len);
+    stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to create SIP Identity Header");
+    stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
+    
+    printf("Created SIP Identity Header\n\n");
+    printf("SIP Identity Header:\n%s\n\n", sih);
 
-    stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
-    stir_shaken_assert(passport.jwt != NULL, "JWT has not been created");
-	printf("1. JWT:\n%s\n", (s = jwt_dump_str(passport.jwt, 1)));
-	jwt_free_str(s); s = NULL;
-
-    // Encode using default key
-	status = stir_shaken_jwt_passport_sign(NULL, &passport, NULL, 0, &s);
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign using ES 256");
-	stir_shaken_assert(s != NULL, "Failed to sign using ES 256, NULL string");
-	printf("2. Encoded (using default key):\n%s\n", s);
-	jwt_free_str(s); s = NULL;
-	
-	// Encode using given key
-	status = stir_shaken_jwt_passport_sign(NULL, &passport, priv_raw, priv_raw_len, &s);
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign using ES 256");
-	stir_shaken_assert(s != NULL, "Failed to sign using ES 256, NULL string");
-	printf("3. Encoded (using given key):\n%s\n", s);
-	jwt_free_str(s); s = NULL;
-
-	printf("4. Encoded via jwt call:\n%s\n\n", (s = jwt_encode_str(passport.jwt)));
-	jwt_free_str(s); s = NULL;
-
-	// Test call authorization with given PASSporT and key
-	sih = stir_shaken_jwt_sip_identity_create(NULL, &passport, priv_raw, priv_raw_len);
-	stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
-    printf("5.1 SIP Identity Header (call authorization with given PASSporT and key):\n%s\n\n", sih);
-	free(sih); sih = NULL;
-	
-	// Test call authorization with given PASSporT and implicit key
-	sih = stir_shaken_jwt_sip_identity_create(NULL, &passport, NULL, 0);
-	stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
-    printf("5.2 SIP Identity Header (call authorization with given PASSporT and implicit key):\n%s\n\n", sih);
-	free(sih); sih = NULL;
+    printf("Verifying SIP Identity Header's signature with Cert...\n\n");
+    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport, NULL);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
+    stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, verifying");
+	stir_shaken_assert(passport.jwt, "Err, verifying: JWT not returned");
+	passport_rx = stir_shaken_jwt_passport_dump_str(&passport, 1);
+    printf("PASSporT (decoded from SIH) is:\n%s\n\n", passport_rx);
+	stir_shaken_free_jwt_str(passport_rx);
+	passport_rx = NULL;
 
 	stir_shaken_jwt_passport_destroy(&passport);
-	
-	// Test call authorization with implicit PASSporT
-	status = stir_shaken_jwt_authorize(NULL, &sih, &params, priv_raw, priv_raw_len);
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to authorize (status)");
-	stir_shaken_assert(sih != NULL, "Failed to authorize (SIP Identity Header)");
-    printf("5.3 SIP Identity Header (call authorization with implicit PASSporT):\n%s\n\n", sih);
-	free(sih); sih = NULL;
-	
-	pthread_mutex_lock(&stir_shaken_globals.mutex);
-	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
-	pthread_mutex_unlock(&stir_shaken_globals.mutex);
+	free(sih);
+	sih = NULL;
+    
+	printf("Test 2: Authorizing (retrieving PASSporT)...\n\n");
+	status = stir_shaken_jwt_authorize_keep_passport(&ss, &sih, &params, priv_raw, priv_raw_len, &passport);
+    stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to create SIP Identity Header");
+    stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
+    
+    printf("Created SIP Identity Header\n\n");
+    printf("SIP Identity Header:\n%s\n\n", sih);
 
-	return status;
+	// PASSporT transmitted
+	passport_tx = stir_shaken_jwt_passport_dump_str(&passport, 1);
+	stir_shaken_assert(passport_tx != NULL, "Failed to dump PASSporT");
+    printf("Created PASSporT\n\n");
+    printf("PASSporT:\n%s\n", passport_tx);
+	stir_shaken_jwt_passport_destroy(&passport);
+
+    printf("Verifying SIP Identity Header's signature with Cert...\n\n");
+    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport, NULL);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
+    stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, verifying");
+	stir_shaken_assert(passport.jwt, "Err, verifying: JWT not returned");
+
+	// PASSporT received
+	passport_rx = stir_shaken_jwt_passport_dump_str(&passport, 1);
+    printf("PASSporT (decoded from SIH) is:\n%s\n\n", passport_rx);
+
+	// And now...
+    printf("Checking retrieved PASSporT (comparing with source PASSporT used to create SIH)...\n");
+	stir_shaken_assert(strcmp(passport_rx, passport_tx) == 0, "Err, PASSporT retrieved is different from used to create it...");
+	
+	stir_shaken_free_jwt_str(passport_rx);
+	passport_rx = NULL;
+
+	stir_shaken_jwt_passport_destroy(&passport);
+	free(sih);
+	sih = NULL;
+	stir_shaken_free_jwt_str(passport_tx);
+	passport_tx = NULL;
+
+	X509_REQ_free(csr.req);
+	csr.req = NULL;
+		
+	X509_free(cert.x);
+	cert.x = NULL;
+	
+	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
+    
+    return status;
 }
 
 int main(void)
@@ -126,7 +160,7 @@ int main(void)
 		}
 	}
 
-	if (stir_shaken_unit_test_jwt_passport_create() != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_unit_test_jwt_authorize_keep_passport() != STIR_SHAKEN_STATUS_OK) {
 		
 		printf("Fail\n");
 		return -2;
