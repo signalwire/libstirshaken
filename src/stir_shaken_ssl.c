@@ -565,6 +565,19 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
+void stir_shaken_destroy_csr(X509_REQ **csr_req)
+{
+	if (csr_req) {
+	
+		if (*csr_req) {
+		
+			X509_REQ_free(*csr_req);
+		}
+
+		*csr_req = NULL;
+	}
+}
+
 X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key)
 {
 	X509            *x = NULL;

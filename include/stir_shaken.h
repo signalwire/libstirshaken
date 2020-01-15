@@ -442,6 +442,7 @@ void stir_shaken_destroy_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub);
  * @csr - (out) result
  */
 stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *csr_full_name, const char *csr_text_full_name);
+void stir_shaken_destroy_csr(X509_REQ **csr_req);
 
 /**
  * Generate self signed X509 certificate from csr @req.
