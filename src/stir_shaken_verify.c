@@ -585,7 +585,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 		if (res == CURLE_COULDNT_RESOLVE_HOST || res == CURLE_COULDNT_RESOLVE_PROXY || res == CURLE_COULDNT_CONNECT || res != CURLE_REMOTE_ACCESS_DENIED) {
 			
 			// Cannot access
-			sprintf(err_buf, "Verify: Cannot conenct to URL: %s", cert_url);
+			sprintf(err_buf, "Verify: Cannot connect to URL: %s", cert_url);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 
 		} else if (res == CURLE_REMOTE_ACCESS_DENIED) {
