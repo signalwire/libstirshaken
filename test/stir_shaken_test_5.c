@@ -47,8 +47,8 @@ stir_shaken_status_t stir_shaken_unit_test_call_authorization(void)
 
     stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat, .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid, .ppt_ignore = ppt_ignore};
 
-	sprintf(private_key_name, "%s%c%s", path, '/', "u11_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", path, '/', "u11_public_key.pem");
+	sprintf(private_key_name, "%s%c%s", path, '/', "u5_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u5_public_key.pem");
     
     printf("=== Unit testing: STIR/Shaken PASSporT creation [stir_shaken_unit_test_jwt_passport_create]\n\n");
     

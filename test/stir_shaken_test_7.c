@@ -76,8 +76,8 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
 	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
 
 
-	sprintf(private_key_name, "%s%c%s", path, '/', "u6_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", path, '/', "u6_public_key.pem");
+	sprintf(private_key_name, "%s%c%s", path, '/', "u7_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u7_public_key.pem");
 
     printf("=== Unit testing: STIR/Shaken PASSporT data\n\n");
     

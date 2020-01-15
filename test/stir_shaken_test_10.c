@@ -110,12 +110,12 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	memset(&ss, 0, sizeof(ss));
 
 
-	sprintf(private_key_name, "%s%c%s", path, '/', "u9_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", path, '/', "u9_public_key.pem");
-    sprintf(csr_name, "%s%c%s", path, '/', "u9_csr.pem");
-    sprintf(csr_text_name, "%s%c%s", path, '/', "u9_csr_text.pem");
-    sprintf(cert_name, "%s%c%s", path, '/', "u9_cert.crt");
-    sprintf(cert_text_name, "%s%c%s", path, '/', "u9_cert_text.crt");
+	sprintf(private_key_name, "%s%c%s", path, '/', "u10_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u10_public_key.pem");
+    sprintf(csr_name, "%s%c%s", path, '/', "u10_csr.pem");
+    sprintf(csr_text_name, "%s%c%s", path, '/', "u10_csr_text.pem");
+    sprintf(cert_name, "%s%c%s", path, '/', "u10_cert.crt");
+    sprintf(cert_text_name, "%s%c%s", path, '/', "u10_cert_text.crt");
 
     printf("=== Unit testing: STIR/Shaken verify response error codes [stir_shaken_unit_test_verify_response]\n\n");
     
