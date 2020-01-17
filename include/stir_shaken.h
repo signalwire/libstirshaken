@@ -74,6 +74,8 @@ typedef struct stir_shaken_cert_s {
 	// Cert info retrieved with stir_shaken_read_cert
 	char *serialHex;
 	char *serialDec;
+	ASN1_TIME *notBefore_ASN1;
+	ASN1_TIME *notAfter_ASN1;
 	char notBefore[ASN1_DATE_LEN];
 	char notAfter[ASN1_DATE_LEN];
 	char *issuer;

@@ -765,6 +765,8 @@ stir_shaken_status_t stir_shaken_read_cert(stir_shaken_context_t *ss, stir_shake
 		free(cert->subject);
 	}
 	cert->subject = subject;
+	cert->notBefore_ASN1 = notBefore;
+	cert->notAfter_ASN1 = notAfter;
 	strncpy(cert->notBefore, not_before_str, ASN1_DATE_LEN);
 	strncpy(cert->notAfter, not_after_str, ASN1_DATE_LEN);
 	cert->version = version;
@@ -1028,6 +1030,14 @@ void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
 		if (cert->public_url) {
 			free(cert->public_url);
 			cert->public_url = NULL;
+		}
+		if (cert->notBefore_ASN1) {
+			ASN1_TIME_free(cert->notBefore_ASN1);
+			cert->notBefore_ASN1 = NULL;
+		}
+		if (cert->notAfter_ASN1) {
+			ASN1_TIME_free(cert->notAfter_ASN1);
+			cert->notAfter_ASN1 = NULL;
 		}
 	}
 }
