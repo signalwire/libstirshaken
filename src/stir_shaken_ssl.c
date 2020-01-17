@@ -678,6 +678,157 @@ fail:
 	return NULL;
 }
 
+#define DATE_LEN 128
+
+static int stir_shaken_convert_ASN1TIME(stir_shaken_context_t *ss, ASN1_TIME *t, char* buf, size_t len)
+{
+	int	rc = -1;
+	BIO	*b = BIO_new(BIO_s_mem());
+
+	rc = ASN1_TIME_print(b, t);
+	if (rc <= 0) {
+
+		stir_shaken_set_error(ss, "ASN1_TIME_print failed or wrote no data", STIR_SHAKEN_ERROR_GENERAL);
+		BIO_free(b);
+		return EXIT_FAILURE;
+	}
+
+	rc = BIO_gets(b, buf, len);
+	if (rc <= 0) {
+
+		stir_shaken_set_error(ss, "BIO_gets call failed to transfer contents to buf", STIR_SHAKEN_ERROR_GENERAL);
+		BIO_free(b);
+		return EXIT_FAILURE;
+	}
+
+	BIO_free(b);
+	return EXIT_SUCCESS;
+}
+
+stir_shaken_status_t stir_shaken_read_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
+{
+	X509			*x = NULL;
+	ASN1_INTEGER	*serial = NULL;
+	BIGNUM			*bnser = NULL;
+	char			*serialHex = NULL;
+	char			*serialDec = NULL;
+	char			*issuer = NULL;
+	char			*subject = NULL;
+	char			not_before_str[ASN1_DATE_LEN] = { 0 };
+	char			not_after_str[ASN1_DATE_LEN] = { 0 };
+	ASN1_TIME		*notBefore = NULL;
+	ASN1_TIME		*notAfter = NULL;
+	int				version = -1;
+
+	stir_shaken_clear_error(ss);
+
+	if (!cert) {
+
+		stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	x = cert->x;
+	if (!x) {
+
+		stir_shaken_set_error(ss, "Cert has no X509 struct", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	X509_get_serialNumber(x);
+	serial = X509_get_serialNumber(x);
+	bnser = ASN1_INTEGER_to_BN(serial, NULL);
+	serialHex = BN_bn2hex(bnser);
+	serialDec = BN_bn2dec(bnser);
+
+	issuer = X509_NAME_oneline(X509_get_issuer_name(x), NULL, 0);
+	subject = X509_NAME_oneline(X509_get_subject_name(x), NULL, 0);
+	notBefore = X509_get_notBefore(x);
+	stir_shaken_convert_ASN1TIME(ss, notBefore, not_before_str, DATE_LEN);
+	notAfter = X509_get_notAfter(x);
+	stir_shaken_convert_ASN1TIME(ss, notAfter, not_after_str, DATE_LEN);
+	version = ((int) X509_get_version(x)) + 1;
+
+	if (cert->serialHex) {
+		free(cert->serialHex);
+	}
+	cert->serialHex = serialHex;
+	if (cert->serialDec) {
+		free(cert->serialDec);
+	}
+	cert->serialDec = serialDec;
+	if (cert->issuer) {
+		free(cert->issuer);
+	}
+	cert->issuer = issuer;
+	if (cert->subject) {
+		free(cert->subject);
+	}
+	cert->subject = subject;
+	strncpy(cert->notBefore, not_before_str, ASN1_DATE_LEN);
+	strncpy(cert->notAfter, not_after_str, ASN1_DATE_LEN);
+	cert->version = version;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_verify_cert_root(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
+{
+	X509            *x = NULL;
+
+	stir_shaken_clear_error(ss);
+
+	if (!cert) {
+
+		stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+char* stir_shaken_cert_get_serialHex(stir_shaken_cert_t *cert)
+{
+	if (!cert) return NULL;
+	return cert->serialHex;
+}
+
+char* stir_shaken_cert_get_serialDec(stir_shaken_cert_t *cert)
+{
+	if (!cert) return NULL;
+	return cert->serialDec;
+}
+
+char* stir_shaken_cert_get_notBefore(stir_shaken_cert_t *cert)
+{
+	if (!cert) return NULL;
+	return cert->notBefore;
+}
+
+char* stir_shaken_cert_get_notAfter(stir_shaken_cert_t *cert)
+{
+	if (!cert) return NULL;
+	return cert->notAfter;
+}
+
+char* stir_shaken_cert_get_issuer(stir_shaken_cert_t *cert)
+{
+	if (!cert) return NULL;
+	return cert->issuer;
+}
+
+char* stir_shaken_cert_get_subject(stir_shaken_cert_t *cert)
+{
+	if (!cert) return NULL;
+	return cert->subject;
+}
+
+int stir_shaken_cert_get_version(stir_shaken_cert_t *cert)
+{
+	if (!cert) return -1;
+	return cert->version;
+}
+
 /**
  * @buf - (out) will contain fingerprint, must be of size at least 3*EVP_MAX_MD_SIZE bytes
  * @buflen - (out) will contain string len including '\0'

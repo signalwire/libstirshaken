@@ -539,9 +539,8 @@ stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const ch
 // In addition, if any of the base claims or SHAKEN extension claims are missing from the PASSporT token claims,
 // the verification service shall treat this as a 438 Invalid Identity Header error and proceed as defined above.
 
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport, cJSON *stica_array)
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t *cert)
 {
-	stir_shaken_cert_t		cert = {0};
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	stir_shaken_http_req_t	http_req = { 0 };
@@ -636,30 +635,51 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	// TODO remove
 	printf("STIR-Shaken: Verify: loading cert from memory into X509...\n");
 
-    if (stir_shaken_load_cert_from_mem(ss, &cert.x, http_req.response.mem.mem, http_req.response.mem.size) != STIR_SHAKEN_STATUS_OK) {
+	if (!cert) {
+
+		cert = malloc(sizeof(stir_shaken_cert_t));
+		if (!cert) {
+			goto fail;
+		}
+
+		memset(cert, 0, sizeof(stir_shaken_cert_t));
+	}
+
+    if (stir_shaken_load_cert_from_mem(ss, &cert->x, http_req.response.mem.mem, http_req.response.mem.size) != STIR_SHAKEN_STATUS_OK) {
 	
 		stir_shaken_set_error_if_clear(ss, "Verify: error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
     }
-	
+
 	// TODO copy cert into cert.body
-	cert.body = malloc(http_req.response.mem.size);
-	if (!cert.body) {
+	cert->body = malloc(http_req.response.mem.size);
+	if (!cert->body) {
 	
 		stir_shaken_set_error(ss, "Verify: out of memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
-	memcpy(cert.body, http_req.response.mem.mem, http_req.response.mem.size);
-	cert.len = http_req.response.mem.size;
 
-	// Verify signature and root of certificate
+	memcpy(cert->body, http_req.response.mem.mem, http_req.response.mem.size);
+	cert->len = http_req.response.mem.size;
+
+	// Parse X509 representation of cert into char/int variables
+	if (stir_shaken_read_cert(ss, cert) != STIR_SHAKEN_STATUS_OK) {
+
+		goto fail;
+	}
+
+	// Verify root of certificate
+	if (stir_shaken_verify_cert_root(ss, cert) != STIR_SHAKEN_STATUS_OK) {
+
+		goto fail;
+	}
 
 	// TODO Handle STIR_SHAKEN_ERROR_SIP_403_STALE_DATE
 	
 	// TODO remove
 	printf("STIR-Shaken: Verify: checking SIH signature with cert...\n");
 
-	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, &cert, passport, stica_array);
+	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, cert, passport, stica_array);
 	
 	switch (ss_status) {
 	   
@@ -696,7 +716,8 @@ fail:
 
 	// Release all memory used by http_req
 	stir_shaken_destroy_http_request(&http_req);
-	stir_shaken_destroy_cert(&cert);
+
+	// Note, cert must be destroyed by caller
 
 	return ss_status;
 }

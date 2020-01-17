@@ -21,6 +21,7 @@
 #define STIR_SHAKEN_ERROR_BUF_LEN 1000
 #define STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN 2000
 #define STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN 2000
+#define ASN1_DATE_LEN 128
 
 #include <openssl/crypto.h>
 #include <openssl/pem.h>
@@ -69,6 +70,16 @@ typedef struct stir_shaken_cert_s {
 	char		*public_url;				// publicly accessible URL which can be used to download the certificate, this is concatenated from @install_url and cert's @name and is put into PASSporT as @x5u and @params.info
 	EC_KEY              *ec_key;
 	EVP_PKEY            *private_key;
+
+	// Cert info retrieved with stir_shaken_read_cert
+	char *serialHex;
+	char *serialDec;
+	char notBefore[ASN1_DATE_LEN];
+	char notAfter[ASN1_DATE_LEN];
+	char *issuer;
+	char *subject;
+	int version;
+
 } stir_shaken_cert_t;
 
 // ACME credentials
@@ -473,6 +484,15 @@ X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY 
  */
 stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_read_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_verify_cert_root(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
+char* stir_shaken_cert_get_serialHex(stir_shaken_cert_t *cert);
+char* stir_shaken_cert_get_serialDec(stir_shaken_cert_t *cert);
+char* stir_shaken_cert_get_notBefore(stir_shaken_cert_t *cert);
+char* stir_shaken_cert_get_notAfter(stir_shaken_cert_t *cert);
+char* stir_shaken_cert_get_issuer(stir_shaken_cert_t *cert);
+char* stir_shaken_cert_get_subject(stir_shaken_cert_t *cert);
+int stir_shaken_cert_get_version(stir_shaken_cert_t *cert);
 
 stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_mem_through_file(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);
@@ -510,11 +530,11 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
  * This will first process @identity_header into JWT token and parameters including cert URL.
  * This will then attempt to obtain certificate referenced by SIP @identity_header
  * and if successful then will verify JWT against public key from cert.
- * If successful retrieved PASSporT is returned via @passport.
+ * If successful retrieved PASSporT is returned via @passport and STI cert via @cert.
  *
- * NOTE: @passport should point to allocated memory big enough to create PASSporT.
+ * NOTE: @passport should point to allocated memory big enough to create PASSporT, @cert may be NULL (will be malloced then and it is caller's responsibility to free it).
  */
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport, cJSON *stica_array);
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t *cert);
 
 /* PASSporT verification.
  *

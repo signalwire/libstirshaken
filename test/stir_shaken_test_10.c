@@ -105,6 +105,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
 	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
+
+	stir_shaken_cert_t res_cert = { 0 };
 	
 	
 	memset(&ss, 0, sizeof(ss));
@@ -181,7 +183,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 
 	// Test 1: Test case: Cannot download referenced certificate
     printf("=== Testing case [1]: Cannot download referenced certificate\n");
-    status = stir_shaken_verify(&ss, sih, "Bad url", &passport, NULL);
+    status = stir_shaken_verify(&ss, sih, "Bad url", &passport, NULL, &res_cert);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -249,7 +251,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	X509_REQ_free(csr.req);
 	csr.req = NULL;
 
-	stir_shaken_destroy_cert(&cert);	
+	stir_shaken_destroy_cert(&res_cert);
+	stir_shaken_destroy_cert(&cert);
 
 	free(sih);
 	sih = NULL;
