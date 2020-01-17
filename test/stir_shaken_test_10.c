@@ -106,7 +106,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
 	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
 
-	stir_shaken_cert_t res_cert = { 0 };
+	stir_shaken_cert_t *res_cert = NULL;
 	
 	
 	memset(&ss, 0, sizeof(ss));
@@ -251,7 +251,9 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	X509_REQ_free(csr.req);
 	csr.req = NULL;
 
-	stir_shaken_destroy_cert(&res_cert);
+	stir_shaken_destroy_cert(res_cert);
+	free(res_cert);
+	res_cert = NULL;
 	stir_shaken_destroy_cert(&cert);
 
 	free(sih);

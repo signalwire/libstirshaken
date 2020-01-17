@@ -22,6 +22,7 @@
 #define STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN 2000
 #define STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN 2000
 #define ASN1_DATE_LEN 128
+#define STIR_SHAKEN_SSL_BUF_LEN 1000
 
 #include <openssl/crypto.h>
 #include <openssl/pem.h>
@@ -56,6 +57,12 @@ typedef struct stir_shaken_csr_s {
 	EVP_PKEY            *pkey;
 } stir_shaken_csr_t;
 
+// Note:
+//
+// if X509 gets destroyed then notBefore_ASN1 and notAfter_ASN1
+// must be NULLED as those are internal pointers to SSL.
+//
+// serialDec and serialHex must be freed with OPENSSL_free
 typedef struct stir_shaken_cert_s {
 	X509        *x;
 	char        *body;
@@ -78,8 +85,8 @@ typedef struct stir_shaken_cert_s {
 	ASN1_TIME *notAfter_ASN1;
 	char notBefore[ASN1_DATE_LEN];
 	char notAfter[ASN1_DATE_LEN];
-	char *issuer;
-	char *subject;
+	char issuer[STIR_SHAKEN_SSL_BUF_LEN];
+	char subject[STIR_SHAKEN_SSL_BUF_LEN];
 	int version;
 
 } stir_shaken_cert_t;
@@ -485,8 +492,9 @@ X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY 
  * STIR_SHAKEN_STATUS_SUCCESS: generated and signed new new cert
  */
 stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name);
+void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
-stir_shaken_status_t stir_shaken_read_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_verify_cert_root(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 char* stir_shaken_cert_get_serialHex(stir_shaken_cert_t *cert);
 char* stir_shaken_cert_get_serialDec(stir_shaken_cert_t *cert);
@@ -536,7 +544,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
  *
  * NOTE: @passport should point to allocated memory big enough to create PASSporT, @cert may be NULL (will be malloced then and it is caller's responsibility to free it).
  */
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert);
 
 /* PASSporT verification.
  *

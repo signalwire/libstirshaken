@@ -705,7 +705,7 @@ static int stir_shaken_convert_ASN1TIME(stir_shaken_context_t *ss, ASN1_TIME *t,
 	return EXIT_SUCCESS;
 }
 
-stir_shaken_status_t stir_shaken_read_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
+stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
 {
 	X509			*x = NULL;
 	ASN1_INTEGER	*serial = NULL;
@@ -734,44 +734,63 @@ stir_shaken_status_t stir_shaken_read_cert(stir_shaken_context_t *ss, stir_shake
 		stir_shaken_set_error(ss, "Cert has no X509 struct", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
+
+	stir_shaken_destroy_cert_fields(cert);
 	
-	X509_get_serialNumber(x);
 	serial = X509_get_serialNumber(x);
 	bnser = ASN1_INTEGER_to_BN(serial, NULL);
+
 	serialHex = BN_bn2hex(bnser);
-	serialDec = BN_bn2dec(bnser);
-
-	issuer = X509_NAME_oneline(X509_get_issuer_name(x), NULL, 0);
-	subject = X509_NAME_oneline(X509_get_subject_name(x), NULL, 0);
-	notBefore = X509_get_notBefore(x);
-	stir_shaken_convert_ASN1TIME(ss, notBefore, not_before_str, DATE_LEN);
-	notAfter = X509_get_notAfter(x);
-	stir_shaken_convert_ASN1TIME(ss, notAfter, not_after_str, DATE_LEN);
-	version = ((int) X509_get_version(x)) + 1;
-
-	if (cert->serialHex) {
-		free(cert->serialHex);
-	}
 	cert->serialHex = serialHex;
-	if (cert->serialDec) {
-		free(cert->serialDec);
-	}
+
+	serialDec = BN_bn2dec(bnser);
 	cert->serialDec = serialDec;
-	if (cert->issuer) {
-		free(cert->issuer);
-	}
-	cert->issuer = issuer;
-	if (cert->subject) {
-		free(cert->subject);
-	}
-	cert->subject = subject;
+
+	X509_NAME_oneline(X509_get_issuer_name(x), cert->issuer, sizeof(cert->issuer));
+	X509_NAME_oneline(X509_get_subject_name(x), cert->subject, sizeof(cert->subject));
+
+	notBefore = X509_get_notBefore(x);
 	cert->notBefore_ASN1 = notBefore;
+
+	notAfter = X509_get_notAfter(x);
 	cert->notAfter_ASN1 = notAfter;
-	strncpy(cert->notBefore, not_before_str, ASN1_DATE_LEN);
-	strncpy(cert->notAfter, not_after_str, ASN1_DATE_LEN);
+
+	stir_shaken_convert_ASN1TIME(ss, notBefore, cert->notBefore, ASN1_DATE_LEN);
+	stir_shaken_convert_ASN1TIME(ss, notAfter, cert->notAfter, ASN1_DATE_LEN);
+
+	version = ((int) X509_get_version(x)) + 1;
 	cert->version = version;
 
 	return STIR_SHAKEN_STATUS_OK;
+}
+
+void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert)
+{
+	if (cert) {
+
+		if (cert->serialHex) {
+			OPENSSL_free(cert->serialHex);
+			cert->serialHex = NULL;
+		}
+
+		if (cert->serialDec) {
+			OPENSSL_free(cert->serialDec);
+			cert->serialDec = NULL;
+		}
+
+		memset(cert->issuer, 0, sizeof(cert->issuer));
+		memset(cert->subject, 0, sizeof(cert->subject));
+
+		if (cert->notBefore_ASN1) {
+			//ASN1_TIME_free(cert->notBefore_ASN1); SSL returns internal pointers from cert to this, so DO NOT FREE this
+			cert->notBefore_ASN1 = NULL;
+		}
+
+		if (cert->notAfter_ASN1) {
+			//ASN1_TIME_free(cert->notAfter_ASN1); SSL returns internal pointers from cert to this, so DO NOT FREE this
+			cert->notAfter_ASN1 = NULL;
+		}
+	}
 }
 
 stir_shaken_status_t stir_shaken_verify_cert_root(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
@@ -999,9 +1018,14 @@ fail:
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
 {
 	if (cert) {
+		// If X509 gets destroyed then notBefore_ASN1 and notAfter_ASN1 must be NULLED as those are internal pointers to SSL
 		if (cert->x) {
 			X509_free(cert->x);
 			cert->x = NULL;
+
+			// If X509 gets destroyed then notBefore_ASN1 and notAfter_ASN1 must be NULLED as those are internal pointers to SSL
+			cert->notBefore_ASN1 = NULL;
+			cert->notAfter_ASN1 = NULL;
 		}
 		if (cert->body) {
 			free(cert->body);
@@ -1031,14 +1055,7 @@ void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
 			free(cert->public_url);
 			cert->public_url = NULL;
 		}
-		if (cert->notBefore_ASN1) {
-			ASN1_TIME_free(cert->notBefore_ASN1);
-			cert->notBefore_ASN1 = NULL;
-		}
-		if (cert->notAfter_ASN1) {
-			ASN1_TIME_free(cert->notAfter_ASN1);
-			cert->notAfter_ASN1 = NULL;
-		}
+		stir_shaken_destroy_cert_fields(cert);
 	}
 }
 
