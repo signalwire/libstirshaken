@@ -64,7 +64,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_authorize_keep_passport(void)
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
     
     printf("Creating Certificate\n");
-    status = stir_shaken_generate_cert_from_csr(NULL, sp_code, &cert, &csr, private_key, public_key, cert_name, cert_text_name);
+    status = stir_shaken_generate_cert_from_csr(NULL, sp_code, &cert, &csr, private_key, public_key, cert_name, cert_text_name, 365);
     printf("Err, generating Cert\n");
 
     /* Test */

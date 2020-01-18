@@ -169,7 +169,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
     
     printf("Creating Certificate\n");
-    status = stir_shaken_generate_cert_from_csr(&ss, sp_code, &cert, &csr, private_key, public_key, cert_name, cert_text_name);
+    status = stir_shaken_generate_cert_from_csr(&ss, sp_code, &cert, &csr, private_key, public_key, cert_name, cert_text_name, 365);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);

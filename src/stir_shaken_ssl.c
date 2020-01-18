@@ -578,7 +578,7 @@ void stir_shaken_destroy_csr(X509_REQ **csr_req)
 	}
 }
 
-X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key)
+X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, int expiry_days)
 {
 	X509            *x = NULL;
 	EVP_PKEY        *pkey = NULL;
@@ -630,8 +630,10 @@ X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t s
 
 	X509_set_issuer_name(x, X509_REQ_get_subject_name(req));
 	X509_set_subject_name(x, X509_REQ_get_subject_name(req));
+
+	printf("STIR-Shaken: Cert: Adjusting expiry to %d days from now\n", expiry_days);
 	X509_gmtime_adj(X509_get_notBefore(x), 0);
-	X509_time_adj_ex(X509_get_notAfter(x), 365, 0, NULL);    // TODO days of expiration
+	X509_time_adj_ex(X509_get_notAfter(x), expiry_days, 0, NULL);    // TODO days of expiration
 
 	pkey = X509_REQ_get_pubkey(req);
 	X509_set_pubkey(x, pkey);
@@ -893,7 +895,7 @@ X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY 
 	return x;
 }
 
-stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name)
+stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name, int expiry_days)
 {
 	X509            *x = NULL;
 	BIO             *out = NULL, *bio = NULL;
@@ -918,7 +920,7 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *s
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	x = stir_shaken_generate_x509_self_sign(ss, sp_code, csr->req, private_key);
+	x = stir_shaken_generate_x509_self_sign(ss, sp_code, csr->req, private_key, expiry_days);
 	if (!x) {
 		
 		stir_shaken_set_error_if_clear(ss, "Generate cert from CSR: Error while self signing cert", STIR_SHAKEN_ERROR_SSL);
