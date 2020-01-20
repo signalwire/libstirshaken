@@ -698,8 +698,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 			// Bad Identity Headers also end up here
 			//
 			// Error code will be set to one of:
-			// STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER			- bad Identity Header, missing fields, malformed content, etc.
-			// STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER_SIGNATURE	- didn't pass the signature check
+			// STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER			- bad Identity Header, missing fields, malformed content, didn't pass the signature check, etc.
 			// STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO					- cannot download referenced certificate
 			stir_shaken_set_error_if_clear(ss, "Verify: SIP Identity Header is spoofed", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 			goto fail;
