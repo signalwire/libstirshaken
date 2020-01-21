@@ -373,7 +373,8 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 
 	stir_shaken_jwt_move_to_passport(jwt, passport);
 
-	return STIR_SHAKEN_STATUS_OK;
+	// Validate headers and grants in PASSporT
+	return stir_shaken_jwt_passport_validate(ss, passport);
 }
 
 static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
@@ -699,6 +700,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 			//
 			// Error code will be set to one of:
 			// STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER			- bad Identity Header, missing fields, malformed content, didn't pass the signature check, etc.
+			// STIR_SHAKEN_ERROR_PASSPORT_INVALID							- bad Identity Header, specifically: PASSporT is missing some mandatory fields
 			// STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO					- cannot download referenced certificate
 			stir_shaken_set_error_if_clear(ss, "Verify: SIP Identity Header is spoofed", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 			goto fail;

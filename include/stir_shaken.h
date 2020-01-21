@@ -198,6 +198,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER,
 	STIR_SHAKEN_ERROR_HTTP_403_FORBIDDEN,
 	STIR_SHAKEN_ERROR_HTTP_404_INVALID,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID
 } stir_shaken_error_t;
 
 typedef enum stir_shaken_http_req_type {
@@ -343,9 +344,25 @@ void						stir_shaken_jwt_passport_destroy(stir_shaken_jwt_passport_t *passport)
 stir_shaken_status_t		stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen, char **out);
 const char*					stir_shaken_jwt_passport_get_header(stir_shaken_jwt_passport_t *passport, const char* key);
 const char*					stir_shaken_jwt_passport_get_headers_json(stir_shaken_jwt_passport_t *passport, const char* key);
-const char*					stir_shaken_jwt_passport_get_payload(stir_shaken_jwt_passport_t *passport, const char* key);
+const char*					stir_shaken_jwt_passport_get_grant(stir_shaken_jwt_passport_t *passport, const char* key);
+long int					stir_shaken_jwt_passport_get_grant_int(stir_shaken_jwt_passport_t *passport, const char* key);
 char*						stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, int *is_tn);
 void						stir_shaken_http_add_header(stir_shaken_http_req_t *http_req, const char *h);
+
+/**
+ * Validate that the PASSporT includes all of the baseline claims.
+ */
+stir_shaken_status_t stir_shaken_jwt_passport_validate_headers(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport);
+
+/**
+ * Validate that the PASSporT includes the SHAKEN extension claims.
+ */
+stir_shaken_status_t stir_shaken_jwt_passport_validate_grants(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport);
+
+/**
+ * Validate that the PASSporT includes all of the baseline claims, as well as the SHAKEN extension claims.
+ */
+stir_shaken_status_t stir_shaken_jwt_passport_validate(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport);
 
 /*
  * Sign the call with @passport and @key.

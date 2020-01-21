@@ -432,10 +432,20 @@ const char* stir_shaken_jwt_passport_get_headers_json(stir_shaken_jwt_passport_t
 	return jwt_get_headers_json(passport->jwt, key);
 }
 
-const char* stir_shaken_jwt_passport_get_payload(stir_shaken_jwt_passport_t *passport, const char* key)
+const char* stir_shaken_jwt_passport_get_grant(stir_shaken_jwt_passport_t *passport, const char* key)
 {
 	if (!passport || !key) return NULL;
 	return jwt_get_grant(passport->jwt, key);
+}
+
+long int stir_shaken_jwt_passport_get_grant_int(stir_shaken_jwt_passport_t *passport, const char* key)
+{
+	if (!passport || !key) {
+		errno = ENOENT;
+		return 0;
+	}
+
+	return jwt_get_grant_int(passport->jwt, key);
 }
 
 /**
@@ -449,7 +459,7 @@ char* stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shak
 
 	if (!passport) return NULL;
 
-	orig = stir_shaken_jwt_passport_get_payload(passport, "orig");
+	orig = stir_shaken_jwt_passport_get_grant(passport, "orig");
 	if (orig) {
 
 		cJSON *origjson = cJSON_Parse(orig);
@@ -503,4 +513,122 @@ char* stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shak
 		cJSON_Delete(origjson);
 		return id;
 	}
+}
+
+/**
+ * Validate that the PASSporT includes all of the baseline claims.
+ */
+stir_shaken_status_t stir_shaken_jwt_passport_validate_headers(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport)
+{
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	const char *h = NULL;
+
+	if (!passport) return STIR_SHAKEN_STATUS_TERM;
+	
+	h = stir_shaken_jwt_passport_get_header(passport, "alg");
+	if (strcmp(h, "ES256")) {
+		sprintf(err_buf, "PASSporT Invalid. @alg should be 'ES256' but is (%s)", h);  
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	h = stir_shaken_jwt_passport_get_header(passport, "ppt");
+	if (strcmp(h, "shaken")) {
+		sprintf(err_buf, "PASSporT Invalid. @ppt should be 'shaken' but is (%s)", h);  
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+	
+	h = stir_shaken_jwt_passport_get_header(passport, "typ");
+	if (strcmp(h, "passport")) {
+		sprintf(err_buf, "PASSporT Invalid. @typ should be 'passport' but is (%s)", h);  
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	h = stir_shaken_jwt_passport_get_header(passport, "x5u");
+	if (!h) {
+		sprintf(err_buf, "PASSporT Invalid. @x5u is missing");  
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+/**
+ * Validate that the PASSporT includes the SHAKEN extension claims.
+ */
+stir_shaken_status_t stir_shaken_jwt_passport_validate_grants(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport)
+{
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	const char *h = NULL;
+	long int iat = -1;
+
+	if (!passport) return STIR_SHAKEN_STATUS_TERM;
+
+	iat = stir_shaken_jwt_passport_get_grant_int(passport, "iat");
+	if (errno == ENOENT) {
+		sprintf(err_buf, "PASSporT Invalid. @iat is missing");  
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (iat == 0 ) {
+		sprintf(err_buf, "PASSporT Invalid. @iat is 0");  
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	h = stir_shaken_jwt_passport_get_grant(passport, "origid");
+	if (!h) {
+		sprintf(err_buf, "PASSporT Invalid. @origid is missing");  
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+	
+	h = stir_shaken_jwt_passport_get_grant(passport, "attest");
+	if (!h) {
+		sprintf(err_buf, "PASSporT Invalid. @attest is missing", h);  
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	h = stir_shaken_jwt_passport_get_grant(passport, "orig");
+	if (!h) {
+		sprintf(err_buf, "PASSporT Invalid. @orig is missing");  
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	h = stir_shaken_jwt_passport_get_grant(passport, "dest");
+	if (!h) {
+		sprintf(err_buf, "PASSporT Invalid. @dest is missing");  
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+/**
+ * Validate that the PASSporT includes all of the baseline claims, as well as the SHAKEN extension claims.
+ */
+stir_shaken_status_t stir_shaken_jwt_passport_validate(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport)
+{
+	stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
+
+	if (!passport) return STIR_SHAKEN_STATUS_TERM;
+
+	status = stir_shaken_jwt_passport_validate_headers(ss, passport);
+	if (status != STIR_SHAKEN_STATUS_OK) {
+		return status;
+	}
+	
+	status = stir_shaken_jwt_passport_validate_grants(ss, passport);
+	if (status != STIR_SHAKEN_STATUS_OK) {
+		return status;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
 }
