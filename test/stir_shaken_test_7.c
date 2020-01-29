@@ -38,7 +38,7 @@ static int test_passport_data(stir_shaken_jwt_passport_t *passport)
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
     stir_shaken_assert(!strcmp(p, attest), "ERROR: wrong param value");
     
-    iat = stir_shaken_jwt_passport_get_grant_int(passport, "dest");
+    p = stir_shaken_jwt_passport_get_grant(passport, "dest");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
     
     iat_ = stir_shaken_jwt_passport_get_grant_int(passport, "iat");
