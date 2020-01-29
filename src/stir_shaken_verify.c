@@ -373,7 +373,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 
 	stir_shaken_jwt_move_to_passport(jwt, passport);
 
-	// Validate headers and grants in PASSporT
+	// Validate headers and grants in PASSporT (including date/origin/destination validation as required by RFC 4474)
 	return stir_shaken_jwt_passport_validate(ss, passport);
 }
 
@@ -683,6 +683,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	// TODO remove
 	printf("STIR-Shaken: Verify: checking SIH signature with cert...\n");
 
+	// Validates PASSporT (including date/origin/destination validation as required by RFC 4474)
 	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, cert, passport, stica_array);
 	
 	switch (ss_status) {
