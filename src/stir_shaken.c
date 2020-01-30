@@ -14,9 +14,6 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
 
-	// TODO remove
-	printf("STIR-Shaken: init\n");
-	
 	if (stir_shaken_globals.initialised) {
 		stir_shaken_set_error(ss, "Already initialised", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_NOOP;
@@ -54,13 +51,7 @@ static void stir_shaken_deinit(void)
 
 void stir_shaken_do_deinit(void)
 {
-	// TODO remove
-	printf("STIR-Shaken: deinit\n");
-
 	if (stir_shaken_globals.initialised == 0) {
-
-		// TODO remove
-		printf("STIR-Shaken: deinit skipped, already done\n");
 		return;
 	}
 	

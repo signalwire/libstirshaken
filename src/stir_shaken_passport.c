@@ -3,17 +3,21 @@
 
 /* Produce JWT.
  *
- *          // JSON JOSE Header (alg, ppt, typ, x5u)
- *              // alg      This value indicates the encryption algorithm. Must be 'ES256'.
- *              // ppt      This value indicates the extension used. Must be 'shaken'.
- *              // typ      This value indicates the token type. Must be 'passport'.
- *				// x5u      This value indicates the location of the certificate used to sign the token.
- *          // JWS Payload (grants)
- *				// attest   This value indicates the attestation level. Must be either A, B, or C.
- *				// dest     This value indicates the called number(s) or called Uniform Resource Identifier(s).
- *              // iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
- *				// orig     This value indicates the calling number or calling Uniform Resource Identifier.
- *				// origid   This value indicates the origination identifier.
+ * The Personal Assertion Token, PASSporT: https://tools.ietf.org/html/rfc8225.
+ *
+ * JSON web token (JWT)
+ *		JSON JOSE Header (alg, ppt, typ, x5u)
+ *			alg      This value indicates the encryption algorithm. Must be 'ES256'.
+ *			ppt      This value indicates the extension used. Must be 'shaken'.
+ *			typ      This value indicates the token type. Must be 'passport'.
+ *			x5u      This value indicates the location of the certificate used to sign the token.
+ *		JWS Payload
+ *			attest   This value indicates the attestation level. Must be either A, B, or C. (This is Shaken extension to PASSporT)
+ *			dest     This value indicates the called number(s) or called Uniform Resource Identifier(s).
+ *			iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
+ *			orig     This value indicates the calling number or calling Uniform Resource Identifier.
+ *			origid   This value indicates the origination identifier. (This is Shaken extension to PASSporT)
+ *		JWS Signature (when encoded, in signed form)
  */
 stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
 {

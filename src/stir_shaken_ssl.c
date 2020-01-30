@@ -585,9 +585,7 @@ X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t s
 	ASN1_INTEGER    *sno = NULL;
 	const EVP_MD    *digest = NULL;
 	int             i = 0;
-	//const char      *cert_subject = "This wants a subject";
 	const char      *ext_name = "1.3.6.1.5.5.7.1.26";                   // our lovely TNAuthorizationList extension identifier that we will use to construct v3 extension of type TNAuthorizationList
-	//const char    *ext_value = "DER:30:08:a0:06:16:04:37:38:36:35";   // TNAuthorizationList extension value, this is "asn1=SEQUENCE:tn_auth_list\ntn_auth_list]\nfield1=EXP:0,IA5:1237" in DER format
 	char            ext_value_der[EXT_VALUE_DER_LEN] = {0};
 	int             der_len = -1, include_der_string = 0;
 	
@@ -966,6 +964,7 @@ stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_sha
 		goto fail;
 	}
 
+	stir_shaken_cert_validation_cleanup(cert);
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:

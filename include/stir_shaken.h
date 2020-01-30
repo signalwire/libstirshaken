@@ -293,7 +293,7 @@ typedef struct stir_shaken_passport_params_s {
 } stir_shaken_passport_params_t;
 
 /**
- * The Personal Assertion Token, PASSporT: https://tools.ietf.org/html/rfc8225
+ * The Personal Assertion Token, PASSporT: https://tools.ietf.org/html/rfc8225.
  * PASSporT implementation wrapping @jwt.
  *
  * JSON web token (JWT)
