@@ -5,7 +5,7 @@ const char *path = "./test/run";
 
 stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
 {
-	stir_shaken_jwt_passport_t passport = { 0 };
+	stir_shaken_passport_t passport = { 0 };
     const char *x5u = "https://not.here.org/passport.cer";
     const char *attest = "B";
     const char *desttn_key = "uri";
@@ -146,12 +146,12 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
 	}
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, verifying");
 	stir_shaken_assert(passport.jwt, "Err, verifying: JWT not returned");
-	p = stir_shaken_jwt_passport_dump_str(&passport, 1);
+	p = stir_shaken_passport_dump_str(&passport, 1);
     printf("PASSporT (decoded from SIH) is:\n%s\n\n", p);
 	stir_shaken_free_jwt_str(p);
 	p = NULL;
 
-	stir_shaken_jwt_passport_destroy(&passport);
+	stir_shaken_passport_destroy(&passport);
 
     // Spoofed SIP Identity Header
     
@@ -191,14 +191,14 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
 	}
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Err, verifying");
 	if (passport.jwt != NULL) {
-		p = stir_shaken_jwt_passport_dump_str(&passport, 1);
+		p = stir_shaken_passport_dump_str(&passport, 1);
 		printf("Ooops, PASSporT (decoded from spoofed SIH) is:\n%s\n\n", p);
 		stir_shaken_free_jwt_str(p);
 		p = NULL;
 	}
 	stir_shaken_assert(passport.jwt == NULL, "WTF: JWT returned from spoofed call...");
 
-	stir_shaken_jwt_passport_destroy(&passport);
+	stir_shaken_passport_destroy(&passport);
 	
 	X509_REQ_free(csr.req);
 	csr.req = NULL;

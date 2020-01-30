@@ -331,7 +331,7 @@ static stir_shaken_status_t stir_shaken_jwt_sih_to_jwt_encoded(stir_shaken_conte
  * @stica_array - if not NULL then validate the root of the digital signature in the STI certificate
  *				by determining whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs
  */ 
-stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_jwt_passport_t *passport, cJSON *stica_array)
+stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport, cJSON *stica_array)
 {
 	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
 	unsigned char jwt_encoded[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
@@ -374,7 +374,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 	stir_shaken_jwt_move_to_passport(jwt, passport);
 
 	// Validate headers and grants in PASSporT (including date/origin/destination validation as required by RFC 4474)
-	return stir_shaken_jwt_passport_validate(ss, passport);
+	return stir_shaken_passport_validate(ss, passport);
 }
 
 static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
@@ -540,7 +540,7 @@ stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const ch
 // In addition, if any of the base claims or SHAKEN extension claims are missing from the PASSporT token claims,
 // the verification service shall treat this as a 438 Invalid Identity Header error and proceed as defined above.
 
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert_out)
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert_out)
 {
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
@@ -675,6 +675,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	// Verify certificate chain against approved CAs and cert revocation list
 	if (stir_shaken_verify_cert(ss, cert) != STIR_SHAKEN_STATUS_OK) {
 
+		stir_shaken_set_error_if_clear(ss, "Cert did not pass ext-tnAuthList and chain validation", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 

@@ -65,7 +65,7 @@ const char *path = "./test/run";
 
 stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 {
-	stir_shaken_jwt_passport_t passport = { 0 };
+	stir_shaken_passport_t passport = { 0 };
     const char *x5u = "https://not.here.org/passport.cer";
     const char *attest = "B";
     const char *desttn_key = "uri";
@@ -196,7 +196,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	printf("Error description is: '%s'\n", error_description);
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO, "Err, error should be SIP_436_BAD_IDENTITY_INFO");
 	
-	stir_shaken_jwt_passport_destroy(&passport);
+	stir_shaken_passport_destroy(&passport);
 	
 	// Test 2: Test case: malformed SIP Identity header (missing dot separating fields)
     printf("=== Testing case [2]: Malformed SIP Identity header (missing dot separating fields)\n");
@@ -220,7 +220,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	printf("Error description is: '%s'\n", error_description);
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER, "Err, error should be SIP_438_INVALID_IDENTITY_HEADER");
 	
-	stir_shaken_jwt_passport_destroy(&passport);
+	stir_shaken_passport_destroy(&passport);
 
 	// Test 3: Test case: malformed SIP Identity header (wrong signature)
     printf("=== Testing case [3]: Malformed SIP Identity header (wrong signature)\n");
@@ -266,7 +266,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	sih_malformed = NULL;
 	
 	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
-	stir_shaken_jwt_passport_destroy(&passport);
+	stir_shaken_passport_destroy(&passport);
     
     return STIR_SHAKEN_STATUS_OK;
 }

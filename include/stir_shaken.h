@@ -266,36 +266,6 @@ typedef struct stir_shaken_http_req_s {
  * of authoritative point(s) in the network.
  */
 
-/**
- * The Personal Assertion Token, PASSporT: https://tools.ietf.org/html/rfc8225
- *
- * Use stir-shaken_passport_create_json to init the JSON representation.
- */
-typedef struct stir_shaken_passport {
-
-	// JSON web token (JWT)
-	// JSON JOSE Header (alg, ppt, typ, x5u)
-	// alg      This value indicates the encryption algorithm. Must be 'ES256'.
-	// ppt      This value indicates the extension used. Must be 'shaken'.
-	// typ      This value indicates the token type. Must be 'passport'.
-	// x5u      This value indicates the location of the certificate used to sign the token.
-	// JWS Payload
-	// attest   This value indicates the attestation level. Must be either A, B, or C. (This is Shaken extension to PASSporT)
-	// dest     This value indicates the called number(s) or called Uniform Resource Identifier(s).
-	// iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
-	// orig     This value indicates the calling number or calling Uniform Resource Identifier.
-	// origid   This value indicates the origination identifier. (This is Shaken extension to PASSporT)
-	// JWS Signature
-
-	// Parameters
-	//Alg
-	//Info
-	//PPT
-
-	cJSON *json;        // PASSport JSON (JWT + Parameters)
-	cJSON *info;        // Additional info (payload/header intermediate signatures used to generate @jwt->signature)
-} stir_shaken_passport_t;
-
 /*
  * Parameters needed by STIR-Shaken to create PASSporT and sign the call.
  * These are call params in context of STIR-Shaken's PASSporT.
@@ -326,6 +296,20 @@ typedef struct stir_shaken_passport_params_s {
  * The Personal Assertion Token, PASSporT: https://tools.ietf.org/html/rfc8225
  * PASSporT implementation wrapping @jwt.
  *
+ * JSON web token (JWT)
+ *		JSON JOSE Header (alg, ppt, typ, x5u)
+ *			alg      This value indicates the encryption algorithm. Must be 'ES256'.
+ *			ppt      This value indicates the extension used. Must be 'shaken'.
+ *			typ      This value indicates the token type. Must be 'passport'.
+ *			x5u      This value indicates the location of the certificate used to sign the token.
+ *		JWS Payload
+ *			attest   This value indicates the attestation level. Must be either A, B, or C. (This is Shaken extension to PASSporT)
+ *			dest     This value indicates the called number(s) or called Uniform Resource Identifier(s).
+ *			iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
+ *			orig     This value indicates the calling number or calling Uniform Resource Identifier.
+ *			origid   This value indicates the origination identifier. (This is Shaken extension to PASSporT)
+ *		JWS Signature (when encoded, in signed form)
+ *
  * Example:
  * {
  *	"alg": "ES256",
@@ -342,38 +326,38 @@ typedef struct stir_shaken_passport_params_s {
  *	"origid": "986279842-79894328-45254-42543525243"
  * }
  */
-typedef struct stir_shaken_jwt_passport {
+typedef struct stir_shaken_passport {
 	jwt_t *jwt;			// PASSport JSON Web Token
-} stir_shaken_jwt_passport_t;
+} stir_shaken_passport_t;
 
-stir_shaken_status_t		stir_shaken_jwt_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
-jwt_t*						stir_shaken_jwt_passport_jwt_create_new(stir_shaken_context_t *ss);
-stir_shaken_status_t		stir_shaken_jwt_passport_init(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *where, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
-stir_shaken_status_t		stir_shaken_jwt_passport_jwt_init_from_json(stir_shaken_context_t *ss, jwt_t *jwt, const char *headers_json, const char *grants_json, unsigned char *key, uint32_t keylen);
-stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
-void						stir_shaken_jwt_passport_destroy(stir_shaken_jwt_passport_t *passport);
-stir_shaken_status_t		stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen, char **out);
-const char*					stir_shaken_jwt_passport_get_header(stir_shaken_jwt_passport_t *passport, const char* key);
-const char*					stir_shaken_jwt_passport_get_headers_json(stir_shaken_jwt_passport_t *passport, const char* key);
-const char*					stir_shaken_jwt_passport_get_grant(stir_shaken_jwt_passport_t *passport, const char* key);
-long int					stir_shaken_jwt_passport_get_grant_int(stir_shaken_jwt_passport_t *passport, const char* key);
-char*						stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, int *is_tn);
+stir_shaken_status_t		stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
+jwt_t*						stir_shaken_passport_jwt_create_new(stir_shaken_context_t *ss);
+stir_shaken_status_t		stir_shaken_passport_init(stir_shaken_context_t *ss, stir_shaken_passport_t *where, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
+stir_shaken_status_t		stir_shaken_passport_jwt_init_from_json(stir_shaken_context_t *ss, jwt_t *jwt, const char *headers_json, const char *grants_json, unsigned char *key, uint32_t keylen);
+stir_shaken_passport_t*	stir_shaken_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
+void						stir_shaken_passport_destroy(stir_shaken_passport_t *passport);
+stir_shaken_status_t		stir_shaken_passport_sign(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, unsigned char *key, uint32_t keylen, char **out);
+const char*					stir_shaken_passport_get_header(stir_shaken_passport_t *passport, const char* key);
+const char*					stir_shaken_passport_get_headers_json(stir_shaken_passport_t *passport, const char* key);
+const char*					stir_shaken_passport_get_grant(stir_shaken_passport_t *passport, const char* key);
+long int					stir_shaken_passport_get_grant_int(stir_shaken_passport_t *passport, const char* key);
+char*						stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, int *is_tn);
 void						stir_shaken_http_add_header(stir_shaken_http_req_t *http_req, const char *h);
 
 /**
  * Validate that the PASSporT includes all of the baseline claims.
  */
-stir_shaken_status_t stir_shaken_jwt_passport_validate_headers(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport);
+stir_shaken_status_t stir_shaken_passport_validate_headers(stir_shaken_context_t *ss, stir_shaken_passport_t *passport);
 
 /**
  * Validate that the PASSporT includes the SHAKEN extension claims.
  */
-stir_shaken_status_t stir_shaken_jwt_passport_validate_grants(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport);
+stir_shaken_status_t stir_shaken_passport_validate_grants(stir_shaken_context_t *ss, stir_shaken_passport_t *passport);
 
 /**
  * Validate that the PASSporT includes all of the baseline claims, as well as the SHAKEN extension claims.
  */
-stir_shaken_status_t stir_shaken_jwt_passport_validate(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport);
+stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport);
 
 /*
  * Sign the call with @passport and @key.
@@ -388,7 +372,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_validate(stir_shaken_context_t *ss
  *
  * NOTE: caller must free SIP Identity Header.
  */
-char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen);
+char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, unsigned char *key, uint32_t keylen);
 
 /*
  * Authorize the call, and return used/created PASSporT.
@@ -407,7 +391,7 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
  *
  * NOTE: caller must free SIP Identity Header and destroy the PASSporT.
  */
-stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_jwt_passport_t *passport);
+stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_passport_t *passport);
 
 /*
  * Authorize the call, forget PASSporT (local PASSporT used and destroyed).
@@ -427,9 +411,9 @@ stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context
  */
 stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 
-char* stir_shaken_jwt_passport_dump_str(stir_shaken_jwt_passport_t *passport, uint8_t pretty);
+char* stir_shaken_passport_dump_str(stir_shaken_passport_t *passport, uint8_t pretty);
 void stir_shaken_free_jwt_str(char *s);
-void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_jwt_passport_t *passport);
+void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_passport_t *passport);
 
 /* Global Values */
 typedef struct stir_shaken_globals_s {
@@ -577,7 +561,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
  *
  * NOTE: @passport should point to allocated memory big enough to create PASSporT, @cert may be NULL (will be malloced then and it is caller's responsibility to free it).
  */
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_jwt_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert);
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert);
 
 /* PASSporT verification.
  *
@@ -586,7 +570,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
  * @stica_array - if not NULL then validate the root of the digital signature in the STI certificate
  *				by determining whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs
  */ 
-stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_jwt_passport_t *passport, cJSON *stica_array);
+stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport, cJSON *stica_array);
 
 
 // Authorization service

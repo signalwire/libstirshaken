@@ -15,7 +15,7 @@
  *				// orig     This value indicates the calling number or calling Uniform Resource Identifier.
  *				// origid   This value indicates the origination identifier.
  */
-stir_shaken_status_t stir_shaken_jwt_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
+stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
 {
 	if (!jwt) {
 		return STIR_SHAKEN_STATUS_TERM;
@@ -173,7 +173,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_jwt_init(stir_shaken_context_t *ss
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_jwt_passport_jwt_init_from_json(stir_shaken_context_t *ss, jwt_t *jwt, const char *headers_json, const char *grants_json, unsigned char *key, uint32_t keylen)
+stir_shaken_status_t stir_shaken_passport_jwt_init_from_json(stir_shaken_context_t *ss, jwt_t *jwt, const char *headers_json, const char *grants_json, unsigned char *key, uint32_t keylen)
 {
 	if (!jwt) {
 		return STIR_SHAKEN_STATUS_TERM;
@@ -206,7 +206,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_jwt_init_from_json(stir_shaken_con
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-jwt_t* stir_shaken_jwt_passport_jwt_create_new(stir_shaken_context_t *ss)
+jwt_t* stir_shaken_passport_jwt_create_new(stir_shaken_context_t *ss)
 {
 	jwt_t *jwt = NULL;
 
@@ -219,13 +219,13 @@ jwt_t* stir_shaken_jwt_passport_jwt_create_new(stir_shaken_context_t *ss)
 	return jwt;
 }
 
-stir_shaken_status_t stir_shaken_jwt_passport_init(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *where, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
+stir_shaken_status_t stir_shaken_passport_init(stir_shaken_context_t *ss, stir_shaken_passport_t *where, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
 {
 	if (!where) return STIR_SHAKEN_STATUS_TERM;
 
 	if (!where->jwt) {
 
-		where->jwt = stir_shaken_jwt_passport_jwt_create_new(ss);
+		where->jwt = stir_shaken_passport_jwt_create_new(ss);
 		if (!where->jwt) {
 			stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_RESTART;
@@ -234,7 +234,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_init(stir_shaken_context_t *ss, st
 
 	if (params) {
 
-		if (stir_shaken_jwt_passport_jwt_init(ss, where->jwt, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
+		if (stir_shaken_passport_jwt_init(ss, where->jwt, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
 			stir_shaken_set_error(ss, "Cannot init JWT", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
@@ -243,9 +243,9 @@ stir_shaken_status_t stir_shaken_jwt_passport_init(stir_shaken_context_t *ss, st
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
+stir_shaken_passport_t*	stir_shaken_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
 {
-	stir_shaken_jwt_passport_t	*passport = NULL;
+	stir_shaken_passport_t	*passport = NULL;
 
 	passport = malloc(sizeof(*passport));
 	if (!passport) {
@@ -253,13 +253,13 @@ stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_cont
 		return NULL;
 	}
 
-	passport->jwt = stir_shaken_jwt_passport_jwt_create_new(ss);
+	passport->jwt = stir_shaken_passport_jwt_create_new(ss);
 	if (!passport->jwt) {
 		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 
-	if (stir_shaken_jwt_passport_init(ss, passport, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_passport_init(ss, passport, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
 		stir_shaken_set_error(ss, "Failed init PASSporT", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
@@ -268,7 +268,7 @@ stir_shaken_jwt_passport_t*	stir_shaken_jwt_passport_create_new(stir_shaken_cont
 
 fail:
 	if (passport) {
-		stir_shaken_jwt_passport_destroy(passport);
+		stir_shaken_passport_destroy(passport);
 		free(passport);
 		passport = NULL;
 	}
@@ -276,14 +276,14 @@ fail:
 	return NULL;
 }
 
-void stir_shaken_jwt_passport_destroy(stir_shaken_jwt_passport_t *passport)
+void stir_shaken_passport_destroy(stir_shaken_passport_t *passport)
 {
 	if (!passport) return;
 	if (passport->jwt) jwt_free(passport->jwt);
 	passport->jwt = NULL;
 }
 
-stir_shaken_status_t stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen, char **out)
+stir_shaken_status_t stir_shaken_passport_sign(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, unsigned char *key, uint32_t keylen, char **out)
 {
 	if (!passport || !passport->jwt) return STIR_SHAKEN_STATUS_TERM;
 
@@ -307,7 +307,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_sign(stir_shaken_context_t *ss, st
 }
 
 // TODO Mallocs memory for identity header, free later
-char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, unsigned char *key, uint32_t keylen)
+char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, unsigned char *key, uint32_t keylen)
 {
     char *sih = NULL;
 	char *token = NULL;
@@ -321,7 +321,7 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 		return NULL;
 	}
 
-	if ((stir_shaken_jwt_passport_sign(ss, passport, key, keylen, &token) != STIR_SHAKEN_STATUS_OK) || !token) {
+	if ((stir_shaken_passport_sign(ss, passport, key, keylen, &token) != STIR_SHAKEN_STATUS_OK) || !token) {
 		stir_shaken_set_error(ss, "SIP Identity create: Failed to sign JWT", STIR_SHAKEN_ERROR_GENERAL);
 		return NULL;
 	}
@@ -365,11 +365,11 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
  * @passport - (out) result PASSporT 
  *
  */
-stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_jwt_passport_t *passport)
+stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_passport_t *passport)
 {
 	if (!passport) return STIR_SHAKEN_STATUS_TERM;
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_passport_init(ss, passport, params, key, keylen)) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_init(ss, passport, params, key, keylen)) {
 		stir_shaken_set_error_if_clear(ss, "JWT Authorize: jwt passport init failed", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
@@ -377,7 +377,7 @@ stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context
 	*sih = stir_shaken_jwt_sip_identity_create(ss, passport, key, keylen);
 	if (!*sih) {
 		stir_shaken_set_error_if_clear(ss, "JWT Authorize: Failed to create SIP Identity Header from JWT PASSporT", STIR_SHAKEN_ERROR_GENERAL);
-		stir_shaken_jwt_passport_destroy(passport);
+		stir_shaken_passport_destroy(passport);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
@@ -387,16 +387,16 @@ stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context
 stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
-	stir_shaken_jwt_passport_t	local_passport = {0};   // It will only allow you to cross this function's border
+	stir_shaken_passport_t	local_passport = {0};   // It will only allow you to cross this function's border
 
 	status = stir_shaken_jwt_authorize_keep_passport(ss, sih, params, key, keylen, &local_passport);
 
-	stir_shaken_jwt_passport_destroy(&local_passport);
+	stir_shaken_passport_destroy(&local_passport);
 
 	return status;
 }
 
-char* stir_shaken_jwt_passport_dump_str(stir_shaken_jwt_passport_t *passport, uint8_t pretty)
+char* stir_shaken_passport_dump_str(stir_shaken_passport_t *passport, uint8_t pretty)
 {
 	if (!passport || !passport->jwt) return NULL;
 
@@ -412,33 +412,33 @@ void stir_shaken_free_jwt_str(char *s)
 /*
  * NOTE: @passport takes sownership of @jwt.
  */
-void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_jwt_passport_t *passport)
+void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_passport_t *passport)
 {
 	if (!passport) return;
 	if (passport->jwt) jwt_free(passport->jwt);
 	passport->jwt = jwt;
 }
 
-const char* stir_shaken_jwt_passport_get_header(stir_shaken_jwt_passport_t *passport, const char* key)
+const char* stir_shaken_passport_get_header(stir_shaken_passport_t *passport, const char* key)
 {
 	if (!passport || !key) return NULL;
 	return jwt_get_header(passport->jwt, key);
 
 }
 
-const char* stir_shaken_jwt_passport_get_headers_json(stir_shaken_jwt_passport_t *passport, const char* key)
+const char* stir_shaken_passport_get_headers_json(stir_shaken_passport_t *passport, const char* key)
 {
 	if (!passport || !key) return NULL;
 	return jwt_get_headers_json(passport->jwt, key);
 }
 
-const char* stir_shaken_jwt_passport_get_grant(stir_shaken_jwt_passport_t *passport, const char* key)
+const char* stir_shaken_passport_get_grant(stir_shaken_passport_t *passport, const char* key)
 {
 	if (!passport || !key) return NULL;
 	return jwt_get_grant(passport->jwt, key);
 }
 
-long int stir_shaken_jwt_passport_get_grant_int(stir_shaken_jwt_passport_t *passport, const char* key)
+long int stir_shaken_passport_get_grant_int(stir_shaken_passport_t *passport, const char* key)
 {
 	if (!passport || !key) {
 		errno = ENOENT;
@@ -451,7 +451,7 @@ long int stir_shaken_jwt_passport_get_grant_int(stir_shaken_jwt_passport_t *pass
 /**
  * Returns id if found. Must be freed by caller.
  */
-char* stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport, int *is_tn)
+char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, int *is_tn)
 {
 	char *id = NULL;
 	const char *orig = NULL;
@@ -459,7 +459,7 @@ char* stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shak
 
 	if (!passport) return NULL;
 
-	orig = stir_shaken_jwt_passport_get_grant(passport, "orig");
+	orig = stir_shaken_passport_get_grant(passport, "orig");
 	if (orig) {
 
 		cJSON *origjson = cJSON_Parse(orig);
@@ -518,35 +518,35 @@ char* stir_shaken_jwt_passport_get_identity(stir_shaken_context_t *ss, stir_shak
 /**
  * Validate that the PASSporT includes all of the baseline claims.
  */
-stir_shaken_status_t stir_shaken_jwt_passport_validate_headers(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport)
+stir_shaken_status_t stir_shaken_passport_validate_headers(stir_shaken_context_t *ss, stir_shaken_passport_t *passport)
 {
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	const char *h = NULL;
 
 	if (!passport) return STIR_SHAKEN_STATUS_TERM;
 	
-	h = stir_shaken_jwt_passport_get_header(passport, "alg");
+	h = stir_shaken_passport_get_header(passport, "alg");
 	if (strcmp(h, "ES256")) {
 		sprintf(err_buf, "PASSporT Invalid. @alg should be 'ES256' but is (%s)", h);  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	h = stir_shaken_jwt_passport_get_header(passport, "ppt");
+	h = stir_shaken_passport_get_header(passport, "ppt");
 	if (strcmp(h, "shaken")) {
 		sprintf(err_buf, "PASSporT Invalid. @ppt should be 'shaken' but is (%s)", h);  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
-	h = stir_shaken_jwt_passport_get_header(passport, "typ");
+	h = stir_shaken_passport_get_header(passport, "typ");
 	if (strcmp(h, "passport")) {
 		sprintf(err_buf, "PASSporT Invalid. @typ should be 'passport' but is (%s)", h);  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	h = stir_shaken_jwt_passport_get_header(passport, "x5u");
+	h = stir_shaken_passport_get_header(passport, "x5u");
 	if (!h) {
 		sprintf(err_buf, "PASSporT Invalid. @x5u is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
@@ -559,7 +559,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_validate_headers(stir_shaken_conte
 /**
  * Validate that the PASSporT includes the SHAKEN extension claims.
  */
-stir_shaken_status_t stir_shaken_jwt_passport_validate_grants(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport)
+stir_shaken_status_t stir_shaken_passport_validate_grants(stir_shaken_context_t *ss, stir_shaken_passport_t *passport)
 {
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	const char *h = NULL;
@@ -567,7 +567,7 @@ stir_shaken_status_t stir_shaken_jwt_passport_validate_grants(stir_shaken_contex
 
 	if (!passport) return STIR_SHAKEN_STATUS_TERM;
 
-	iat = stir_shaken_jwt_passport_get_grant_int(passport, "iat");
+	iat = stir_shaken_passport_get_grant_int(passport, "iat");
 	if (errno == ENOENT) {
 		sprintf(err_buf, "PASSporT Invalid. @iat is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
@@ -580,28 +580,28 @@ stir_shaken_status_t stir_shaken_jwt_passport_validate_grants(stir_shaken_contex
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	h = stir_shaken_jwt_passport_get_grant(passport, "origid");
+	h = stir_shaken_passport_get_grant(passport, "origid");
 	if (!h) {
 		sprintf(err_buf, "PASSporT Invalid. @origid is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
-	h = stir_shaken_jwt_passport_get_grant(passport, "attest");
+	h = stir_shaken_passport_get_grant(passport, "attest");
 	if (!h) {
 		sprintf(err_buf, "PASSporT Invalid. @attest is missing", h);  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	h = stir_shaken_jwt_passport_get_grant(passport, "orig");
+	h = stir_shaken_passport_get_grant(passport, "orig");
 	if (!h) {
 		sprintf(err_buf, "PASSporT Invalid. @orig is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	h = stir_shaken_jwt_passport_get_grant(passport, "dest");
+	h = stir_shaken_passport_get_grant(passport, "dest");
 	if (!h) {
 		sprintf(err_buf, "PASSporT Invalid. @dest is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
@@ -614,19 +614,21 @@ stir_shaken_status_t stir_shaken_jwt_passport_validate_grants(stir_shaken_contex
 /**
  * Validate that the PASSporT includes all of the baseline claims, as well as the SHAKEN extension claims.
  */
-stir_shaken_status_t stir_shaken_jwt_passport_validate(stir_shaken_context_t *ss, stir_shaken_jwt_passport_t *passport)
+stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
 
 	if (!passport) return STIR_SHAKEN_STATUS_TERM;
 
-	status = stir_shaken_jwt_passport_validate_headers(ss, passport);
+	status = stir_shaken_passport_validate_headers(ss, passport);
 	if (status != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_if_clear(ss, "PASSporT headers invalid", STIR_SHAKEN_ERROR_PASSPORT_INVALID);
 		return status;
 	}
 	
-	status = stir_shaken_jwt_passport_validate_grants(ss, passport);
+	status = stir_shaken_passport_validate_grants(ss, passport);
 	if (status != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_if_clear(ss, "PASSporT grants invalid", STIR_SHAKEN_ERROR_PASSPORT_INVALID);
 		return status;
 	}
 

@@ -1090,7 +1090,6 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *s
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	// TODO Maybe X509_set_pubkey(x, public_key); doesn't fix the leak though
 	cert->x = x;
 
 	if (cert_full_name) {
@@ -1112,8 +1111,6 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *s
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 			goto fail;
 		}
-
-		// TODO set error string, allow for retrieval printf("STIR-Shaken: Cert: Written certificate to file %s\n", cert_full_name);
 	}
 
 	BIO_free_all(out);
@@ -1370,7 +1367,6 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 	
 	b = basename((char*) cert_name);
 
-	// TODO need to free strings somewhere
 	memset(cert, 0, sizeof(stir_shaken_cert_t));
 	cert->full_name = malloc(strlen(cert_name) + 1);
 	cert->name = malloc(strlen(b) + 1);
