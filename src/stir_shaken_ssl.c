@@ -1029,6 +1029,10 @@ void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
 			cert->notBefore_ASN1 = NULL;
 			cert->notAfter_ASN1 = NULL;
 		}
+		if (cert->xchain) {
+			sk_X509_pop_free(cert->xchain, X509_free);
+			cert->xchain = NULL;
+		}
 		if (cert->body) {
 			free(cert->body);
 			cert->body = NULL;
@@ -1076,10 +1080,13 @@ void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
 //
 // see: https://stackoverflow.com/questions/3810058/read-certificate-files-from-memory-instead-of-a-file-using-openssl
 //
-stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n)
+stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem, size_t n)
 {
-	BIO *cbio = NULL;
-	
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_OK;
+	BIO	*cbio = NULL;
+	STACK_OF(X509)		*stack = NULL;
+	STACK_OF(X509_INFO)	*sk = NULL;
+	X509_INFO			*xi = NULL;
 	
 	stir_shaken_clear_error(ss);
 
@@ -1090,10 +1097,64 @@ stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
+	// Load end-entity certificate
 	*x = PEM_read_bio_X509(cbio, NULL, 0, NULL);
 
-	BIO_free(cbio); cbio = NULL;
-	return STIR_SHAKEN_STATUS_OK;
+	if (xchain) {
+
+		// Parse untrusted certificate chain
+
+		stack = sk_X509_new_null();
+		if (!stack) {
+
+			stir_shaken_set_error(ss, "Failed to allocate cert stack", STIR_SHAKEN_ERROR_SSL);
+			X509_free(*x);
+			if (cbio) {
+				BIO_free(cbio);
+				cbio = NULL;
+			}
+			ss_status = STIR_SHAKEN_STATUS_FALSE;
+		}
+
+		sk = PEM_X509_INFO_read_bio(cbio, NULL, NULL, NULL);
+		if (!sk) {
+
+			stir_shaken_set_error(ss, "error reading certificate stack", STIR_SHAKEN_ERROR_SSL);
+			X509_free(*x);
+			if (cbio) {
+				BIO_free(cbio);
+				cbio = NULL;
+			}
+			sk_X509_free(stack);
+			ss_status = STIR_SHAKEN_STATUS_FALSE;
+		}
+
+		while (sk_X509_INFO_num(sk)) {
+			xi = sk_X509_INFO_shift(sk);
+			if (xi->x509 != NULL) {
+				sk_X509_push(stack, xi->x509);
+				xi->x509 = NULL;
+			}
+			X509_INFO_free(xi);
+		}
+
+		if (!sk_X509_num(stack))
+			sk_X509_free(stack);
+		else
+			*xchain = stack;
+
+		if (cbio) {
+			BIO_free(cbio);
+			cbio = NULL;
+		}
+		sk_X509_INFO_free(sk);
+	}
+
+	if (cbio) {
+		BIO_free(cbio);
+		cbio = NULL;
+	}
+	return ss_status;
 }
 
 stir_shaken_status_t stir_shaken_load_cert_from_file(stir_shaken_context_t *ss, X509 **x, const char *cert_tmp_name)

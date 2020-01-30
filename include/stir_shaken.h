@@ -64,7 +64,8 @@ typedef struct stir_shaken_csr_s {
 //
 // serialDec and serialHex must be freed with OPENSSL_free
 typedef struct stir_shaken_cert_s {
-	X509        *x;
+	X509			*x;						// X509 end-entity Certificate
+	STACK_OF(X509)	*xchain;				// Certificate chain
 	char        *body;
 	size_t		len;
 	uint8_t     is_fresh;
@@ -521,7 +522,7 @@ char* stir_shaken_cert_get_issuer(stir_shaken_cert_t *cert);
 char* stir_shaken_cert_get_subject(stir_shaken_cert_t *cert);
 int stir_shaken_cert_get_version(stir_shaken_cert_t *cert);
 
-stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);
+stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_mem_through_file(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);
 stir_shaken_status_t stir_shaken_load_cert_from_file(stir_shaken_context_t *ss, X509 **x, const char *cert_tmp_name);
 stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey, unsigned char *priv_raw, uint32_t *priv_raw_len);
