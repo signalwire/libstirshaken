@@ -672,8 +672,8 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 		goto fail;
 	}
 
-	// Verify root of certificate
-	if (stir_shaken_verify_cert_root(ss, cert) != STIR_SHAKEN_STATUS_OK) {
+	// Verify certificate chain against approved CAs and cert revocation list
+	if (stir_shaken_verify_cert(ss, cert) != STIR_SHAKEN_STATUS_OK) {
 
 		goto fail;
 	}

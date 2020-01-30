@@ -795,7 +795,148 @@ void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert)
 	}
 }
 
+static int stir_shaken_verify_callback(int ok, X509_STORE_CTX *ctx)
+{
+	int err;
+
+	if (!ok) {
+		err = X509_STORE_CTX_get_error(ctx);
+		// TODO remove
+		printf("STIR-Shaken: SSL: Certificate validation failed: %s\n", X509_verify_cert_error_string(err));
+	}
+
+	return ok;
+}
+
+stir_shaken_status_t stir_shaken_cert_init_validation(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *ca_list, char *ca_dir, char *crl_list, char *crl_dir)
+{
+	if (!cert) {
+		stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (cert->store) {
+		X509_STORE_free(cert->store);
+		cert->store = NULL;
+	}
+
+	cert->store = X509_STORE_new();
+	if (!cert->store) {
+		stir_shaken_set_error(ss, "Failed to create X509_STORE_CTX object", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	X509_STORE_set_verify_cb_func(cert->store, stir_shaken_verify_callback);
+
+	if (ca_list || ca_dir) {
+		if (X509_STORE_load_locations(cert->store, ca_list, ca_dir) != 1) {
+			stir_shaken_set_error(ss, "Failed to load trusted CAs", STIR_SHAKEN_ERROR_SSL);
+			goto fail;
+		}
+		if (X509_STORE_set_default_paths(cert->store) != 1) {
+			stir_shaken_set_error(ss, "Failed to load the system-wide CA certificates", STIR_SHAKEN_ERROR_SSL);
+			goto fail;
+		}
+	}
+
+	if (crl_list || crl_dir) {
+		if (X509_STORE_load_locations(cert->store, crl_list, crl_dir) != 1) {
+			stir_shaken_set_error(ss, "Failed to load CRLs", STIR_SHAKEN_ERROR_SSL);
+			goto fail;
+		}
+		X509_STORE_set_flags(cert->store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+	}
+
+	if (cert->verify_ctx) {
+		X509_STORE_CTX_cleanup(cert->verify_ctx);
+		cert->verify_ctx = NULL;
+	}
+
+	if (!(cert->verify_ctx = X509_STORE_CTX_new())) {
+		stir_shaken_set_error(ss, "Failed to create X509_STORE_CTX object", STIR_SHAKEN_ERROR_SSL);
+		goto fail;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+	stir_shaken_cert_validation_cleanup(cert);
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+void stir_shaken_cert_validation_cleanup(stir_shaken_cert_t *cert)
+{
+	if (!cert) return;
+
+	if (cert->xchain) {
+		sk_X509_pop_free(cert->xchain, X509_free);
+		cert->xchain = NULL;
+	}
+
+	if (cert->verify_ctx) {
+		X509_STORE_CTX_cleanup(cert->verify_ctx);
+		cert->verify_ctx = NULL;
+	}
+
+	if (cert->store) {
+		X509_STORE_free(cert->store);
+		cert->store = NULL;
+	}
+}
+
 stir_shaken_status_t stir_shaken_verify_cert_root(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
+{
+	X509            *x = NULL;
+	int rc = 1;
+
+	stir_shaken_clear_error(ss);
+
+	if (!cert) {
+
+		stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (!cert->xchain) {
+
+		stir_shaken_set_error(ss, "Bad cert chain", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (X509_STORE_CTX_init(cert->verify_ctx, cert->store, cert->x, cert->xchain) != 1) {
+		X509_STORE_CTX_cleanup(cert->verify_ctx);
+		stir_shaken_set_error(ss, "SSL: Error initializing verification context", STIR_SHAKEN_ERROR_SSL);
+		return -1;
+	}
+
+	rc = X509_verify_cert(cert->verify_ctx);
+	X509_STORE_CTX_cleanup(cert->verify_ctx);
+
+	return rc != 1 ? STIR_SHAKEN_STATUS_FALSE : STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
+{
+	X509            *x = NULL;
+
+	stir_shaken_clear_error(ss);
+
+	if (!cert || !cert->x) {
+
+		stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (X509_get_ext_by_NID(cert->x, stir_shaken_globals.tn_authlist_nid, -1) == -1) {
+
+		stir_shaken_set_error(ss, "Cert must have ext-tnAuthList extension (OID 1.3.6.1.5.5.7.1.26: http://oid-info.com/get/1.3.6.1.5.5.7.1.26) but it is missing", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
 {
 	X509            *x = NULL;
 
@@ -807,7 +948,29 @@ stir_shaken_status_t stir_shaken_verify_cert_root(stir_shaken_context_t *ss, sti
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
+	// TODO pass CAs list and revocation list
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_init_validation(ss, cert, NULL, NULL, NULL, NULL)) {
+		stir_shaken_set_error_if_clear(ss, "Cannot init cert store and chain", STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_tn_authlist_extension(ss, cert)) {
+		stir_shaken_set_error_if_clear(ss, "Cert must have ext-tnAuthList extension (OID 1.3.6.1.5.5.7.1.26: http://oid-info.com/get/1.3.6.1.5.5.7.1.26) but it is missing", STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
+	}
+	
+	// TODO pass CAs list and revocation list
+	if (!STIR_SHAKEN_MOC_VERIFY_CERT_ROOT_CHAIN 
+			&& STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_root(ss, cert)) {
+		stir_shaken_set_error_if_clear(ss, "Cert did not pass root chain validation", STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
+	}
+
 	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+	stir_shaken_cert_validation_cleanup(cert);
+	return STIR_SHAKEN_STATUS_FALSE;
 }
 
 char* stir_shaken_cert_get_serialHex(stir_shaken_cert_t *cert)
@@ -1029,10 +1192,9 @@ void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
 			cert->notBefore_ASN1 = NULL;
 			cert->notAfter_ASN1 = NULL;
 		}
-		if (cert->xchain) {
-			sk_X509_pop_free(cert->xchain, X509_free);
-			cert->xchain = NULL;
-		}
+
+		stir_shaken_cert_validation_cleanup(cert);
+
 		if (cert->body) {
 			free(cert->body);
 			cert->body = NULL;
@@ -2179,6 +2341,12 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss)
 		printf("SSL: Using (%s [%d]) eliptic curve\n", curve->comment, curve->nid);
 	}
 	stir_shaken_globals.curve_nid = curve_nid;
+
+	stir_shaken_globals.tn_authlist_nid = OBJ_create(TN_AUTH_LIST_OID, TN_AUTH_LIST_SN, TN_AUTH_LIST_LN);
+	if (stir_shaken_globals.tn_authlist_nid == NID_undef) {
+		stir_shaken_set_error(ss, "SSL: Failed to create new openssl object for ext-tnAuthList extension", STIR_SHAKEN_ERROR_SSL);
+		goto fail;
+	}
 
 	free(curves);
 	curves = NULL;

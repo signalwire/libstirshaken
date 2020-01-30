@@ -12,17 +12,10 @@
 // For cert downloading
 #include <curl/curl.h>
 
-// For JSON Web Token
+// For JSON Web Token, used to implement PASSporT
 #include <jwt.h>
 
 #include <pthread.h>
-
-#define PBUF_LEN 1000
-#define STIR_SHAKEN_ERROR_BUF_LEN 1000
-#define STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN 2000
-#define STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN 2000
-#define ASN1_DATE_LEN 128
-#define STIR_SHAKEN_SSL_BUF_LEN 1000
 
 #include <openssl/crypto.h>
 #include <openssl/pem.h>
@@ -30,6 +23,7 @@
 #include <openssl/conf.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
+#include <openssl/pem.h>
 #include <openssl/ec.h>
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
@@ -39,6 +33,20 @@
 #include <openssl/bio.h>
 #include <openssl/conf_api.h>
 #include <libgen.h>
+
+
+#define PBUF_LEN 1000
+#define STIR_SHAKEN_ERROR_BUF_LEN 1000
+#define STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN 2000
+#define STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN 2000
+#define ASN1_DATE_LEN 128
+#define STIR_SHAKEN_SSL_BUF_LEN 1000
+
+#define TN_AUTH_LIST_OID "1.3.6.1.5.5.7.1.26"
+#define TN_AUTH_LIST_LN "TNAuthorizationList"
+#define TN_AUTH_LIST_SN "TNAuthList"
+
+#define STIR_SHAKEN_MOC_VERIFY_CERT_ROOT_CHAIN 0
 
 
 typedef enum stir_shaken_status {
@@ -66,6 +74,8 @@ typedef struct stir_shaken_csr_s {
 typedef struct stir_shaken_cert_s {
 	X509			*x;						// X509 end-entity Certificate
 	STACK_OF(X509)	*xchain;				// Certificate chain
+	X509_STORE		*store;					// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
+	X509_STORE_CTX	*verify_ctx;			// Verification SSL context using @store to validate cert with chain and revocation list
 	char        *body;
 	size_t		len;
 	uint8_t     is_fresh;
@@ -433,6 +443,7 @@ typedef struct stir_shaken_globals_s {
 	SSL_CTX             *ssl_ctx;
 	SSL                 *ssl;
 	int                 curve_nid;                  // id of the curve in OpenSSL
+	int					tn_authlist_nid;			// OID for ext-tnAuthList
 } stir_shaken_globals_t;
 
 extern stir_shaken_globals_t stir_shaken_globals;
@@ -513,7 +524,11 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *s
 void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
+void stir_shaken_cert_validation_cleanup(stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_cert_init_validation(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *ca_list, char *ca_dir, char *crl_list, char *crl_dir);
 stir_shaken_status_t stir_shaken_verify_cert_root(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 char* stir_shaken_cert_get_serialHex(stir_shaken_cert_t *cert);
 char* stir_shaken_cert_get_serialDec(stir_shaken_cert_t *cert);
 char* stir_shaken_cert_get_notBefore(stir_shaken_cert_t *cert);
