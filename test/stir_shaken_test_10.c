@@ -140,7 +140,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 
     /* Test */
     printf("Authorizing...\n\n");
-	status = stir_shaken_jwt_authorize(&ss, &sih, &params, priv_raw, priv_raw_len);
+	status = stir_shaken_jwt_authenticate(&ss, &sih, &params, priv_raw, priv_raw_len);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);

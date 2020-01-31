@@ -99,7 +99,7 @@ stir_shaken_status_t stir_shaken_unit_test_call_authorization(void)
 	stir_shaken_passport_destroy(&passport);
 	
 	// Test call authorization with implicit PASSporT
-	status = stir_shaken_jwt_authorize(NULL, &sih, &params, priv_raw, priv_raw_len);
+	status = stir_shaken_jwt_authenticate(NULL, &sih, &params, priv_raw, priv_raw_len);
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to authorize (status)");
 	stir_shaken_assert(sih != NULL, "Failed to authorize (SIP Identity Header)");
     printf("5.3 SIP Identity Header (call authorization with implicit PASSporT):\n%s\n\n", sih);

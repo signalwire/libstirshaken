@@ -357,9 +357,9 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 }
 
 /*
- * Authorize the call, forget PASSporT (local PASSporT used and destroyed).
+ * Authenticate the call, forget PASSporT (local PASSporT used and destroyed).
  *
- * Authorize (assert/sign) call identity with cert of Service Provider.
+ * Authenticate (assert/sign) call identity with cert of Service Provider.
  * 
  * @ss - (in) context to set error if any
  * @sih - (out) on success points to SIP Identity Header which is authentication of the call
@@ -369,7 +369,7 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
  * @passport - (out) result PASSporT 
  *
  */
-stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_passport_t *passport)
+stir_shaken_status_t stir_shaken_jwt_authenticate_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_passport_t *passport)
 {
 	if (!passport) return STIR_SHAKEN_STATUS_TERM;
 
@@ -388,12 +388,12 @@ stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
+stir_shaken_status_t stir_shaken_jwt_authenticate(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
 	stir_shaken_passport_t	local_passport = {0};   // It will only allow you to cross this function's border
 
-	status = stir_shaken_jwt_authorize_keep_passport(ss, sih, params, key, keylen, &local_passport);
+	status = stir_shaken_jwt_authenticate_keep_passport(ss, sih, params, key, keylen, &local_passport);
 
 	stir_shaken_passport_destroy(&local_passport);
 

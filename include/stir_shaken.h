@@ -391,7 +391,7 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
  *
  * NOTE: caller must free SIP Identity Header and destroy the PASSporT.
  */
-stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_passport_t *passport);
+stir_shaken_status_t stir_shaken_jwt_authenticate_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_passport_t *passport);
 
 /*
  * Authorize the call, forget PASSporT (local PASSporT used and destroyed).
@@ -409,7 +409,7 @@ stir_shaken_status_t stir_shaken_jwt_authorize_keep_passport(stir_shaken_context
  *
  * NOTE: caller must free SIP Identity Header.
  */
-stir_shaken_status_t stir_shaken_jwt_authorize(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
+stir_shaken_status_t stir_shaken_jwt_authenticate(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 
 char* stir_shaken_passport_dump_str(stir_shaken_passport_t *passport, uint8_t pretty);
 void stir_shaken_free_jwt_str(char *s);

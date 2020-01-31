@@ -83,7 +83,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
 
     /* Test */
     printf("Authorizing...\n\n");
-	status = stir_shaken_jwt_authorize(&ss, &sih, &params, priv_raw, priv_raw_len);
+	status = stir_shaken_jwt_authenticate(&ss, &sih, &params, priv_raw, priv_raw_len);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -168,7 +168,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
     stir_shaken_assert(public_key_spoofed != NULL, "Err, failed to generate public key");
 
     // Using same signature, same data, apart from spoofed Telephone Number
-	status = stir_shaken_jwt_authorize(&ss, &spoofed_sih, &params, priv_raw_spoofed, priv_raw_len_spoofed);
+	status = stir_shaken_jwt_authenticate(&ss, &spoofed_sih, &params, priv_raw_spoofed, priv_raw_len_spoofed);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);

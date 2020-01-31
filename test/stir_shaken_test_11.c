@@ -2,7 +2,7 @@
 
 const char *path = "./test/run";
 
-stir_shaken_status_t stir_shaken_unit_test_jwt_authorize_keep_passport(void)
+stir_shaken_status_t stir_shaken_unit_test_jwt_authenticate_keep_passport(void)
 {
     const char *x5u = "https://not.here.org/passport.cer";
     const char *attest = "B";
@@ -69,7 +69,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_authorize_keep_passport(void)
 
     /* Test */
     printf("Test 1: Authorizing (forget PASSporT)...\n\n");
-	status = stir_shaken_jwt_authorize(&ss, &sih, &params, priv_raw, priv_raw_len);
+	status = stir_shaken_jwt_authenticate(&ss, &sih, &params, priv_raw, priv_raw_len);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to create SIP Identity Header");
     stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
     
@@ -95,7 +95,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_authorize_keep_passport(void)
 	sih = NULL;
     
 	printf("Test 2: Authorizing (retrieving PASSporT)...\n\n");
-	status = stir_shaken_jwt_authorize_keep_passport(&ss, &sih, &params, priv_raw, priv_raw_len, &passport);
+	status = stir_shaken_jwt_authenticate_keep_passport(&ss, &sih, &params, priv_raw, priv_raw_len, &passport);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to create SIP Identity Header");
     stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
     
@@ -160,7 +160,7 @@ int main(void)
 		}
 	}
 
-	if (stir_shaken_unit_test_jwt_authorize_keep_passport() != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_unit_test_jwt_authenticate_keep_passport() != STIR_SHAKEN_STATUS_OK) {
 		
 		printf("Fail\n");
 		return -2;
