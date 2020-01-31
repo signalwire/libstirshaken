@@ -1,7 +1,6 @@
 #include "stir_shaken.h"
 
 
-// TODO destroy cert, free memory
 stir_shaken_status_t stir_shaken_cert_configure(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, const char *name, const char *install_dir, const char *install_url)
 {
     char a[500] = {0};
@@ -162,9 +161,6 @@ stir_shaken_status_t stir_shaken_install_cert(stir_shaken_context_t *ss, stir_sh
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
-
-	// TODO remove
-	printf("STIR-Shaken: Install cert: Written certificate to file %s\n", cert->full_name);
 
 	BIO_free_all(out);
 	out = NULL;

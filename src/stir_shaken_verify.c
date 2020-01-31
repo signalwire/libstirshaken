@@ -89,7 +89,7 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
         
 		sprintf(err_buf, "Error reading signature");
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
-        //ERR_print_errors(bio_err);
+        ERR_print_errors(bio_err);
         goto err;
     }
 
@@ -97,10 +97,9 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
     
     if (BIO_read_filename(in, data_filename) <= 0) {
         
-		// TODO remove
 		sprintf(err_buf, "Error reading data file");
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
-        //ERR_print_errors(bio_err);
+        ERR_print_errors(bio_err);
         goto err;
     }
 
@@ -110,10 +109,9 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
         i = BIO_read(inp, (char *)buf, BUFSIZE);
         if (i < 0) {
             
-			// TODO remove
 			sprintf(err_buf, "Read Error");
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
-            //ERR_print_errors(bio_err);
+            ERR_print_errors(bio_err);
             goto err;
         }
         if (i == 0) {
@@ -138,7 +136,7 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
         sprintf(err_buf, "Unknown error while verifying data");
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
         res = 2;
-        //ERR_print_errors(bio_err);
+        ERR_print_errors(bio_err);
 
     }
 
