@@ -46,7 +46,7 @@
 #define TN_AUTH_LIST_LN "TNAuthorizationList"
 #define TN_AUTH_LIST_SN "TNAuthList"
 
-#define STIR_SHAKEN_MOC_VERIFY_CERT_ROOT_CHAIN 0
+#define STIR_SHAKEN_MOC_VERIFY_CERT_ROOT_CHAIN 1
 
 
 typedef enum stir_shaken_status {
