@@ -897,13 +897,13 @@ stir_shaken_status_t stir_shaken_verify_cert_root(stir_shaken_context_t *ss, sti
 
 	if (!cert->xchain) {
 
-		stir_shaken_set_error(ss, "Bad cert chain", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Bad cert chain", STIR_SHAKEN_ERROR_CERT_CHAIN);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
 	if (X509_STORE_CTX_init(cert->verify_ctx, cert->store, cert->x, cert->xchain) != 1) {
 		X509_STORE_CTX_cleanup(cert->verify_ctx);
-		stir_shaken_set_error(ss, "SSL: Error initializing verification context", STIR_SHAKEN_ERROR_SSL);
+		stir_shaken_set_error(ss, "SSL: Error initializing verification context", STIR_SHAKEN_ERROR_CERT_ROOT);
 		return -1;
 	}
 
@@ -927,7 +927,7 @@ stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_c
 
 	if (X509_get_ext_by_NID(cert->x, stir_shaken_globals.tn_authlist_nid, -1) == -1) {
 
-		stir_shaken_set_error(ss, "Cert must have ext-tnAuthList extension (OID 1.3.6.1.5.5.7.1.26: http://oid-info.com/get/1.3.6.1.5.5.7.1.26) but it is missing", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Cert must have ext-tnAuthList extension (OID 1.3.6.1.5.5.7.1.26: http://oid-info.com/get/1.3.6.1.5.5.7.1.26) but it is missing", STIR_SHAKEN_ERROR_TNAUTHLIST);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -948,19 +948,19 @@ stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_sha
 
 	// TODO pass CAs list and revocation list
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_init_validation(ss, cert, NULL, NULL, NULL, NULL)) {
-		stir_shaken_set_error_if_clear(ss, "Cannot init cert store and chain", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Cannot init cert store and chain", STIR_SHAKEN_ERROR_CERT_ROOT_INIT);
 		goto fail;
 	}
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_tn_authlist_extension(ss, cert)) {
-		stir_shaken_set_error_if_clear(ss, "Cert must have ext-tnAuthList extension (OID 1.3.6.1.5.5.7.1.26: http://oid-info.com/get/1.3.6.1.5.5.7.1.26) but it is missing", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Cert must have ext-tnAuthList extension (OID 1.3.6.1.5.5.7.1.26: http://oid-info.com/get/1.3.6.1.5.5.7.1.26) but it is missing", STIR_SHAKEN_ERROR_TNAUTHLIST);
 		goto fail;
 	}
 	
 	// TODO pass CAs list and revocation list
 	if (!STIR_SHAKEN_MOC_VERIFY_CERT_ROOT_CHAIN 
 			&& STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_root(ss, cert)) {
-		stir_shaken_set_error_if_clear(ss, "Cert did not pass root chain validation", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Cert did not pass root chain validation", STIR_SHAKEN_ERROR_CERT_ROOT);
 		goto fail;
 	}
 

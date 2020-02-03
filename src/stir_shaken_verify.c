@@ -10,173 +10,6 @@ stir_shaken_status_t stir_shaken_stisp_verify_stica_against_list(stir_shaken_con
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_filename, const char *signature_filename, EVP_PKEY *public_key)
-{
-    BIO *in = NULL, *inp = NULL, *bmd = NULL, *sigbio = NULL, *bio_err = NULL;
-    const EVP_MD    *md = NULL;
-    EVP_MD_CTX *mctx = NULL;
-    EVP_PKEY_CTX *pctx = NULL;
-    int r = -1, sanity = 5000;
-    int siglen = 0, res = -1;
-    unsigned char *buf = NULL;
-    unsigned char *sigbuf = NULL;
-    EVP_MD_CTX *ctx = NULL;
-
-    const char      *digest_name = "sha256";
-    int             i = 0;
-	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-
-	
-	stir_shaken_clear_error(ss);
-
-    if (!data_filename || !signature_filename || !public_key) {
-        goto err;
-    }
-
-    bio_err = BIO_new(BIO_s_file());
-    BIO_set_fp(bio_err, stdout, BIO_NOCLOSE | BIO_FP_TEXT);
-
-    buf = malloc(BUFSIZE);
-    if (!buf) {
-        goto err;
-    }
-    memset(buf, 0, BUFSIZE);
-    
-    md = EVP_get_digestbyname(digest_name);
-    if (!md) {
-        
-		sprintf(err_buf, "Cannot get %s digest", digest_name);
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
-        goto err;
-    }
-    
-    in = BIO_new(BIO_s_file());
-    bmd = BIO_new(BIO_f_md());
-    if ((in == NULL) || (bmd == NULL)) {
-        
-		sprintf(err_buf, "Cannot get SSL'e BIOs...");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
-        goto err;
-    }
-
-    if (!BIO_get_md_ctx(bmd, &mctx)) {
-        
-		sprintf(err_buf, "Error getting message digest context");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
-        goto err;
-    }
-
-    r = EVP_DigestVerifyInit(mctx, &pctx, md, NULL, public_key);
-    if (!r) {
-        
-		sprintf(err_buf, "Error setting context");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
-        goto err;
-    }
-    
-    sigbio = BIO_new_file(signature_filename, "rb");
-    if (sigbio == NULL) {
-        
-		sprintf(err_buf, "Error opening signature file");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
-        goto err;
-    }
-    siglen = EVP_PKEY_size(public_key);
-    sigbuf = malloc(siglen);
-    siglen = BIO_read(sigbio, sigbuf, siglen);
-    BIO_free(sigbio);
-    if (siglen <= 0) {
-        
-		sprintf(err_buf, "Error reading signature");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
-        ERR_print_errors(bio_err);
-        goto err;
-    }
-
-    inp = BIO_push(bmd, in);
-    
-    if (BIO_read_filename(in, data_filename) <= 0) {
-        
-		sprintf(err_buf, "Error reading data file");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
-        ERR_print_errors(bio_err);
-        goto err;
-    }
-
-    // Do fp
-
-    for (;sanity--;) {
-        i = BIO_read(inp, (char *)buf, BUFSIZE);
-        if (i < 0) {
-            
-			sprintf(err_buf, "Read Error");
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
-            ERR_print_errors(bio_err);
-            goto err;
-        }
-        if (i == 0) {
-            break;
-        }
-    }
-    BIO_get_md_ctx(inp, &ctx);
-    i = EVP_DigestVerifyFinal(ctx, sigbuf, (unsigned int)siglen);
-    if (i > 0) {
-		
-		// OK
-        res = 0;
-
-    } else if (i == 0) {
-		
-        sprintf(err_buf, "Signature/data-key failed verification (signature doesn't match the data-key pair)");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER); 
-        res = 1;
-
-    } else {
-		
-        sprintf(err_buf, "Unknown error while verifying data");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
-        res = 2;
-        ERR_print_errors(bio_err);
-
-    }
-
-    if (buf) {
-        free(buf);
-    }
-    if (sigbuf) {
-        free(sigbuf);
-    }
-    if (bio_err) {
-        BIO_free(bio_err);
-    }
-    if (in) {
-        BIO_free(in);
-    }
-    if (bmd) {
-        BIO_free(bmd);
-    }
-    return res;
-
-err:
-    if (sigbuf) {
-        free(sigbuf);
-    }
-    if (buf) {
-        free(buf);
-    }
-    if (bio_err) {
-        BIO_free(bio_err);
-    }
-    if (in) {
-        BIO_free(in);
-    }
-    if (bmd) {
-        BIO_free(bmd);
-    }
-    return -1;
-}
-
-
 static int stir_shaken_verify_data_with_cert(stir_shaken_context_t *ss, const char *data, size_t datalen, const unsigned char *signature, size_t siglen, stir_shaken_cert_t *cert)
 {
     EVP_PKEY *pkey = NULL;
@@ -230,7 +63,7 @@ static stir_shaken_status_t stir_shaken_jwt_sih_to_jwt_encoded(stir_shaken_conte
 }
 
 /*
- * PASSporT veerification.
+ * PASSporT verification.
  *
  * @passport - (in/out) should point to memory prepared for new PASSporT,
  *				on exit retrieved and verified PASSporT JWT is moved into that @passport
@@ -252,6 +85,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
+	// We do not really do it this way now, but it can be
 	if (stica_array) {
 
 		// Validate the root of the digital signature in the STI certificate
@@ -279,8 +113,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 
 	stir_shaken_jwt_move_to_passport(jwt, passport);
 
-	// Validate headers and grants in PASSporT (including date/origin/destination validation as required by RFC 4474)
-	return stir_shaken_passport_validate(ss, passport);
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
@@ -363,34 +196,6 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const 
 	curl_global_cleanup();
 
 	return status;
-}
-
-static size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
-	size_t written = fwrite(ptr, size, nmemb, stream);
-	return written;
-}
-
-stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const char *file)
-{
-	CURL *curl;
-	FILE *fp;
-	CURLcode res = CURLE_FAILED_INIT;
-	curl = curl_easy_init();
-	if (curl) {
-		fp = fopen(file,"wb");
-		curl_easy_setopt(curl, CURLOPT_URL, url);
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-		res = curl_easy_perform(curl);
-		/* always cleanup */
-		curl_easy_cleanup(curl);
-		fclose(fp);
-	}
-
-	if (res != CURLE_OK) {
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-	return STIR_SHAKEN_STATUS_OK;
 }
 
 // 5.3.1 PASSporT & Identity Header Verification
@@ -483,18 +288,12 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 
 	memset(cert, 0, sizeof(stir_shaken_cert_t));
 
-	// TODO remove
-	printf("STIR-Shaken: Verify: cert URL is: %s\n", cert_url);
-
 	// Download cert
-
-	// TODO remove
-	printf("STIR-Shaken: Verify: downloading cert...\n");
 
 	memset(&http_req, 0, sizeof(http_req));
 
 	// Download cert of the STI-SP claiming to athenticate this call
-	if (stir_shaken_make_http_get_req(ss, &http_req, cert_url) != STIR_SHAKEN_STATUS_OK) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_get_req(ss, &http_req, cert_url)) {
 
 		sprintf(err_buf, "Verify: Failed to download certificate using URL: %s", cert_url);
 
@@ -507,17 +306,13 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 			sprintf(err_buf, "Verify: Cannot connect to URL: %s", cert_url);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 
-		} else if (res == CURLE_REMOTE_ACCESS_DENIED) {
+		} else {
 
+			// res == CURLE_REMOTE_ACCESS_DENIED
 			// Access denied
 			sprintf(err_buf, "Verify: Access denied for URL: %s", cert_url);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CURL);
 
-		} else {
-
-			// All other erros
-			sprintf(err_buf, "Verify: Failed to download certificate using URL: %s", cert_url);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CURL);
 		}
 
 		goto fail;
@@ -527,16 +322,11 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 		// On success, http_req->response.code is HTTP response code (200, 403, 404, etc...)
 		res = http_req.response.code;
 
-		// TODO remove
-		printf("Download: Got %zu bytes\n", http_req.response.mem.size);
-		printf("Got response to download cert request:\ncode:\t%ld\ndata:\t%s\n", http_req.response.code, http_req.response.mem.mem);
-
 		switch (res) {
 
 			case 200:
 
-				// TODO remove
-				printf("HTTP 200 OK\n");
+				// OK
 				break;
 
 			case 403:
@@ -552,16 +342,13 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 
 	// Load into X509
 
-	// TODO remove
-	printf("STIR-Shaken: Verify: loading cert from memory into X509...\n");
-
-    if (stir_shaken_load_cert_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem, http_req.response.mem.size) != STIR_SHAKEN_STATUS_OK) {
+    if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_cert_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem, http_req.response.mem.size)) {
 	
 		stir_shaken_set_error_if_clear(ss, "Verify: error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
     }
 
-	// TODO copy cert into cert.body
+	// Copy cert into cert.body
 	cert->body = malloc(http_req.response.mem.size);
 	if (!cert->body) {
 	
@@ -573,25 +360,30 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	cert->len = http_req.response.mem.size;
 
 	// Parse X509 representation of cert into char/int variables
-	if (stir_shaken_read_cert_fields(ss, cert) != STIR_SHAKEN_STATUS_OK) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_read_cert_fields(ss, cert)) {
 
 		goto fail;
 	}
 
-	// Verify certificate chain against approved CAs and cert revocation list
-	if (stir_shaken_verify_cert(ss, cert) != STIR_SHAKEN_STATUS_OK) {
+	// Verify certificate root and chain against approved CAs and cert revocation list
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert(ss, cert)) {
 
-		stir_shaken_set_error_if_clear(ss, "Cert did not pass ext-tnAuthList and chain validation", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "Cert did not pass ext-tnAuthList and chain validation", STIR_SHAKEN_ERROR_CERT_ROOT);
 		goto fail;
 	}
 
 	// TODO Handle STIR_SHAKEN_ERROR_SIP_403_STALE_DATE
 	
-	// TODO remove
-	printf("STIR-Shaken: Verify: checking SIH signature with cert...\n");
-
-	// Validates PASSporT (including date/origin/destination validation as required by RFC 4474)
+	// Decode PASSporT using certificate referenced in it
 	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, cert, passport, stica_array);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+
+		stir_shaken_set_error_if_clear(ss, "Cert does not match the PASSporT", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		goto fail;
+	}
+
+	// Validate headers and grants in PASSporT (including date/origin/destination validation as required by RFC 4474)
+	ss_status = stir_shaken_passport_validate(ss, passport);
 	
 	switch (ss_status) {
 	   
@@ -607,23 +399,24 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 			// Bad Identity Headers also end up here
 			//
 			// Error code will be set to one of:
+			// STIR_SHAKEN_ERROR_CERT_ROOT_INIT								- Cannot instantiate verification context (CA list / Revocation list wrong or missing)
+			// STIR_SHAKEN_ERROR_CERT_ROOT									- Cert root failed validation
+			// STIR_SHAKEN_ERROR_TNAUTHLIST									- TNAuthList extension wrong or missing
 			// STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER			- bad Identity Header, missing fields, malformed content, didn't pass the signature check, etc.
 			// STIR_SHAKEN_ERROR_PASSPORT_INVALID							- bad Identity Header, specifically: PASSporT is missing some mandatory fields
 			// STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO					- cannot download referenced certificate
-			stir_shaken_set_error_if_clear(ss, "Verify: SIP Identity Header is spoofed", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+			//
+			stir_shaken_set_error_if_clear(ss, "Unknown error while processing request", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 			goto fail;
 
 		case STIR_SHAKEN_STATUS_ERR:
 		default:
 			
 			// Error while verifying
-			stir_shaken_set_error_if_clear(ss, "Verify: Error while processing request", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error_if_clear(ss, "Error while processing request", STIR_SHAKEN_ERROR_GENERAL);
 			goto fail;
 	}
 
-	// TODO remove
-	printf("STIR-Shaken: Verify: PASS\n");
-    
 fail:
 
 	// Release all memory used by http_req
