@@ -45,6 +45,7 @@
 #define TN_AUTH_LIST_OID "1.3.6.1.5.5.7.1.26"
 #define TN_AUTH_LIST_LN "TNAuthorizationList"
 #define TN_AUTH_LIST_SN "TNAuthList"
+#define USE_TN_AUTH_LIST_OID 0
 
 #define STIR_SHAKEN_MOC_VERIFY_CERT_ROOT_CHAIN 1
 

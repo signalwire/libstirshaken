@@ -925,11 +925,13 @@ stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_c
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
+#if USE_TN_AUTH_LIST_OID
 	if (X509_get_ext_by_NID(cert->x, stir_shaken_globals.tn_authlist_nid, -1) == -1) {
 
 		stir_shaken_set_error(ss, "Cert must have ext-tnAuthList extension (OID 1.3.6.1.5.5.7.1.26: http://oid-info.com/get/1.3.6.1.5.5.7.1.26) but it is missing", STIR_SHAKEN_ERROR_TNAUTHLIST);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
+#endif
 
 	return STIR_SHAKEN_STATUS_OK;
 }
@@ -2337,11 +2339,14 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss)
 	}
 	stir_shaken_globals.curve_nid = curve_nid;
 
-	stir_shaken_globals.tn_authlist_nid = OBJ_create(TN_AUTH_LIST_OID, TN_AUTH_LIST_SN, TN_AUTH_LIST_LN);
+#if USE_TN_AUTH_LIST_OID
+	//stir_shaken_globals.tn_authlist_nid = OBJ_create(TN_AUTH_LIST_OID, TN_AUTH_LIST_SN, TN_AUTH_LIST_LN);
+	stir_shaken_globals.tn_authlist_nid = OBJ_ln2nid(TN_AUTH_LIST_LN);
 	if (stir_shaken_globals.tn_authlist_nid == NID_undef) {
 		stir_shaken_set_error(ss, "SSL: Failed to create new openssl object for ext-tnAuthList extension", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
+#endif
 
 	free(curves);
 	curves = NULL;
