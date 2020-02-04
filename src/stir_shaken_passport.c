@@ -530,28 +530,28 @@ stir_shaken_status_t stir_shaken_passport_validate_headers(stir_shaken_context_t
 	if (!passport) return STIR_SHAKEN_STATUS_TERM;
 	
 	h = stir_shaken_passport_get_header(passport, "alg");
-	if (strcmp(h, "ES256")) {
+	if (!h || strcmp(h, "ES256")) {
 		sprintf(err_buf, "PASSporT Invalid. @alg should be 'ES256' but is (%s)", h);  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	h = stir_shaken_passport_get_header(passport, "ppt");
-	if (strcmp(h, "shaken")) {
+	if (!h || strcmp(h, "shaken")) {
 		sprintf(err_buf, "PASSporT Invalid. @ppt should be 'shaken' but is (%s)", h);  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
 	h = stir_shaken_passport_get_header(passport, "typ");
-	if (strcmp(h, "passport")) {
+	if (!h || strcmp(h, "passport")) {
 		sprintf(err_buf, "PASSporT Invalid. @typ should be 'passport' but is (%s)", h);  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	h = stir_shaken_passport_get_header(passport, "x5u");
-	if (!h) {
+	if (!h || !strcmp(h, "")) {
 		sprintf(err_buf, "PASSporT Invalid. @x5u is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
@@ -585,28 +585,28 @@ stir_shaken_status_t stir_shaken_passport_validate_grants(stir_shaken_context_t 
 	}
 
 	h = stir_shaken_passport_get_grant(passport, "origid");
-	if (!h) {
+	if (!h || !strcmp(h, "")) {
 		sprintf(err_buf, "PASSporT Invalid. @origid is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
 	h = stir_shaken_passport_get_grant(passport, "attest");
-	if (!h) {
+	if (!h || !strcmp(h, "")) {
 		sprintf(err_buf, "PASSporT Invalid. @attest is missing", h);  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	h = stir_shaken_passport_get_grant(passport, "orig");
-	if (!h) {
+	if (!h || !strcmp(h, "")) {
 		sprintf(err_buf, "PASSporT Invalid. @orig is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	h = stir_shaken_passport_get_grant(passport, "dest");
-	if (!h) {
+	if (!h || !strcmp(h, "")) {
 		sprintf(err_buf, "PASSporT Invalid. @dest is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
@@ -618,7 +618,7 @@ stir_shaken_status_t stir_shaken_passport_validate_grants(stir_shaken_context_t 
 /**
  * Validate that the PASSporT includes all of the baseline claims, as well as the SHAKEN extension claims.
  */
-stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport)
+stir_shaken_status_t stir_shaken_passport_validate_headers_and_grants(stir_shaken_context_t *ss, stir_shaken_passport_t *passport)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
 
@@ -634,6 +634,44 @@ stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, st
 	if (status != STIR_SHAKEN_STATUS_OK) {
 		stir_shaken_set_error_if_clear(ss, "PASSporT grants invalid", STIR_SHAKEN_ERROR_PASSPORT_INVALID);
 		return status;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_passport_validate_iat_against_freshness(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, time_t iat_freshness)
+{
+	char	err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	time_t	iat = 0;
+	time_t	now_s = time(NULL);
+
+
+	// Validate @iat against @iat freshness
+
+	if (!passport) {
+		stir_shaken_set_error(ss, "Verify PASSporT @iat against: Bad params", STIR_SHAKEN_ERROR_GENERAL);
+        return -1;
+	}
+
+	iat = stir_shaken_passport_get_grant_int(passport, "iat");
+	if (errno == ENOENT || iat == 0) {
+
+		stir_shaken_set_error(ss, "PASSporT must have @iat param (application should reply with SIP 438 INVALID IDENTITY HEADER error)\n", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (now_s < iat) {
+
+		// This is warning really not an error 'yet'
+		sprintf(err_buf, "WARNING: PASSporT's @iat (in seconds) is: %zu BUT now is %zu (it shoould be <=)", iat, now_s);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
+	}
+
+	if (iat + iat_freshness < now_s) {
+
+		// Too old, expired
+		stir_shaken_set_error(ss, "PASSporT's @iat too old based on local policy for @iat freshness (application should reply with SIP 403 STALE DATE error)", STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
+		return STIR_SHAKEN_STATUS_ERR;
 	}
 
 	return STIR_SHAKEN_STATUS_OK;

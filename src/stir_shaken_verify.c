@@ -251,7 +251,7 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const 
 // In addition, if any of the base claims or SHAKEN extension claims are missing from the PASSporT token claims,
 // the verification service shall treat this as a 438 Invalid Identity Header error and proceed as defined above.
 
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert_out)
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert_out, time_t iat_freshness)
 {
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
@@ -285,6 +285,20 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	if (!cert) {
 		goto fail;
 	}
+	
+	ss_status = stir_shaken_passport_validate_headers_and_grants(ss, passport);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+
+		stir_shaken_set_error_if_clear(ss, "PASSporT invalid", STIR_SHAKEN_ERROR_PASSPORT_INVALID);
+		goto fail;
+	}
+
+	ss_status = stir_shaken_passport_validate_iat_against_freshness(ss, passport, iat_freshness);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+
+		stir_shaken_set_error(ss, "PASSporT expired", STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
+		goto fail;
+	}
 
 	memset(cert, 0, sizeof(stir_shaken_cert_t));
 
@@ -293,9 +307,8 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	memset(&http_req, 0, sizeof(http_req));
 
 	// Download cert of the STI-SP claiming to athenticate this call
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_get_req(ss, &http_req, cert_url)) {
-
-		sprintf(err_buf, "Verify: Failed to download certificate using URL: %s", cert_url);
+	ss_status = stir_shaken_make_http_get_req(ss, &http_req, cert_url);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 
 		// On fail, http_req->response.code is CURLcode
 		res = http_req.response.code;
@@ -340,41 +353,39 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 		}
 	}
 
-	// Load into X509
-
-    if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_cert_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem, http_req.response.mem.size)) {
+    ss_status = stir_shaken_load_cert_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem, http_req.response.mem.size);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 	
 		stir_shaken_set_error_if_clear(ss, "Verify: error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
     }
 
-	// Copy cert into cert.body
 	cert->body = malloc(http_req.response.mem.size);
 	if (!cert->body) {
 	
-		stir_shaken_set_error(ss, "Verify: out of memory", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Verify: out of memory (will this work?)", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 
 	memcpy(cert->body, http_req.response.mem.mem, http_req.response.mem.size);
 	cert->len = http_req.response.mem.size;
 
-	// Parse X509 representation of cert into char/int variables
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_read_cert_fields(ss, cert)) {
-
+	ss_status = stir_shaken_read_cert_fields(ss, cert);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+		
+		stir_shaken_set_error_if_clear(ss, "Verify: error parsing certificate", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 
+	// TODO
 	// Verify certificate root and chain against approved CAs and cert revocation list
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert(ss, cert)) {
+	ss_status = stir_shaken_verify_cert(ss, cert);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 
 		stir_shaken_set_error_if_clear(ss, "Cert did not pass ext-tnAuthList and chain validation", STIR_SHAKEN_ERROR_CERT_ROOT);
 		goto fail;
 	}
 
-	// TODO Handle STIR_SHAKEN_ERROR_SIP_403_STALE_DATE
-	
-	// Decode PASSporT using certificate referenced in it
 	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, cert, passport, stica_array);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 
@@ -382,9 +393,6 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 		goto fail;
 	}
 
-	// Validate headers and grants in PASSporT (including date/origin/destination validation as required by RFC 4474)
-	ss_status = stir_shaken_passport_validate(ss, passport);
-	
 	switch (ss_status) {
 	   
 		case STIR_SHAKEN_STATUS_OK:
@@ -412,7 +420,6 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 		case STIR_SHAKEN_STATUS_ERR:
 		default:
 			
-			// Error while verifying
 			stir_shaken_set_error_if_clear(ss, "Error while processing request", STIR_SHAKEN_ERROR_GENERAL);
 			goto fail;
 	}

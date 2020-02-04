@@ -361,7 +361,12 @@ stir_shaken_status_t stir_shaken_passport_validate_grants(stir_shaken_context_t 
 /**
  * Validate that the PASSporT includes all of the baseline claims, as well as the SHAKEN extension claims.
  */
-stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport);
+stir_shaken_status_t stir_shaken_passport_validate_headers_and_grants(stir_shaken_context_t *ss, stir_shaken_passport_t *passport);
+
+/**
+ * Validate that the PASSporT is fresh (has not expired yet, according to it's value of @iat and local policy for @iat_freshenss).
+ */
+stir_shaken_status_t stir_shaken_passport_validate_iat_against_freshness(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, time_t iat_freshness);
 
 /*
  * Sign the call with @passport and @key.
@@ -565,7 +570,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
  *
  * NOTE: @passport should point to allocated memory big enough to create PASSporT, @cert may be NULL (will be malloced then and it is caller's responsibility to free it).
  */
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert);
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert_out, time_t iat_freshness);
 
 /* PASSporT verification.
  *
@@ -704,6 +709,7 @@ char* stir_shaken_remove_multiple_adjacent(char *in, char what);
 char* stir_shaken_get_dir_path(const char *path);
 char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, const char *file, const char *path_separator);
 
+stir_shaken_error_t stir_shaken_get_error_code(stir_shaken_context_t *ss) __attribute__((nonnull(1)));
 void stir_shaken_do_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error, char *file, int line);
 void stir_shaken_do_set_error_if_clear(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error, char *file, int line);
 void stir_shaken_clear_error(stir_shaken_context_t *ss);

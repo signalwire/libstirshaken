@@ -70,7 +70,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
     const char *attest = "B";
     const char *desttn_key = "uri";
     const char *desttn_val = "sip:Obama@democrats.com";
-    int iat = 9876543;
+    int iat = time(NULL);
     const char *origtn_key = "";
     const char *origtn_val = "07483866525";
     const char *origid = "Trump's Office";
@@ -139,8 +139,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
     /* Test */
-    printf("Authorizing...\n\n");
-	status = stir_shaken_jwt_authenticate(&ss, &sih, &params, priv_raw, priv_raw_len);
+    printf("Authenticating...\n\n");
+	status = stir_shaken_jwt_authenticate_keep_passport(&ss, &sih, &params, priv_raw, priv_raw_len, &passport);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -183,13 +183,13 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 
 	// Test 1: Test case: Cannot download referenced certificate
     printf("=== Testing case [1]: Cannot download referenced certificate\n");
-    status = stir_shaken_verify(&ss, sih, "Bad url", &passport, NULL, &res_cert);
+    status = stir_shaken_verify(&ss, sih, "Bad url", &passport, NULL, &res_cert, 3600);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
 		printf("Error code is: '%d'\n", error_code);
 	}
-    stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Err, should return STATUS_FALSE");
+    stir_shaken_assert(status != STIR_SHAKEN_STATUS_OK, "Err, should return error");
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 1, "Err, error condition not set (but should be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
     stir_shaken_assert(error_description != NULL, "Err, error description not set");

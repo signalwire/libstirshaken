@@ -363,7 +363,7 @@ static const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
 	return "No description provided";
 }
 
-static stir_shaken_error_t stir_shaken_get_error_code(stir_shaken_context_t *ss)
+stir_shaken_error_t stir_shaken_get_error_code(stir_shaken_context_t *ss)
 {
 	if (!ss || !stir_shaken_is_error_set(ss)) {
 		// This function must always be called with ss pointer set and only if error has been set,
