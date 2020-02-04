@@ -858,7 +858,10 @@ stir_shaken_status_t stir_shaken_cert_init_validation(stir_shaken_context_t *ss,
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
-	stir_shaken_cert_validation_cleanup(cert);
+	if (cert->store) {
+		X509_STORE_free(cert->store);
+		cert->store = NULL;
+	}
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
@@ -903,12 +906,14 @@ stir_shaken_status_t stir_shaken_verify_cert_root(stir_shaken_context_t *ss, sti
 
 	if (X509_STORE_CTX_init(cert->verify_ctx, cert->store, cert->x, cert->xchain) != 1) {
 		X509_STORE_CTX_cleanup(cert->verify_ctx);
+		cert->verify_ctx = NULL;
 		stir_shaken_set_error(ss, "SSL: Error initializing verification context", STIR_SHAKEN_ERROR_CERT_ROOT);
 		return -1;
 	}
 
 	rc = X509_verify_cert(cert->verify_ctx);
 	X509_STORE_CTX_cleanup(cert->verify_ctx);
+	cert->verify_ctx = NULL;
 
 	return rc != 1 ? STIR_SHAKEN_STATUS_FALSE : STIR_SHAKEN_STATUS_OK;
 }

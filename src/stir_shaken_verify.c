@@ -260,6 +260,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	stir_shaken_cert_t		*cert = NULL;
 	
 	stir_shaken_clear_error(ss);
+	memset(&http_req, 0, sizeof(http_req));
 	
 	if (!sih) {
 		stir_shaken_set_error(ss, "Verify: SIP Identity Header not set", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
@@ -285,27 +286,8 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	if (!cert) {
 		goto fail;
 	}
-	
-	ss_status = stir_shaken_passport_validate_headers_and_grants(ss, passport);
-	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-
-		stir_shaken_set_error_if_clear(ss, "PASSporT invalid", STIR_SHAKEN_ERROR_PASSPORT_INVALID);
-		goto fail;
-	}
-
-	ss_status = stir_shaken_passport_validate_iat_against_freshness(ss, passport, iat_freshness);
-	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-
-		stir_shaken_set_error(ss, "PASSporT expired", STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
-		goto fail;
-	}
-
 	memset(cert, 0, sizeof(stir_shaken_cert_t));
-
-	// Download cert
-
-	memset(&http_req, 0, sizeof(http_req));
-
+	
 	// Download cert of the STI-SP claiming to athenticate this call
 	ss_status = stir_shaken_make_http_get_req(ss, &http_req, cert_url);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
@@ -390,6 +372,20 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 
 		stir_shaken_set_error_if_clear(ss, "Cert does not match the PASSporT", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		goto fail;
+	}
+
+	ss_status = stir_shaken_passport_validate_headers_and_grants(ss, passport);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+
+		stir_shaken_set_error_if_clear(ss, "PASSporT invalid", STIR_SHAKEN_ERROR_PASSPORT_INVALID);
+		goto fail;
+	}
+
+	ss_status = stir_shaken_passport_validate_iat_against_freshness(ss, passport, iat_freshness);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+
+		stir_shaken_set_error(ss, "PASSporT expired", STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
 		goto fail;
 	}
 
