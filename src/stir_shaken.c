@@ -33,6 +33,7 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss)
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
+	// TODO CA list and CRL will be passed here
 	status = stir_shaken_init_ssl(ss);
 	if (status != STIR_SHAKEN_STATUS_OK && status != STIR_SHAKEN_STATUS_NOOP) {
 	

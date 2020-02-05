@@ -142,60 +142,66 @@ static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
 	return realsize;
 }
 
-stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const char *url, mem_chunk_t *chunk)
+stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url)
 {
-	CURL *curl_handle = NULL;
-	CURLcode res = 0;
-    stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
-	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-	
-	
-	stir_shaken_clear_error(ss);
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
+	long res = CURLE_OK;
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
-	chunk->mem = malloc(1);
-	chunk->size = 0;
+	if (!http_req) {
+		stir_shaken_set_error(ss, "HTTP Req not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
 
-	curl_global_init(CURL_GLOBAL_ALL);
-	curl_handle = curl_easy_init();
-	curl_easy_setopt(curl_handle, CURLOPT_URL, url);
-	curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, curl_callback);
-	curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)chunk);
+	if (!url) {
+		stir_shaken_set_error(ss, "Cert url not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
 
-	// Some pple say, some servers don't like requests that are made without a user-agent field, so we provide one.
-	curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "freeswitch-stir-shaken/1.0");
+	ss_status = stir_shaken_make_http_get_req(ss, http_req, url);
+	res = http_req->response.code;
 
-	res = curl_easy_perform(curl_handle);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 
-	if (res != CURLE_OK) {
-		
-		sprintf(err_buf, "Download: Error in CURL: %s", curl_easy_strerror(res));
+		// On fail, http_req->response.code is CURLcode
 		
 		if (res == CURLE_COULDNT_RESOLVE_HOST || res == CURLE_COULDNT_RESOLVE_PROXY || res == CURLE_COULDNT_CONNECT || res != CURLE_REMOTE_ACCESS_DENIED) {
 			
 			// Cannot access
+			sprintf(err_buf, "Verify: Cannot connect to URL: %s", url);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 
 		} else {
 
-			// All other erros
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CURL);
+			// res == CURLE_REMOTE_ACCESS_DENIED
+			// Access denied
+			sprintf(err_buf, "Verify: Access denied for URL: %s", url);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+
 		}
-	
-		// Only curl_easy_cleanup in case of error, cause otherwise (if also curl_global_cleanup) SSL starts to mulfunction ???? (EVP_get_digestbyname("sha256") in stir_shaken_do_verify_data returns NULL)
-		curl_easy_cleanup(curl_handle);
-        return STIR_SHAKEN_STATUS_FALSE;
+
+		return STIR_SHAKEN_STATUS_FALSE;
 
 	} else {
 
-		// TODO remove
-		printf("Download: Got %zu bytes\n", chunk->size);
-        status = STIR_SHAKEN_STATUS_OK;
+		// On success, http_req->response.code is HTTP response code (200, 403, 404, etc...)
+
+		switch (res) {
+
+			case 200:
+				// OK
+				return STIR_SHAKEN_STATUS_OK;
+
+			case 403:
+				stir_shaken_set_error(ss, "HTTP 403 Forbidden", STIR_SHAKEN_ERROR_HTTP_403_FORBIDDEN);
+				return STIR_SHAKEN_STATUS_FALSE;
+
+			case 404:
+			default:
+				stir_shaken_set_error(ss, "HTTP 404 Invalid request", STIR_SHAKEN_ERROR_HTTP_404_INVALID);
+				return STIR_SHAKEN_STATUS_FALSE;
+		}
 	}
-
-	curl_easy_cleanup(curl_handle);
-	curl_global_cleanup();
-
-	return status;
 }
 
 // 5.3.1 PASSporT & Identity Header Verification
@@ -250,7 +256,17 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const 
 // Reason: SIP ;cause=436 ;text="Bad Identity Info"
 // In addition, if any of the base claims or SHAKEN extension claims are missing from the PASSporT token claims,
 // the verification service shall treat this as a 438 Invalid Identity Header error and proceed as defined above.
-
+// 
+//
+// Errors:
+//
+// STIR_SHAKEN_ERROR_CERT_INIT									- Cannot instantiate verification context (CA list / Revocation list wrong or missing)
+// STIR_SHAKEN_ERROR_CERT_INVALID								- Certificate did not pass X509 path validation against CA list and CRL
+// STIR_SHAKEN_ERROR_TNAUTHLIST									- TNAuthList extension wrong or missing
+// STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER			- Bad Identity Header, missing fields, malformed content, didn't pass the signature check, etc.
+// STIR_SHAKEN_ERROR_PASSPORT_INVALID							- Bad Identity Header, specifically: PASSporT is missing some mandatory fields
+// STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO					- Cannot download referenced certificate
+//
 stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert_out, time_t iat_freshness)
 {
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
@@ -288,63 +304,20 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	}
 	memset(cert, 0, sizeof(stir_shaken_cert_t));
 	
-	// Download cert of the STI-SP claiming to athenticate this call
-	ss_status = stir_shaken_make_http_get_req(ss, &http_req, cert_url);
+	ss_status = stir_shaken_download_cert(ss, &http_req, cert_url);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-
-		// On fail, http_req->response.code is CURLcode
-		res = http_req.response.code;
-		
-		if (res == CURLE_COULDNT_RESOLVE_HOST || res == CURLE_COULDNT_RESOLVE_PROXY || res == CURLE_COULDNT_CONNECT || res != CURLE_REMOTE_ACCESS_DENIED) {
-			
-			// Cannot access
-			sprintf(err_buf, "Verify: Cannot connect to URL: %s", cert_url);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
-
-		} else {
-
-			// res == CURLE_REMOTE_ACCESS_DENIED
-			// Access denied
-			sprintf(err_buf, "Verify: Access denied for URL: %s", cert_url);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CURL);
-
-		}
-
+		stir_shaken_set_error_if_clear(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 		goto fail;
-
-	} else {
-
-		// On success, http_req->response.code is HTTP response code (200, 403, 404, etc...)
-		res = http_req.response.code;
-
-		switch (res) {
-
-			case 200:
-
-				// OK
-				break;
-
-			case 403:
-				stir_shaken_set_error(ss, "HTTP 403 Forbidden", STIR_SHAKEN_ERROR_HTTP_403_FORBIDDEN);
-				goto fail;
-
-			case 404:
-			default:
-				stir_shaken_set_error(ss, "HTTP 404 Invalid request", STIR_SHAKEN_ERROR_HTTP_404_INVALID);
-				goto fail;
-		}
 	}
 
     ss_status = stir_shaken_load_cert_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem, http_req.response.mem.size);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-	
 		stir_shaken_set_error_if_clear(ss, "Verify: error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
     }
 
 	cert->body = malloc(http_req.response.mem.size);
 	if (!cert->body) {
-	
 		stir_shaken_set_error(ss, "Verify: out of memory (will this work?)", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
@@ -354,73 +327,38 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 
 	ss_status = stir_shaken_read_cert_fields(ss, cert);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		
 		stir_shaken_set_error_if_clear(ss, "Verify: error parsing certificate", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 
-	// TODO
-	// Verify certificate root and chain against approved CAs and cert revocation list
-	ss_status = stir_shaken_verify_cert(ss, cert);
+	ss_status = stir_shaken_verify_cert_path(ss, cert);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-
-		stir_shaken_set_error_if_clear(ss, "Cert did not pass ext-tnAuthList and chain validation", STIR_SHAKEN_ERROR_CERT_ROOT);
+		stir_shaken_set_error_if_clear(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_CERT_INVALID);
 		goto fail;
 	}
 
+	// TODO remove stica_array from here?
 	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, cert, passport, stica_array);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-
 		stir_shaken_set_error_if_clear(ss, "Cert does not match the PASSporT", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 		goto fail;
 	}
 
 	ss_status = stir_shaken_passport_validate_headers_and_grants(ss, passport);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-
 		stir_shaken_set_error_if_clear(ss, "PASSporT invalid", STIR_SHAKEN_ERROR_PASSPORT_INVALID);
 		goto fail;
 	}
 
 	ss_status = stir_shaken_passport_validate_iat_against_freshness(ss, passport, iat_freshness);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-
 		stir_shaken_set_error(ss, "PASSporT expired", STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
 		goto fail;
 	}
 
-	switch (ss_status) {
-	   
-		case STIR_SHAKEN_STATUS_OK:
-
-			// Passed
-			break;
-
-		case STIR_SHAKEN_STATUS_FALSE:
-			
-			// Didn't pass
-			// Cannot download referenced certificate or caller didn't pass verification
-			// Bad Identity Headers also end up here
-			//
-			// Error code will be set to one of:
-			// STIR_SHAKEN_ERROR_CERT_ROOT_INIT								- Cannot instantiate verification context (CA list / Revocation list wrong or missing)
-			// STIR_SHAKEN_ERROR_CERT_ROOT									- Cert root failed validation
-			// STIR_SHAKEN_ERROR_TNAUTHLIST									- TNAuthList extension wrong or missing
-			// STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER			- bad Identity Header, missing fields, malformed content, didn't pass the signature check, etc.
-			// STIR_SHAKEN_ERROR_PASSPORT_INVALID							- bad Identity Header, specifically: PASSporT is missing some mandatory fields
-			// STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO					- cannot download referenced certificate
-			//
-			stir_shaken_set_error_if_clear(ss, "Unknown error while processing request", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
-			goto fail;
-
-		case STIR_SHAKEN_STATUS_ERR:
-		default:
-			
-			stir_shaken_set_error_if_clear(ss, "Error while processing request", STIR_SHAKEN_ERROR_GENERAL);
-			goto fail;
-	}
-
 fail:
+
+	stir_shaken_set_error_if_clear(ss, "Unknown error while processing request", STIR_SHAKEN_ERROR_GENERAL);
 
 	// Release all memory used by http_req
 	stir_shaken_destroy_http_request(&http_req);

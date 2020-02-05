@@ -47,7 +47,8 @@
 #define TN_AUTH_LIST_SN "TNAuthList"
 #define USE_TN_AUTH_LIST_OID 0
 
-#define STIR_SHAKEN_MOC_VERIFY_CERT_ROOT_CHAIN 1
+#define STIR_SHAKEN_MOC_VERIFY_CERT_CHAIN 0
+#define STIR_SHAKEN_LOAD_CA_FROM_DEFAULT_OS_PATHS 0
 
 
 typedef enum stir_shaken_status {
@@ -75,8 +76,7 @@ typedef struct stir_shaken_csr_s {
 typedef struct stir_shaken_cert_s {
 	X509			*x;						// X509 end-entity Certificate
 	STACK_OF(X509)	*xchain;				// Certificate chain
-	X509_STORE		*store;					// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
-	X509_STORE_CTX	*verify_ctx;			// Verification SSL context using @store to validate cert with chain and revocation list
+	X509_STORE_CTX	*verify_ctx;			// Verification SSL context using @store to validate cert chain against CA list and CRL
 	char        *body;
 	size_t		len;
 	uint8_t     is_fresh;
@@ -203,6 +203,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_CURL,
 	STIR_SHAKEN_ERROR_STICA_NOT_APPROVED,
 	STIR_SHAKEN_ERROR_SSL,
+	STIR_SHAKEN_ERROR_CERT_STORE,
 	STIR_SHAKEN_ERROR_SIP_403_STALE_DATE,
 	STIR_SHAKEN_ERROR_SIP_428_USE_IDENTITY_HEADER,
 	STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO,
@@ -212,9 +213,13 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_HTTP_404_INVALID,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID,
 	STIR_SHAKEN_ERROR_TNAUTHLIST,
-	STIR_SHAKEN_ERROR_CERT_CHAIN,
-	STIR_SHAKEN_ERROR_CERT_ROOT_INIT,
-	STIR_SHAKEN_ERROR_CERT_ROOT,
+	STIR_SHAKEN_ERROR_CERT_INIT,
+	STIR_SHAKEN_ERROR_CERT_INVALID,
+	STIR_SHAKEN_ERROR_LOAD_CA,
+	STIR_SHAKEN_ERROR_LOAD_CRL,
+	STIR_SHAKEN_ERROR_SET_DEFAULT_PATHS,
+	STIR_SHAKEN_ERROR_CERT_EXPIRED,
+	STIR_SHAKEN_ERROR_PASSPORT_EXPIRED,
 } stir_shaken_error_t;
 
 typedef enum stir_shaken_http_req_type {
@@ -438,6 +443,7 @@ typedef struct stir_shaken_globals_s {
 	SSL                 *ssl;
 	int                 curve_nid;                  // id of the curve in OpenSSL
 	int					tn_authlist_nid;			// OID for ext-tnAuthList
+	X509_STORE			*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
 } stir_shaken_globals_t;
 
 extern stir_shaken_globals_t stir_shaken_globals;
@@ -518,10 +524,11 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *s
 void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
-void stir_shaken_cert_validation_cleanup(stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_cert_init_validation(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *ca_list, char *ca_dir, char *crl_list, char *crl_dir);
-stir_shaken_status_t stir_shaken_verify_cert_root(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, char *ca_list, char *ca_dir, char *crl_list, char *crl_dir);
+void stir_shaken_cert_store_cleanup(void);
 stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 char* stir_shaken_cert_get_serialHex(stir_shaken_cert_t *cert);
 char* stir_shaken_cert_get_serialDec(stir_shaken_cert_t *cert);
@@ -551,8 +558,7 @@ int stir_shaken_verify_data(stir_shaken_context_t *ss, const char *data, const c
 int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);
 int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size_t datalen, const unsigned char *sig, size_t siglen, EVP_PKEY *public_key);
 
-stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, const char *url, mem_chunk_t *chunk);
-stir_shaken_status_t stir_shaken_download_cert_to_file(const char *url, const char *file);
+stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
 
 /**
  * Verify (check/authenticate) call identity.

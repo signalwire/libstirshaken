@@ -806,114 +806,118 @@ static int stir_shaken_verify_callback(int ok, X509_STORE_CTX *ctx)
 	return ok;
 }
 
-stir_shaken_status_t stir_shaken_cert_init_validation(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *ca_list, char *ca_dir, char *crl_list, char *crl_dir)
+stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, char *ca_list, char *ca_dir, char *crl_list, char *crl_dir)
 {
-	if (!cert) {
-		stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_TERM;
+	stir_shaken_globals_t *g = &stir_shaken_globals; 
+
+	if (g->store) {
+		X509_STORE_free(g->store);
+		g->store = NULL;
 	}
 
-	if (cert->store) {
-		X509_STORE_free(cert->store);
-		cert->store = NULL;
-	}
-
-	cert->store = X509_STORE_new();
-	if (!cert->store) {
-		stir_shaken_set_error(ss, "Failed to create X509_STORE_CTX object", STIR_SHAKEN_ERROR_SSL);
+	g->store = X509_STORE_new();
+	if (!g->store) {
+		stir_shaken_set_error(ss, "Failed to create X509_STORE", STIR_SHAKEN_ERROR_SSL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	X509_STORE_set_verify_cb_func(cert->store, stir_shaken_verify_callback);
+	X509_STORE_set_verify_cb_func(g->store, stir_shaken_verify_callback);
 
 	if (ca_list || ca_dir) {
-		if (X509_STORE_load_locations(cert->store, ca_list, ca_dir) != 1) {
-			stir_shaken_set_error(ss, "Failed to load trusted CAs", STIR_SHAKEN_ERROR_SSL);
+
+		if (X509_STORE_load_locations(g->store, ca_list, ca_dir) != 1) {
+			stir_shaken_set_error(ss, "Failed to load list of trusted CAs", STIR_SHAKEN_ERROR_LOAD_CA);
 			goto fail;
 		}
-		if (X509_STORE_set_default_paths(cert->store) != 1) {
-			stir_shaken_set_error(ss, "Failed to load the system-wide CA certificates", STIR_SHAKEN_ERROR_SSL);
+		
+		if (STIR_SHAKEN_LOAD_CA_FROM_DEFAULT_OS_PATHS && (X509_STORE_set_default_paths(g->store) != 1)) {
+			stir_shaken_set_error(ss, "Failed to load the system-wide CA certificates", STIR_SHAKEN_ERROR_SET_DEFAULT_PATHS);
 			goto fail;
 		}
 	}
 
 	if (crl_list || crl_dir) {
-		if (X509_STORE_load_locations(cert->store, crl_list, crl_dir) != 1) {
-			stir_shaken_set_error(ss, "Failed to load CRLs", STIR_SHAKEN_ERROR_SSL);
+
+		if (X509_STORE_load_locations(g->store, crl_list, crl_dir) != 1) {
+			stir_shaken_set_error(ss, "Failed to load CRLs", STIR_SHAKEN_ERROR_LOAD_CRL);
 			goto fail;
 		}
-		X509_STORE_set_flags(cert->store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-	}
 
-	if (cert->verify_ctx) {
-		X509_STORE_CTX_cleanup(cert->verify_ctx);
-		cert->verify_ctx = NULL;
-	}
-
-	if (!(cert->verify_ctx = X509_STORE_CTX_new())) {
-		stir_shaken_set_error(ss, "Failed to create X509_STORE_CTX object", STIR_SHAKEN_ERROR_SSL);
-		goto fail;
+		// TODO Probably?
+		X509_STORE_set_flags(g->store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
 	}
 
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
-	if (cert->store) {
-		X509_STORE_free(cert->store);
-		cert->store = NULL;
+	if (g->store) {
+		X509_STORE_free(g->store);
+		g->store = NULL;
 	}
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-void stir_shaken_cert_validation_cleanup(stir_shaken_cert_t *cert)
+void stir_shaken_cert_store_cleanup(void)
 {
-	if (!cert) return;
+	stir_shaken_globals_t *g = &stir_shaken_globals; 
 
-	if (cert->xchain) {
-		sk_X509_pop_free(cert->xchain, X509_free);
-		cert->xchain = NULL;
-	}
-
-	if (cert->verify_ctx) {
-		X509_STORE_CTX_cleanup(cert->verify_ctx);
-		cert->verify_ctx = NULL;
-	}
-
-	if (cert->store) {
-		X509_STORE_free(cert->store);
-		cert->store = NULL;
+	if (g->store) {
+		X509_STORE_free(g->store);
+		g->store = NULL;
 	}
 }
 
-stir_shaken_status_t stir_shaken_verify_cert_root(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
+stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
 {
 	X509            *x = NULL;
+	stir_shaken_globals_t *g = &stir_shaken_globals; 
 	int rc = 1;
 
 	stir_shaken_clear_error(ss);
 
 	if (!cert) {
-
 		stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	if (!cert->xchain) {
-
-		stir_shaken_set_error(ss, "Bad cert chain", STIR_SHAKEN_ERROR_CERT_CHAIN);
+	if (!g->store) {
+		stir_shaken_set_error(ss, "Cert store not set", STIR_SHAKEN_ERROR_CERT_STORE);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	if (X509_STORE_CTX_init(cert->verify_ctx, cert->store, cert->x, cert->xchain) != 1) {
+	if (cert->verify_ctx) {
 		X509_STORE_CTX_cleanup(cert->verify_ctx);
+		X509_STORE_CTX_free(cert->verify_ctx);
 		cert->verify_ctx = NULL;
-		stir_shaken_set_error(ss, "SSL: Error initializing verification context", STIR_SHAKEN_ERROR_CERT_ROOT);
-		return -1;
+	}
+
+	if (!(cert->verify_ctx = X509_STORE_CTX_new())) {
+		stir_shaken_set_error(ss, "Failed to create X509_STORE_CTX object", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	pthread_mutex_lock(&g->mutex); // Can use X509_STORE_lock(g->store) for more fine grained locking later
+
+	if (X509_STORE_CTX_init(cert->verify_ctx, g->store, cert->x, cert->xchain) != 1) {
+
+		X509_STORE_CTX_cleanup(cert->verify_ctx);
+		X509_STORE_CTX_free(cert->verify_ctx);
+		cert->verify_ctx = NULL;
+		stir_shaken_set_error(ss, "SSL: Error initializing verification context", STIR_SHAKEN_ERROR_SSL);
+		
+		// Can use X509_STORE_unlock(g->store); for more fine grained locking later
+		pthread_mutex_unlock(&g->mutex);
+		return STIR_SHAKEN_STATUS_TERM;
 	}
 
 	rc = X509_verify_cert(cert->verify_ctx);
+	
 	X509_STORE_CTX_cleanup(cert->verify_ctx);
+	X509_STORE_CTX_free(cert->verify_ctx);
 	cert->verify_ctx = NULL;
+
+	// Can use X509_STORE_unlock(g->store); for more fine grained locking later
+	pthread_mutex_unlock(&g->mutex);
 
 	return rc != 1 ? STIR_SHAKEN_STATUS_FALSE : STIR_SHAKEN_STATUS_OK;
 }
@@ -948,35 +952,23 @@ stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_sha
 	stir_shaken_clear_error(ss);
 
 	if (!cert) {
-
 		stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	// TODO pass CAs list and revocation list
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_init_validation(ss, cert, NULL, NULL, NULL, NULL)) {
-		stir_shaken_set_error(ss, "Cannot init cert store and chain", STIR_SHAKEN_ERROR_CERT_ROOT_INIT);
-		goto fail;
-	}
-
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_tn_authlist_extension(ss, cert)) {
 		stir_shaken_set_error(ss, "Cert must have ext-tnAuthList extension (OID 1.3.6.1.5.5.7.1.26: http://oid-info.com/get/1.3.6.1.5.5.7.1.26) but it is missing", STIR_SHAKEN_ERROR_TNAUTHLIST);
-		goto fail;
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
 	// TODO pass CAs list and revocation list
-	if (!STIR_SHAKEN_MOC_VERIFY_CERT_ROOT_CHAIN 
-			&& STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_root(ss, cert)) {
-		stir_shaken_set_error(ss, "Cert did not pass root chain validation", STIR_SHAKEN_ERROR_CERT_ROOT);
-		goto fail;
+	if (!STIR_SHAKEN_MOC_VERIFY_CERT_CHAIN 
+			&& (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_path(ss, cert))) {
+		stir_shaken_set_error(ss, "Cert did not pass X509 path validation against CA list and CRL", STIR_SHAKEN_ERROR_CERT_INVALID);
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	stir_shaken_cert_validation_cleanup(cert);
 	return STIR_SHAKEN_STATUS_OK;
-
-fail:
-	stir_shaken_cert_validation_cleanup(cert);
-	return STIR_SHAKEN_STATUS_FALSE;
 }
 
 char* stir_shaken_cert_get_serialHex(stir_shaken_cert_t *cert)
@@ -1196,8 +1188,6 @@ void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
 			cert->notAfter_ASN1 = NULL;
 		}
 
-		stir_shaken_cert_validation_cleanup(cert);
-
 		if (cert->body) {
 			free(cert->body);
 			cert->body = NULL;
@@ -1227,6 +1217,12 @@ void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
 			cert->public_url = NULL;
 		}
 		stir_shaken_destroy_cert_fields(cert);
+
+		if (cert->verify_ctx) {
+			X509_STORE_CTX_cleanup(cert->verify_ctx);
+			X509_STORE_CTX_free(cert->verify_ctx);
+			cert->verify_ctx = NULL;
+		}
 	}
 }
 
@@ -2353,6 +2349,12 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss)
 	}
 #endif
 
+	// TODO pass CAs list and revocation list
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_init_cert_store(ss, NULL, NULL, NULL, NULL)) {
+		stir_shaken_set_error(ss, "Cannot init cert store", STIR_SHAKEN_ERROR_CERT_STORE);
+		goto fail;
+	}
+
 	free(curves);
 	curves = NULL;
 
@@ -2383,4 +2385,6 @@ void stir_shaken_deinit_ssl(void)
 		SSL_CTX_free(*ssl_ctx);
 		*ssl_ctx = NULL;
 	}
+
+	stir_shaken_cert_store_cleanup();
 }
