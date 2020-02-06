@@ -6,11 +6,11 @@ stir_shaken_globals_t stir_shaken_globals;
 
 static void stir_shaken_init(void)
 {
-	stir_shaken_do_init(NULL);
+	stir_shaken_do_init(NULL, NULL, NULL);
 	return;
 }
 
-stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss)
+stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
 
@@ -21,7 +21,7 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss)
 	
 	if (pthread_mutexattr_init(&stir_shaken_globals.attr) != 0) {
 		
-		stir_shaken_set_error(ss, "init mutex attr failed", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Init mutex attr failed", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -29,15 +29,15 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss)
 	
 	if (pthread_mutex_init(&stir_shaken_globals.mutex, &stir_shaken_globals.attr) != 0) {
 		
-		stir_shaken_set_error(ss, "init mutex failed", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Init mutex failed", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	// TODO CA list and CRL will be passed here
-	status = stir_shaken_init_ssl(ss);
+	status = stir_shaken_init_ssl(ss, ca_dir, crl_dir);
 	if (status != STIR_SHAKEN_STATUS_OK && status != STIR_SHAKEN_STATUS_NOOP) {
 	
-		stir_shaken_set_error_if_clear(ss, "init SSL failed\n", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "Init SSL failed\n", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 

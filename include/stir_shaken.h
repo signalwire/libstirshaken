@@ -49,6 +49,7 @@
 
 #define STIR_SHAKEN_MOC_VERIFY_CERT_CHAIN 0
 #define STIR_SHAKEN_LOAD_CA_FROM_DEFAULT_OS_PATHS 0
+#define STIR_SHAKEN_CERT_ADD_SIGNALWIRE_EXTENSION 1
 
 
 typedef enum stir_shaken_status {
@@ -454,7 +455,7 @@ extern stir_shaken_globals_t stir_shaken_globals;
  * This is called on library load.
  */
 //static void stir_shaken_init(void) __attribute__ ((constructor));
-stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss);
+stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir);
 
 /**
  * Main exit point.
@@ -525,7 +526,7 @@ void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_cert_init_validation(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *ca_list, char *ca_dir, char *crl_list, char *crl_dir);
-stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, char *ca_list, char *ca_dir, char *crl_list, char *crl_dir);
+stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, const char *ca_list, const char *ca_dir, const char *crl_list, const char *crl_dir);
 void stir_shaken_cert_store_cleanup(void);
 stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
@@ -547,7 +548,7 @@ stir_shaken_status_t stir_shaken_get_cert_raw(stir_shaken_context_t *ss, X509 *x
 stir_shaken_status_t stir_shaken_evp_key_to_raw(stir_shaken_context_t *ss, EVP_PKEY *evp_key, unsigned char *key, int *key_len);
 stir_shaken_status_t stir_shaken_get_pubkey_raw_from_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, unsigned char *key, int *key_len);
 stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *ec_key, const char *kid, cJSON **jwk);
-stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss);
+stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir);
 void stir_shaken_deinit_ssl(void);
 
 

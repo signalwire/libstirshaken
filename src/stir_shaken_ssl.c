@@ -292,6 +292,28 @@ err:
 
 }
 
+
+int stir_shaken_v3_add_ext(X509 *cert, int nid, char *value)
+{
+	X509_EXTENSION *ex;
+	X509V3_CTX ctx;
+
+	// This sets the 'context' of the extensions. No configuration database.
+	X509V3_set_ctx_nodb(&ctx);
+
+	/* Issuer and subject certs: both the target since it is self signed,
+	 * no request and no CRL
+	 */
+	X509V3_set_ctx(&ctx, cert, cert, NULL, NULL, 0);
+	ex = X509V3_EXT_conf_nid(NULL, &ctx, nid, value);
+	if (!ex)
+		return 0;
+
+	X509_add_ext(cert, ex, -1);
+	X509_EXTENSION_free(ex);
+	return 1;
+}
+
 static int stir_shaken_v3_add_extensions(X509V3_CTX *ctx, const char *ext_name, const char *ext_value, X509_REQ *req, X509 *x)
 {
 	int                         i = 0, ext_type = -1, crit = 0;
@@ -661,6 +683,21 @@ X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t s
 		goto fail;
 	}
 
+	// TODO if CA
+	stir_shaken_v3_add_ext(x, NID_basic_constraints, "critical,CA:TRUE");
+	stir_shaken_v3_add_ext(x, NID_key_usage, "critical,keyCertSign,cRLSign");
+
+#if STIR_SHAKEN_CERT_ADD_SIGNALWIRE_EXTENSION
+	{
+		char buf[1000] = { 0 };
+		int nid;
+		sprintf(buf, "SignalWire's V3 Extension. This allows you to sign numbers within range: 123456 - 123456789.");
+		nid = OBJ_create("7.7.7.7", "SignalWire", buf);
+		X509V3_EXT_add_alias(nid, NID_netscape_comment);
+		stir_shaken_v3_add_ext(x, nid, "Alias for our extension");
+	}
+#endif
+
 	// Self sign
 	if (!X509_sign(x, private_key, digest)) {
 		
@@ -806,7 +843,7 @@ static int stir_shaken_verify_callback(int ok, X509_STORE_CTX *ctx)
 	return ok;
 }
 
-stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, char *ca_list, char *ca_dir, char *crl_list, char *crl_dir)
+stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, const char *ca_list, const char *ca_dir, const char *crl_list, const char *crl_dir)
 {
 	stir_shaken_globals_t *g = &stir_shaken_globals; 
 
@@ -872,6 +909,8 @@ stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, sti
 	X509            *x = NULL;
 	stir_shaken_globals_t *g = &stir_shaken_globals; 
 	int rc = 1;
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	int verify_error = -1;
 
 	stir_shaken_clear_error(ss);
 
@@ -911,6 +950,12 @@ stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, sti
 	}
 
 	rc = X509_verify_cert(cert->verify_ctx);
+	if (rc != 1) {
+		// TODO double check if it's a good idea to read verification error from ctx here, outside of verification callback
+		verify_error = X509_STORE_CTX_get_error(cert->verify_ctx);
+		sprintf(err_buf, "STIR-Shaken: SSL: Certificate validation failed: SSL reason: %s\n", X509_verify_cert_error_string(verify_error));
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CERT_INVALID);
+	}
 	
 	X509_STORE_CTX_cleanup(cert->verify_ctx);
 	X509_STORE_CTX_free(cert->verify_ctx);
@@ -918,8 +963,7 @@ stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, sti
 
 	// Can use X509_STORE_unlock(g->store); for more fine grained locking later
 	pthread_mutex_unlock(&g->mutex);
-
-	return rc != 1 ? STIR_SHAKEN_STATUS_FALSE : STIR_SHAKEN_STATUS_OK;
+	return rc == 1 ? STIR_SHAKEN_STATUS_OK : STIR_SHAKEN_STATUS_FALSE;
 }
 
 stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
@@ -964,7 +1008,7 @@ stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_sha
 	// TODO pass CAs list and revocation list
 	if (!STIR_SHAKEN_MOC_VERIFY_CERT_CHAIN 
 			&& (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_path(ss, cert))) {
-		stir_shaken_set_error(ss, "Cert did not pass X509 path validation against CA list and CRL", STIR_SHAKEN_ERROR_CERT_INVALID);
+		stir_shaken_set_error_if_clear(ss, "Cert did not pass X509 path validation against CA list and CRL", STIR_SHAKEN_ERROR_CERT_INVALID);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -2254,7 +2298,7 @@ stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *e
  * Setup OpenSSL lib.
  * Must be called locked.
  */
-stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss)
+stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir)
 {
 	const SSL_METHOD        **ssl_method = &stir_shaken_globals.ssl_method;
 	SSL_CTX                 **ssl_ctx = &stir_shaken_globals.ssl_ctx;
@@ -2350,8 +2394,9 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss)
 #endif
 
 	// TODO pass CAs list and revocation list
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_init_cert_store(ss, NULL, NULL, NULL, NULL)) {
-		stir_shaken_set_error(ss, "Cannot init cert store", STIR_SHAKEN_ERROR_CERT_STORE);
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_init_cert_store(ss, NULL, ca_dir, NULL, crl_dir)) {
+		sprintf(err_buf, "Cannot init x509 cert store (with: CA list: %s, CRL: %s", ca_dir ? ca_dir : "(null)", crl_dir ? crl_dir : "(null)");
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CERT_STORE); 
 		goto fail;
 	}
 
