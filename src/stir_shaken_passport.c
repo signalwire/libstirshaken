@@ -330,12 +330,8 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 		return NULL;
 	}
 
-	info = jwt_get_header(passport->jwt, "x5u");
-	alg = jwt_get_header(passport->jwt, "alg");
-	ppt = jwt_get_header(passport->jwt, "ppt");
-
-	if (!info || !alg || !ppt) {
-		stir_shaken_set_error(ss, "SIP Identity create: Bad JWT", STIR_SHAKEN_ERROR_GENERAL);
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_validate_headers_and_grants(ss, passport)) {
+		stir_shaken_set_error(ss, "SIP Identity create: Bad JWT (fix PASSporT params)", STIR_SHAKEN_ERROR_GENERAL);
 		jwt_free_str(token);
 		return NULL;
 	}

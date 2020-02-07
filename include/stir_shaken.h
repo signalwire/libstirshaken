@@ -51,6 +51,12 @@
 #define STIR_SHAKEN_LOAD_CA_FROM_DEFAULT_OS_PATHS 0
 #define STIR_SHAKEN_CERT_ADD_SIGNALWIRE_EXTENSION 1
 
+typedef enum stir_shaken_cert_type {
+	STIR_SHAKEN_CERT_TYPE_ROOT,
+	STIR_SHAKEN_CERT_TYPE_CA,
+	STIR_SHAKEN_CERT_TYPE_SELF_SIGNED,
+} stir_shaken_cert_type_t;
+
 
 typedef enum stir_shaken_status {
 	STIR_SHAKEN_STATUS_OK,
