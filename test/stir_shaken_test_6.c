@@ -12,13 +12,13 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void)
     stir_shaken_passport_t passport = { 0 };
     char *p = NULL;
     const char *x5u = "https://cert.example.org/passport.cer";      // ref
-    const char *attest = NULL;                                      // ignore, ref test case doesn't include this field
+    const char *attest = "B";
     const char *desttn_key = "uri";                                 // ref
     const char *desttn_val = "sip:alice@example.com";               // ref
     int iat = 1471375418;                                           // ref
     const char *origtn_key = "tn";                                  // ref test for orig telephone number
     const char *origtn_val = "12155551212";                         // ref
-    const char *origid = NULL;                                      // ignore, ref test case doesn't include this field
+    const char *origid = "Nope, later";
     uint8_t ppt_ignore = 1;                                         // ignore, ref test case doesn't include this field
     char *s = NULL, *sih = NULL;
 
@@ -96,7 +96,7 @@ stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void)
 
 int main(void)
 {
-	stir_shaken_do_init(NULL);
+	stir_shaken_do_init(NULL, NULL, NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

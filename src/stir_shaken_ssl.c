@@ -600,7 +600,7 @@ void stir_shaken_destroy_csr(X509_REQ **csr_req)
 	}
 }
 
-X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, int expiry_days)
+X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, int expiry_days)
 {
 	X509            *x = NULL;
 	EVP_PKEY        *pkey = NULL;
@@ -615,22 +615,19 @@ X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t s
 	stir_shaken_clear_error(ss);
 
 	if (!req) {
-		
-		stir_shaken_set_error(ss, "Generate X509 self sign: X509_REQ not set", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "X509 CSR not set", STIR_SHAKEN_ERROR_GENERAL);
 		return NULL;
 	}
 
 	// Check csr
 	if (!(pkey = X509_REQ_get_pubkey(req))) {
-
-		stir_shaken_set_error(ss, "Generate X509 self sign: Cannot get public key from X509_REQ", STIR_SHAKEN_ERROR_SSL);
+		stir_shaken_set_error(ss, "Cannot get public key from X509_REQ", STIR_SHAKEN_ERROR_SSL);
 		return NULL;
 	}
 
 	i = X509_REQ_verify(req, pkey);
 	if (i < 0) {
-		
-		stir_shaken_set_error(ss, "Generate X509 self sign: 'X509_REQ-public key' pair invalid", STIR_SHAKEN_ERROR_SSL);
+		stir_shaken_set_error(ss, "'X509_REQ-public key' pair invalid", STIR_SHAKEN_ERROR_SSL);
 		return NULL;
 	}
 
@@ -638,8 +635,7 @@ X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t s
 	pkey = NULL;
 
 	if ((x = X509_new()) == NULL) {
-		
-		stir_shaken_set_error(ss, "Generate X509 self sign: SSL error while creating new X509 certificate", STIR_SHAKEN_ERROR_SSL);
+		stir_shaken_set_error(ss, "SSL error while creating new X509 certificate", STIR_SHAKEN_ERROR_SSL);
 		return NULL;
 	}
 
@@ -651,7 +647,6 @@ X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t s
 	X509_set_issuer_name(x, X509_REQ_get_subject_name(req));
 	X509_set_subject_name(x, X509_REQ_get_subject_name(req));
 
-	printf("STIR-Shaken: Cert: Adjusting expiry to %d days from now\n", expiry_days);
 	X509_gmtime_adj(X509_get_notBefore(x), 0);
 	X509_time_adj_ex(X509_get_notAfter(x), expiry_days, 0, NULL);    // TODO days of expiration
 
@@ -668,18 +663,13 @@ X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t s
 	include_der_string = 0;
 	der_len = stir_shaken_generate_der(ext_value_der, EXT_VALUE_DER_LEN, sp_code, include_der_string);
 	if (der_len == -1) {
-		
-		stir_shaken_set_error(ss, "Generate X509 self sign: Failed to generate DER", STIR_SHAKEN_ERROR_SSL);
+		stir_shaken_set_error(ss, "Failed to generate DER", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 
-	// TODO remove
-	printf("STIR-Shaken: Cert: Got DER (len=%d): %s\n", der_len, ext_value_der);
-
 	i = stir_shaken_v3_add_extensions(NULL, ext_name, ext_value_der, NULL, x);
 	if (i == 0) {
-		
-		stir_shaken_set_error(ss, "Generate X509 self sign: Cannot load extensions into CSR", STIR_SHAKEN_ERROR_SSL);
+		stir_shaken_set_error(ss, "Cannot load extensions into CSR", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 
@@ -698,21 +688,45 @@ X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t s
 	}
 #endif
 
-	// Self sign
-	if (!X509_sign(x, private_key, digest)) {
-		
-		stir_shaken_set_error(ss, "Generate X509 self sign: Failed to self sign certificate", STIR_SHAKEN_ERROR_SSL);
-		goto fail;
-	}
-
-	// TODO remove
-	printf("STIR-Shaken: Cert: Successfully self signed certificate\n");
-
 	return x;
 
 fail:
 	stir_shaken_set_error_if_clear(ss, "Generate X509 self sign: Error", STIR_SHAKEN_ERROR_SSL);
 	return NULL;
+}
+
+X509* stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 *x, EVP_PKEY *private_key)
+{
+	const EVP_MD    *md = NULL;
+	const char		*digest_name = "sha256";
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+
+	stir_shaken_clear_error(ss);
+
+	if (!x) {
+		stir_shaken_set_error(ss, "X509 cert not set", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+	
+	if (!private_key) {
+		stir_shaken_set_error(ss, "Private key not set", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	md = EVP_get_digestbyname(digest_name);
+	if (!md) {
+		sprintf(err_buf, "Cannot get %s digest", digest_name);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+		return NULL;
+	}
+
+	if (!X509_sign(x, private_key, md)) {
+		
+		stir_shaken_set_error(ss, "Failed to sign certificate", STIR_SHAKEN_ERROR_SSL);
+		return NULL;
+	}
+
+	return x;
 }
 
 #define DATE_LEN 128
@@ -1100,39 +1114,14 @@ X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY 
 	return x;
 }
 
-stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name, int expiry_days)
+stir_shaken_status_t stir_shaken_x509_cert_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name, const char *cert_text_full_name)
 {
-	X509            *x = NULL;
 	BIO             *out = NULL, *bio = NULL;
-	EVP_PKEY		*k = NULL;
 	int				i = 0;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	
 	
 	stir_shaken_clear_error(ss);
-
-	if (!csr) {
-		
-		stir_shaken_set_error(ss, "Generate cert from CSR: CSR not set", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-
-	// Generate certificate
-
-	if (!private_key || !public_key) {
-		
-		stir_shaken_set_error(ss, "Generate cert from CSR: Keys not set", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-
-	x = stir_shaken_generate_x509_self_sign(ss, sp_code, csr->req, private_key, expiry_days);
-	if (!x) {
-		
-		stir_shaken_set_error_if_clear(ss, "Generate cert from CSR: Error while self signing cert", STIR_SHAKEN_ERROR_SSL);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-
-	cert->x = x;
 
 	if (cert_full_name) {
 		
@@ -1141,7 +1130,7 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *s
 		i = BIO_write_filename(out, (char*) cert_full_name);
 		if (i == 0) {
 			
-			sprintf(err_buf, "Generate cert from CSR: Failed to redirect bio to file %s", cert_full_name);
+			sprintf(err_buf, "Failed to redirect bio to file %s", cert_full_name);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 			goto fail;
 		}
@@ -1149,10 +1138,13 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *s
 		i = PEM_write_bio_X509(out, x);
 		if (i == 0) {
 			
-			sprintf(err_buf, "Generate cert from CSR: Error writing certificate to file %s", cert_full_name);
+			sprintf(err_buf, "Error writing certificate to file %s", cert_full_name);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 			goto fail;
 		}
+
+		//TODO remove
+		printf("STIR-Shaken: Written X509 certificate to file %s\n", cert_full_name);
 	}
 
 	BIO_free_all(out);
@@ -1163,7 +1155,7 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *s
 		bio = BIO_new_file(cert_text_full_name, "w");
 		if (!bio) {
 		
-			stir_shaken_set_error(ss, "Generate cert from CSR: SSL error [1]", STIR_SHAKEN_ERROR_SSL);
+			stir_shaken_set_error(ss, "error [1]", STIR_SHAKEN_ERROR_SSL);
 			goto anyway;
 		}
 
@@ -1184,7 +1176,7 @@ stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *s
 		//EVP_PKEY_free(k);
 
 		// TODO remove
-		printf("STIR-Shaken: Cert: Written certificate in human readable form to file %s\n", cert_text_full_name);
+		printf("STIR-Shaken: Written X509 certificate in human readable form to file %s\n", cert_text_full_name);
 	}
 
 anyway:
@@ -1211,10 +1203,9 @@ fail:
 	if (x) {
 		X509_free(x);
 		x = NULL;
-		cert->x = NULL;
 	}
 	
-	stir_shaken_set_error_if_clear(ss, "Generate cert from CSR: Error", STIR_SHAKEN_ERROR_GENERAL);
+	stir_shaken_set_error_if_clear(ss, "Failed to save X509 cert to disk", STIR_SHAKEN_ERROR_GENERAL);
 
 	return STIR_SHAKEN_STATUS_FALSE;
 }

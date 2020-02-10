@@ -516,18 +516,9 @@ stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, 
 
 X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY *pkey);
 
-/**
- * Get the cert locally. Get it from disk or create and sign. 
- * 
- * @cert - (out) result certificate
- *
- * Return value:
- * STIR_SHAKEN_STATUS_FALSE: failed creating cert for self-trusted STI-CA
- * STIR_SHAKEN_STATUS_NOOP: reusing old cert for self-trusted STI-CA from RAM
- * STIR_SHAKEN_STATUS_RESTART: reusing old cert for self-trusted STI-CA from disk
- * STIR_SHAKEN_STATUS_SUCCESS: generated and signed new new cert
- */
-stir_shaken_status_t stir_shaken_generate_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, stir_shaken_cert_t *cert, stir_shaken_csr_t *csr, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *cert_full_name, const char *cert_text_full_name, int expiry_days);
+stir_shaken_status_t stir_shaken_x509_cert_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name, const char *cert_text_full_name);
+X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, int expiry_days);
+X509* stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 *x, EVP_PKEY *private_key);
 void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);

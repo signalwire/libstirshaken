@@ -88,7 +88,7 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 
 int main(void)
 {
-	stir_shaken_do_init(NULL);
+	stir_shaken_do_init(NULL, NULL, NULL);
 	
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

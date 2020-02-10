@@ -61,11 +61,21 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_authenticate_keep_passport(void)
     
 	printf("Creating CSR\n");
     status = stir_shaken_generate_csr(&ss, sp_code, &csr.req, private_key, public_key, csr_name, csr_text_name);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
     
     printf("Creating Certificate\n");
-    status = stir_shaken_generate_cert_from_csr(NULL, sp_code, &cert, &csr, private_key, public_key, cert_name, cert_text_name, 365);
-    printf("Err, generating Cert\n");
+    cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, sp_code, csr.req, private_key, 365);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
+    stir_shaken_assert(cert.x != NULL, "Err, generating Cert");
 
     /* Test */
     printf("Test 1: Authorizing (forget PASSporT)...\n\n");
@@ -149,7 +159,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_authenticate_keep_passport(void)
 
 int main(void)
 {
-	stir_shaken_do_init(NULL);
+	stir_shaken_do_init(NULL, NULL, NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

@@ -41,20 +41,24 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 		// Header
 
 		if (jwt_add_header(jwt, "ppt", "shaken") != 0) {
+			stir_shaken_set_error(ss, "Failed to add @ppt to PASSporT", STIR_SHAKEN_ERROR_CJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
 		if (jwt_add_header(jwt, "typ", "passport") != 0) {
+			stir_shaken_set_error(ss, "Failed to add @typ to PASSporT", STIR_SHAKEN_ERROR_CJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
 		if (jwt_add_header(jwt, "x5u", x5u) != 0) {
+			stir_shaken_set_error(ss, "Failed to add @x5u to PASSporT", STIR_SHAKEN_ERROR_CJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
 		if (key && keylen) {		
 
 			if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
+				stir_shaken_set_error(ss, "Failed to add @alg to PASSporT", STIR_SHAKEN_ERROR_CJSON);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
 		}
@@ -62,19 +66,33 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 		// Payload
 
 		if (jwt_add_grant_int(jwt, "iat", iat) != 0) {
+			stir_shaken_set_error(ss, "Failed to add @iat to PASSporT", STIR_SHAKEN_ERROR_CJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
-		if (attest && (*attest == 'A' || *attest == 'B' || *attest == 'C')) {
-			if (jwt_add_grant(jwt, "attest", attest) != 0) {
-				return STIR_SHAKEN_STATUS_ERR;
-			}
+		if (!attest) {
+			stir_shaken_set_error(ss, "Passport @attest is missing", STIR_SHAKEN_ERROR_CJSON);
+			return STIR_SHAKEN_STATUS_ERR;
 		}
 
-		if (origid) {
-			if (jwt_add_grant(jwt, "origid", origid) != 0) {
-				return STIR_SHAKEN_STATUS_ERR;
-			}
+		if (*attest != 'A' && *attest != 'B' && *attest != 'C') {
+			stir_shaken_set_error(ss, "Passport @attest must be 'A', 'B' or 'C'", STIR_SHAKEN_ERROR_CJSON);
+			return STIR_SHAKEN_STATUS_ERR;
+		}
+
+		if (jwt_add_grant(jwt, "attest", attest) != 0) {
+			stir_shaken_set_error(ss, "Failed to add @attest to PASSporT", STIR_SHAKEN_ERROR_CJSON);
+			return STIR_SHAKEN_STATUS_ERR;
+		}
+
+		if (!origid) {
+			stir_shaken_set_error(ss, "Passport @origid is missing", STIR_SHAKEN_ERROR_CJSON);
+			return STIR_SHAKEN_STATUS_ERR;
+		}
+
+		if (jwt_add_grant(jwt, "origid", origid) != 0) {
+			stir_shaken_set_error(ss, "Failed to add @origid to PASSporT", STIR_SHAKEN_ERROR_CJSON);
+			return STIR_SHAKEN_STATUS_ERR;
 		}
 
 		if (!origtn_key || !origtn_val) {
@@ -231,7 +249,7 @@ stir_shaken_status_t stir_shaken_passport_init(stir_shaken_context_t *ss, stir_s
 
 		where->jwt = stir_shaken_passport_jwt_create_new(ss);
 		if (!where->jwt) {
-			stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_RESTART;
 		}
 	}
@@ -239,7 +257,7 @@ stir_shaken_status_t stir_shaken_passport_init(stir_shaken_context_t *ss, stir_s
 	if (params) {
 
 		if (stir_shaken_passport_jwt_init(ss, where->jwt, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
-			stir_shaken_set_error(ss, "Cannot init JWT", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error_if_clear(ss, "Cannot init JWT", STIR_SHAKEN_ERROR_GENERAL);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
 	}
@@ -259,12 +277,12 @@ stir_shaken_passport_t*	stir_shaken_passport_create_new(stir_shaken_context_t *s
 
 	passport->jwt = stir_shaken_passport_jwt_create_new(ss);
 	if (!passport->jwt) {
-		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 
 	if (stir_shaken_passport_init(ss, passport, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
-		stir_shaken_set_error(ss, "Failed init PASSporT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "Failed init PASSporT", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 
@@ -317,6 +335,7 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 	char *token = NULL;
 	const char *info = NULL, *alg = NULL, *ppt = NULL;
     size_t len = 0;
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 	stir_shaken_clear_error(ss);
 
@@ -331,10 +350,22 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 	}
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_validate_headers_and_grants(ss, passport)) {
-		stir_shaken_set_error(ss, "SIP Identity create: Bad JWT (fix PASSporT params)", STIR_SHAKEN_ERROR_GENERAL);
+    
+		const char *error = NULL;
+		stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
+
+		if (stir_shaken_is_error_set(ss)) {
+			error = stir_shaken_get_error(ss, &error_code);
+		}
+		sprintf(err_buf, "SIP Identity create: Bad JWT (fix PASSporT params)%s%s%s", error? ": [" : "", error? error : "", error? "]" : "", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
 		jwt_free_str(token);
 		return NULL;
 	}
+
+	info = stir_shaken_passport_get_header(passport, "x5u");
+	alg = stir_shaken_passport_get_header(passport, "alg");
+	ppt = stir_shaken_passport_get_header(passport, "ppt");
 
     // extra length of 15 for info=<> alg= ppt=
     len = strlen(token) + 3 + strlen(info) + 1 + strlen(alg) + 1 + strlen(ppt) + 1 + 15;

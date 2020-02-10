@@ -10,17 +10,19 @@ const char *path = "./test/run";
 #define BUF_LEN 1000
 stir_shaken_status_t stir_shaken_unit_test_call_authorization(void)
 {
+	stir_shaken_context_t ss = { 0 };
+	const char *error_description = NULL;
+	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
 	stir_shaken_passport_t passport = {0};
     stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
     const char *x5u = "https://cert.example.org/passport.cer";      // ref
-    const char *attest = NULL;                                      // ignore, ref test case doesn't include this field
+    const char *attest = "A";
     const char *desttn_key = "uri";                                 // ref
     const char *desttn_val = "sip:alice@example.com";               // ref
     int iat = 1471375418;                                           // ref
     const char *origtn_key = "tn";                                  // ref test for orig telephone number
     const char *origtn_val = "12155551212";                         // ref
-    const char *origid = NULL;                                      // ignore, ref test case doesn't include this field
-    uint8_t ppt_ignore = 1;                                         // ignore, ref test case doesn't include this field
+    const char *origid = "Later";
 
     /* Reference test values */
     const char *payload_serialised_ref = "{\"dest\":{\"uri\":[\"sip:alice@example.com\"]},\"iat\":1471375418,\"orig\":{\"tn\":\"12155551212\"}}";
@@ -45,7 +47,7 @@ stir_shaken_status_t stir_shaken_unit_test_call_authorization(void)
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
 	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
 
-    stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat, .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid, .ppt_ignore = ppt_ignore};
+    stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat, .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid };
 
 	sprintf(private_key_name, "%s%c%s", path, '/', "u5_private_key.pem");
 	sprintf(public_key_name, "%s%c%s", path, '/', "u5_public_key.pem");
@@ -61,7 +63,12 @@ stir_shaken_status_t stir_shaken_unit_test_call_authorization(void)
 	stir_shaken_assert(public_key != NULL, "Err, failed to generate public key");
 
     /* Test */
-	status = stir_shaken_passport_init(NULL, &passport, &params, priv_raw, priv_raw_len);
+	status = stir_shaken_passport_init(&ss, &passport, &params, priv_raw, priv_raw_len);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
 
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
     stir_shaken_assert(passport.jwt != NULL, "JWT has not been created");
@@ -76,7 +83,12 @@ stir_shaken_status_t stir_shaken_unit_test_call_authorization(void)
 	jwt_free_str(s); s = NULL;
 	
 	// Encode using given key
-	status = stir_shaken_passport_sign(NULL, &passport, priv_raw, priv_raw_len, &s);
+	status = stir_shaken_passport_sign(&ss, &passport, priv_raw, priv_raw_len, &s);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign using ES 256");
 	stir_shaken_assert(s != NULL, "Failed to sign using ES 256, NULL string");
 	printf("3. Encoded (using given key):\n%s\n", s);
@@ -86,20 +98,35 @@ stir_shaken_status_t stir_shaken_unit_test_call_authorization(void)
 	jwt_free_str(s); s = NULL;
 
 	// Test call authorization with given PASSporT and key
-	sih = stir_shaken_jwt_sip_identity_create(NULL, &passport, priv_raw, priv_raw_len);
+	sih = stir_shaken_jwt_sip_identity_create(&ss, &passport, priv_raw, priv_raw_len);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
 	stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
     printf("5.1 SIP Identity Header (call authorization with given PASSporT and key):\n%s\n\n", sih);
 	free(sih); sih = NULL;
 	
 	// Test call authorization with given PASSporT and implicit key
-	sih = stir_shaken_jwt_sip_identity_create(NULL, &passport, NULL, 0);
+	sih = stir_shaken_jwt_sip_identity_create(&ss, &passport, NULL, 0);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
 	stir_shaken_assert(sih != NULL, "Failed to create SIP Identity Header");
     printf("5.2 SIP Identity Header (call authorization with given PASSporT and implicit key):\n%s\n\n", sih);
 	free(sih); sih = NULL;
 	stir_shaken_passport_destroy(&passport);
 	
 	// Test call authorization with implicit PASSporT
-	status = stir_shaken_jwt_authenticate(NULL, &sih, &params, priv_raw, priv_raw_len);
+	status = stir_shaken_jwt_authenticate(&ss, &sih, &params, priv_raw, priv_raw_len);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to authorize (status)");
 	stir_shaken_assert(sih != NULL, "Failed to authorize (SIP Identity Header)");
     printf("5.3 SIP Identity Header (call authorization with implicit PASSporT):\n%s\n\n", sih);
@@ -114,7 +141,7 @@ stir_shaken_status_t stir_shaken_unit_test_call_authorization(void)
 
 int main(void)
 {
-	stir_shaken_do_init(NULL);
+	stir_shaken_do_init(NULL, NULL, NULL);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 
