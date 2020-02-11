@@ -86,7 +86,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
     printf("SIP Identity Header:\n%s\n", sih);
 
     printf("Creating CSR\n");
-    status = stir_shaken_generate_csr(&ss, sp_code, &csr.req, private_key, public_key, csr_name, csr_text_name);
+    status = stir_shaken_generate_csr(&ss, sp_code, &csr.req, private_key, public_key, "US", "NewSTI-SP, But OK Inc.");
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -97,9 +97,11 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
 	error_description = stir_shaken_get_error(&ss, &error_code);
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
+
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_csr_to_disk(&ss, csr.req, csr_name, csr_text_name), "Error writing CSR to disk");
     
     printf("Creating Certificate\n");
-    cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, sp_code, csr.req, private_key, 365);
+    cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, sp_code, csr.req, private_key, "US", "SignalWires RoboCaller-FREE Network", 365);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -110,6 +112,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
 	error_description = stir_shaken_get_error(&ss, &error_code);
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
+
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_x509_cert_to_disk(&ss, cert.x, cert_name, cert_text_name), "Failed to write cert to disk");
 
 	printf("Verifying SIP Identity Header's signature with Cert...\n\n");
     status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport, NULL);

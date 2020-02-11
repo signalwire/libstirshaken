@@ -497,16 +497,13 @@ void stir_shaken_destroy_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub);
  * @sp_code - (in) Service Provider code
  * @csr - (out) result
  */
-stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *csr_full_name, const char *csr_text_full_name);
+stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn);
+stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *csr_req, const char *csr_full_name, const char *csr_text_full_name);
 void stir_shaken_destroy_csr(X509_REQ **csr_req);
 
-/**
- * Generate self signed X509 certificate from csr @req.
- *
- * @sp_code - (in) Service Provider code
- * @req - (in) X509 certificate sign request
- */
-X509 * stir_shaken_generate_x509_self_sign(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, int expiry_days);
+X509* stir_shaken_generate_x509_self_signed(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, int expiry_days, const char *issuer);
+X509* stir_shaken_generate_x509_self_issued(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, int expiry_days, const char *issuer);
+X509* stir_shaken_generate_x509_end_entity(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, int expiry_days, const char *issuer);
 
 /**
  * @buf - (out) will contain fingerprint, must be of size at least 3*EVP_MAX_MD_SIZE bytes
@@ -517,7 +514,9 @@ stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, 
 X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY *pkey);
 
 stir_shaken_status_t stir_shaken_x509_cert_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name, const char *cert_text_full_name);
-X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, int expiry_days);
+stir_shaken_status_t stir_shaken_csr_add_ca_permissions(stir_shaken_context_t *ss, X509 *x);
+stir_shaken_status_t stir_shaken_add_tnauthlist_extension(stir_shaken_context_t *ss, uint32_t sp_code, X509 *x);
+X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int expiry_days);
 X509* stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 *x, EVP_PKEY *private_key);
 void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);

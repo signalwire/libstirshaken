@@ -99,7 +99,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
     printf("SIP Identity Header:\n%s\n\n", sih);
 
     printf("Creating CSR\n");
-    status = stir_shaken_generate_csr(&ss, sp_code, &csr.req, private_key, public_key, csr_name, csr_text_name);
+    status = stir_shaken_generate_csr(&ss, sp_code, &csr.req, private_key, public_key, "US", "NewSTI-SP, But OK Inc.");
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -112,7 +112,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
     
     printf("Creating Certificate\n");
-    cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, sp_code, csr.req, private_key, 365);
+    cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, sp_code, csr.req, private_key, "US", "SignalWires RoboCaller-FREE Network", 365);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);

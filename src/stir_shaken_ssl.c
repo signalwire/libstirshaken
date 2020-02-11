@@ -1,96 +1,6 @@
 #include "stir_shaken.h"
 
 
-static X509_NAME *parse_name(const char *cp, long chtype, int canmulti)
-{
-	int nextismulti = 0;
-	char *work;
-	X509_NAME *n;
-
-	if (*cp++ != '/') {
-		return NULL;
-	}
-
-	n = X509_NAME_new();
-	if (n == NULL)
-		return NULL;
-	work = OPENSSL_strdup(cp);
-	if (work == NULL) {
-		goto err;
-	}
-
-	while (*cp) {
-		char *bp = work;
-		char *typestr = bp;
-		unsigned char *valstr;
-		int nid;
-		int ismulti = nextismulti;
-		nextismulti = 0;
-
-		while (*cp && *cp != '=')
-			*bp++ = *cp++;
-		if (*cp == '\0') {
-			goto err;
-		}
-		*bp++ = '\0';
-		++cp;
-
-		valstr = (unsigned char *)bp;
-		for (; *cp && *cp != '/'; *bp++ = *cp++) {
-			if (canmulti && *cp == '+') {
-				nextismulti = 1;
-				break;
-			}
-			if (*cp == '\\' && *++cp == '\0') {
-				goto err;
-			}
-		}
-		*bp++ = '\0';
-
-		if (*cp)
-			++cp;
-
-		nid = OBJ_txt2nid(typestr);
-		if (nid == NID_undef) {
-			continue;
-		}
-		if (*valstr == '\0') {
-			continue;
-		}
-		if (!X509_NAME_add_entry_by_NID(n, nid, chtype,valstr, strlen((char *)valstr), -1, ismulti ? -1 : 0)) {
-			goto err;
-		}
-	}
-
-	OPENSSL_free(work);
-	return n;
-
-err:
-	X509_NAME_free(n);
-	OPENSSL_free(work);
-	return NULL;
-}
-
-/*
- * subject is expected to be in the format /type0=value0/type1=value1/type2=...
- * where characters may be escaped by \
- */
-static int build_subject(X509_REQ *req, const char *subject, unsigned long chtype,
-		int multirdn)
-{
-	X509_NAME *n;
-
-	if ((n = parse_name(subject, chtype, multirdn)) == NULL)
-		return 0;
-
-	if (!X509_REQ_set_subject_name(req, n)) {
-		X509_NAME_free(n);
-		return 0;
-	}
-	X509_NAME_free(n);
-	return 1;
-}
-
 static int do_sign_init(EVP_MD_CTX *ctx, EVP_PKEY *pkey,
 		const EVP_MD *md, STACK_OF(OPENSSL_STRING) *sigopts)
 {
@@ -404,11 +314,11 @@ static int stir_shaken_generate_der(char *der, int der_len, uint32_t sp_code, in
 }
 
 #define EXT_VALUE_DER_LEN 300
-stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *csr_full_name, const char *csr_text_full_name)
+stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn)
 {
-	BIO                     *out = NULL, *bio = NULL;
 	X509_REQ                *req = NULL;
-	const char              *req_subj = "/C=US/ST=VA/L=ItsHere/O=SignalWire, Inc./OU=VOIP/CN=SHAKEN";
+	X509_NAME				*tmp = NULL;
+	//const char              *req_subj = "/C=US/ST=VA/L=ItsHere/O=SignalWire, Inc./OU=VOIP/CN=SHAKEN";
 	int                     req_multirdn = 0;
 	unsigned long           req_chtype = 4097;
 	X509V3_CTX              ext_ctx = {0};
@@ -429,52 +339,60 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 	stir_shaken_clear_error(ss);
 
 	if (!sp_code || !csr_req) {
-
 		stir_shaken_set_error(ss, "Generate CSR: Bad params", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_FALSE;
+		return STIR_SHAKEN_STATUS_TERM;
 	}
-
-	out = BIO_new(BIO_s_file());
-	if (!out) {
-		
-		stir_shaken_set_error(ss, "Generate CSR: SSL error [1]", STIR_SHAKEN_ERROR_SSL);
-		return STIR_SHAKEN_STATUS_FALSE;
+	
+	if (!subject_c) {
+		stir_shaken_set_error(ss, "Subject 'C' for X509 CSR not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	if (!subject_cn) {
+		stir_shaken_set_error(ss, "Subject 'CN' for X509 CSR not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
 	}
 
 	req = X509_REQ_new();
 	if (!req) {
-		
 		stir_shaken_set_error(ss, "Generate CSR: SSL error while creating CSR", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 
-	// TODO remove
-	printf("STIR-Shaken: CSR: New CSR request created\n");
-
 	// Make request (similar to OpenSSL's make_REQ from req.c
 
-	/* setup version number */
-	if (!X509_REQ_set_version(req, 0L)) {
-		
-		stir_shaken_set_error(ss, "Generate CSR: SSL error while setting SSL version on CSR", STIR_SHAKEN_ERROR_SSL);
+	if (!X509_REQ_set_version(req, 2L)) {
+		stir_shaken_set_error(ss, "Failed to set version on CSR", STIR_SHAKEN_ERROR_SSL);
 		goto fail;               /* version 1 */
 	}
+	
+	tmp = X509_REQ_get_subject_name(req);
+	if (!tmp) {
+		stir_shaken_set_error(ss, "Failed to get X509_REQ subject name", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
 
-	i = build_subject(req, req_subj, req_chtype, req_multirdn);
-	if (i == 0) {
-		
-		stir_shaken_set_error(ss, "Generate CSR: SSL error while building CSR's subject", STIR_SHAKEN_ERROR_SSL);
-		goto fail;
+	if (!X509_NAME_add_entry_by_txt(tmp, "C", MBSTRING_ASC, subject_c, -1, -1, 0)) {
+		stir_shaken_set_error(ss, "Failed to set X509_REQ subject 'C'", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (!X509_NAME_add_entry_by_txt(tmp,"CN", MBSTRING_ASC, subject_cn, -1, -1, 0)) {
+		stir_shaken_set_error(ss, "Failed to set X509_REQ subject 'CN'", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (1 != X509_REQ_set_subject_name(req, tmp)) {
+		stir_shaken_set_error(ss, "Failed to set X509_REQ subject name", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_TERM;
 	}
 
 	if (!X509_REQ_set_pubkey(req, public_key)) {
-		
 		stir_shaken_set_error(ss, "Generate CSR: SSL error while setting EVP_KEY on CSR", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 
-	// TODO remove
-	printf("STIR-Shaken: CSR: Prepared CSR request for signing\n");
+	// TODO Factor out extensions and CSR signing (as did with cert)
 
 	// Set up V3 context struct
 	X509V3_set_ctx(&ext_ctx, NULL, NULL, req, NULL, 0);
@@ -483,58 +401,71 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 	include_der_string = 1;
 	der_len = stir_shaken_generate_der(ext_value_der, EXT_VALUE_DER_LEN, sp_code, include_der_string);
 	if (der_len == -1) {
-		
 		stir_shaken_set_error(ss, "Generate CSR: Failed to generate DER", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 
-	// TODO set error string, allow for retrieval printf("STIR-Shaken: CSR: Got DER (len=%d): %s\n", der_len, ext_value_der);
-
-
 	// Add extensions
 	i = stir_shaken_v3_add_extensions(&ext_ctx, ext_name, ext_value_der, req, NULL);
 	if (i == 0) {
-		
 		stir_shaken_set_error(ss, "Generate CSR: Cannot load extensions into CSR", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 
 	digest = EVP_get_digestbyname("sha256");
 	if (!digest) {
-		
 		stir_shaken_set_error(ss, "Generate CSR: SSL error: Failed loading digest", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 
 	i = do_X509_REQ_sign(req, private_key, digest, NULL);
 	if (i == 0) {
-		
 		stir_shaken_set_error(ss, "Generate CSR: SSL error: Failed to sign CSR", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 
-	// TODO remove
-	printf("STIR-Shaken: CSR: Signed CSR\n");
+anyway:
+
+	*csr_req = req;
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+
+	if (req) {
+		X509_REQ_free(req);
+		req = NULL;
+	}
+	
+	stir_shaken_set_error_if_clear(ss, "Generate CSR: Error", STIR_SHAKEN_ERROR_SSL);
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *req, const char *csr_full_name, const char *csr_text_full_name)
+{
+	int i = 0;
+	BIO *out = NULL, *bio = NULL;
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+
+	out = BIO_new(BIO_s_file());
+	if (!out) {
+		stir_shaken_set_error(ss, "Generate CSR: SSL error [1]", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
 
 	if (csr_full_name) {
 		i = BIO_write_filename(out, (char*)csr_full_name);
 		if (i == 0) {
-			
-			sprintf(err_buf, "Generate CSR: SSL error: Failed to redirect bio to file %s", csr_full_name);
+			sprintf(err_buf, "Failed to redirect bio to file %s", csr_full_name);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 			goto fail;
 		}
 
 		i = PEM_write_bio_X509_REQ(out, req);
 		if (i == 0) {
-			
-			sprintf(err_buf, "Generate CSR: SSL error: Error writing certificate to file %s", csr_full_name);
+			sprintf(err_buf, "Error writing certificate to file %s", csr_full_name);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 			goto fail;
 		}
-		
-		// TODO remove
-		printf("STIR-Shaken: CSR: Written CSR to file %s\n", csr_full_name);
 	}
 
 	BIO_free_all(out);
@@ -543,7 +474,6 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 	if (csr_text_full_name) {
 		bio = BIO_new_file(csr_text_full_name, "w");
 		if (!bio) {
-
 			stir_shaken_set_error(ss, "Generate CSR: SSL error [2]", STIR_SHAKEN_ERROR_SSL);
 			goto anyway;
 		}
@@ -551,19 +481,9 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 		X509_REQ_print_ex(bio, req, 0, 0);
 		BIO_free_all(bio);
 		bio = NULL;
-		
-		// TODO remove
-		printf("STIR-Shaken: CSR: Written CSR in human readable form to file %s\n", csr_text_full_name);
 	}
 
 anyway:
-
-	*csr_req = req;
-	if (bio) {
-		BIO_free_all(bio);
-		bio = NULL;
-	}
-
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
@@ -572,18 +492,13 @@ fail:
 		BIO_free_all(out);
 		out = NULL;
 	}
+
 	if (bio) {
 		BIO_free_all(bio);
 		bio = NULL;
 	}
-	//if (pkey) EVP_PKEY_free(pkey);
-	if (req) {
-		X509_REQ_free(req);
-		req = NULL;
-	}
-	
-	stir_shaken_set_error_if_clear(ss, "Generate CSR: Error", STIR_SHAKEN_ERROR_SSL);
 
+	stir_shaken_set_error_if_clear(ss, "Error", STIR_SHAKEN_ERROR_SSL);
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
@@ -599,11 +514,64 @@ void stir_shaken_destroy_csr(X509_REQ **csr_req)
 		*csr_req = NULL;
 	}
 }
+stir_shaken_status_t stir_shaken_csr_add_ca_permissions(stir_shaken_context_t *ss, X509 *x)
+{
+	if (!x) {
+		stir_shaken_set_error(ss, "CSR not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	stir_shaken_v3_add_ext(x, NID_basic_constraints, "critical,CA:TRUE");
+	stir_shaken_v3_add_ext(x, NID_key_usage, "critical,keyCertSign,cRLSign");
 
-X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, int expiry_days)
+	// TODO
+#if STIR_SHAKEN_CERT_ADD_SIGNALWIRE_EXTENSION
+	{
+		char buf[1000] = { 0 };
+		int nid;
+		sprintf(buf, "SignalWire's V3 Extension. This allows you to sign numbers within range: 123456 - 123456789.");
+		nid = OBJ_create("7.7.7.7", "SignalWire", buf);
+		X509V3_EXT_add_alias(nid, NID_netscape_comment);
+		stir_shaken_v3_add_ext(x, nid, "Alias for our extension");
+	}
+#endif
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_add_tnauthlist_extension(stir_shaken_context_t *ss, uint32_t sp_code, X509 *x)
+{
+	int             i = 0;
+	const char      *ext_name = "1.3.6.1.5.5.7.1.26";                   // our lovely TNAuthorizationList extension identifier that we will use to construct v3 extension of type TNAuthorizationList
+	char            ext_value_der[EXT_VALUE_DER_LEN] = {0};
+	int             der_len = -1, include_der_string = 0;
+
+	if (!x) {
+		stir_shaken_set_error(ss, "CSR not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	include_der_string = 0;
+	der_len = stir_shaken_generate_der(ext_value_der, EXT_VALUE_DER_LEN, sp_code, include_der_string);
+	if (der_len == -1) {
+		stir_shaken_set_error(ss, "Failed to generate DER", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	i = stir_shaken_v3_add_extensions(NULL, ext_name, ext_value_der, NULL, x);
+	if (i == 0) {
+		stir_shaken_set_error(ss, "Cannot load extensions into CSR", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int expiry_days)
 {
 	X509            *x = NULL;
 	EVP_PKEY        *pkey = NULL;
+	X509_NAME		*tmp = NULL;
 	ASN1_INTEGER    *sno = NULL;
 	const EVP_MD    *digest = NULL;
 	int             i = 0;
@@ -616,6 +584,16 @@ X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_
 
 	if (!req) {
 		stir_shaken_set_error(ss, "X509 CSR not set", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+	
+	if (!issuer_c) {
+		stir_shaken_set_error(ss, "Issuer 'C' for X509 not set", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+	
+	if (!issuer_cn) {
+		stir_shaken_set_error(ss, "Issuer 'CN' for X509 not set", STIR_SHAKEN_ERROR_GENERAL);
 		return NULL;
 	}
 
@@ -639,59 +617,55 @@ X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_
 		return NULL;
 	}
 
+	if (!X509_set_version(x, 2L)) {
+		stir_shaken_set_error(ss, "Failed to set version on Certificate", STIR_SHAKEN_ERROR_SSL);
+		goto fail;
+	}
+
 	sno = ASN1_INTEGER_new();
 	X509_set_serialNumber(x, sno);
 	ASN1_INTEGER_free(sno);
 	sno = NULL;
 
-	X509_set_issuer_name(x, X509_REQ_get_subject_name(req));
+	tmp = X509_get_issuer_name(x);
+	if (!tmp) {
+		stir_shaken_set_error(ss, "Failed to get X509 issuer name", STIR_SHAKEN_ERROR_SSL);
+		return NULL;
+	}
+
+	if (!X509_NAME_add_entry_by_txt(tmp, "C", MBSTRING_ASC, issuer_c, -1, -1, 0)) {
+		stir_shaken_set_error(ss, "Failed to set X509 issuer 'C'", STIR_SHAKEN_ERROR_SSL);
+		return NULL;
+	}
+
+	if (!X509_NAME_add_entry_by_txt(tmp,"CN", MBSTRING_ASC, issuer_cn, -1, -1, 0)) {
+		stir_shaken_set_error(ss, "Failed to set X509 issuer 'CN'", STIR_SHAKEN_ERROR_SSL);
+		return NULL;
+	}
+
+	if (1 != X509_set_issuer_name(x, tmp)) {
+		stir_shaken_set_error(ss, "Failed to set X509 issuer name", STIR_SHAKEN_ERROR_SSL);
+		return NULL;
+	}
+
 	X509_set_subject_name(x, X509_REQ_get_subject_name(req));
 
 	X509_gmtime_adj(X509_get_notBefore(x), 0);
-	X509_time_adj_ex(X509_get_notAfter(x), expiry_days, 0, NULL);    // TODO days of expiration
+	X509_time_adj_ex(X509_get_notAfter(x), expiry_days, 0, NULL);
 
 	pkey = X509_REQ_get_pubkey(req);
 	X509_set_pubkey(x, pkey);
 	EVP_PKEY_free(pkey);
 	pkey = NULL;
 
-	// Add extensions to certificate
-	X509_set_version(x, 2); // version 3 of certificate
-
-	// Add extensions
-	// DER
-	include_der_string = 0;
-	der_len = stir_shaken_generate_der(ext_value_der, EXT_VALUE_DER_LEN, sp_code, include_der_string);
-	if (der_len == -1) {
-		stir_shaken_set_error(ss, "Failed to generate DER", STIR_SHAKEN_ERROR_SSL);
-		goto fail;
-	}
-
-	i = stir_shaken_v3_add_extensions(NULL, ext_name, ext_value_der, NULL, x);
-	if (i == 0) {
-		stir_shaken_set_error(ss, "Cannot load extensions into CSR", STIR_SHAKEN_ERROR_SSL);
-		goto fail;
-	}
-
-	// TODO if CA
-	stir_shaken_v3_add_ext(x, NID_basic_constraints, "critical,CA:TRUE");
-	stir_shaken_v3_add_ext(x, NID_key_usage, "critical,keyCertSign,cRLSign");
-
-#if STIR_SHAKEN_CERT_ADD_SIGNALWIRE_EXTENSION
-	{
-		char buf[1000] = { 0 };
-		int nid;
-		sprintf(buf, "SignalWire's V3 Extension. This allows you to sign numbers within range: 123456 - 123456789.");
-		nid = OBJ_create("7.7.7.7", "SignalWire", buf);
-		X509V3_EXT_add_alias(nid, NID_netscape_comment);
-		stir_shaken_v3_add_ext(x, nid, "Alias for our extension");
-	}
-#endif
-
 	return x;
 
 fail:
-	stir_shaken_set_error_if_clear(ss, "Generate X509 self sign: Error", STIR_SHAKEN_ERROR_SSL);
+	if (x) {
+		X509_free(x);
+		x = NULL;
+	}
+	stir_shaken_set_error_if_clear(ss, "Error creating cert", STIR_SHAKEN_ERROR_SSL);
 	return NULL;
 }
 
