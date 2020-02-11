@@ -136,7 +136,7 @@ stir_shaken_status_t stir_shaken_install_cert(stir_shaken_context_t *ss, stir_sh
     }
     
 	if (!cert->x) {
-		stir_shaken_set_error(ss, "X509 cert not set", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "X509 cert not set", STIR_SHAKEN_ERROR_SSL);
         return STIR_SHAKEN_STATUS_FALSE;
     }
 	

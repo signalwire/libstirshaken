@@ -669,7 +669,7 @@ fail:
 	return NULL;
 }
 
-X509* stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 *x, EVP_PKEY *private_key)
+stir_shaken_status_t stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 *x, EVP_PKEY *private_key)
 {
 	const EVP_MD    *md = NULL;
 	const char		*digest_name = "sha256";
@@ -679,28 +679,27 @@ X509* stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 *x, EVP_PKEY *p
 
 	if (!x) {
 		stir_shaken_set_error(ss, "X509 cert not set", STIR_SHAKEN_ERROR_GENERAL);
-		return NULL;
+		return STIR_SHAKEN_STATUS_TERM;
 	}
 	
 	if (!private_key) {
 		stir_shaken_set_error(ss, "Private key not set", STIR_SHAKEN_ERROR_GENERAL);
-		return NULL;
+		return STIR_SHAKEN_STATUS_TERM;
 	}
 
 	md = EVP_get_digestbyname(digest_name);
 	if (!md) {
 		sprintf(err_buf, "Cannot get %s digest", digest_name);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-		return NULL;
+		return STIR_SHAKEN_STATUS_TERM;
 	}
 
 	if (!X509_sign(x, private_key, md)) {
-		
 		stir_shaken_set_error(ss, "Failed to sign certificate", STIR_SHAKEN_ERROR_SSL);
-		return NULL;
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	return x;
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 #define DATE_LEN 128
@@ -1262,8 +1261,7 @@ stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X
 
 	cbio = BIO_new_mem_buf(mem, -1);
 	if (!cbio) {
-		
-		stir_shaken_set_error(ss, "Load cert from mem: SSL error [1]", STIR_SHAKEN_ERROR_SSL);
+		stir_shaken_set_error(ss, "(SSL) Failed to create BIO", STIR_SHAKEN_ERROR_SSL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -1276,50 +1274,47 @@ stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X
 
 		stack = sk_X509_new_null();
 		if (!stack) {
-
 			stir_shaken_set_error(ss, "Failed to allocate cert stack", STIR_SHAKEN_ERROR_SSL);
 			X509_free(*x);
-			if (cbio) {
-				BIO_free(cbio);
-				cbio = NULL;
-			}
-			ss_status = STIR_SHAKEN_STATUS_FALSE;
+			ss_status = STIR_SHAKEN_STATUS_TERM;
+			goto exit;
 		}
 
 		sk = PEM_X509_INFO_read_bio(cbio, NULL, NULL, NULL);
 		if (!sk) {
-
-			stir_shaken_set_error(ss, "error reading certificate stack", STIR_SHAKEN_ERROR_SSL);
+			stir_shaken_set_error(ss, "Error reading certificate stack", STIR_SHAKEN_ERROR_SSL);
 			X509_free(*x);
-			if (cbio) {
-				BIO_free(cbio);
-				cbio = NULL;
-			}
 			sk_X509_free(stack);
 			ss_status = STIR_SHAKEN_STATUS_FALSE;
+			goto exit;
 		}
 
 		while (sk_X509_INFO_num(sk)) {
+			
 			xi = sk_X509_INFO_shift(sk);
+			
 			if (xi->x509 != NULL) {
+				
 				sk_X509_push(stack, xi->x509);
 				xi->x509 = NULL;
 			}
+
 			X509_INFO_free(xi);
 		}
 
-		if (!sk_X509_num(stack))
+		if (!sk_X509_num(stack)) {
+			
 			sk_X509_free(stack);
-		else
-			*xchain = stack;
 
-		if (cbio) {
-			BIO_free(cbio);
-			cbio = NULL;
+		} else {
+
+			*xchain = stack;
 		}
+
 		sk_X509_INFO_free(sk);
 	}
 
+exit:
 	if (cbio) {
 		BIO_free(cbio);
 		cbio = NULL;
@@ -1337,19 +1332,24 @@ stir_shaken_status_t stir_shaken_load_cert_from_file(stir_shaken_context_t *ss, 
 
 	in = BIO_new(BIO_s_file());
 	if (!in) {
-		
-		stir_shaken_set_error(ss, "Load cert from file: SSL error [1]", STIR_SHAKEN_ERROR_SSL);
+		stir_shaken_set_error(ss, "(SSL) Failed to create BIO", STIR_SHAKEN_ERROR_SSL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	if (BIO_read_filename(in, cert_tmp_name) <= 0) {
-		
-		sprintf(err_buf, "Load cert and key: Error reading file: %s", cert_tmp_name);
+		sprintf(err_buf, "Error reading file: %s", cert_tmp_name);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	*x = PEM_read_bio_X509(in, NULL, NULL, NULL);
+	if (*x == NULL) {
+		sprintf(err_buf, "(SSL) Failed to read X509 from file: %s", cert_tmp_name);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+		BIO_free(in);
+		in = NULL;
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
 
 	BIO_free(in); in = NULL;
 	return STIR_SHAKEN_STATUS_OK;
@@ -1421,10 +1421,8 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 
 	*pkey = PEM_read_bio_PrivateKey(in, NULL, NULL, NULL);
 	if (*pkey == NULL) {
-		
 		sprintf(err_buf, "Load cert and key: Error geting SSL key from file: %s", private_key_name);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-
 		goto err;
 	}
 	BIO_free(in); in = NULL;
@@ -1435,7 +1433,6 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 		uint32_t raw_key_len = 0, sz = 0;
 
 		if (!priv_raw_len || *priv_raw_len == 0) {
-			
 			sprintf(err_buf, "Generate keys: Buffer for %s invalid", private_key_name);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
 			goto err;
@@ -1444,7 +1441,6 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 		// Read raw private key into buffer
 		fp = fopen(private_key_name, "r");
 		if (!fp) {
-
 			sprintf(err_buf, "Generate keys: Cannot open private key %s for reading", private_key_name);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
 			goto err;
@@ -1455,7 +1451,6 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 		rewind(fp);
 		
 		if (*priv_raw_len <= sz) {
-			
 			sprintf(err_buf, "Generate keys: Buffer for %s too short", private_key_name);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
 			goto err;
@@ -1466,7 +1461,6 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 
 		raw_key_len = fread(priv_raw, 1, *priv_raw_len, fp);
 		if (raw_key_len != sz || ferror(fp)) {
-
 			sprintf(err_buf, "Generate keys: Error reading private key %s, which is %zu bytes", private_key_name, sz);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
 			goto err;
@@ -1482,22 +1476,23 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 
 	in = BIO_new(BIO_s_file());
 	if (!in) {
-		
-		sprintf(err_buf, "Load cert and key: SSL error [1]");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-
+		stir_shaken_set_error(ss, "SSL: Failed to create BIO", STIR_SHAKEN_ERROR_SSL);
 		goto err;
 	}
 
 	if (BIO_read_filename(in, cert_name) <= 0) {
-		
-		sprintf(err_buf, "Load cert and key: Error reading file: %s", cert_name);
+		sprintf(err_buf, "Failed to read file: %s. Does it exist?", cert_name);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-
 		goto err;
 	}
 
-	x = PEM_read_bio_X509(in, NULL, NULL, NULL);
+	x = PEM_read_bio_X509(in, NULL, 0, NULL);
+	if (!x) {
+		sprintf(err_buf, "(SSL) Failed to read X509 from file: %s", cert_name);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+		goto err;
+	}
+
 	cert->x = x;
 	cert->private_key = *pkey;
 

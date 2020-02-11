@@ -517,7 +517,7 @@ stir_shaken_status_t stir_shaken_x509_cert_to_disk(stir_shaken_context_t *ss, X5
 stir_shaken_status_t stir_shaken_csr_add_ca_permissions(stir_shaken_context_t *ss, X509 *x);
 stir_shaken_status_t stir_shaken_add_tnauthlist_extension(stir_shaken_context_t *ss, uint32_t sp_code, X509 *x);
 X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int expiry_days);
-X509* stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 *x, EVP_PKEY *private_key);
+stir_shaken_status_t stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 *x, EVP_PKEY *private_key);
 void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
