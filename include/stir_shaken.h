@@ -550,7 +550,7 @@ void stir_shaken_deinit_ssl(void);
 
 // Verification service
 
-stir_shaken_status_t stir_shaken_stisp_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, cJSON *array);
+stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, cJSON *array);
 int stir_shaken_verify_data(stir_shaken_context_t *ss, const char *data, const char *signature, size_t siglen, EVP_PKEY *pkey);
 int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);
 int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size_t datalen, const unsigned char *sig, size_t siglen, EVP_PKEY *public_key);
@@ -631,7 +631,7 @@ stir_shaken_status_t stir_shaken_authorize(stir_shaken_context_t *ss, char **sih
 /**
  * High level interface to authorization (main entry point).
  */
-stir_shaken_status_t stir_shaken_stisp_perform_authorization(EVP_PKEY *pkey, stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_as_perform_authorization(EVP_PKEY *pkey, stir_shaken_cert_t *cert);
 
 /*
  * Sign PASSporT with @pkey (generate signature in Jason Web Token).
@@ -674,16 +674,16 @@ char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_
 
 // Service
 
-char*					stir_shaken_stisp_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, unsigned char *key, uint32_t keylen, char **json);
-char*					stir_shaken_stisp_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *sp_code_token, unsigned char *key, uint32_t keylen, char **json);
-char*					stir_shaken_stisp_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
+char*					stir_shaken_as_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, unsigned char *key, uint32_t keylen, char **json);
+char*					stir_shaken_as_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *sp_code_token, unsigned char *key, uint32_t keylen, char **json);
+char*					stir_shaken_as_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
 stir_shaken_status_t	stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
 void					stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req);
 
 /**
  * @http_req - (out) will contain HTTP response
  */
-stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, const char *fingerprint);
+stir_shaken_status_t stir_shaken_as_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, const char *fingerprint);
 
 /**
  * The STI-PA manages an active, secure list of approved STI-CAs in the form of their public key certificates.
@@ -693,7 +693,7 @@ stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_conte
  * whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs. Note that the details
  * associated with the structure and management of this list require further specification.
  */
-stir_shaken_status_t stir_shaken_stisp_make_stica_list_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
+stir_shaken_status_t stir_shaken_as_make_stica_list_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
 
 stir_shaken_status_t	stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
 stir_shaken_status_t	stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data, uint8_t json);

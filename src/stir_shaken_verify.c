@@ -4,7 +4,7 @@
 #define BUFSIZE 1024*8
 
 
-stir_shaken_status_t stir_shaken_stisp_verify_stica_against_list(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
+stir_shaken_status_t stir_shaken_vs_verify_stica_against_list(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
 {
 	if (!cert) return STIR_SHAKEN_STATUS_FALSE;
 	return STIR_SHAKEN_STATUS_OK;
@@ -90,7 +90,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 
 		// Validate the root of the digital signature in the STI certificate
 		// by determining whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs
-		if (stir_shaken_stisp_verify_stica(ss, cert, stica_array) != STIR_SHAKEN_STATUS_OK) {
+		if (stir_shaken_vs_verify_stica(ss, cert, stica_array) != STIR_SHAKEN_STATUS_OK) {
 
 			stir_shaken_set_error(ss, "STI-CA is not in a trusted list of approved STI-CAs", STIR_SHAKEN_ERROR_STICA_NOT_APPROVED);
 			return STIR_SHAKEN_STATUS_FALSE;

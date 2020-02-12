@@ -19,7 +19,7 @@
  *	"signature": "H6ZXtGjTZyUnPeKn...wEA4TklBdh3e454g"
  * }
 */
-char* stir_shaken_stisp_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, unsigned char *key, uint32_t keylen, char **json)
+char* stir_shaken_as_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, unsigned char *key, uint32_t keylen, char **json)
 {
 	char	*out = NULL;
 	jwt_t	*jwt = NULL;
@@ -136,7 +136,7 @@ exit:
  *	"signature": "9cbg5JO1Gf5YLjjz...SpkUfcdPai9uVYYQ"
  * }
  */
-char* stir_shaken_stisp_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *sp_code_token, unsigned char *key, uint32_t keylen, char **json)
+char* stir_shaken_as_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *sp_code_token, unsigned char *key, uint32_t keylen, char **json)
 {
 	char	*out = NULL;
 	jwt_t	*jwt = NULL;
@@ -239,7 +239,7 @@ exit:
  *	"signature": "RZPOnYoPs1PhjszF...-nh6X1qtOFPB519I"
  * }
 */
-char* stir_shaken_stisp_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json)
+char* stir_shaken_as_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json)
 {
 	char	*out = NULL;
 	jwt_t	*jwt = NULL;
@@ -616,7 +616,7 @@ stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_conte
  * Validate the root of the digital signature in the STI certificate
  * by determining whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs
  */
-stir_shaken_status_t stir_shaken_stisp_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, cJSON *array)
+stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, cJSON *array)
 {
 	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
 	int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
