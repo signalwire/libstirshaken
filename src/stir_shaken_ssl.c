@@ -819,20 +819,152 @@ void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert)
 
 static int stir_shaken_verify_callback(int ok, X509_STORE_CTX *ctx)
 {
-	int err;
+	X509 *err_cert = NULL;
+    int err = 0, depth = 0;
+	FILE *file = NULL;
 
-	if (!ok) {
-		err = X509_STORE_CTX_get_error(ctx);
-		// TODO remove
-		printf("STIR-Shaken: SSL: Certificate validation failed: %s\n", X509_verify_cert_error_string(err));
+    err_cert = X509_STORE_CTX_get_current_cert(ctx);
+    err =   X509_STORE_CTX_get_error(ctx);
+    depth = X509_STORE_CTX_get_error_depth(ctx);
+	file = (FILE *) X509_STORE_CTX_get_ex_data(ctx, 0);
+
+    fprintf(file, "===[depth: %d] X509 cert path validation: got error: %d ===\n", depth, err);
+
+	if (err_cert) {
+		
+		stir_shaken_cert_t cert = { .x = err_cert };
+		
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_read_cert_fields(NULL, &cert)) {
+			fprintf(file, "===[depth: %d] Bad, bad, bad\n", depth);
+			goto handle_error;
+		}
+
+		fprintf(file, "===[depth: %d] = Certificate under consideration:\n", depth);
+		stir_shaken_print_cert_fields(file, &cert);
+
+    } else {
+
+		fprintf(file, "===[depth: %d] = No cert for this error:\n", depth);
 	}
 
-	return ok;
+handle_error:
+
+    if (!ok) {
+
+		fprintf(file,"===[depth: %d] Error detail: %d: %s\n", depth, err, X509_verify_cert_error_string(err));
+	}
+
+	switch (err) {
+
+		case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
+			fprintf(file, "===[depth: %d] E: Issuer\n", depth);
+			break;
+
+		case X509_V_ERR_CERT_NOT_YET_VALID:
+		case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
+			fprintf(file, "===[depth: %d] E: Cert not valid yet\n", depth);
+			break;
+
+		case X509_V_ERR_CERT_HAS_EXPIRED:
+		case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
+			fprintf(file, "===[depth: %d] E: Cert expired\n", depth);
+			break;
+
+		case X509_V_ERR_NO_EXPLICIT_POLICY:
+			fprintf(file, "===[depth: %d] E: No explicit policy\n", depth);
+			break;
+
+		case X509_V_ERR_UNABLE_TO_GET_CRL:
+			fprintf(file, "===[depth: %d] E: No explicit policy\n", depth);
+			break;
+
+		case X509_V_ERR_UNABLE_TO_DECRYPT_CERT_SIGNATURE:
+			fprintf(file, "===[depth: %d] E: Failed to decrypt CERT signature\n", depth);
+			break;
+
+		case X509_V_ERR_UNABLE_TO_DECRYPT_CRL_SIGNATURE:
+			fprintf(file, "===[depth: %d] E: Failed to decrypt CRL signature\n", depth);
+			break;
+
+		case X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY:
+			fprintf(file, "===[depth: %d] E: Unable to decode issuer's public key\n", depth);
+			break;
+
+		case X509_V_ERR_CERT_SIGNATURE_FAILURE:
+			fprintf(file, "===[depth: %d] E: Cert signature failure\n", depth);
+			break;
+
+		case X509_V_ERR_CRL_SIGNATURE_FAILURE:
+			fprintf(file, "===[depth: %d] E: Crl signature failure\n", depth);
+			break;
+
+		case X509_V_ERR_CRL_NOT_YET_VALID:
+			fprintf(file, "===[depth: %d] E: CRL not valid yet\n", depth);
+			break;
+
+		case X509_V_ERR_CRL_HAS_EXPIRED:
+			fprintf(file, "===[depth: %d] E: CRL expired\n", depth);
+			break;
+
+		case X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD:
+			fprintf(file, "===[depth: %d] E: CRL last update invalid\n", depth);
+			break;
+
+		case X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD:
+			fprintf(file, "===[depth: %d] E: CRL next update invalid\n", depth);
+			break;
+
+		case X509_V_ERR_OUT_OF_MEM:
+			fprintf(file, "===[depth: %d] E: Out of mem\n", depth);
+			break;
+
+		case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
+			fprintf(file, "===[depth: %d] E: Self signed cert on depth 0 not allowed\n", depth);
+			break;
+
+		case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
+			fprintf(file, "===[depth: %d] E: Self signed cert in chain not allowed\n", depth);
+			break;
+
+		case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
+			fprintf(file, "===[depth: %d] E: Unable to get issuer's cert locally\n", depth);
+			break;
+
+		case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
+			fprintf(file, "===[depth: %d] E: Unable to verify leaf signature\n", depth);
+			break;
+
+		case X509_V_ERR_CERT_CHAIN_TOO_LONG:
+			fprintf(file, "===[depth: %d] E: Cert chain is too long\n", depth);
+			break;
+
+		case X509_V_ERR_CERT_REVOKED:
+			fprintf(file, "===[depth: %d] E: Cert is revoked\n", depth);
+			break;
+
+		case X509_V_ERR_APPLICATION_VERIFICATION:
+			fprintf(file, "===[depth: %d] E: Application verification error\n", depth);
+			break;
+
+		default:
+			fprintf(file, "===[depth: %d] Default error\n", depth);
+			break;
+	}
+
+    if (err == X509_V_OK && ok == 2) {
+        
+		/* print out policies */
+		fprintf(file, "===[depth: %d] Policy checking is complete\n", depth);
+	}
+
+	fprintf(file, "===[depth: %d] Translating error to: %d\n", depth, ok);
+    return(ok);
+
 }
 
 stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, const char *ca_list, const char *ca_dir, const char *crl_list, const char *crl_dir)
 {
-	stir_shaken_globals_t *g = &stir_shaken_globals; 
+	stir_shaken_globals_t *g = &stir_shaken_globals;
 
 	if (g->store) {
 		X509_STORE_free(g->store);
@@ -898,6 +1030,7 @@ stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, sti
 	int rc = 1;
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	int verify_error = -1;
+	FILE *file = stderr;
 
 	stir_shaken_clear_error(ss);
 
@@ -936,11 +1069,13 @@ stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, sti
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
+	X509_STORE_CTX_set_ex_data(cert->verify_ctx, 0, file);
+
 	rc = X509_verify_cert(cert->verify_ctx);
 	if (rc != 1) {
 		// TODO double check if it's a good idea to read verification error from ctx here, outside of verification callback
 		verify_error = X509_STORE_CTX_get_error(cert->verify_ctx);
-		sprintf(err_buf, "STIR-Shaken: SSL: Certificate validation failed: SSL reason: %s\n", X509_verify_cert_error_string(verify_error));
+		sprintf(err_buf, "SSL: Bad X509 certificate path: SSL reason: %s\n", X509_verify_cert_error_string(verify_error));
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CERT_INVALID);
 	}
 	
@@ -2252,6 +2387,18 @@ stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *e
 	*jwk = j;
 
 	return STIR_SHAKEN_STATUS_OK;
+}
+
+void stir_shaken_print_cert_fields(FILE *file, stir_shaken_cert_t *cert)
+{
+	if (!cert) return;
+
+	fprintf(file, "STIR-Shaken: STI Cert: Serial number: %s %s\n", stir_shaken_cert_get_serialHex(cert), stir_shaken_cert_get_serialDec(cert));
+	fprintf(file, "STIR-Shaken: STI Cert: Issuer: %s\n", stir_shaken_cert_get_issuer(cert));
+	fprintf(file, "STIR-Shaken: STI Cert: Subject: %s\n", stir_shaken_cert_get_subject(cert));
+	fprintf(file, "STIR-Shaken: STI Cert: Valid from: %s\n", stir_shaken_cert_get_notBefore(cert));
+	fprintf(file, "STIR-Shaken: STI Cert: Valid to: %s\n", stir_shaken_cert_get_notAfter(cert));
+	fprintf(file, "STIR-Shaken: STI Cert: Version: %d\n", stir_shaken_cert_get_version(cert));
 }
 
 /**
