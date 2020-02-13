@@ -452,43 +452,26 @@ typedef struct stir_shaken_globals_s {
 
 extern stir_shaken_globals_t stir_shaken_globals;
 
-/**
- * Main entry point.
- *
- * This is called on library load.
- */
 //static void stir_shaken_init(void) __attribute__ ((constructor));
 stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir);
 
-/**
- * Main exit point.
- *
- * This is called on library unload.
- */
 //static void stir_shaken_deinit(void) __attribute__ ((destructor));
 void stir_shaken_do_deinit(void);
 
 
 // SSL
 
-/**
- * Using @digest_name and @pkey create a signature for @data and save it in @out.
- * Return @out and length of it in @outlen.
- */ 
+// Using @digest_name and @pkey create a signature for @data and save it in @out.
+// Return @out and length of it in @outlen. 
 stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t *ss, const char *digest_name, EVP_PKEY *pkey, const char *data, size_t datalen, unsigned char *out, size_t *outlen);
 
-/**
- * Generate new keys. Always removes old files.
- */
+// Generate new keys. Always removes old files.
 stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name, unsigned char *priv_raw, uint32_t *priv_raw_len);
 
-/**
- * Call SSL destructors and release memory used for SSL keys.
- */
+// Call SSL destructors and release memory used for SSL keys.
 void stir_shaken_destroy_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub);
 
 /**
- * 
  * Generate CSR needed by STI-CA to issue new cert.
  * 
  * @sp_code - (in) Service Provider code
@@ -498,11 +481,22 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *csr_req, const char *csr_full_name, const char *csr_text_full_name);
 void stir_shaken_destroy_csr(X509_REQ **csr_req);
 
-X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int expiry_days, uint8_t is_ca);
+// Functions used for cert construction
+X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int serial, int expiry_days);
 stir_shaken_status_t stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 *x, EVP_PKEY *private_key);
-X509* stir_shaken_generate_x509_self_signed(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int expiry_days, uint8_t is_ca);
-X509* stir_shaken_generate_x509_self_issued(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int expiry_days, uint8_t is_ca);
-X509* stir_shaken_generate_x509_end_entity(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int expiry_days);
+stir_shaken_status_t stir_shaken_x509_add_ca_extensions(stir_shaken_context_t *ss, X509 *x);
+
+// Create CA cross-certificate, where issuer and subject are different entities. Cross certificates describe a trust relationship between CAs.
+X509* stir_shaken_generate_x509_cross_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int serial, int expiry_days);
+
+// Create CA self-issued certificate, where issuer and the subject are same entity. Self-issued certs describe a change in policy or operation.
+X509* stir_shaken_generate_x509_self_issued_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, int serial, int expiry_days);
+
+// Create CA self-signed certificate, which is self-issued certificate where the digital signature may be verified by the public key bound into the certificate.
+X509* stir_shaken_generate_x509_self_signed_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, int serial, int expiry_days);
+
+// Create SP certificate.
+X509* stir_shaken_generate_x509_end_entity_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int serial, int expiry_days);
 
 /**
  * @buf - (out) will contain fingerprint, must be of size at least 3*EVP_MAX_MD_SIZE bytes
@@ -513,10 +507,8 @@ stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, 
 X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY *pkey);
 
 stir_shaken_status_t stir_shaken_x509_cert_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name, const char *cert_text_full_name);
-stir_shaken_status_t stir_shaken_csr_add_ca_permissions(stir_shaken_context_t *ss, X509 *x);
 stir_shaken_status_t stir_shaken_add_tnauthlist_extension(stir_shaken_context_t *ss, uint32_t sp_code, X509 *x);
-X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int expiry_days);
-stir_shaken_status_t stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 *x, EVP_PKEY *private_key);
+X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int serial, int expiry_days);
 void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);

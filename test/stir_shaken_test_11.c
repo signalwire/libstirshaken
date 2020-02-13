@@ -69,7 +69,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_authenticate_keep_passport(void)
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
     
     printf("Creating Certificate\n");
-    cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, sp_code, csr.req, private_key, "US", "SignalWires RoboCaller-FREE Network", 365);
+    cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, sp_code, csr.req, private_key, "US", "SignalWire", 0, 365);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
