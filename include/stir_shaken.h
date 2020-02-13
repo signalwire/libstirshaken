@@ -69,9 +69,6 @@ typedef enum stir_shaken_status {
 
 typedef struct stir_shaken_csr_s {
 	X509_REQ    *req;
-	const char  *body;
-	EC_KEY              *ec_key;
-	EVP_PKEY            *pkey;
 } stir_shaken_csr_t;
 
 // Note:
@@ -501,9 +498,11 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *csr_req, const char *csr_full_name, const char *csr_text_full_name);
 void stir_shaken_destroy_csr(X509_REQ **csr_req);
 
-X509* stir_shaken_generate_x509_self_signed(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, int expiry_days, const char *issuer);
-X509* stir_shaken_generate_x509_self_issued(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, int expiry_days, const char *issuer);
-X509* stir_shaken_generate_x509_end_entity(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, int expiry_days, const char *issuer);
+X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int expiry_days, uint8_t is_ca);
+stir_shaken_status_t stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 *x, EVP_PKEY *private_key);
+X509* stir_shaken_generate_x509_self_signed(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int expiry_days, uint8_t is_ca);
+X509* stir_shaken_generate_x509_self_issued(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int expiry_days, uint8_t is_ca);
+X509* stir_shaken_generate_x509_end_entity(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int expiry_days);
 
 /**
  * @buf - (out) will contain fingerprint, must be of size at least 3*EVP_MAX_MD_SIZE bytes

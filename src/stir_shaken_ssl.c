@@ -954,7 +954,7 @@ handle_error:
     if (err == X509_V_OK && ok == 2) {
         
 		/* print out policies */
-		fprintf(file, "===[depth: %d] Policy checking is complete\n", depth);
+		fprintf(file, "===[depth: %d] +++ Policy checking is complete\n", depth);
 	}
 
 	fprintf(file, "===[depth: %d] Translating error to: %d\n", depth, ok);
@@ -1768,6 +1768,7 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 
 	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Loaded pkey from: %s\n", private_key_full_name);
 	BIO_free_all(key);
+	key = NULL;
 
 	if (priv_raw) {
 
@@ -1847,17 +1848,17 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 
 	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Loaded pkey from: %s\n", public_key_full_name);
 
-	BIO_free_all(key); key = NULL;
-	BIO_free_all(out); out = NULL;
-	BIO_free_all(bio); bio = NULL;
+	if (key) BIO_free_all(key); key = NULL;
+	if (out) BIO_free_all(out); out = NULL;
+	if (bio) BIO_free_all(bio); bio = NULL;
 
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
 
-	BIO_free_all(key); key = NULL;
-	BIO_free_all(out); out = NULL;
-	BIO_free_all(bio); bio = NULL;
+	if (key) BIO_free_all(key); key = NULL;
+	if (out) BIO_free_all(out); out = NULL;
+	if (bio) BIO_free_all(bio); bio = NULL;
 	stir_shaken_set_error_if_clear(ss, "Generate keys: Error", STIR_SHAKEN_ERROR_GENERAL);
 
 	return STIR_SHAKEN_STATUS_FALSE;
