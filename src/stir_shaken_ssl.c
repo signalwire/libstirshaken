@@ -619,7 +619,7 @@ X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public
 	}
 
 	X509_gmtime_adj(X509_get_notBefore(x), 0);
-	X509_gmtime_adj(X509_get_notAfter(x), expiry_days);
+	X509_gmtime_adj(X509_get_notAfter(x), expiry_days * 24 * 60 * 60);
 
 	return x;
 
@@ -1063,7 +1063,7 @@ X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_
 	X509_set_subject_name(x, X509_REQ_get_subject_name(req));
 
 	X509_gmtime_adj(X509_get_notBefore(x), 0);
-	X509_time_adj_ex(X509_get_notAfter(x), expiry_days, 0, NULL);
+	X509_time_adj_ex(X509_get_notAfter(x), expiry_days * 24 * 60 * 60, 0, NULL);
 
 	pkey = X509_REQ_get_pubkey(req);
 	X509_set_pubkey(x, pkey);
@@ -1341,6 +1341,22 @@ handle_error:
 
 }
 
+unsigned long stir_shaken_get_cert_name_hashed(stir_shaken_context_t *ss, X509 *x)
+{
+	if (!x) {
+		stir_shaken_set_error(ss, "X509 certificate not set", STIR_SHAKEN_ERROR_SSL);
+		return 0;
+	}
+
+	return X509_NAME_hash(X509_get_subject_name(x));
+}
+
+void stir_shaken_cert_name_hashed_2_string(unsigned long hash, char *buf, int buflen)
+{
+	if (!buf) return;
+	snprintf(buf, buflen, "%8lx", hash);
+}
+
 stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, const char *ca_list, const char *ca_dir, const char *crl_list, const char *crl_dir)
 {
 	stir_shaken_globals_t *g = &stir_shaken_globals;
@@ -1507,7 +1523,7 @@ stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_sha
 	}
 	
 	// TODO pass CAs list and revocation list
-	if (!STIR_SHAKEN_MOC_VERIFY_CERT_CHAIN 
+	if (!STIR_SHAKEN_MOCK_VERIFY_CERT_CHAIN 
 			&& (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_path(ss, cert))) {
 		stir_shaken_set_error_if_clear(ss, "Cert did not pass X509 path validation against CA list and CRL", STIR_SHAKEN_ERROR_CERT_INVALID);
 		return STIR_SHAKEN_STATUS_FALSE;

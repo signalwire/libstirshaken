@@ -47,7 +47,7 @@
 #define TN_AUTH_LIST_SN "TNAuthList"
 #define USE_TN_AUTH_LIST_OID 0
 
-#define STIR_SHAKEN_MOC_VERIFY_CERT_CHAIN 0
+#define STIR_SHAKEN_MOCK_VERIFY_CERT_CHAIN 0
 #define STIR_SHAKEN_LOAD_CA_FROM_DEFAULT_OS_PATHS 0
 #define STIR_SHAKEN_CERT_ADD_SIGNALWIRE_EXTENSION 1
 
@@ -516,6 +516,8 @@ void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_cert_init_validation(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *ca_list, char *ca_dir, char *crl_list, char *crl_dir);
+unsigned long stir_shaken_get_cert_name_hashed(stir_shaken_context_t *ss, X509 *x);
+void stir_shaken_cert_name_hashed_2_string(unsigned long hash, char *buf, int buflen);
 stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, const char *ca_list, const char *ca_dir, const char *crl_list, const char *crl_dir);
 void stir_shaken_cert_store_cleanup(void);
 stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);

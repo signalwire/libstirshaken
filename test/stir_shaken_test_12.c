@@ -13,6 +13,7 @@ struct ca {
 	char public_key_name[300];
 	char cert_name[300];
 	char cert_text_name[300];
+	char cert_name_hashed[300];
 	const char *issuer_c;
 	const char *issuer_cn;
 	int serial;
@@ -55,6 +56,9 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 	stir_shaken_context_t ss = { 0 };
 	const char *error_description = NULL;
 	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
+	unsigned long hash = 0;
+	char hashstr[100] = { 0 };
+	int hashstrlen = 100;
 
 	
 	sprintf(ca.private_key_name, "%s%c%s", path, '/', "12_ca_private_key.pem");
@@ -182,6 +186,52 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 	/* Test */
 	printf("Test 1: verifying end-entity + CA combo cert with X509 cert path verification...\n\n");
 
+	printf("Checking if X509_verify_cert returns error for SP cert\n");
+	status = stir_shaken_verify_cert(&ss, &sp.cert);
+	if (STIR_SHAKEN_STATUS_OK != status) {
+		printf("X509 cert path verification correctly failed, no CA cert in CA dir yet...\n");
+		PRINT_SHAKEN_ERROR_IF_SET
+	}
+    //stir_shaken_assert(STIR_SHAKEN_STATUS_OK == status, "Error, status should be OK");
+
+	// Add CA cert to CA dir, as trusted anchor
+	// Must be in hash.N form for X509_verify_cert to recognize it
+	hash = stir_shaken_get_cert_name_hashed(&ss, ca.cert.x);
+	if (hash == 0) {
+		printf("Failed to get CA cert name hashed\n");
+		PRINT_SHAKEN_ERROR_IF_SET
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	printf("CA name hash is %lu\n", hash);
+
+	stir_shaken_cert_name_hashed_2_string(hash, hashstr, hashstrlen);
+
+	sprintf(ca.cert_name_hashed, "./test/run/ca/%s.0", hashstr);
+	printf("Adding CA cert to CA dir as %s\n", ca.cert_name_hashed);
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_cert_to_disk(&ss, ca.cert.x, ca.cert_name_hashed, NULL)) {
+		printf("Failed to write CA certificate to CA dir\n");
+		PRINT_SHAKEN_ERROR_IF_SET
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	printf("Reinitialising X509 cert store...\n");
+	// Must reinitialize now X509 cert store
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_init_cert_store(&ss, NULL, CA_DIR, NULL, NULL)) {
+		printf("Failed to re-init CA dir\n");
+		PRINT_SHAKEN_ERROR_IF_SET
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	printf("Checking if X509_verify_cert returns SUCCESS for SP cert\n");
+	// Now it should work
+	status = stir_shaken_verify_cert(&ss, &sp.cert);
+	if (STIR_SHAKEN_STATUS_OK != status) {
+		printf("X509 cert path verification failed for SP certificate\n");
+		PRINT_SHAKEN_ERROR_IF_SET
+	}
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == status, "Error, status should be OK");
+
 	// CA cleanup	
 	stir_shaken_destroy_cert(&ca.cert);
 	stir_shaken_destroy_keys(&ca.keys.ec_key, &ca.keys.private_key, &ca.keys.public_key);
@@ -196,7 +246,7 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 
 int main(void)
 {
-	stir_shaken_do_init(NULL, NULL, NULL);
+	stir_shaken_do_init(NULL, CA_DIR, CRL_DIR);
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 
