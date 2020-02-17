@@ -591,7 +591,7 @@ X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public
 
 	if (subject_c || subject_cn) {
 
-		if (!subject_c && subject_cn) {
+		if (!(subject_c && subject_cn)) {
 			stir_shaken_set_error(ss, "When setting subject name for X509 certifiate both 'C' and 'CN' must be set", STIR_SHAKEN_ERROR_SSL);
 			goto fail;
 		}
@@ -1254,7 +1254,7 @@ handle_error:
 			break;
 
 		case X509_V_ERR_UNABLE_TO_GET_CRL:
-			fprintf(file, "===[depth: %d] E: No explicit policy\n", depth);
+			fprintf(file, "===[depth: %d] E: Unable to get CRL\n", depth);
 			break;
 
 		case X509_V_ERR_UNABLE_TO_DECRYPT_CERT_SIGNATURE:

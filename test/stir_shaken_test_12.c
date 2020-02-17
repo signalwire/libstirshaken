@@ -184,15 +184,15 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 	}
 
 	/* Test */
-	printf("Test 1: verifying end-entity + CA combo cert with X509 cert path verification...\n\n");
+	printf("TEST: verifying end-entity + CA combo cert with X509 cert path verification...\n\n");
 
-	printf("Checking if X509_verify_cert returns error for SP cert\n");
+	printf("TEST 1: Checking if X509_verify_cert returns error for SP cert\n");
 	status = stir_shaken_verify_cert(&ss, &sp.cert);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("X509 cert path verification correctly failed, no CA cert in CA dir yet...\n");
 		PRINT_SHAKEN_ERROR_IF_SET
 	}
-    //stir_shaken_assert(STIR_SHAKEN_STATUS_OK == status, "Error, status should be OK");
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK != status, "Error, status should NOT be OK");
 
 	// Add CA cert to CA dir, as trusted anchor
 	// Must be in hash.N form for X509_verify_cert to recognize it
@@ -223,7 +223,7 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	printf("Checking if X509_verify_cert returns SUCCESS for SP cert\n");
+	printf("TEST 2: Checking if X509_verify_cert returns SUCCESS for SP cert\n");
 	// Now it should work
 	status = stir_shaken_verify_cert(&ss, &sp.cert);
 	if (STIR_SHAKEN_STATUS_OK != status) {
