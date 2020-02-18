@@ -313,6 +313,14 @@ char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, con
 	return stir_shaken_remove_multiple_adjacent(buf, *path_separator);
 }
 
+// Return 1 if string is NULL or empty (0-length)
+int stir_shaken_zstr(const char *str)
+{
+	if (!str || (0 == strlen(str)))
+		return 1;
+	return 0;
+}
+
 void stir_shaken_do_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error, char *file, int line)
 {
 	int i = 0, j = 0;

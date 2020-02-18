@@ -9,6 +9,11 @@ libstirshaken_la_LDFLAGS = -version-info 1:0:0
 check_PROGRAMS = stir_shaken_test_1 stir_shaken_test_2 stir_shaken_test_3 stir_shaken_test_4 stir_shaken_test_5 stir_shaken_test_6 stir_shaken_test_7 stir_shaken_test_8 stir_shaken_test_9 stir_shaken_test_10 stir_shaken_test_11 stir_shaken_test_12
 TESTS = $(check_PROGRAMS)
 
+EXTRA_PROGRAMS = stirshaken
+stirshaken_SOURCES = src/stir_shaken_tool.c
+stirshaken_CFLAGS = -Iinclude
+stirshaken_LDFLAGS = -lstirshaken
+
 LIBS += -lcjson -lcurl -lcrypto -lssl -ljwt -pthread
 
 stir_shaken_test_1_SOURCES = test/stir_shaken_test_1.c

@@ -709,6 +709,7 @@ size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen);
 char* stir_shaken_remove_multiple_adjacent(char *in, char what);
 char* stir_shaken_get_dir_path(const char *path);
 char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, const char *file, const char *path_separator);
+int stir_shaken_zstr(const char *str);
 
 stir_shaken_error_t stir_shaken_get_error_code(stir_shaken_context_t *ss) __attribute__((nonnull(1)));
 void stir_shaken_do_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error, char *file, int line);

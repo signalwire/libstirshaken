@@ -2060,7 +2060,7 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
-	if (eck == NULL || priv == NULL || pub == NULL || private_key_full_name == NULL || public_key_full_name == NULL) {
+	if (eck == NULL || priv == NULL || pub == NULL || stir_shaken_zstr(private_key_full_name) || stir_shaken_zstr(public_key_full_name)) {
 		stir_shaken_set_error(ss, "Generate keys: Bad params", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
@@ -2089,7 +2089,6 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 		goto fail;
 	}
 
-	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Got new EC\n");
 	*eck = ec_key;
 
 	if (!EC_KEY_generate_key(ec_key)) {
@@ -2134,8 +2133,6 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 	BIO_free_all(bio);
 	bio = NULL;
 
-	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Saved private key: %s\n", private_key_full_name); printf("STIR-Shaken: SSL: Saved public key: %s\n", public_key_full_name);
-	
 	key = BIO_new(BIO_s_file());
 	if (BIO_read_filename(key, private_key_full_name) <= 0) {
 		stir_shaken_set_error(ss, "Generate keys: SSL ERR: Err, bio read priv key", STIR_SHAKEN_ERROR_SSL);
@@ -2158,10 +2155,6 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 		goto fail;
 	}
 	
-	// TODO remove
-	printf("Generate keys: Private key is EVP_PKEY_EC type\n");
-
-	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Loaded pkey from: %s\n", private_key_full_name);
 	BIO_free_all(key);
 	key = NULL;
 
