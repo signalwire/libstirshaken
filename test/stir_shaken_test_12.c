@@ -80,11 +80,7 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
     // Generate CA keys
 	ca.keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
     status = stir_shaken_generate_keys(&ss, &ca.keys.ec_key, &ca.keys.private_key, &ca.keys.public_key, ca.private_key_name, ca.public_key_name, ca.keys.priv_raw, &ca.keys.priv_raw_len);
-    if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
-		printf("Error description is: '%s'\n", error_description);
-		printf("Error code is: '%d'\n", error_code);
-	}
+	PRINT_SHAKEN_ERROR_IF_SET
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
     stir_shaken_assert(ca.keys.ec_key != NULL, "Err, failed to generate EC key\n\n");
     stir_shaken_assert(ca.keys.private_key != NULL, "Err, failed to generate private key");
@@ -98,11 +94,7 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 	// Generate SP keys
 	sp.keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
     status = stir_shaken_generate_keys(&ss, &sp.keys.ec_key, &sp.keys.private_key, &sp.keys.public_key, sp.private_key_name, sp.public_key_name, sp.keys.priv_raw, &sp.keys.priv_raw_len);
-    if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
-		printf("Error description is: '%s'\n", error_description);
-		printf("Error code is: '%d'\n", error_code);
-	}
+	PRINT_SHAKEN_ERROR_IF_SET
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
     stir_shaken_assert(sp.keys.ec_key != NULL, "Err, failed to generate EC key\n\n");
     stir_shaken_assert(sp.keys.private_key != NULL, "Err, failed to generate private key");
@@ -114,11 +106,7 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 	sp.subject_cn = "NewSTI-SP, But Absolutely Fine Inc.";
 
 	status = stir_shaken_generate_csr(&ss, sp.code, &sp.csr.req, sp.keys.private_key, sp.keys.public_key, sp.subject_c, sp.subject_cn);
-    if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
-		printf("Error description is: '%s'\n", error_description);
-		printf("Error code is: '%d'\n", error_code);
-	}
+	PRINT_SHAKEN_ERROR_IF_SET
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
 
 	// 2
@@ -131,11 +119,7 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 	ca.serial = 1;
 	ca.expiry_days = 90;
 	ca.cert.x = stir_shaken_generate_x509_self_signed_ca_cert(&ss, ca.keys.private_key, ca.keys.public_key, ca.issuer_c, ca.issuer_cn, ca.serial, ca.expiry_days);
-    if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
-		printf("Error description is: '%s'\n", error_description);
-		printf("Error code is: '%d'\n", error_code);
-	}
+	PRINT_SHAKEN_ERROR_IF_SET
     stir_shaken_assert(ca.cert.x, "Err, generating CA cert");
 
 

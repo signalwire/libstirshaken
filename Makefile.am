@@ -10,7 +10,7 @@ check_PROGRAMS = stir_shaken_test_1 stir_shaken_test_2 stir_shaken_test_3 stir_s
 TESTS = $(check_PROGRAMS)
 
 EXTRA_PROGRAMS = stirshaken
-stirshaken_SOURCES = src/stir_shaken_tool.c
+stirshaken_SOURCES = src/stir_shaken_tool_command.c src/stir_shaken_tool.c
 stirshaken_CFLAGS = -Iinclude
 stirshaken_LDFLAGS = -lstirshaken
 

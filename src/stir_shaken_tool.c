@@ -1,55 +1,12 @@
-#include <stir_shaken.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <getopt.h>
-#include <ctype.h>
+#include <stir_shaken_tool.h>
 
 
-#define STIR_SHAKEN_BUFLEN 1000
-
-struct ca {
-	stir_shaken_ssl_keys_t keys;
-    stir_shaken_cert_t cert;
-	
-	char private_key_name[STIR_SHAKEN_BUFLEN];
-	char public_key_name[STIR_SHAKEN_BUFLEN];
-	char cert_name[STIR_SHAKEN_BUFLEN];
-	char cert_text_name[STIR_SHAKEN_BUFLEN];
-	char cert_name_hashed[STIR_SHAKEN_BUFLEN];
-	const char *issuer_c;
-	const char *issuer_cn;
-	int serial;
-	int serial_sp;
-	int expiry_days;
-	int expiry_days_sp;
-	const char *number_start_sp;
-	const char *number_end_sp;
-} ca;
-
-struct sp {
-	stir_shaken_ssl_keys_t keys;
-	uint32_t code;
-	stir_shaken_csr_t csr;
-    stir_shaken_cert_t cert;
-	
-	char private_key_name[STIR_SHAKEN_BUFLEN];
-	char public_key_name[STIR_SHAKEN_BUFLEN];
-	char csr_name[STIR_SHAKEN_BUFLEN];
-	char csr_text_name[STIR_SHAKEN_BUFLEN];
-	char cert_name[STIR_SHAKEN_BUFLEN];
-	char cert_text_name[STIR_SHAKEN_BUFLEN];
-	const char *subject_c;
-	const char *subject_cn;
-	int serial;
-	int expiry_days;
-} sp;
-	
 static void stirshaken_usage(const char *name)
 {
 	if (name == NULL)
 		return;
 	
-	fprintf(stderr, "\nusage:\t %s keys|cert|install (params...) [-f output file name]\n\n", name);
+	fprintf(stderr, "\nusage:\t %s %s|%s|%s (params...) [-f output file name]\n\n", name, COMMAND_NAME_KEYS, COMMAND_NAME_CERT, COMMAND_NAME_INSTALL_CERT);
 	fprintf(stderr, "     \t keys			: generate key pair\n");
 	fprintf(stderr, "     \t cert			: generate SP or CA certificate depending on --type\n");
 	fprintf(stderr, "     \t install		: hash CA certificate and copy into CA dir\n");
@@ -69,25 +26,6 @@ static void help_hint(const char *name)
 	return;
 }
 
-#define OPTION_PUBKEY		1
-#define OPTION_PRIVKEY		2
-#define OPTION_ISSUER_C		3
-#define OPTION_ISSUER_CN	4
-#define OPTION_SERIAL		5
-#define OPTION_EXPIRY		6
-#define OPTION_TYPE			7
-#define OPTION_HELP			8
-#define OPTION_MAX			9
-
-#define PRINT_SHAKEN_ERROR_IF_SET \
-    if (stir_shaken_is_error_set(&ss)) { \
-		error_description = stir_shaken_get_error(&ss, &error_code); \
-		printf("Error description is: '%s'\n", error_description); \
-		printf("Error code is: '%d'\n", error_code); \
-	}
-
-#define CA_DIR	NULL
-#define CRL_DIR	NULL
 
 int main(int argc, char *argv[])
 {
@@ -100,6 +38,8 @@ int main(int argc, char *argv[])
 	stir_shaken_context_t ss = { 0 };
 	const char *error_description = NULL;
 	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
+	int command = COMMAND_UNKNOWN;
+	const char *command_name = COMMAND_NAME_UNKNOWN;
 
 
 	if (argc < 2) {
@@ -119,6 +59,8 @@ int main(int argc, char *argv[])
 		{ "help", no_argument, 0, OPTION_HELP },
 		{ 0 }
 	};
+
+	// Parse options
 
 	while ((c = getopt_long(argc, argv, "f:", long_options, &option_index)) != -1) {
 
@@ -223,38 +165,49 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_init(NULL, CA_DIR, CRL_DIR)) {
-		PRINT_SHAKEN_ERROR_IF_SET
-		goto fail;
-	}
+	// Parse the comamnd
 
-	if (!strcmp(argv[optind], "keys")) {
+	if (!strcmp(argv[optind], COMMAND_NAME_KEYS)) {
 
 		fprintf(stderr, "\n\nCreating key pair...\n\n");
+		command = COMMAND_KEYS;
+		command_name = COMMAND_NAME_KEYS;
 
-		status = stir_shaken_generate_keys(&ss, &ca.keys.ec_key, &ca.keys.private_key, &ca.keys.public_key, ca.private_key_name, ca.public_key_name, NULL, NULL);
-		if (STIR_SHAKEN_STATUS_OK != status) {
-			PRINT_SHAKEN_ERROR_IF_SET
-			goto fail;
-		}
-
-
-	} else if (!strcmp(argv[optind], "cert")) {
-
+	} else if (!strcmp(argv[optind], COMMAND_NAME_CERT)) {
 
 		fprintf(stderr, "\n\nCreating CA certificate...\n\n");
+		command = COMMAND_CERT;
+		command_name = COMMAND_NAME_CERT;
 
-	} else if (!strcmp(argv[optind], "install")) {
+	} else if (!strcmp(argv[optind], COMMAND_NAME_INSTALL_CERT)) {
 
 		fprintf(stderr, "\n\nInstalling CA certificate...\n\n");
+		command = COMMAND_INSTALL_CERT;
+		command_name = COMMAND_NAME_INSTALL_CERT;
 
 	} else {
-		fprintf(stderr, "Bad argument: %s\n", argv[optind]);
+
+		fprintf(stderr, "Error. Unknown command: %s\n", argv[optind]);
 		stirshaken_usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
+	// Validate the command
+	
+	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_validate(&ss, command, &ca, &sp, CA_DIR, CRL_DIR)) {
+		fprintf(stderr, "\nError. Command %s cannot be executed because it's missing params or params are invalid\n", command_name);
+		PRINT_SHAKEN_ERROR_IF_SET
+		goto fail;
+	}
 
+	// Process the command
+	
+	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_execute(&ss, command, &ca, &sp, CA_DIR, CRL_DIR)) {
+		fprintf(stderr, "\nError. Command %s failed\n", command_name);
+		PRINT_SHAKEN_ERROR_IF_SET
+		goto fail;
+	}
+	
 	fprintf(stderr, "=== OK.\n\n");
 	return EXIT_SUCCESS;
 
