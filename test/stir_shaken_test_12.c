@@ -155,13 +155,13 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_cert_to_disk(&ss, ca.cert.x, ca.cert_name, ca.cert_text_name)) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(&ss, ca.cert.x, ca.cert_name, ca.cert_text_name)) {
 		printf("Failed to write CA certificate to disk\n");
 		PRINT_SHAKEN_ERROR_IF_SET
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_cert_to_disk(&ss, sp.cert.x, sp.cert_name, sp.cert_text_name)) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(&ss, sp.cert.x, sp.cert_name, sp.cert_text_name)) {
 		printf("Failed to write SP certificate to disk\n");
 		PRINT_SHAKEN_ERROR_IF_SET
 		return STIR_SHAKEN_STATUS_TERM;
@@ -193,7 +193,7 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 	sprintf(ca.cert_name_hashed, "./test/run/ca/%s.0", hashstr);
 	printf("Adding CA cert to CA dir as %s\n", ca.cert_name_hashed);
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_cert_to_disk(&ss, ca.cert.x, ca.cert_name_hashed, NULL)) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(&ss, ca.cert.x, ca.cert_name_hashed, NULL)) {
 		printf("Failed to write CA certificate to CA dir\n");
 		PRINT_SHAKEN_ERROR_IF_SET
 		return STIR_SHAKEN_STATUS_TERM;

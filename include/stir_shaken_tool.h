@@ -67,8 +67,8 @@ struct ca {
 	char cert_name[STIR_SHAKEN_BUFLEN];
 	char cert_text_name[STIR_SHAKEN_BUFLEN];
 	char cert_name_hashed[STIR_SHAKEN_BUFLEN];
-	const char *issuer_c;
-	const char *issuer_cn;
+	char issuer_c[STIR_SHAKEN_BUFLEN];
+	char issuer_cn[STIR_SHAKEN_BUFLEN];
 	int serial;
 	int serial_sp;
 	int expiry_days;

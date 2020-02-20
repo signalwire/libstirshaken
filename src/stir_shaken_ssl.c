@@ -1357,6 +1357,17 @@ void stir_shaken_cert_name_hashed_2_string(unsigned long hash, char *buf, int bu
 	snprintf(buf, buflen, "%8lx", hash);
 }
 
+void stir_shaken_hash_cert_name(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
+{
+	if (!cert) {
+		return;
+	}
+
+	cert->hash = stir_shaken_get_cert_name_hashed(ss, cert->x);
+	stir_shaken_cert_name_hashed_2_string(cert->hash, cert->hashstr, STIR_SHAKEN_BUFLEN);
+	sprintf(cert->cert_name_hashed, "%s.0", cert->hashstr);
+}
+
 stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, const char *ca_list, const char *ca_dir, const char *crl_list, const char *crl_dir)
 {
 	stir_shaken_globals_t *g = &stir_shaken_globals;
@@ -1617,7 +1628,7 @@ X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY 
 	return x;
 }
 
-stir_shaken_status_t stir_shaken_x509_cert_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name, const char *cert_text_full_name)
+stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name, const char *cert_text_full_name)
 {
 	BIO             *out = NULL, *bio = NULL;
 	int				i = 0;
@@ -1730,30 +1741,6 @@ void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
 			free(cert->body);
 			cert->body = NULL;
 		}
-		if (cert->name) {
-			free(cert->name);
-			cert->name = NULL;
-		}
-		if (cert->full_name) {
-			free(cert->full_name);
-			cert->full_name = NULL;
-		}
-		if (cert->original_name) {
-			free(cert->original_name);
-			cert->original_name = NULL;
-		}
-		if (cert->install_dir) {
-			free(cert->install_dir);
-			cert->install_dir = NULL;
-		}
-		if (cert->install_url) {
-			free(cert->install_url);
-			cert->install_url = NULL;
-		}
-		if (cert->public_url) {
-			free(cert->public_url);
-			cert->public_url = NULL;
-		}
 		stir_shaken_destroy_cert_fields(cert);
 
 		if (cert->verify_ctx) {
@@ -1779,7 +1766,7 @@ void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
 //
 // see: https://stackoverflow.com/questions/3810058/read-certificate-files-from-memory-instead-of-a-file-using-openssl
 //
-stir_shaken_status_t stir_shaken_load_X509_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem, size_t n)
+stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem, size_t n)
 {
 	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_OK;
 	BIO	*cbio = NULL;
@@ -1852,7 +1839,7 @@ exit:
 	return ss_status;
 }
 
-X509* stir_shaken_load_X509_from_file(stir_shaken_context_t *ss, const char *cert_tmp_name)
+X509* stir_shaken_load_x509_from_file(stir_shaken_context_t *ss, const char *cert_tmp_name)
 {
 	BIO				*in = NULL;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
@@ -2007,7 +1994,7 @@ err:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_load_X509_and_privkey(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey, unsigned char *priv_raw, uint32_t *priv_raw_len)
+stir_shaken_status_t stir_shaken_load_x509_and_privkey(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey, unsigned char *priv_raw, uint32_t *priv_raw_len)
 {
 	X509            *x = NULL;
 	char			*b = NULL;
@@ -2027,24 +2014,6 @@ stir_shaken_status_t stir_shaken_load_X509_and_privkey(stir_shaken_context_t *ss
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
-	b = basename((char*) cert_name);
-
-	memset(cert, 0, sizeof(stir_shaken_cert_t));
-	cert->full_name = malloc(strlen(cert_name) + 1);
-	cert->name = malloc(strlen(b) + 1);
-
-	if (!cert->name || !cert->full_name) {
-		
-		stir_shaken_set_error(ss, "Load cert and key: Out of memory [2]", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-	
-	memcpy(cert->full_name, cert_name, strlen(cert_name));
-	cert->full_name[strlen(cert_name)] = '\0';
-
-	memcpy(cert->name, b, strlen(b));
-	cert->name[strlen(b)] = '\0';
-
 	if (stir_shaken_file_exists(cert_name) != STIR_SHAKEN_STATUS_OK) {
 		
 		sprintf(err_buf, "Load cert and key: File doesn't exist: %s", cert_name);
@@ -2052,6 +2021,8 @@ stir_shaken_status_t stir_shaken_load_X509_and_privkey(stir_shaken_context_t *ss
 
 		goto err;
 	}
+
+	strncpy(cert->name, cert_name, STIR_SHAKEN_BUFLEN);
 
 	*pkey = stir_shaken_load_privkey_from_file(ss, private_key_name);
 	if (*pkey == NULL) {
@@ -2068,7 +2039,7 @@ stir_shaken_status_t stir_shaken_load_X509_and_privkey(stir_shaken_context_t *ss
 		}
 	}
 
-	x = stir_shaken_load_X509_from_file(ss, cert_name);
+	x = stir_shaken_load_x509_from_file(ss, cert_name);
 	if (!x) {
 		sprintf(err_buf, "(SSL) Failed to read X509 from file: %s", cert_name);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
@@ -2083,10 +2054,6 @@ stir_shaken_status_t stir_shaken_load_X509_and_privkey(stir_shaken_context_t *ss
 
 err:
 
-	if (cert->full_name) free(cert->full_name);
-	cert->full_name = NULL;
-	if (cert->name) free(cert->name);
-	cert->name = NULL;
 	stir_shaken_set_error_if_clear(ss, "Load cert and key: Error", STIR_SHAKEN_ERROR_GENERAL);
 
 	return STIR_SHAKEN_STATUS_FALSE;
@@ -2129,6 +2096,9 @@ stir_shaken_status_t stir_shaken_load_keys(stir_shaken_context_t *ss, EVP_PKEY *
 			goto fail;
 		}
 	}
+
+	*pub = pubkey;
+	*priv = privkey;
 
 	return STIR_SHAKEN_STATUS_OK;
 
@@ -2670,7 +2640,7 @@ stir_shaken_status_t stir_shaken_get_csr_raw(stir_shaken_context_t *ss, X509_REQ
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_get_X509_raw(stir_shaken_context_t *ss, X509 *x, unsigned char *raw, int *raw_len)
+stir_shaken_status_t stir_shaken_get_x509_raw(stir_shaken_context_t *ss, X509 *x, unsigned char *raw, int *raw_len)
 {
 	BIO *bio = NULL;
 

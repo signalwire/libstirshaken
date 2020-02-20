@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 
 			case OPTION_PUBKEY:
 				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
-					fprintf(stderr, "Public key name too long\n");
+					fprintf(stderr, "Option value too long\n");
 					goto fail;
 				}
 				strncpy(ca.public_key_name, optarg, STIR_SHAKEN_BUFLEN);
@@ -87,14 +87,29 @@ int main(int argc, char *argv[])
 
 			case OPTION_PRIVKEY:
 				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
-					fprintf(stderr, "Private key name too long\n");
+					fprintf(stderr, "Option value too long\n");
 					goto fail;
 				}
 				strncpy(ca.private_key_name, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "Private key name is: %s\n", ca.private_key_name);
 				break;
 
+			case OPTION_ISSUER_C:
+				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
+					fprintf(stderr, "Option value too long\n");
+					goto fail;
+				}
+				strncpy(ca.issuer_c, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "Issuer C is: %s\n", ca.issuer_c);
+				break;
+			
 			case OPTION_ISSUER_CN:
+				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
+					fprintf(stderr, "Option value too long\n");
+					goto fail;
+				}
+				strncpy(ca.issuer_cn, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "Issuer CN is: %s\n", ca.issuer_cn);
 				break;
 			
 			case OPTION_SERIAL:
@@ -148,6 +163,7 @@ int main(int argc, char *argv[])
 
 			case OPTION_HELP:
 				stirshaken_usage(argv[0]);
+				exit(EXIT_SUCCESS);
 				break;
 
 			case 'f':
@@ -171,6 +187,7 @@ int main(int argc, char *argv[])
 				exit(EXIT_FAILURE);
 
 			default:
+				fprintf(stderr, "Error. Missing options?");
 				help_hint(argv[0]);
 				exit(EXIT_FAILURE);
 		}
@@ -195,12 +212,18 @@ int main(int argc, char *argv[])
 		if (COMMAND_CERT_CA == command_cert_type) {
 
 			fprintf(stderr, "\n\nCreating CA certificate...\n\n");
+
+			strncpy(ca.cert_name, f, STIR_SHAKEN_BUFLEN);
+
 			command = COMMAND_CERT_CA;
 			command_name = COMMAND_NAME_CERT_CA;
 
 		} else if (COMMAND_CERT_SP == command_cert_type) {
 
 			fprintf(stderr, "\n\nCreating SP certificate...\n\n");
+			
+			strncpy(ca.cert_name, f, STIR_SHAKEN_BUFLEN);
+
 			command = COMMAND_CERT_SP;
 			command_name = COMMAND_NAME_CERT_SP;
 

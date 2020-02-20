@@ -41,6 +41,7 @@
 #define STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN 2000
 #define ASN1_DATE_LEN 128
 #define STIR_SHAKEN_SSL_BUF_LEN 1000
+#define STIR_SHAKEN_BUFLEN 1000
 
 #define TN_AUTH_LIST_OID "1.3.6.1.5.5.7.1.26"
 #define TN_AUTH_LIST_LN "TNAuthorizationList"
@@ -84,15 +85,19 @@ typedef struct stir_shaken_cert_s {
 	char        *body;
 	size_t		len;
 	uint8_t     is_fresh;
-	char		*full_name;
-	char		*name;						// name of the certificate, also used in file part of the publicly accessible URL
-    char        *original_name;             // name as input into stir_shaken_cert_configure    (strdup)
-    char        *basename;                  // canonical name of @original_name                 (strdup)
-	char		*install_dir;				// folder, where cert must be put to be accessible with @public_url for other SPs
-	char		*install_url;				// directory part of the publicly accessible URL
-	char		*public_url;				// publicly accessible URL which can be used to download the certificate, this is concatenated from @install_url and cert's @name and is put into PASSporT as @x5u and @params.info
+	char		name[STIR_SHAKEN_BUFLEN];					// name of the certificate, also used in file part of the publicly accessible URL
+	char		name_text[STIR_SHAKEN_BUFLEN];
+	char		full_name[STIR_SHAKEN_BUFLEN];
+	char		full_name_text[STIR_SHAKEN_BUFLEN];
+	char		install_dir[STIR_SHAKEN_BUFLEN];			// folder, where cert must be put to be accessible with @public_url for other SPs
+	char		install_url[STIR_SHAKEN_BUFLEN];			// directory part of the publicly accessible URL
+	char		public_url[STIR_SHAKEN_BUFLEN];				// publicly accessible URL which can be used to download the certificate, this is concatenated from @install_url and cert's @name and is put into PASSporT as @x5u and @params.info
 	EC_KEY              *ec_key;
 	EVP_PKEY            *private_key;
+	
+	unsigned long	hash;							// hash of cert name
+	char			hashstr[STIR_SHAKEN_BUFLEN];	// hashed name as string
+	char			cert_name_hashed[STIR_SHAKEN_BUFLEN];	// hashed name with .0 appended - ready to save in CA dir for usage with X509 cert path validation check
 
 	// Cert info retrieved with stir_shaken_read_cert
 	char *serialHex;
@@ -509,7 +514,7 @@ stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, 
 
 X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY *pkey);
 
-stir_shaken_status_t stir_shaken_x509_cert_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name, const char *cert_text_full_name);
+stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name, const char *cert_text_full_name);
 stir_shaken_status_t stir_shaken_add_tnauthlist_extension(stir_shaken_context_t *ss, uint32_t sp_code, X509 *x);
 X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int serial, int expiry_days);
 void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
@@ -518,6 +523,7 @@ stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, sti
 stir_shaken_status_t stir_shaken_cert_init_validation(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *ca_list, char *ca_dir, char *crl_list, char *crl_dir);
 unsigned long stir_shaken_get_cert_name_hashed(stir_shaken_context_t *ss, X509 *x);
 void stir_shaken_cert_name_hashed_2_string(unsigned long hash, char *buf, int buflen);
+void stir_shaken_hash_cert_name(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, const char *ca_list, const char *ca_dir, const char *crl_list, const char *crl_dir);
 void stir_shaken_cert_store_cleanup(void);
 stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
@@ -533,15 +539,16 @@ int stir_shaken_cert_get_version(stir_shaken_cert_t *cert);
 
 EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const char *file);
 EVP_PKEY* stir_shaken_load_privkey_from_file(stir_shaken_context_t *ss, const char *file);
-stir_shaken_status_t stir_shaken_load_X509_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem, size_t n);
-stir_shaken_status_t stir_shaken_load_X509_from_mem_through_file(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);
-X509* stir_shaken_load_X509_from_file(stir_shaken_context_t *ss, const char *cert_tmp_name);
+stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem, size_t n);
+stir_shaken_status_t stir_shaken_load_x509_from_mem_through_file(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);
+X509* stir_shaken_load_x509_from_file(stir_shaken_context_t *ss, const char *cert_tmp_name);
 EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const char *file);
 EVP_PKEY* stir_shaken_load_privkey_from_file(stir_shaken_context_t *ss, const char *file);
 stir_shaken_status_t stir_shaken_load_key_raw(stir_shaken_context_t *ss, const char *file, unsigned char *key_raw, uint32_t *key_raw_len);
-stir_shaken_status_t stir_shaken_load_X509_and_key(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey, unsigned char *priv_raw, uint32_t *priv_raw_len);
+stir_shaken_status_t stir_shaken_load_x509_and_privkey(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey, unsigned char *priv_raw, uint32_t *priv_raw_len);
+stir_shaken_status_t stir_shaken_load_keys(stir_shaken_context_t *ss, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name, unsigned char *priv_raw, uint32_t *priv_raw_len);
 stir_shaken_status_t stir_shaken_get_csr_raw(stir_shaken_context_t *ss, X509_REQ *req, unsigned char *body, int *body_len);
-stir_shaken_status_t stir_shaken_get_X509_raw(stir_shaken_context_t *ss, X509 *x, unsigned char *raw, int *raw_len);
+stir_shaken_status_t stir_shaken_get_x509_raw(stir_shaken_context_t *ss, X509 *x, unsigned char *raw, int *raw_len);
 stir_shaken_status_t stir_shaken_pubkey_to_raw(stir_shaken_context_t *ss, EVP_PKEY *evp_key, unsigned char *key, int *key_len);
 stir_shaken_status_t stir_shaken_privkey_to_raw(stir_shaken_context_t *ss, EVP_PKEY *evp_key, unsigned char *key, int *key_len);
 stir_shaken_status_t stir_shaken_get_pubkey_raw_from_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, unsigned char *key, int *key_len);

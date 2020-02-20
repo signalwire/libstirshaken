@@ -3,14 +3,6 @@
 
 stir_shaken_status_t stir_shaken_cert_configure(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, const char *name, const char *install_dir, const char *install_url)
 {
-    char a[500] = {0};
-    char b[500] = {0};
-    int c = 0;
-    int d = 0;
-    int n = 0;
-    int e = 0;
-
-
     stir_shaken_clear_error(ss);
 
     if (!cert) {
@@ -18,101 +10,44 @@ stir_shaken_status_t stir_shaken_cert_configure(stir_shaken_context_t *ss, stir_
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
-
-	// TODO check if dirs exist
-
-    // Cert's installation dir
+	if (name) {
+        strncpy(cert->name, name, STIR_SHAKEN_BUFLEN);
+	}
 
     if (install_dir) {
-
-        c = strlen(install_dir);
-        cert->install_dir = malloc(c + 5);
-        if (!cert->install_dir) {
-            stir_shaken_set_error(ss, "Cert configure: Cannot allocate memory", STIR_SHAKEN_ERROR_GENERAL);
-            return STIR_SHAKEN_STATUS_FALSE;
-        }
-        memset(cert->install_dir, 0, c + 5);
-        e = snprintf(b, 500, "%s/", install_dir);
-        if (e >= 500) {
-            stir_shaken_set_error(ss, "Cert configure: Buffer too short", STIR_SHAKEN_ERROR_GENERAL);
-            return STIR_SHAKEN_STATUS_FALSE;
-        }
-        memcpy(cert->install_dir, b, e);
+		snprintf(cert->install_dir, STIR_SHAKEN_BUFLEN, "%s/", install_dir);
         stir_shaken_remove_multiple_adjacent(cert->install_dir, '/');
     }
 
-    // Cert's installation URL
-
     if (install_url) {
     
-        d = strlen(install_url);
-        cert->install_url = malloc(d + 15);
-        if (!cert->install_url) {
-            stir_shaken_set_error(ss, "Cert configure: Cannot allocate memory", STIR_SHAKEN_ERROR_GENERAL);
-            return STIR_SHAKEN_STATUS_FALSE;
-        }
-        memset(cert->install_url, 0, d + 15);
-        e = snprintf(b, 500, "%s/", install_url);
-        if (e >= 500) {
-            stir_shaken_set_error(ss, "Cert configure: Buffer too short", STIR_SHAKEN_ERROR_GENERAL);
-            return STIR_SHAKEN_STATUS_FALSE;
-        }
-        memcpy(cert->install_url, b, e);
-        if (strstr(cert->install_url, "http://") == cert->install_url) {
+		snprintf(cert->install_url, STIR_SHAKEN_BUFLEN, "%s", install_url);
+        
+		if (strstr(cert->install_url, "http://") == cert->install_url) {
             stir_shaken_remove_multiple_adjacent(cert->install_url + 7, '/');
         } else {
             stir_shaken_remove_multiple_adjacent(cert->install_url, '/');
         }
     }
 
-    // Cert's full name
-
     if (name) {
         
-        n = strlen(name);
-
-        cert->original_name = strdup(name);
-        
-        memcpy(a, name, n + 1);
-        cert->basename = strdup(basename(a));
-
-        cert->full_name = malloc(c + n + 5);
-        if (!cert->full_name) {
-            stir_shaken_set_error(ss, "Cert configure: Cannot allocate memory", STIR_SHAKEN_ERROR_GENERAL);
-            return STIR_SHAKEN_STATUS_FALSE;
-        }
-        memset(cert->full_name, 0, c + n + 5);
-        if (install_dir) {
-            memcpy(a, name, n + 1);
-            e = snprintf(b, 500, "%s/%s", install_dir, basename(a));
-        } else {
-            e = snprintf(b, 500, "%s", basename(a));
-        }
-        if (e >= 500) {
-            stir_shaken_set_error(ss, "Cert configure: Buffer too short", STIR_SHAKEN_ERROR_GENERAL);
-            return STIR_SHAKEN_STATUS_FALSE;
-        }
-        memcpy(cert->full_name, b, e);
+		if (install_dir) {
+			snprintf(cert->full_name, STIR_SHAKEN_BUFLEN, "%s/%s", install_dir, cert->name);
+		} else {
+			strncpy(cert->full_name, cert->name, STIR_SHAKEN_BUFLEN);
+		}
         stir_shaken_remove_multiple_adjacent(cert->full_name, '/');
 
-        // Cert's publicly accessible URL
-        cert->public_url = malloc(d + n + 5);
-        if (!cert->public_url) {
-            stir_shaken_set_error(ss, "Cert configure: Cannot allocate memory", STIR_SHAKEN_ERROR_GENERAL);
-            return STIR_SHAKEN_STATUS_FALSE;
-        }
-        memset(cert->public_url, 0, d + n + 5);
+        snprintf(cert->full_name_text, STIR_SHAKEN_BUFLEN, "%s.text", cert->full_name);
+
         if (install_url) {
-            e = snprintf(b, 500, "%s/%s", install_url, cert->name);
+            snprintf(cert->public_url, STIR_SHAKEN_BUFLEN, "%s/%s", install_url, cert->name);
         } else {
-            e = snprintf(b, 500, "%s", cert->name);
+            snprintf(cert->public_url, STIR_SHAKEN_BUFLEN, "%s", cert->name);
         }
-        if (e >= 500) {
-            stir_shaken_set_error(ss, "Cert configure: Buffer too short", STIR_SHAKEN_ERROR_GENERAL);
-            return STIR_SHAKEN_STATUS_FALSE;
-        }
-        memcpy(cert->public_url, b, e);
-        if (strstr(cert->public_url, "http://") == cert->public_url) {
+        
+		if (strstr(cert->public_url, "http://") == cert->public_url) {
             stir_shaken_remove_multiple_adjacent(cert->public_url + 7, '/');
         } else {
             stir_shaken_remove_multiple_adjacent(cert->public_url, '/');
