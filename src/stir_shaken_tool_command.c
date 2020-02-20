@@ -48,7 +48,15 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			}
 			break;
 
-		case COMMAND_CERT:
+		case COMMAND_CERT_CA:
+
+			ca->cert.x = stir_shaken_generate_x509_self_signed_ca_cert(ss, ca->keys.private_key, ca->keys.public_key, ca->issuer_c, ca->issuer_cn, ca->serial, ca->expiry_days);
+			if (!ca->cert.x) {
+				goto fail;
+			}
+			break;
+
+		case COMMAND_CERT_SP:
 			break;
 
 		case COMMAND_INSTALL_CERT:

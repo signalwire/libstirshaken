@@ -9,11 +9,15 @@
 
 #define COMMAND_NAME_KEYS			"keys"
 #define COMMAND_NAME_CERT			"cert"
+#define COMMAND_NAME_CERT_CA		"cert (CA)"
+#define COMMAND_NAME_CERT_SP		"cert (SP)"
 #define COMMAND_NAME_INSTALL_CERT	"install"
 #define COMMAND_NAME_UNKNOWN		"unknown"
 #define COMMAND_KEYS 0
 #define COMMAND_CERT 1
-#define COMMAND_INSTALL_CERT 2
+#define COMMAND_CERT_CA 2
+#define COMMAND_CERT_SP 3
+#define COMMAND_INSTALL_CERT 4
 #define COMMAND_UNKNOWN 100
 
 #define OPTION_PUBKEY		1
@@ -25,6 +29,17 @@
 #define OPTION_TYPE			7
 #define OPTION_HELP			8
 #define OPTION_MAX			9
+
+#define OPTION_NAME_PUBKEY		"pubkey"
+#define OPTION_NAME_PRIVKEY		"privkey"
+#define OPTION_NAME_ISSUER_C	"issuer_c"
+#define OPTION_NAME_ISSUER_CN	"issuer_cn"
+#define OPTION_NAME_SERIAL		"serial"
+#define OPTION_NAME_EXPIRY		"expiry"
+#define OPTION_NAME_TYPE		"type"
+#define OPTION_NAME_TYPE_SP		"SP"
+#define OPTION_NAME_TYPE_CA		"CA"
+#define OPTION_NAME_HELP		"help"
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
     if (stir_shaken_is_error_set(&ss)) { \

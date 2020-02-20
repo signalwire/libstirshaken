@@ -6,10 +6,13 @@ static void stirshaken_usage(const char *name)
 	if (name == NULL)
 		return;
 	
-	fprintf(stderr, "\nusage:\t %s %s|%s|%s (params...) [-f output file name]\n\n", name, COMMAND_NAME_KEYS, COMMAND_NAME_CERT, COMMAND_NAME_INSTALL_CERT);
-	fprintf(stderr, "     \t keys			: generate key pair\n");
-	fprintf(stderr, "     \t cert			: generate SP or CA certificate depending on --type\n");
-	fprintf(stderr, "     \t install		: hash CA certificate and copy into CA dir\n");
+	fprintf(stderr, "\nusage:\t command\n\n", name);
+	fprintf(stderr, "\t\t %s --%s pub.pem --%s priv.pem\n", COMMAND_NAME_KEYS, OPTION_NAME_PUBKEY, OPTION_NAME_PRIVKEY);
+	fprintf(stderr, "\t\t %s --%s %s --%s key --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE, OPTION_NAME_TYPE_CA, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY);
+	fprintf(stderr, "\t\t %s --pubkey pub.pem --privkey priv.pem\n", COMMAND_NAME_INSTALL_CERT);
+	fprintf(stderr, "\t\t %s			: generate key pair\n", COMMAND_NAME_KEYS);
+	fprintf(stderr, "\t\t %s			: generate SP or CA certificate depending on --type\n", COMMAND_NAME_CERT);
+	fprintf(stderr, "\t\t %s		: hash CA certificate and copy into CA dir\n\n", COMMAND_NAME_INSTALL_CERT);
 	fprintf(stderr, "\n");
 }
 
@@ -40,6 +43,7 @@ int main(int argc, char *argv[])
 	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
 	int command = COMMAND_UNKNOWN;
 	const char *command_name = COMMAND_NAME_UNKNOWN;
+	int command_cert_type = -1;
 
 
 	if (argc < 2) {
@@ -49,14 +53,14 @@ int main(int argc, char *argv[])
 
 	int option_index = 0;
 	struct option long_options[] = {
-		{ "pubkey", required_argument, 0, OPTION_PUBKEY },
-		{ "privkey", required_argument, 0, OPTION_PRIVKEY },
-		{ "issuer_c", required_argument, 0, OPTION_ISSUER_C },
-		{ "issuer_cn", required_argument, 0, OPTION_ISSUER_CN },
-		{ "serial", required_argument, 0, OPTION_SERIAL },
-		{ "expiry", required_argument, 0, OPTION_EXPIRY },
-		{ "type", required_argument, 0, OPTION_TYPE },
-		{ "help", no_argument, 0, OPTION_HELP },
+		{ OPTION_NAME_PUBKEY, required_argument, 0, OPTION_PUBKEY },
+		{ OPTION_NAME_PRIVKEY, required_argument, 0, OPTION_PRIVKEY },
+		{ OPTION_NAME_ISSUER_C, required_argument, 0, OPTION_ISSUER_C },
+		{ OPTION_NAME_ISSUER_CN, required_argument, 0, OPTION_ISSUER_CN },
+		{ OPTION_NAME_SERIAL, required_argument, 0, OPTION_SERIAL },
+		{ OPTION_NAME_EXPIRY, required_argument, 0, OPTION_EXPIRY },
+		{ OPTION_NAME_TYPE, required_argument, 0, OPTION_TYPE },
+		{ OPTION_NAME_HELP, no_argument, 0, OPTION_HELP },
 		{ 0 }
 	};
 
@@ -127,6 +131,19 @@ int main(int argc, char *argv[])
 
 			case OPTION_TYPE:
 
+				if (!strcmp(optarg, OPTION_NAME_TYPE_CA)) {
+					
+					command_cert_type = COMMAND_CERT_CA;
+				
+				} else if (!strcmp(optarg, OPTION_NAME_TYPE_SP)) {
+
+					command_cert_type = COMMAND_CERT_SP;
+
+				} else {
+					fprintf(stderr, "Invalid option %s for --type\n", optarg);
+					goto fail;
+				}
+
 				break;
 
 			case OPTION_HELP:
@@ -175,9 +192,23 @@ int main(int argc, char *argv[])
 
 	} else if (!strcmp(argv[optind], COMMAND_NAME_CERT)) {
 
-		fprintf(stderr, "\n\nCreating CA certificate...\n\n");
-		command = COMMAND_CERT;
-		command_name = COMMAND_NAME_CERT;
+		if (COMMAND_CERT_CA == command_cert_type) {
+
+			fprintf(stderr, "\n\nCreating CA certificate...\n\n");
+			command = COMMAND_CERT_CA;
+			command_name = COMMAND_NAME_CERT_CA;
+
+		} else if (COMMAND_CERT_SP == command_cert_type) {
+
+			fprintf(stderr, "\n\nCreating SP certificate...\n\n");
+			command = COMMAND_CERT_SP;
+			command_name = COMMAND_NAME_CERT_SP;
+
+		} else {
+
+			fprintf(stderr, "Bad --type for command %s\n", command_name);
+			goto fail;
+		}
 
 	} else if (!strcmp(argv[optind], COMMAND_NAME_INSTALL_CERT)) {
 
