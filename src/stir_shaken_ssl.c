@@ -1779,7 +1779,7 @@ void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
 //
 // see: https://stackoverflow.com/questions/3810058/read-certificate-files-from-memory-instead-of-a-file-using-openssl
 //
-stir_shaken_status_t stir_shaken_load_cert_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem, size_t n)
+stir_shaken_status_t stir_shaken_load_X509_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem, size_t n)
 {
 	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_OK;
 	BIO	*cbio = NULL;
@@ -1852,10 +1852,11 @@ exit:
 	return ss_status;
 }
 
-stir_shaken_status_t stir_shaken_load_cert_from_file(stir_shaken_context_t *ss, X509 **x, const char *cert_tmp_name)
+X509* stir_shaken_load_X509_from_file(stir_shaken_context_t *ss, const char *cert_tmp_name)
 {
 	BIO				*in = NULL;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	X509			*x = NULL;
 	
 	
 	stir_shaken_clear_error(ss);
@@ -1863,32 +1864,152 @@ stir_shaken_status_t stir_shaken_load_cert_from_file(stir_shaken_context_t *ss, 
 	in = BIO_new(BIO_s_file());
 	if (!in) {
 		stir_shaken_set_error(ss, "(SSL) Failed to create BIO", STIR_SHAKEN_ERROR_SSL);
-		return STIR_SHAKEN_STATUS_FALSE;
+		return NULL;
 	}
 
 	if (BIO_read_filename(in, cert_tmp_name) <= 0) {
 		sprintf(err_buf, "Error reading file: %s", cert_tmp_name);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-		return STIR_SHAKEN_STATUS_FALSE;
+		goto exit;
 	}
 
-	*x = PEM_read_bio_X509(in, NULL, NULL, NULL);
-	if (*x == NULL) {
+	x = PEM_read_bio_X509(in, NULL, NULL, NULL);
+	if (x == NULL) {
 		sprintf(err_buf, "(SSL) Failed to read X509 from file: %s", cert_tmp_name);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-		BIO_free(in);
-		in = NULL;
-		return STIR_SHAKEN_STATUS_FALSE;
+		goto exit;
 	}
 
-	BIO_free(in); in = NULL;
-	return STIR_SHAKEN_STATUS_OK;
+exit:
+	if (in) BIO_free(in); in = NULL;
+	return x;
 }
 
-stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey, unsigned char *priv_raw, uint32_t *priv_raw_len)
+EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const char *file)
+{
+	BIO			*in = NULL;
+	char		err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	EVP_PKEY	*key = NULL;
+
+
+	if (!file) {
+		return NULL;
+	}
+
+	if (stir_shaken_file_exists(file) != STIR_SHAKEN_STATUS_OK) {
+		sprintf(err_buf, "Cannot load public key: File doesn't exist: %s", file);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	in = BIO_new(BIO_s_file());
+	if (BIO_read_filename(in, file) <= 0) {
+		sprintf(err_buf, "Cannot load public key: Error reading file: %s", file);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+		goto exit;
+	}
+
+	key = PEM_read_bio_PUBKEY(in, NULL, NULL, NULL);
+	if (key == NULL) {
+		sprintf(err_buf, "Error reading public key from SSL BIO, from file: %s", file);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+		goto exit;
+	}
+
+exit:
+	if (in) BIO_free(in); in = NULL;
+	return key;
+}
+
+EVP_PKEY* stir_shaken_load_privkey_from_file(stir_shaken_context_t *ss, const char *file)
+{
+	BIO			*in = NULL;
+	char		err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	EVP_PKEY	*key = NULL;
+
+
+	if (!file) {
+		return NULL;
+	}
+
+	if (stir_shaken_file_exists(file) != STIR_SHAKEN_STATUS_OK) {
+		sprintf(err_buf, "Cannot load private key: File doesn't exist: %s", file);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	in = BIO_new(BIO_s_file());
+	if (BIO_read_filename(in, file) <= 0) {
+		sprintf(err_buf, "Cannot load private key: Error reading file: %s", file);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+		goto exit;
+	}
+
+	key = PEM_read_bio_PrivateKey(in, NULL, NULL, NULL);
+	if (key == NULL) {
+		sprintf(err_buf, "Error reading private key from SSL BIO, from file: %s", file);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+		goto exit;
+	}
+
+exit:
+	if (in) BIO_free(in); in = NULL;
+	return key;
+}
+
+stir_shaken_status_t stir_shaken_load_key_raw(stir_shaken_context_t *ss, const char *file, unsigned char *key_raw, uint32_t *key_raw_len)
+{
+	FILE		*fp = NULL;
+	uint32_t	raw_key_len = 0, sz = 0;
+	char		err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+
+	if (!key_raw_len || *key_raw_len == 0) {
+		sprintf(err_buf, "Buffer for %s invalid", file);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+		goto err;
+	}
+
+	fp = fopen(file, "r");
+	if (!fp) {
+		sprintf(err_buf, "Cannot open key file %s for reading", file);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+		goto err;
+	}
+
+	fseek(fp, 0, SEEK_END);
+	sz = ftell(fp);
+	rewind(fp);
+
+	if (*key_raw_len <= sz) {
+		sprintf(err_buf, "Buffer for key from file %s too short", file);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+		goto err;
+	}
+
+	raw_key_len = fread(key_raw, 1, *key_raw_len, fp);
+	if (raw_key_len != sz || ferror(fp)) {
+		sprintf(err_buf, "Error reading key from file %s, which is %zu bytes", file, sz);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+		goto err;
+	}
+
+	fclose(fp);
+	fp = NULL;
+
+	key_raw[raw_key_len] = '\0';
+	*key_raw_len = raw_key_len;
+
+	return STIR_SHAKEN_STATUS_OK;
+
+err:
+	if (fp) fclose(fp);
+	stir_shaken_set_error_if_clear(ss, "Cannot load raw key", STIR_SHAKEN_ERROR_GENERAL);
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+stir_shaken_status_t stir_shaken_load_X509_and_privkey(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey, unsigned char *priv_raw, uint32_t *priv_raw_len)
 {
 	X509            *x = NULL;
-	BIO             *in = NULL;
 	char			*b = NULL;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	
@@ -1932,107 +2053,36 @@ stir_shaken_status_t stir_shaken_load_cert_and_key(stir_shaken_context_t *ss, co
 		goto err;
 	}
 
-	if (stir_shaken_file_exists(private_key_name) != STIR_SHAKEN_STATUS_OK) {
-		
-		sprintf(err_buf, "Load cert and key: File doesn't exist: %s", private_key_name);
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
-
-		goto err;
-	}
-
-	in = BIO_new(BIO_s_file());
-	if (BIO_read_filename(in, private_key_name) <= 0) {
-		
-		sprintf(err_buf, "Load cert and key: Error reading file: %s", private_key_name);
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-
-		goto err;
-	}
-
-	*pkey = PEM_read_bio_PrivateKey(in, NULL, NULL, NULL);
+	*pkey = stir_shaken_load_privkey_from_file(ss, private_key_name);
 	if (*pkey == NULL) {
 		sprintf(err_buf, "Load cert and key: Error geting SSL key from file: %s", private_key_name);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 		goto err;
 	}
-	BIO_free(in); in = NULL;
 
 	if (priv_raw) {
-
-		FILE *fp = NULL;
-		uint32_t raw_key_len = 0, sz = 0;
-
-		if (!priv_raw_len || *priv_raw_len == 0) {
-			sprintf(err_buf, "Generate keys: Buffer for %s invalid", private_key_name);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, private_key_name, priv_raw, priv_raw_len)) {
+			sprintf(err_buf, "Load cert and key: Error reading raw private key from file %s", private_key_name);
+			stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 			goto err;
 		}
-
-		// Read raw private key into buffer
-		fp = fopen(private_key_name, "r");
-		if (!fp) {
-			sprintf(err_buf, "Generate keys: Cannot open private key %s for reading", private_key_name);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
-			goto err;
-		}
-
-		fseek(fp, 0, SEEK_END);
-		sz = ftell(fp);
-		rewind(fp);
-		
-		if (*priv_raw_len <= sz) {
-			sprintf(err_buf, "Generate keys: Buffer for %s too short", private_key_name);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
-			goto err;
-		}
-
-		// TODO remove
-		printf("Reading raw key from: %s, which is %zu bytes\n", private_key_name, sz);
-
-		raw_key_len = fread(priv_raw, 1, *priv_raw_len, fp);
-		if (raw_key_len != sz || ferror(fp)) {
-			sprintf(err_buf, "Generate keys: Error reading private key %s, which is %zu bytes", private_key_name, sz);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
-			goto err;
-		}
-
-		fclose(fp);
-		fp = NULL;
-
-		priv_raw[raw_key_len] = '\0';
-		*priv_raw_len = raw_key_len;
 	}
 
-
-	in = BIO_new(BIO_s_file());
-	if (!in) {
-		stir_shaken_set_error(ss, "SSL: Failed to create BIO", STIR_SHAKEN_ERROR_SSL);
-		goto err;
-	}
-
-	if (BIO_read_filename(in, cert_name) <= 0) {
-		sprintf(err_buf, "Failed to read file: %s. Does it exist?", cert_name);
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-		goto err;
-	}
-
-	x = PEM_read_bio_X509(in, NULL, 0, NULL);
+	x = stir_shaken_load_X509_from_file(ss, cert_name);
 	if (!x) {
 		sprintf(err_buf, "(SSL) Failed to read X509 from file: %s", cert_name);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 		goto err;
 	}
 
+
 	cert->x = x;
 	cert->private_key = *pkey;
-
-	BIO_free(in);
-	in = NULL;
 
 	return STIR_SHAKEN_STATUS_OK;
 
 err:
-	
+
 	if (cert->full_name) free(cert->full_name);
 	cert->full_name = NULL;
 	if (cert->name) free(cert->name);
@@ -2042,11 +2092,57 @@ err:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
+stir_shaken_status_t stir_shaken_load_keys(stir_shaken_context_t *ss, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name, unsigned char *priv_raw, uint32_t *priv_raw_len)
+{
+	EVP_PKEY *pubkey = NULL;
+	EVP_PKEY *privkey = NULL;
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+
+
+	if (!priv && !pub && (!priv_raw || !priv_raw_len)) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
+	}
+
+	if (public_key_full_name) {
+		pubkey = stir_shaken_load_pubkey_from_file(ss, public_key_full_name);
+		if (!pubkey) {
+			sprintf(err_buf, "Failed to read public key from file %s", public_key_full_name);
+			stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+			goto fail;
+		}
+	}
+	
+	if (private_key_full_name) {
+		privkey = stir_shaken_load_privkey_from_file(ss, private_key_full_name);
+		if (!privkey) {
+			sprintf(err_buf, "Failed to read private key from file %s", private_key_full_name);
+			stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+			goto fail;
+		}
+	}
+
+	if (priv_raw && priv_raw_len) {
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, private_key_full_name, priv_raw, priv_raw_len)) {
+			sprintf(err_buf, "Failed to read raw private key from file %s", private_key_full_name);
+			stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+			goto fail;
+		}
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+	if (pubkey) EVP_PKEY_free(pubkey);
+	if (privkey) EVP_PKEY_free(privkey);
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
 stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name, unsigned char *priv_raw, uint32_t *priv_raw_len)
 {
 	EC_KEY                  *ec_key = NULL;
 	EVP_PKEY                *pk = NULL;
-	BIO                     *out = NULL, *bio = NULL, *key = NULL;
+	BIO                     *out = NULL, *bio = NULL;
 	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	int						pkey_type = EVP_PKEY_EC;
 	FILE					*fp = NULL;
@@ -2079,8 +2175,8 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	// file_remove(private_key_full_name, NULL);
-	// file_remove(public_key_full_name, NULL);
+	stir_shaken_file_remove(private_key_full_name);
+	stir_shaken_file_remove(public_key_full_name);
 
 	/* Generate EC key associated with our chosen curve. */
 	ec_key = EC_KEY_new_by_curve_name(stir_shaken_globals.curve_nid);
@@ -2104,9 +2200,6 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 		goto fail;
 	}
 	
-	// TODO remove
-	printf("STIR-Shaken: SSL: Private/public EC key pair is OK\n");
-
 	// Print them out
 	out = BIO_new_fp(stdout, BIO_NOCLOSE);
 	PEM_write_bio_ECPrivateKey(out, ec_key, NULL, NULL, 0, NULL, NULL);
@@ -2133,110 +2226,44 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 	BIO_free_all(bio);
 	bio = NULL;
 
-	key = BIO_new(BIO_s_file());
-	if (BIO_read_filename(key, private_key_full_name) <= 0) {
-		stir_shaken_set_error(ss, "Generate keys: SSL ERR: Err, bio read priv key", STIR_SHAKEN_ERROR_SSL);
-		goto fail;
-	}
-	pk = PEM_read_bio_PrivateKey(key, NULL, NULL, NULL);
-	if (pk == NULL) {
-		
-		sprintf(err_buf, "Generate keys: Error geting SSL key from file: %s", private_key_full_name);
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-
+	pk = stir_shaken_load_privkey_from_file(ss, private_key_full_name);
+	if (!pk) {
+		sprintf(err_buf, "Failed to read private key from file %s", private_key_full_name);
+		stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 	*priv = pk;
+
 	pkey_type = EVP_PKEY_id(pk);
 	if (pkey_type != EVP_PKEY_EC) {
-
 		sprintf(err_buf, "Generate keys: Private key is not EVP_PKEY_EC type");
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 	
-	BIO_free_all(key);
-	key = NULL;
-
 	if (priv_raw) {
-
-		FILE *fp = NULL;
-		uint32_t raw_key_len = 0, sz = 0;
-
-		if (!priv_raw_len || *priv_raw_len == 0) {
-			
-			sprintf(err_buf, "Generate keys: Buffer for %s invalid", private_key_full_name);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, private_key_full_name, priv_raw, priv_raw_len)) {
+			sprintf(err_buf, "Generate keys: Error reading raw private key from file %s", private_key_full_name);
+			stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
 			goto fail;
 		}
-
-		// Read raw private key into buffer
-		fp = fopen(private_key_full_name, "r");
-		if (!fp) {
-
-			sprintf(err_buf, "Generate keys: Cannot open private key %s for reading", private_key_full_name);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
-			goto fail;
-		}
-
-		fseek(fp, 0, SEEK_END);
-		sz = ftell(fp);
-		rewind(fp);
-		
-		if (*priv_raw_len <= sz) {
-			
-			sprintf(err_buf, "Generate keys: Buffer for %s too short", private_key_full_name);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
-			goto fail;
-		}
-
-		// TODO remove
-		printf("Reading raw key from: %s, which is %zu bytes\n", private_key_full_name, sz);
-
-		raw_key_len = fread(priv_raw, 1, *priv_raw_len, fp);
-		if (raw_key_len != sz || ferror(fp)) {
-
-			sprintf(err_buf, "Generate keys: Error reading private key %s, which is %zu bytes", private_key_full_name, sz);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
-			goto fail;
-		}
-
-		fclose(fp);
-		fp = NULL;
-
-		priv_raw[raw_key_len] = '\0';
-		*priv_raw_len = raw_key_len;
 	}
 
-	key = BIO_new(BIO_s_file());
-	if (BIO_read_filename(key, public_key_full_name) <= 0) {
-		stir_shaken_set_error(ss, "Generate keys: SSL ERR: Err, bio read public key", STIR_SHAKEN_ERROR_SSL);
-		goto fail;
-	}
-	pk = PEM_read_bio_PUBKEY(key, NULL, NULL, NULL);
-	if (pk == NULL) {
-		
-		sprintf(err_buf, "Generate keys: Error geting SSL key from file: %s", public_key_full_name);
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-
+	pk = stir_shaken_load_pubkey_from_file(ss, public_key_full_name);
+	if (!pk) {
+		sprintf(err_buf, "Failed to read public key from file %s", public_key_full_name);
+		stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 	*pub = pk;
+
 	pkey_type = EVP_PKEY_id(pk);
 	if (pkey_type != EVP_PKEY_EC) {
-
 		sprintf(err_buf, "Generate keys: Public key is not EVP_PKEY_EC type");
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-
 		goto fail;
 	}
 	
-	// TODO remove
-	printf("Generate keys: Public key is EVP_PKEY_EC type\n");
-
-	// TODO set error string, allow for retrieval printf("STIR-Shaken: SSL: Loaded pkey from: %s\n", public_key_full_name);
-
-	if (key) BIO_free_all(key); key = NULL;
 	if (out) BIO_free_all(out); out = NULL;
 	if (bio) BIO_free_all(bio); bio = NULL;
 
@@ -2244,7 +2271,6 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 
 fail:
 
-	if (key) BIO_free_all(key); key = NULL;
 	if (out) BIO_free_all(out); out = NULL;
 	if (bio) BIO_free_all(bio); bio = NULL;
 	stir_shaken_set_error_if_clear(ss, "Generate keys: Error", STIR_SHAKEN_ERROR_GENERAL);
@@ -2628,7 +2654,6 @@ stir_shaken_status_t stir_shaken_get_csr_raw(stir_shaken_context_t *ss, X509_REQ
 	bio = BIO_new(BIO_s_mem());
 
 	if (!bio || (PEM_write_bio_X509_REQ(bio, req) <= 0)) {
-
 		stir_shaken_set_error(ss, "Get csr raw: Failed to write from X509_REQ into memory BIO", STIR_SHAKEN_ERROR_SSL);
 		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
@@ -2636,7 +2661,6 @@ stir_shaken_status_t stir_shaken_get_csr_raw(stir_shaken_context_t *ss, X509_REQ
 
 	*body_len = BIO_read(bio, body, *body_len);
 	if (*body_len <= 0) {
-
 		stir_shaken_set_error(ss, "Get csr raw: Failed to read from output memory BIO", STIR_SHAKEN_ERROR_SSL);
 		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
@@ -2646,7 +2670,7 @@ stir_shaken_status_t stir_shaken_get_csr_raw(stir_shaken_context_t *ss, X509_REQ
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_get_cert_raw(stir_shaken_context_t *ss, X509 *x, unsigned char *raw, int *raw_len)
+stir_shaken_status_t stir_shaken_get_X509_raw(stir_shaken_context_t *ss, X509 *x, unsigned char *raw, int *raw_len)
 {
 	BIO *bio = NULL;
 
@@ -2655,7 +2679,6 @@ stir_shaken_status_t stir_shaken_get_cert_raw(stir_shaken_context_t *ss, X509 *x
 	bio = BIO_new(BIO_s_mem());
 
 	if (!bio || (PEM_write_bio_X509(bio, x) <= 0)) {
-
 		stir_shaken_set_error(ss, "Get cert raw: Failed to write from X509 into memory BIO", STIR_SHAKEN_ERROR_SSL);
 		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
@@ -2663,7 +2686,6 @@ stir_shaken_status_t stir_shaken_get_cert_raw(stir_shaken_context_t *ss, X509 *x
 
 	*raw_len = BIO_read(bio, raw, *raw_len);
 	if (*raw_len <= 0) {
-
 		stir_shaken_set_error(ss, "Get cert raw: Failed to read from output memory BIO", STIR_SHAKEN_ERROR_SSL);
 		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
@@ -2677,7 +2699,7 @@ stir_shaken_status_t stir_shaken_get_cert_raw(stir_shaken_context_t *ss, X509 *x
  * @key - (out) buffer for raw public key
  * @key_len - (in/out) on entry buffer length, on return read key length
  */
-stir_shaken_status_t stir_shaken_evp_key_to_raw(stir_shaken_context_t *ss, EVP_PKEY *evp_key, unsigned char *key, int *key_len)
+stir_shaken_status_t stir_shaken_pubkey_to_raw(stir_shaken_context_t *ss, EVP_PKEY *evp_key, unsigned char *key, int *key_len)
 {
 	BIO *bio = NULL;
 
@@ -2686,7 +2708,6 @@ stir_shaken_status_t stir_shaken_evp_key_to_raw(stir_shaken_context_t *ss, EVP_P
 	bio = BIO_new(BIO_s_mem());
 
 	if (!bio || (PEM_write_bio_PUBKEY(bio, evp_key) <= 0)) {
-
 		stir_shaken_set_error(ss, "Get pubkey raw: Failed to write from EVP_PKEY into memory BIO", STIR_SHAKEN_ERROR_SSL);
 		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
@@ -2694,8 +2715,32 @@ stir_shaken_status_t stir_shaken_evp_key_to_raw(stir_shaken_context_t *ss, EVP_P
 
 	*key_len = BIO_read(bio, key, *key_len);
 	if (*key_len <= 0) {
-
 		stir_shaken_set_error(ss, "Get pubkey raw: Failed to read from output memory BIO", STIR_SHAKEN_ERROR_SSL);
+		BIO_free_all(bio); bio = NULL;
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	BIO_free_all(bio); bio = NULL;
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_privkey_to_raw(stir_shaken_context_t *ss, EVP_PKEY *evp_key, unsigned char *key, int *key_len)
+{
+	BIO *bio = NULL;
+
+	if (!evp_key || !key || !key_len) return STIR_SHAKEN_STATUS_TERM;
+
+	bio = BIO_new(BIO_s_mem());
+
+	if (!bio || (PEM_write_bio_PrivateKey(bio, evp_key, NULL, NULL, 0, NULL, NULL) <= 0)) {
+		stir_shaken_set_error(ss, "Get privkey raw: Failed to write from EVP_PKEY into memory BIO", STIR_SHAKEN_ERROR_SSL);
+		BIO_free_all(bio); bio = NULL;
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	*key_len = BIO_read(bio, key, *key_len);
+	if (*key_len <= 0) {
+		stir_shaken_set_error(ss, "Get privkey raw: Failed to read from output memory BIO", STIR_SHAKEN_ERROR_SSL);
 		BIO_free_all(bio); bio = NULL;
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
@@ -2723,7 +2768,7 @@ stir_shaken_status_t stir_shaken_get_pubkey_raw_from_cert(stir_shaken_context_t 
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 	
-	ret = stir_shaken_evp_key_to_raw(ss, pk, key, key_len);
+	ret = stir_shaken_pubkey_to_raw(ss, pk, key, key_len);
 	BIO_free_all(bio); bio = NULL;
 	EVP_PKEY_free(pk); pk = NULL;
 	return ret;

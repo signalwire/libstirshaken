@@ -89,7 +89,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
 	encoded = jwt_encode_str(passport.jwt);
 	stir_shaken_assert(encoded, "Ooops, libjwt failed to encode string");
 	
-	ret = stir_shaken_evp_key_to_raw(&ss, public_key, pub_raw, &pub_raw_len);
+	ret = stir_shaken_pubkey_to_raw(&ss, public_key, pub_raw, &pub_raw_len);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
