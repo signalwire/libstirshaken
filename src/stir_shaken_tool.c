@@ -33,17 +33,14 @@ static void help_hint(const char *name)
 int main(int argc, char *argv[])
 {
 	int c = -1;
-	char f[STIR_SHAKEN_BUFLEN] = {0}, *pCh = NULL;
+	char *pCh = NULL;
 	unsigned long long  helper;
-	unsigned long serial = 0;
-	unsigned long expiry = 0;
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
 	stir_shaken_context_t ss = { 0 };
 	const char *error_description = NULL;
 	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
 	int command = COMMAND_UNKNOWN;
 	const char *command_name = COMMAND_NAME_UNKNOWN;
-	int command_cert_type = -1;
 
 
 	if (argc < 2) {
@@ -61,6 +58,9 @@ int main(int argc, char *argv[])
 		{ OPTION_NAME_EXPIRY, required_argument, 0, OPTION_EXPIRY },
 		{ OPTION_NAME_TYPE, required_argument, 0, OPTION_TYPE },
 		{ OPTION_NAME_HELP, no_argument, 0, OPTION_HELP },
+		{ OPTION_NAME_SUBJECT_C, required_argument, 0, OPTION_SUBJECT_C },
+		{ OPTION_NAME_SUBJECT_CN, required_argument, 0, OPTION_SUBJECT_CN },
+		{ OPTION_NAME_SPC, required_argument, 0, OPTION_SPC },
 		{ 0 }
 	};
 
@@ -81,8 +81,8 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "Option value too long\n");
 					goto fail;
 				}
-				strncpy(ca.public_key_name, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "Public key name is: %s\n", ca.public_key_name);
+				strncpy(options.public_key_name, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "Public key name is: %s\n", options.public_key_name);
 				break;
 
 			case OPTION_PRIVKEY:
@@ -90,8 +90,8 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "Option value too long\n");
 					goto fail;
 				}
-				strncpy(ca.private_key_name, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "Private key name is: %s\n", ca.private_key_name);
+				strncpy(options.private_key_name, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "Private key name is: %s\n", options.private_key_name);
 				break;
 
 			case OPTION_ISSUER_C:
@@ -99,8 +99,8 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "Option value too long\n");
 					goto fail;
 				}
-				strncpy(ca.issuer_c, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "Issuer C is: %s\n", ca.issuer_c);
+				strncpy(options.issuer_c, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "Issuer C is: %s\n", options.issuer_c);
 				break;
 			
 			case OPTION_ISSUER_CN:
@@ -108,12 +108,11 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "Option value too long\n");
 					goto fail;
 				}
-				strncpy(ca.issuer_cn, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "Issuer CN is: %s\n", ca.issuer_cn);
+				strncpy(options.issuer_cn, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "Issuer CN is: %s\n", options.issuer_cn);
 				break;
 			
 			case OPTION_SERIAL:
-
 				helper = strtoul(optarg, &pCh, 10);
 				if (helper > 0x10000 - 1) {
 					stirshaken_range_error(c, helper);
@@ -125,11 +124,10 @@ int main(int argc, char *argv[])
 					help_hint(argv[0]);
 					goto fail;
 				}
-				serial = helper;
+				options.serial = helper;
 				break;
 			
 			case OPTION_EXPIRY:
-				
 				helper = strtoul(optarg, &pCh, 10);
 				if (helper > 0x10000 - 1) {
 					stirshaken_range_error(c, helper);
@@ -141,18 +139,17 @@ int main(int argc, char *argv[])
 					help_hint(argv[0]);
 					goto fail;
 				}
-				expiry = helper;
+				options.expiry_days = helper;
 				break;
 
 			case OPTION_TYPE:
-
 				if (!strcmp(optarg, OPTION_NAME_TYPE_CA)) {
 					
-					command_cert_type = COMMAND_CERT_CA;
+					options.command_cert_type = COMMAND_CERT_CA;
 				
 				} else if (!strcmp(optarg, OPTION_NAME_TYPE_SP)) {
 
-					command_cert_type = COMMAND_CERT_SP;
+					options.command_cert_type = COMMAND_CERT_SP;
 
 				} else {
 					fprintf(stderr, "Invalid option %s for --type\n", optarg);
@@ -171,8 +168,26 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "-f name too long\n");
 					goto fail;
 				}
-				strncpy(f, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "Output file is: %s\n", f);
+				strncpy(options.file, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "Output file is: %s\n", options.file);
+				break;
+
+			case OPTION_SUBJECT_C:
+				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
+					fprintf(stderr, "Option value too long\n");
+					goto fail;
+				}
+				strncpy(options.subject_c, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "Subject C is: %s\n", options.subject_c);
+				break;
+			
+			case OPTION_SUBJECT_CN:
+				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
+					fprintf(stderr, "Option value too long\n");
+					goto fail;
+				}
+				strncpy(options.subject_cn, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "Subject CN is: %s\n", options.subject_cn);
 				break;
 
 			case '?':
@@ -201,63 +216,26 @@ int main(int argc, char *argv[])
 	
 	// Parse the comamnd
 
-	if (!strcmp(argv[optind], COMMAND_NAME_KEYS)) {
-
-		fprintf(stderr, "\n\nCreating key pair...\n\n");
-		command = COMMAND_KEYS;
-		command_name = COMMAND_NAME_KEYS;
-
-	} else if (!strcmp(argv[optind], COMMAND_NAME_CERT)) {
-
-		if (COMMAND_CERT_CA == command_cert_type) {
-
-			fprintf(stderr, "\n\nCreating CA certificate...\n\n");
-
-			strncpy(ca.cert_name, f, STIR_SHAKEN_BUFLEN);
-
-			command = COMMAND_CERT_CA;
-			command_name = COMMAND_NAME_CERT_CA;
-
-		} else if (COMMAND_CERT_SP == command_cert_type) {
-
-			fprintf(stderr, "\n\nCreating SP certificate...\n\n");
-			
-			strncpy(ca.cert_name, f, STIR_SHAKEN_BUFLEN);
-
-			command = COMMAND_CERT_SP;
-			command_name = COMMAND_NAME_CERT_SP;
-
-		} else {
-
-			fprintf(stderr, "Bad --type for command %s\n", command_name);
-			goto fail;
-		}
-
-	} else if (!strcmp(argv[optind], COMMAND_NAME_INSTALL_CERT)) {
-
-		fprintf(stderr, "\n\nInstalling CA certificate...\n\n");
-		command = COMMAND_INSTALL_CERT;
-		command_name = COMMAND_NAME_INSTALL_CERT;
-
-	} else {
-
-		fprintf(stderr, "Error. Unknown command: %s\n", argv[optind]);
-		stirshaken_usage(argv[0]);
-		exit(EXIT_FAILURE);
+	command = stirshaken_command_configure(&ss, argv[optind], &ca, &sp, &options);
+	if (COMMAND_UNKNOWN == command) {
+		fprintf(stderr, "\nError. Invalid command\n");
+		PRINT_SHAKEN_ERROR_IF_SET
+		goto fail;
 	}
+
 
 	// Validate the command
 	
-	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_validate(&ss, command, &ca, &sp, CA_DIR, CRL_DIR)) {
-		fprintf(stderr, "\nError. Command %s cannot be executed because it's missing params or params are invalid\n", command_name);
+	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_validate(&ss, command, &ca, &sp, &options)) {
+		fprintf(stderr, "\nError. Missing params or params are invalid\n");
 		PRINT_SHAKEN_ERROR_IF_SET
 		goto fail;
 	}
 
 	// Process the command
 	
-	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_execute(&ss, command, &ca, &sp, CA_DIR, CRL_DIR)) {
-		fprintf(stderr, "\nError. Command %s failed\n", command_name);
+	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_execute(&ss, command, &ca, &sp, &options)) {
+		fprintf(stderr, "\nError. Command failed\n");
 		PRINT_SHAKEN_ERROR_IF_SET
 		goto fail;
 	}
