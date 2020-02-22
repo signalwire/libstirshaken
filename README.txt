@@ -25,3 +25,12 @@ sudo make install
 TEST
 ====
 make check
+
+
+stirshaken commandline tool
+===========================
+
+./stirshaken csr --privkey priv.key --pubkey pub.key --spc 12 --subject_c US --subject_cn "New SP" -f csr.pem
+./stirshaken keys --privkey priv.key --pubkey pub.key
+./stirshaken cert --type CA --privkey priv.key --pubkey pub.key --issuer_c "US" --issuer_cn "New Service Provider" -f certificate.pem
+

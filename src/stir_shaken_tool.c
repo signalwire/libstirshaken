@@ -189,6 +189,21 @@ int main(int argc, char *argv[])
 				strncpy(options.subject_cn, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "Subject CN is: %s\n", options.subject_cn);
 				break;
+			
+			case OPTION_SPC:
+				helper = strtoul(optarg, &pCh, 10);
+				if (helper > 0x10000 - 1) {
+					stirshaken_range_error(c, helper);
+					goto fail;
+				}
+				if ((pCh == optarg) || (*pCh != '\0')) {    /* check */
+					fprintf(stderr, "Invalid argument\n");
+					fprintf(stderr, "Parameter conversion error, nonconvertible part is: [%s]\n", pCh);
+					help_hint(argv[0]);
+					goto fail;
+				}
+				options.spc = helper;
+				break;
 
 			case '?':
 				if (optopt == 'f')

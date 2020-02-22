@@ -11,6 +11,17 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 
 		return COMMAND_KEYS;
 
+	} else if (!strcmp(command_name, COMMAND_NAME_CSR)) {
+
+		sp->code = options->spc;
+		strncpy(sp->csr_name, options->file, STIR_SHAKEN_BUFLEN);
+		snprintf(sp->csr_text_name, STIR_SHAKEN_BUFLEN, "%s.text", sp->csr_name);
+		strncpy(sp->public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->subject_c, options->subject_c, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->subject_cn, options->subject_cn, STIR_SHAKEN_BUFLEN);
+		return COMMAND_CSR;
+
 	} else if (!strcmp(command_name, COMMAND_NAME_CERT)) {
 
 		if (COMMAND_CERT_CA == options->command_cert_type) {
@@ -20,6 +31,8 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 			strncpy(ca->subject_cn, options->subject_cn, STIR_SHAKEN_BUFLEN);
 			strncpy(ca->issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
 			strncpy(ca->issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
 			return COMMAND_CERT_CA;
 
 		} else if (COMMAND_CERT_SP == options->command_cert_type) {
@@ -56,6 +69,11 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 			break;
 
 		case COMMAND_CSR:
+			if (stir_shaken_zstr(sp->private_key_name) || stir_shaken_zstr(sp->public_key_name)
+					|| stir_shaken_zstr(sp->subject_c) || stir_shaken_zstr(sp->subject_cn)
+						|| stir_shaken_zstr(sp->csr_name)) {
+				goto fail;
+			}
 			break;
 
 		case COMMAND_CERT_CA:
@@ -103,6 +121,25 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 		case COMMAND_KEYS:
 
 			status = stir_shaken_generate_keys(ss, &options->keys.ec_key, &options->keys.private_key, &options->keys.public_key, options->private_key_name, options->public_key_name, NULL, NULL);
+			if (STIR_SHAKEN_STATUS_OK != status) {
+				goto fail;
+			}
+			break;
+
+		case COMMAND_CSR:
+
+			fprintf(stderr, "Loading keys...\n");
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_keys(ss, &sp->keys.private_key, &sp->keys.public_key, sp->private_key_name, sp->public_key_name, NULL, NULL)) {
+				goto fail;
+			}
+			
+			fprintf(stderr, "Generating CSR...\n");
+			status = stir_shaken_generate_csr(ss, sp->code, &sp->csr.req, sp->keys.private_key, sp->keys.public_key, sp->subject_c, sp->subject_cn);
+			if (STIR_SHAKEN_STATUS_OK != status) {
+				goto fail;
+			}
+			fprintf(stderr, "Saving CSR...\n");
+			status = stir_shaken_csr_to_disk(ss, sp->csr.req, sp->csr_name, sp->csr_text_name);
 			if (STIR_SHAKEN_STATUS_OK != status) {
 				goto fail;
 			}

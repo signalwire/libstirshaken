@@ -8,6 +8,7 @@
 #define STIR_SHAKEN_BUFLEN 1000
 
 #define COMMAND_NAME_KEYS			"keys"
+#define COMMAND_NAME_CSR			"csr"
 #define COMMAND_NAME_CERT			"cert"
 #define COMMAND_NAME_CERT_CA		"cert (CA)"
 #define COMMAND_NAME_CERT_SP		"cert (SP)"
@@ -84,6 +85,7 @@ struct ca {
 	int expiry_days_sp;
 	const char *number_start_sp;
 	const char *number_end_sp;
+	char file[STIR_SHAKEN_BUFLEN];
 } ca;
 
 struct sp {
@@ -98,10 +100,11 @@ struct sp {
 	char csr_text_name[STIR_SHAKEN_BUFLEN];
 	char cert_name[STIR_SHAKEN_BUFLEN];
 	char cert_text_name[STIR_SHAKEN_BUFLEN];
-	const char *subject_c;
-	const char *subject_cn;
+	char subject_c[STIR_SHAKEN_BUFLEN];
+	char subject_cn[STIR_SHAKEN_BUFLEN];
 	int serial;
 	int expiry_days;
+	char file[STIR_SHAKEN_BUFLEN];
 } sp;
 
 struct options {
