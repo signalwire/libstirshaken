@@ -46,7 +46,6 @@
 #define TN_AUTH_LIST_OID "1.3.6.1.5.5.7.1.26"
 #define TN_AUTH_LIST_LN "TNAuthorizationList"
 #define TN_AUTH_LIST_SN "TNAuthList"
-#define USE_TN_AUTH_LIST_OID 0
 
 #define STIR_SHAKEN_MOCK_VERIFY_CERT_CHAIN 0
 #define STIR_SHAKEN_LOAD_CA_FROM_DEFAULT_OS_PATHS 0
@@ -94,7 +93,7 @@ typedef struct stir_shaken_cert_s {
 	char		public_url[STIR_SHAKEN_BUFLEN];				// publicly accessible URL which can be used to download the certificate, this is concatenated from @install_url and cert's @name and is put into PASSporT as @x5u and @params.info
 	EC_KEY              *ec_key;
 	EVP_PKEY            *private_key;
-
+	
 	unsigned long	hash;							// hash of cert name
 	char			hashstr[STIR_SHAKEN_BUFLEN];	// hashed name as string
 	char			cert_name_hashed[STIR_SHAKEN_BUFLEN];	// hashed name with .0 appended - ready to save in CA dir for usage with X509 cert path validation check
@@ -114,9 +113,9 @@ typedef struct stir_shaken_cert_s {
 
 // ACME credentials
 typedef struct stir_shaken_ssl_keys {
-	EC_KEY		*ec_key;
-	EVP_PKEY	*private_key;
-	EVP_PKEY	*public_key;
+    EC_KEY		*ec_key;
+    EVP_PKEY	*private_key;
+    EVP_PKEY	*public_key;
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
 	uint32_t		priv_raw_len;
 } stir_shaken_ssl_keys_t;
@@ -452,6 +451,7 @@ typedef struct stir_shaken_globals_s {
 	SSL                 *ssl;
 	int                 curve_nid;                  // id of the curve in OpenSSL
 	int					tn_authlist_nid;			// OID for ext-tnAuthList
+	//ASN1_OBJECT				*tn_authlist_obj;
 	X509_STORE			*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
 } stir_shaken_globals_t;
 
@@ -492,6 +492,8 @@ stir_shaken_status_t stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 
 stir_shaken_status_t stir_shaken_x509_add_standard_extensions(stir_shaken_context_t *ss, X509 *ca_x, X509 *x);
 stir_shaken_status_t stir_shaken_x509_add_ca_extensions(stir_shaken_context_t *ss, X509 *ca_x, X509 *x);
 stir_shaken_status_t stir_shaken_x509_add_signalwire_extensions(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, const char *number_start, const char *number_end);
+stir_shaken_status_t stir_shaken_x509_add_tnauthlist_extension_spc(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, int spc);
+stir_shaken_status_t stir_shaken_x509_add_tnauthlist_extension_uri(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, char *uri);
 
 // Create CA cross-certificate, where issuer and subject are different entities. Cross certificates describe a trust relationship between CAs.
 X509* stir_shaken_generate_x509_cross_ca_cert(stir_shaken_context_t *ss, X509 *ca_x,  EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int serial, int expiry_days);
@@ -515,7 +517,7 @@ stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, 
 X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY *pkey);
 
 stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name);
-stir_shaken_status_t stir_shaken_add_tnauthlist_extension(stir_shaken_context_t *ss, uint32_t sp_code, X509 *x);
+stir_shaken_status_t stir_shaken_add_tnauthlist_extension_by_hack(stir_shaken_context_t *ss, uint32_t sp_code, X509 *x);
 X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int serial, int expiry_days);
 void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
@@ -526,6 +528,7 @@ void stir_shaken_cert_name_hashed_2_string(unsigned long hash, char *buf, int bu
 void stir_shaken_hash_cert_name(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, const char *ca_list, const char *ca_dir, const char *crl_list, const char *crl_dir);
 void stir_shaken_cert_store_cleanup(void);
+stir_shaken_status_t stir_shaken_register_tnauthlist_extension(stir_shaken_context_t *ss, int *nidp);
 stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);

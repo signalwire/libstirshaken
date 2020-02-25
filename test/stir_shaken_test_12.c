@@ -230,7 +230,7 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 
 int main(void)
 {
-	stir_shaken_do_init(NULL, CA_DIR, CRL_DIR);
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, CA_DIR, CRL_DIR), "Cannot init lib");
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

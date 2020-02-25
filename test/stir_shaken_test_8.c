@@ -151,7 +151,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
 
 int main(void)
 {
-	stir_shaken_do_init(NULL, NULL, NULL);
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, NULL, NULL), "Cannot init lib");
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

@@ -751,6 +751,42 @@ stir_shaken_status_t stir_shaken_x509_add_signalwire_extensions(stir_shaken_cont
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+stir_shaken_status_t stir_shaken_x509_add_tnauthlist_extension_spc(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, int spc)
+{
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_x509_add_tnauthlist_extension_uri(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, char *uri)
+{
+	int nid = NID_undef;
+
+	if (!x) {
+		stir_shaken_set_error(ss, "Subject certificate not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	if (!ca_x) {
+		stir_shaken_set_error(ss, "CA certificate not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (stir_shaken_zstr(uri)) {
+		stir_shaken_set_error(ss, "Uri not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	pthread_mutex_lock(&stir_shaken_globals.mutex);
+	nid = stir_shaken_globals.tn_authlist_nid;
+	pthread_mutex_unlock(&stir_shaken_globals.mutex);
+	
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_v3_add_ext(ca_x, x, NULL, NULL, nid, "Great uri")) {
+		stir_shaken_set_error(ss, "Failed to add TNAuthList Uri extension to X509", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 // Create CA cross-certificate, where issuer and subject are different entities.
 // Cross certificates describe a trust relationship between CAs.
 X509* stir_shaken_generate_x509_cross_ca_cert(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int serial, int expiry_days)
@@ -845,6 +881,7 @@ X509* stir_shaken_generate_x509_self_signed_ca_cert(stir_shaken_context_t *ss, E
 X509* stir_shaken_generate_x509_end_entity_cert(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int serial, int expiry_days, const char *number_start, const char *number_end)
 {
 	X509 *x = NULL;
+	char tn_auth_list_uri[100] = { 0 };
 	
 	// Subject and issuer must be different entities
 	if (!strcmp(issuer_c, subject_c) && !strcmp(issuer_cn, subject_cn)) {
@@ -867,6 +904,13 @@ X509* stir_shaken_generate_x509_end_entity_cert(stir_shaken_context_t *ss, X509 
 		stir_shaken_set_error_if_clear(ss, "Failed to add SignalWire's X509 extensions", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
+
+	sprintf(tn_auth_list_uri, "https://test.com");
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_add_tnauthlist_extension_uri(ss, ca_x, x, tn_auth_list_uri)) {
+		stir_shaken_set_error_if_clear(ss, "Failed to add TNAuthList Uri X509 extension", STIR_SHAKEN_ERROR_TNAUTHLIST);
+		goto fail;
+	}
 	
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sign_x509_cert(ss, x, private_key)) {
 		stir_shaken_set_error_if_clear(ss, "Failed to sign X509 end entity certificate", STIR_SHAKEN_ERROR_GENERAL);
@@ -886,6 +930,7 @@ X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *
 {
 	X509 *x = NULL;
 	EVP_PKEY *public_key = NULL;
+	char tn_auth_list_uri[100] = { 0 };
 
 	if (!req) {
 		stir_shaken_set_error(ss, "X509 req not set", STIR_SHAKEN_ERROR_GENERAL);
@@ -921,6 +966,13 @@ X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *
 		goto fail;
 	}
 	
+	sprintf(tn_auth_list_uri, "https://test.com");
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_add_tnauthlist_extension_uri(ss, ca_x, x, tn_auth_list_uri)) {
+		stir_shaken_set_error_if_clear(ss, "Failed to add TNAuthList Uri X509 extension", STIR_SHAKEN_ERROR_TNAUTHLIST);
+		goto fail;
+	}
+	
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sign_x509_cert(ss, x, private_key)) {
 		stir_shaken_set_error_if_clear(ss, "Failed to sign X509 end entity certificate", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
@@ -934,7 +986,7 @@ fail:
 	return NULL;
 }
 
-stir_shaken_status_t stir_shaken_add_tnauthlist_extension(stir_shaken_context_t *ss, uint32_t sp_code, X509 *x)
+stir_shaken_status_t stir_shaken_add_tnauthlist_extension_by_hack(stir_shaken_context_t *ss, uint32_t sp_code, X509 *x)
 {
 	int             i = 0;
 	const char      *ext_name = "1.3.6.1.5.5.7.1.26";                   // our lovely TNAuthorizationList extension identifier that we will use to construct v3 extension of type TNAuthorizationList
@@ -1472,9 +1524,34 @@ stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, sti
 	return rc == 1 ? STIR_SHAKEN_STATUS_OK : STIR_SHAKEN_STATUS_FALSE;
 }
 
+stir_shaken_status_t stir_shaken_register_tnauthlist_extension(stir_shaken_context_t *ss, int *nidp)
+{
+	int nid = NID_undef;
+
+	nid = OBJ_ln2nid(TN_AUTH_LIST_LN);
+	
+	if (nid == NID_undef) {
+
+		// TNAuthList is not registered yet, register
+	
+		nid = OBJ_create(TN_AUTH_LIST_OID, TN_AUTH_LIST_SN, TN_AUTH_LIST_LN);
+		if (nid == NID_undef) {
+			stir_shaken_set_error(ss, "Cannot register TNAuthList extension (OID 1.3.6.1.5.5.7.1.26: http://oid-info.com/get/1.3.6.1.5.5.7.1.26)", STIR_SHAKEN_ERROR_TNAUTHLIST);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+		X509V3_EXT_add_alias(nid, NID_netscape_comment);
+	}
+
+	*nidp = nid;
+	//stir_shaken_globals.tn_authlist_obj = OBJ_nid2obj(nid);
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
 {
 	X509            *x = NULL;
+	int i = -1;
 
 	stir_shaken_clear_error(ss);
 
@@ -1484,13 +1561,12 @@ stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_c
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-#if USE_TN_AUTH_LIST_OID
-	if (X509_get_ext_by_NID(cert->x, stir_shaken_globals.tn_authlist_nid, -1) == -1) {
+	i = X509_get_ext_by_NID(cert->x, stir_shaken_globals.tn_authlist_nid, -1);
+	if (i == -1) {
 
 		stir_shaken_set_error(ss, "Cert must have ext-tnAuthList extension (OID 1.3.6.1.5.5.7.1.26: http://oid-info.com/get/1.3.6.1.5.5.7.1.26) but it is missing", STIR_SHAKEN_ERROR_TNAUTHLIST);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
-#endif
 
 	return STIR_SHAKEN_STATUS_OK;
 }
@@ -2819,14 +2895,13 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char 
 	}
 	stir_shaken_globals.curve_nid = curve_nid;
 
-#if USE_TN_AUTH_LIST_OID
-	//stir_shaken_globals.tn_authlist_nid = OBJ_create(TN_AUTH_LIST_OID, TN_AUTH_LIST_SN, TN_AUTH_LIST_LN);
-	stir_shaken_globals.tn_authlist_nid = OBJ_ln2nid(TN_AUTH_LIST_LN);
-	if (stir_shaken_globals.tn_authlist_nid == NID_undef) {
-		stir_shaken_set_error(ss, "SSL: Failed to create new openssl object for ext-tnAuthList extension", STIR_SHAKEN_ERROR_SSL);
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_register_tnauthlist_extension(ss, &stir_shaken_globals.tn_authlist_nid)) {
+		stir_shaken_set_error_if_clear(ss, "Failed to get or register tnAuthList extension", STIR_SHAKEN_ERROR_TNAUTHLIST);
 		goto fail;
 	}
-#endif
+
+	// TODO remove
+	printf("Using TNAuthList extension with nid %d\n", stir_shaken_globals.tn_authlist_nid);
 
 	// TODO pass CAs list and revocation list
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_init_cert_store(ss, NULL, ca_dir, NULL, crl_dir)) {

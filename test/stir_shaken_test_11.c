@@ -159,7 +159,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_authenticate_keep_passport(void)
 
 int main(void)
 {
-	stir_shaken_do_init(NULL, NULL, NULL);
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, NULL, NULL), "Cannot init lib");
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

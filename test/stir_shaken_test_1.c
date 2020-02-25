@@ -53,7 +53,7 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 
 	datalen = strlen(data_test_pass);
 	outlen = sizeof(sig);
-	status = stir_shaken_do_sign_data_with_digest(NULL, "sha256", private_key, data_test_pass, datalen, sig, &outlen);
+	status = stir_shaken_do_sign_data_with_digest(&ss, "sha256", private_key, data_test_pass, datalen, sig, &outlen);
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign\n");
 
 	printf("Verifying (against good data)...\n\n");
@@ -88,7 +88,7 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 
 int main(void)
 {
-	stir_shaken_do_init(NULL, NULL, NULL);
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, NULL, NULL), "Cannot init lib");
 	
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 
