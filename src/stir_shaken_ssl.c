@@ -444,63 +444,41 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *req, const char *csr_full_name, const char *csr_text_full_name)
+stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *req, const char *csr_full_name)
 {
 	int i = 0;
-	BIO *out = NULL, *bio = NULL;
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	FILE			*fp = NULL;
 
-	out = BIO_new(BIO_s_file());
-	if (!out) {
-		stir_shaken_set_error(ss, "Generate CSR: SSL error [1]", STIR_SHAKEN_ERROR_SSL);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
+	if (!req || !csr_full_name) goto fail;
+
+	stir_shaken_clear_error(ss);
 
 	if (csr_full_name) {
-		i = BIO_write_filename(out, (char*)csr_full_name);
-		if (i == 0) {
-			sprintf(err_buf, "Failed to redirect bio to file %s", csr_full_name);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+		
+		fp = fopen(csr_full_name, "w");
+		if (!fp) {
+			sprintf(err_buf, "Failed to create file %s", csr_full_name);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
 			goto fail;
 		}
 
-		i = PEM_write_bio_X509_REQ(out, req);
+		i = PEM_write_X509_REQ(fp, req);
 		if (i == 0) {
-			sprintf(err_buf, "Error writing certificate to file %s", csr_full_name);
+			sprintf(err_buf, "Error writing CSR to file %s", csr_full_name);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 			goto fail;
 		}
 	}
+	if (fp) fclose(fp);
+	fp = NULL;
 
-	BIO_free_all(out);
-	out = NULL;
-
-	if (csr_text_full_name) {
-		bio = BIO_new_file(csr_text_full_name, "w");
-		if (!bio) {
-			stir_shaken_set_error(ss, "Generate CSR: SSL error [2]", STIR_SHAKEN_ERROR_SSL);
-			goto anyway;
-		}
-
-		X509_REQ_print_ex(bio, req, 0, 0);
-		BIO_free_all(bio);
-		bio = NULL;
-	}
-
-anyway:
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
 
-	if (out) {
-		BIO_free_all(out);
-		out = NULL;
-	}
-
-	if (bio) {
-		BIO_free_all(bio);
-		bio = NULL;
-	}
+	if (fp) fclose(fp);
+	fp = NULL;
 
 	stir_shaken_set_error_if_clear(ss, "Error", STIR_SHAKEN_ERROR_SSL);
 	return STIR_SHAKEN_STATUS_FALSE;
@@ -1207,136 +1185,136 @@ static int stir_shaken_verify_callback(int ok, X509_STORE_CTX *ctx)
     depth = X509_STORE_CTX_get_error_depth(ctx);
 	file = (FILE *) X509_STORE_CTX_get_ex_data(ctx, 0);
 
-    fprintf(file, "===[depth: %d] X509 cert path validation: got error: %d ===\n", depth, err);
+    if (file) fprintf(file, "===[depth: %d] X509 cert path validation: got error: %d ===\n", depth, err);
 
 	if (err_cert) {
 		
 		stir_shaken_cert_t cert = { .x = err_cert };
 		
 		if (STIR_SHAKEN_STATUS_OK != stir_shaken_read_cert_fields(NULL, &cert)) {
-			fprintf(file, "===[depth: %d] Bad, bad, bad\n", depth);
+			if (file) fprintf(file, "===[depth: %d] Bad, bad, bad\n", depth);
 			goto handle_error;
 		}
 
-		fprintf(file, "===[depth: %d] = Certificate under consideration:\n", depth);
-		stir_shaken_print_cert_fields(file, &cert);
+		if (file) fprintf(file, "===[depth: %d] = Certificate under consideration:\n", depth);
+		if (file) stir_shaken_print_cert_fields(file, &cert);
 
     } else {
 
-		fprintf(file, "===[depth: %d] = No cert for this error:\n", depth);
+		if (file) fprintf(file, "===[depth: %d] = No cert for this error:\n", depth);
 	}
 
 handle_error:
 
     if (!ok) {
 
-		fprintf(file,"===[depth: %d] Error detail: %d: %s\n", depth, err, X509_verify_cert_error_string(err));
+		if (file) fprintf(file,"===[depth: %d] Error detail: %d: %s\n", depth, err, X509_verify_cert_error_string(err));
 	}
 
 	switch (err) {
 
 		case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
-			fprintf(file, "===[depth: %d] E: Issuer\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Issuer\n", depth);
 			break;
 
 		case X509_V_ERR_CERT_NOT_YET_VALID:
 		case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
-			fprintf(file, "===[depth: %d] E: Cert not valid yet\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Cert not valid yet\n", depth);
 			break;
 
 		case X509_V_ERR_CERT_HAS_EXPIRED:
 		case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
-			fprintf(file, "===[depth: %d] E: Cert expired\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Cert expired\n", depth);
 			break;
 
 		case X509_V_ERR_NO_EXPLICIT_POLICY:
-			fprintf(file, "===[depth: %d] E: No explicit policy\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: No explicit policy\n", depth);
 			break;
 
 		case X509_V_ERR_UNABLE_TO_GET_CRL:
-			fprintf(file, "===[depth: %d] E: Unable to get CRL\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Unable to get CRL\n", depth);
 			break;
 
 		case X509_V_ERR_UNABLE_TO_DECRYPT_CERT_SIGNATURE:
-			fprintf(file, "===[depth: %d] E: Failed to decrypt CERT signature\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Failed to decrypt CERT signature\n", depth);
 			break;
 
 		case X509_V_ERR_UNABLE_TO_DECRYPT_CRL_SIGNATURE:
-			fprintf(file, "===[depth: %d] E: Failed to decrypt CRL signature\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Failed to decrypt CRL signature\n", depth);
 			break;
 
 		case X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY:
-			fprintf(file, "===[depth: %d] E: Unable to decode issuer's public key\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Unable to decode issuer's public key\n", depth);
 			break;
 
 		case X509_V_ERR_CERT_SIGNATURE_FAILURE:
-			fprintf(file, "===[depth: %d] E: Cert signature failure\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Cert signature failure\n", depth);
 			break;
 
 		case X509_V_ERR_CRL_SIGNATURE_FAILURE:
-			fprintf(file, "===[depth: %d] E: Crl signature failure\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Crl signature failure\n", depth);
 			break;
 
 		case X509_V_ERR_CRL_NOT_YET_VALID:
-			fprintf(file, "===[depth: %d] E: CRL not valid yet\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: CRL not valid yet\n", depth);
 			break;
 
 		case X509_V_ERR_CRL_HAS_EXPIRED:
-			fprintf(file, "===[depth: %d] E: CRL expired\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: CRL expired\n", depth);
 			break;
 
 		case X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD:
-			fprintf(file, "===[depth: %d] E: CRL last update invalid\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: CRL last update invalid\n", depth);
 			break;
 
 		case X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD:
-			fprintf(file, "===[depth: %d] E: CRL next update invalid\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: CRL next update invalid\n", depth);
 			break;
 
 		case X509_V_ERR_OUT_OF_MEM:
-			fprintf(file, "===[depth: %d] E: Out of mem\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Out of mem\n", depth);
 			break;
 
 		case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
-			fprintf(file, "===[depth: %d] E: Self signed cert on depth 0 not allowed\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Self signed cert on depth 0 not allowed\n", depth);
 			break;
 
 		case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
-			fprintf(file, "===[depth: %d] E: Self signed cert in chain not allowed\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Self signed cert in chain not allowed\n", depth);
 			break;
 
 		case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
-			fprintf(file, "===[depth: %d] E: Unable to get issuer's cert locally\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Unable to get issuer's cert locally\n", depth);
 			break;
 
 		case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
-			fprintf(file, "===[depth: %d] E: Unable to verify leaf signature\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Unable to verify leaf signature\n", depth);
 			break;
 
 		case X509_V_ERR_CERT_CHAIN_TOO_LONG:
-			fprintf(file, "===[depth: %d] E: Cert chain is too long\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Cert chain is too long\n", depth);
 			break;
 
 		case X509_V_ERR_CERT_REVOKED:
-			fprintf(file, "===[depth: %d] E: Cert is revoked\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Cert is revoked\n", depth);
 			break;
 
 		case X509_V_ERR_APPLICATION_VERIFICATION:
-			fprintf(file, "===[depth: %d] E: Application verification error\n", depth);
+			if (file) fprintf(file, "===[depth: %d] E: Application verification error\n", depth);
 			break;
 
 		default:
-			fprintf(file, "===[depth: %d] Default error\n", depth);
+			if (file) fprintf(file, "===[depth: %d] Default error\n", depth);
 			break;
 	}
 
     if (err == X509_V_OK && ok == 2) {
         
 		/* print out policies */
-		fprintf(file, "===[depth: %d] +++ Policy checking is complete\n", depth);
+		if (file) fprintf(file, "===[depth: %d] +++ Policy checking is complete\n", depth);
 	}
 
-	fprintf(file, "===[depth: %d] Translating error to: %d\n", depth, ok);
+	if (file) fprintf(file, "===[depth: %d] Translating error to: %d\n", depth, ok);
     return(ok);
 
 }
@@ -1475,7 +1453,7 @@ stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, sti
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	X509_STORE_CTX_set_ex_data(cert->verify_ctx, 0, file);
+	//X509_STORE_CTX_set_ex_data(cert->verify_ctx, 0, file);
 
 	rc = X509_verify_cert(cert->verify_ctx);
 	if (rc != 1) {
@@ -1628,96 +1606,42 @@ X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY 
 	return x;
 }
 
-stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name, const char *cert_text_full_name)
+stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name)
 {
-	BIO             *out = NULL, *bio = NULL;
 	int				i = 0;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-	
+	FILE			*fp = NULL;
+
+	if (!x || !cert_full_name) goto fail;	
 	
 	stir_shaken_clear_error(ss);
 
 	if (cert_full_name) {
 		
-		out = BIO_new_fp(stdout, 0);
-
-		i = BIO_write_filename(out, (char*) cert_full_name);
-		if (i == 0) {
-			
-			sprintf(err_buf, "Failed to redirect bio to file %s", cert_full_name);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+		fp = fopen(cert_full_name, "w");
+		if (!fp) {
+			sprintf(err_buf, "Failed to create file %s", cert_full_name);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
 			goto fail;
 		}
 
-		i = PEM_write_bio_X509(out, x);
+		i = PEM_write_X509(fp, x);
 		if (i == 0) {
 			
 			sprintf(err_buf, "Error writing certificate to file %s", cert_full_name);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
 			goto fail;
 		}
-
-		//TODO remove
-		printf("STIR-Shaken: Written X509 certificate to file %s\n", cert_full_name);
 	}
 
-	BIO_free_all(out);
-	out = NULL;
+	if (fp) fclose(fp);
+	fp = NULL;
 
-	if (cert_text_full_name) {
-		
-		bio = BIO_new_file(cert_text_full_name, "w");
-		if (!bio) {
-		
-			stir_shaken_set_error(ss, "error [1]", STIR_SHAKEN_ERROR_SSL);
-			goto anyway;
-		}
-
-		// TODO This call leaks EVP_PKEY which it creates
-		// ==17095==    at 0x4C28C20: malloc (vg_replace_malloc.c:296)
-		// ==17095==    by 0x581D377: CRYPTO_malloc (in /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0)
-		// ==17095==    by 0x58B45D9: EVP_PKEY_new (in /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0)
-		// ==17095==    by 0x58C3C77: X509_PUBKEY_get (in /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0)
-		// ==17095==    by 0x58C8069: X509_print_ex (in /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0)
-		// ==17095==    by 0x4E3BA66: stir_shaken_generate_cert_from_csr (stir_shaken_ssl.c:635)
-		X509_print_ex(bio, x, XN_FLAG_COMPAT, X509_FLAG_COMPAT);
-
-		BIO_free_all(bio);
-		bio = NULL;
-
-		// Need to decrement ref count of pubkey created by a call to X509_PUBKEY_get in X509_print_ex, so the pubkey is freed
-		//k = X509_get0_pubkey(x);
-		//EVP_PKEY_free(k);
-
-		// TODO remove
-		printf("STIR-Shaken: Written X509 certificate in human readable form to file %s\n", cert_text_full_name);
-	}
-
-anyway:
-	if (bio) {
-		BIO_free_all(bio);
-		bio = NULL;
-	}
-	if (out) {
-		BIO_free_all(out);
-		out = NULL;
-	}
-	
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
-	if (bio) {
-		BIO_free_all(bio);
-		bio = NULL;
-	}
-	if (out) {
-		BIO_free_all(out);
-		out = NULL;
-	}
-	if (x) {
-		X509_free(x);
-		x = NULL;
-	}
+	if (fp) fclose(fp);
+	fp = NULL;
 	
 	stir_shaken_set_error_if_clear(ss, "Failed to save X509 cert to disk", STIR_SHAKEN_ERROR_GENERAL);
 

@@ -1,7 +1,11 @@
 COMPILATION
 ============
 
-Dependencies (must be compiled and installed):
+If you just want to get on with it, then please run
+./do_install.sh
+This will install dependencies as well as tools needed to make build, and will build and install it.
+
+Dependencies:
 
 LIBS += -lcjson -lcurl -lcrypto -lssl -ljwt -pthread
 cJSON: https://github.com/DaveGamble/cJSON

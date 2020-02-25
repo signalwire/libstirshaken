@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (1 != (argc - optind)) {
-		fprintf(stderr, "\nInvalid number of non-option arguments.\nThere should be 1 non-option arguments\n");
+		fprintf(stderr, "\nInvalid number of non-option arguments.\nThere should be 1 non-option argument\n");
 		help_hint(argv[0]);
 		exit(EXIT_FAILURE);
 	}

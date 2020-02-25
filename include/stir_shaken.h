@@ -94,7 +94,7 @@ typedef struct stir_shaken_cert_s {
 	char		public_url[STIR_SHAKEN_BUFLEN];				// publicly accessible URL which can be used to download the certificate, this is concatenated from @install_url and cert's @name and is put into PASSporT as @x5u and @params.info
 	EC_KEY              *ec_key;
 	EVP_PKEY            *private_key;
-	
+
 	unsigned long	hash;							// hash of cert name
 	char			hashstr[STIR_SHAKEN_BUFLEN];	// hashed name as string
 	char			cert_name_hashed[STIR_SHAKEN_BUFLEN];	// hashed name with .0 appended - ready to save in CA dir for usage with X509 cert path validation check
@@ -114,9 +114,9 @@ typedef struct stir_shaken_cert_s {
 
 // ACME credentials
 typedef struct stir_shaken_ssl_keys {
-    EC_KEY		*ec_key;
-    EVP_PKEY	*private_key;
-    EVP_PKEY	*public_key;
+	EC_KEY		*ec_key;
+	EVP_PKEY	*private_key;
+	EVP_PKEY	*public_key;
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
 	uint32_t		priv_raw_len;
 } stir_shaken_ssl_keys_t;
@@ -483,7 +483,7 @@ void stir_shaken_destroy_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub);
  * @csr - (out) result
  */
 stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn);
-stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *csr_req, const char *csr_full_name, const char *csr_text_full_name);
+stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *csr_req, const char *csr_full_name);
 void stir_shaken_destroy_csr(X509_REQ **csr_req);
 
 // Functions used for cert construction
@@ -514,7 +514,7 @@ stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, 
 
 X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY *pkey);
 
-stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name, const char *cert_text_full_name);
+stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name);
 stir_shaken_status_t stir_shaken_add_tnauthlist_extension(stir_shaken_context_t *ss, uint32_t sp_code, X509 *x);
 X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int serial, int expiry_days);
 void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);

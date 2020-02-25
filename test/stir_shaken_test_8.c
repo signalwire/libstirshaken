@@ -98,7 +98,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_csr_to_disk(&ss, csr.req, csr_name, csr_text_name), "Error writing CSR to disk");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_csr_to_disk(&ss, csr.req, csr_name), "Error writing CSR to disk");
     
     printf("Creating Certificate\n");
     cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, sp_code, csr.req, private_key, "US", "SignalWire Solutions", 1, 365);
@@ -113,7 +113,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_x509_to_disk(&ss, cert.x, cert_name, cert_text_name), "Failed to write cert to disk");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_x509_to_disk(&ss, cert.x, cert_name), "Failed to write cert to disk");
 
 	printf("Verifying SIP Identity Header's signature with Cert...\n\n");
     status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport, NULL);
