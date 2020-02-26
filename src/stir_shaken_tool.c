@@ -8,10 +8,14 @@ static void stirshaken_usage(const char *name)
 	
 	fprintf(stderr, "\nusage:\t command\n\n", name);
 	fprintf(stderr, "\t\t %s --%s pub.pem --%s priv.pem\n", COMMAND_NAME_KEYS, OPTION_NAME_PUBKEY, OPTION_NAME_PRIVKEY);
-	fprintf(stderr, "\t\t %s --%s %s --%s key --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE, OPTION_NAME_TYPE_CA, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY);
-	fprintf(stderr, "\t\t %s --pubkey pub.pem --privkey priv.pem\n", COMMAND_NAME_INSTALL_CERT);
+	fprintf(stderr, "\t\t %s --%s key --%s key --%s C --%s CN --%s CODE -f csrName\n", COMMAND_NAME_CSR, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_SUBJECT_C, OPTION_NAME_SUBJECT_CN, OPTION_NAME_SPC);
+	fprintf(stderr, "\t\t %s --%s %s --%s key --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY -f certName\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE, OPTION_NAME_TYPE_CA, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY);
+	fprintf(stderr, "\t\t %s --%s %s --%s key --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY --%s ca.pem --%s csr.pem --%s TNAuthList(URI) -f certName\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE, OPTION_NAME_TYPE_SP, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY, OPTION_NAME_CA_CERT, OPTION_NAME_CSR, OPTION_NAME_TN_AUTH_LIST_URI);
+	fprintf(stderr, "\t\t %s -f certName\n", COMMAND_NAME_INSTALL_CERT);
+	fprintf(stderr, "\n");
 	fprintf(stderr, "\t\t %s			: generate key pair\n", COMMAND_NAME_KEYS);
-	fprintf(stderr, "\t\t %s			: generate SP or CA certificate depending on --type\n", COMMAND_NAME_CERT);
+	fprintf(stderr, "\t\t %s			: generate X509 certificate request for SP identified by SP Code given to --spc\n", COMMAND_NAME_CSR);
+	fprintf(stderr, "\t\t %s			: generate X509 certificate (end entity for --type %s and self-signed for --type %s)\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE_SP, OPTION_NAME_TYPE_CA);
 	fprintf(stderr, "\t\t %s		: hash CA certificate and copy into CA dir\n\n", COMMAND_NAME_INSTALL_CERT);
 	fprintf(stderr, "\n");
 }
@@ -61,6 +65,9 @@ int main(int argc, char *argv[])
 		{ OPTION_NAME_SUBJECT_C, required_argument, 0, OPTION_SUBJECT_C },
 		{ OPTION_NAME_SUBJECT_CN, required_argument, 0, OPTION_SUBJECT_CN },
 		{ OPTION_NAME_SPC, required_argument, 0, OPTION_SPC },
+		{ OPTION_NAME_CA_CERT, required_argument, 0, OPTION_CA_CERT },
+		{ OPTION_NAME_CSR, required_argument, 0, OPTION_CSR },
+		{ OPTION_NAME_TN_AUTH_LIST_URI, required_argument, 0, OPTION_TN_AUTH_LIST_URI },
 		{ 0 }
 	};
 
@@ -146,10 +153,12 @@ int main(int argc, char *argv[])
 				if (!strcmp(optarg, OPTION_NAME_TYPE_CA)) {
 					
 					options.command_cert_type = COMMAND_CERT_CA;
+					fprintf(stderr, "Certificate type is: CA\n");
 				
 				} else if (!strcmp(optarg, OPTION_NAME_TYPE_SP)) {
 
 					options.command_cert_type = COMMAND_CERT_SP;
+					fprintf(stderr, "Certificate type is: SP\n");
 
 				} else {
 					fprintf(stderr, "Invalid option %s for --type\n", optarg);
@@ -204,6 +213,33 @@ int main(int argc, char *argv[])
 				}
 				options.spc = helper;
 				break;
+			
+			case OPTION_CA_CERT:
+				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
+					fprintf(stderr, "Option value too long\n");
+					goto fail;
+				}
+				strncpy(options.ca_cert, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "CA certificate is: %s\n", options.ca_cert);
+				break;
+			
+			case OPTION_CSR:
+				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
+					fprintf(stderr, "Option value too long\n");
+					goto fail;
+				}
+				strncpy(options.csr_name, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "CSR is: %s\n", options.csr_name);
+				break;
+			
+			case OPTION_TN_AUTH_LIST_URI:
+				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
+					fprintf(stderr, "Option value too long\n");
+					goto fail;
+				}
+				strncpy(options.tn_auth_list_uri, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "TNAuthList URI is: %s\n", options.tn_auth_list_uri);
+				break;
 
 			case '?':
 				if (optopt == 'f')
@@ -233,7 +269,7 @@ int main(int argc, char *argv[])
 
 	command = stirshaken_command_configure(&ss, argv[optind], &ca, &sp, &options);
 	if (COMMAND_UNKNOWN == command) {
-		fprintf(stderr, "\nError. Invalid command\n");
+		fprintf(stderr, "\nError. Invalid command. Type %s --help for usage instructions\n", argv[0]);
 		PRINT_SHAKEN_ERROR_IF_SET
 		goto fail;
 	}
@@ -242,7 +278,7 @@ int main(int argc, char *argv[])
 	// Validate the command
 	
 	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_validate(&ss, command, &ca, &sp, &options)) {
-		fprintf(stderr, "\nError. Missing params or params are invalid\n");
+		fprintf(stderr, "\nError. Invalid parameters. Type %s --help for usage instructions\n", argv[0]);
 		PRINT_SHAKEN_ERROR_IF_SET
 		goto fail;
 	}
@@ -250,7 +286,7 @@ int main(int argc, char *argv[])
 	// Process the command
 	
 	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_execute(&ss, command, &ca, &sp, &options)) {
-		fprintf(stderr, "\nError. Command failed\n");
+		fprintf(stderr, "\nError. Command failed.\n");
 		PRINT_SHAKEN_ERROR_IF_SET
 		goto fail;
 	}

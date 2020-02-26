@@ -478,14 +478,10 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 // Call SSL destructors and release memory used for SSL keys.
 void stir_shaken_destroy_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub);
 
-/**
- * Generate CSR needed by STI-CA to issue new cert.
- * 
- * @sp_code - (in) Service Provider code
- * @csr - (out) result
- */
-stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn);
+X509_REQ* stir_shaken_load_x509_req_from_file(stir_shaken_context_t *ss, const char *name);
+X509_REQ* stir_shaken_generate_x509_req(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn);
 stir_shaken_status_t stir_shaken_sign_x509_req(stir_shaken_context_t *ss, X509_REQ *req, EVP_PKEY *private_key);
+stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn);
 stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *csr_req, const char *csr_full_name);
 void stir_shaken_destroy_csr(X509_REQ **csr_req);
 
@@ -495,7 +491,7 @@ stir_shaken_status_t stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 
 stir_shaken_status_t stir_shaken_x509_add_standard_extensions(stir_shaken_context_t *ss, X509 *ca_x, X509 *x);
 stir_shaken_status_t stir_shaken_x509_add_ca_extensions(stir_shaken_context_t *ss, X509 *ca_x, X509 *x);
 stir_shaken_status_t stir_shaken_x509_add_signalwire_extensions(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, const char *number_start, const char *number_end);
-stir_shaken_status_t stir_shaken_x509_add_tnauthlist_extension_spc(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, int spc);
+stir_shaken_status_t stir_shaken_x509_req_add_tnauthlist_extension_spc(stir_shaken_context_t *ss, X509_REQ *req, int spc);
 stir_shaken_status_t stir_shaken_x509_add_tnauthlist_extension_uri(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, char *uri);
 
 // Create CA cross-certificate, where issuer and subject are different entities. Cross certificates describe a trust relationship between CAs.
@@ -508,8 +504,8 @@ X509* stir_shaken_generate_x509_self_issued_ca_cert(stir_shaken_context_t *ss, E
 X509* stir_shaken_generate_x509_self_signed_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, int serial, int expiry_days);
 
 // Create SP certificate.
-X509* stir_shaken_generate_x509_end_entity_cert(stir_shaken_context_t *ss, X509 *ca_x,  EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int serial, int expiry_days, const char *number_start, const char *number_end);
-X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int serial, int expiry_days, const char *number_start, const char *number_end);
+X509* stir_shaken_generate_x509_end_entity_cert(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int serial, int expiry_days, char *tn_auth_list_uri);
+X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int serial, int expiry_days, char *tn_auth_list_uri);
 
 /**
  * @buf - (out) will contain fingerprint, must be of size at least 3*EVP_MAX_MD_SIZE bytes
@@ -545,8 +541,7 @@ int stir_shaken_cert_get_version(stir_shaken_cert_t *cert);
 EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const char *file);
 EVP_PKEY* stir_shaken_load_privkey_from_file(stir_shaken_context_t *ss, const char *file);
 stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem, size_t n);
-stir_shaken_status_t stir_shaken_load_x509_from_mem_through_file(stir_shaken_context_t *ss, X509 **x, void *mem, size_t n);
-X509* stir_shaken_load_x509_from_file(stir_shaken_context_t *ss, const char *cert_tmp_name);
+X509* stir_shaken_load_x509_from_file(stir_shaken_context_t *ss, const char *name);
 EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const char *file);
 EVP_PKEY* stir_shaken_load_privkey_from_file(stir_shaken_context_t *ss, const char *file);
 stir_shaken_status_t stir_shaken_load_key_raw(stir_shaken_context_t *ss, const char *file, unsigned char *key_raw, uint32_t *key_raw_len);

@@ -208,7 +208,7 @@ stir_shaken_status_t stir_shaken_v3_add_ext(X509 *ca_x, X509 *x, X509_REQ *req, 
 	X509_EXTENSION *ex;
 	X509V3_CTX ctx;
 
-	if (!ca_x || !x) {
+	if (!ca_x && !x && !req) {
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
@@ -220,15 +220,67 @@ stir_shaken_status_t stir_shaken_v3_add_ext(X509 *ca_x, X509 *x, X509_REQ *req, 
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	if (1 != X509_add_ext(x, ex, -1)) {
-		return STIR_SHAKEN_STATUS_FALSE;
+	if (req) {
+		STACK_OF(X509_EXTENSION)    *extlist = NULL, **sk = &extlist;
+		if (NULL == X509v3_add_ext(sk, ex, -1)) {
+			X509_EXTENSION_free(ex);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+		X509_EXTENSION_free(ex);
+		ex = NULL;
+		if (1 != X509_REQ_add_extensions(req, extlist)) {
+			sk_X509_EXTENSION_pop_free(extlist, X509_EXTENSION_free);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+		sk_X509_EXTENSION_pop_free(extlist, X509_EXTENSION_free);
+	} else {
+		if (1 != X509_add_ext(x, ex, -1)) {
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
 	}
 
-	X509_EXTENSION_free(ex);
+	if (ex) X509_EXTENSION_free(ex);
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn)
+X509_REQ* stir_shaken_load_x509_req_from_file(stir_shaken_context_t *ss, const char *name)
+{
+	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	X509_REQ		*req = NULL;
+	FILE			*fp = NULL;
+
+	if (!name) return NULL;
+
+	stir_shaken_clear_error(ss);
+
+
+	fp = fopen(name, "r");
+	if (!fp) {
+		sprintf(err_buf, "Failed to open file %s", name);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
+	}
+
+	req = PEM_read_X509_REQ(fp, &req, NULL, NULL);
+	if (!req) {
+		sprintf(err_buf, "Error reading X509 REQ from file %s", name);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+		goto fail;
+	}
+
+	if (fp) fclose(fp);
+	fp = NULL;
+
+	return req;
+
+fail:
+	if (fp) fclose(fp);
+	sprintf(err_buf, "Cannot read file %s", name);
+	stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+	return NULL;
+}
+
+X509_REQ* stir_shaken_generate_x509_req(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn)
 {
 	X509_REQ                *req = NULL;
 	X509_NAME				*tmp = NULL;
@@ -236,20 +288,15 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 	
 	
 	stir_shaken_clear_error(ss);
-
-	if (!sp_code || !csr_req) {
-		stir_shaken_set_error(ss, "Generate CSR: Bad params", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
 	
 	if (!subject_c) {
 		stir_shaken_set_error(ss, "Subject 'C' for X509 CSR not set", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_TERM;
+		goto fail;
 	}
 	
 	if (!subject_cn) {
 		stir_shaken_set_error(ss, "Subject 'CN' for X509 CSR not set", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_TERM;
+		goto fail;
 	}
 
 	req = X509_REQ_new();
@@ -258,46 +305,33 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 		goto fail;
 	}
 
-	// Make request (similar to OpenSSL's make_REQ from req.c
-
 	if (!X509_REQ_set_version(req, 2L)) {
 		stir_shaken_set_error(ss, "Failed to set version on CSR", STIR_SHAKEN_ERROR_SSL);
-		goto fail;               /* version 1 */
+		goto fail;
 	}
 	
 	tmp = X509_REQ_get_subject_name(req);
 	if (!tmp) {
 		stir_shaken_set_error(ss, "Failed to get X509_REQ subject name", STIR_SHAKEN_ERROR_SSL);
-		return STIR_SHAKEN_STATUS_TERM;
+		goto fail;
 	}
 
 	if (!X509_NAME_add_entry_by_txt(tmp, "C", MBSTRING_ASC, subject_c, -1, -1, 0)) {
 		stir_shaken_set_error(ss, "Failed to set X509_REQ subject 'C'", STIR_SHAKEN_ERROR_SSL);
-		return STIR_SHAKEN_STATUS_TERM;
+		goto fail;
 	}
 
 	if (!X509_NAME_add_entry_by_txt(tmp,"CN", MBSTRING_ASC, subject_cn, -1, -1, 0)) {
 		stir_shaken_set_error(ss, "Failed to set X509_REQ subject 'CN'", STIR_SHAKEN_ERROR_SSL);
-		return STIR_SHAKEN_STATUS_TERM;
+		goto fail;
 	}
 
 	if (1 != X509_REQ_set_subject_name(req, tmp)) {
 		stir_shaken_set_error(ss, "Failed to set X509_REQ subject name", STIR_SHAKEN_ERROR_SSL);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
-
-	if (!X509_REQ_set_pubkey(req, public_key)) {
-		stir_shaken_set_error(ss, "Generate CSR: SSL error while setting EVP_KEY on CSR", STIR_SHAKEN_ERROR_SSL);
-		goto fail;
-	}
-	
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sign_x509_req(ss, req, private_key)) {
-		stir_shaken_set_error_if_clear(ss, "Failed to sign X509 CSR", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 
-	*csr_req = req;
-	return STIR_SHAKEN_STATUS_OK;
+	return req;
 
 fail:
 
@@ -306,7 +340,7 @@ fail:
 	}
 	
 	stir_shaken_set_error_if_clear(ss, "Generate CSR: Error", STIR_SHAKEN_ERROR_SSL);
-	return STIR_SHAKEN_STATUS_FALSE;
+	return NULL;
 }
 
 stir_shaken_status_t stir_shaken_sign_x509_req(stir_shaken_context_t *ss, X509_REQ *req, EVP_PKEY *private_key)
@@ -339,6 +373,50 @@ stir_shaken_status_t stir_shaken_sign_x509_req(stir_shaken_context_t *ss, X509_R
 	}
 
 	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn)
+{
+	X509_REQ                *req = NULL;
+	X509_NAME				*tmp = NULL;
+	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	
+	
+	stir_shaken_clear_error(ss);
+
+
+	req = stir_shaken_generate_x509_req(ss, private_key, public_key, subject_c, subject_cn);
+	if (!req) {
+		stir_shaken_set_error(ss, "Generate CSR: SSL error while creating X509 CSR req", STIR_SHAKEN_ERROR_SSL);
+		goto fail;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_req_add_tnauthlist_extension_spc(ss, req, sp_code)) {
+		stir_shaken_set_error(ss, "Generate CSR: Cannot add TNAuthList SPC extension", STIR_SHAKEN_ERROR_SSL);
+		goto fail;
+	}
+
+	if (!X509_REQ_set_pubkey(req, public_key)) {
+		stir_shaken_set_error(ss, "Generate CSR: SSL error while setting EVP_KEY on CSR", STIR_SHAKEN_ERROR_SSL);
+		goto fail;
+	}
+	
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sign_x509_req(ss, req, private_key)) {
+		stir_shaken_set_error_if_clear(ss, "Failed to sign X509 CSR", STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
+	}
+
+	*csr_req = req;
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+
+	if (req) {
+		X509_REQ_free(req);
+	}
+	
+	stir_shaken_set_error_if_clear(ss, "Generate CSR: Error", STIR_SHAKEN_ERROR_SSL);
+	return STIR_SHAKEN_STATUS_FALSE;
 }
 
 stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *req, const char *csr_full_name)
@@ -648,9 +726,11 @@ stir_shaken_status_t stir_shaken_x509_add_signalwire_extensions(stir_shaken_cont
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_x509_add_tnauthlist_extension_spc(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, int spc)
+stir_shaken_status_t stir_shaken_x509_req_add_tnauthlist_extension_spc(stir_shaken_context_t *ss, X509_REQ *req, int spc)
 {
-	return STIR_SHAKEN_STATUS_OK;
+	char buf[100] = { 0 };
+	snprintf(buf, 100, "%d", spc);
+	return stir_shaken_v3_add_ext(NULL, NULL, req, NULL, stir_shaken_globals.tn_authlist_nid, buf);
 }
 
 stir_shaken_status_t stir_shaken_x509_add_tnauthlist_extension_uri(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, char *uri)
@@ -676,7 +756,7 @@ stir_shaken_status_t stir_shaken_x509_add_tnauthlist_extension_uri(stir_shaken_c
 	nid = stir_shaken_globals.tn_authlist_nid;
 	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 	
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_v3_add_ext(ca_x, x, NULL, NULL, nid, "Great uri")) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_v3_add_ext(ca_x, x, NULL, NULL, nid, uri)) {
 		stir_shaken_set_error(ss, "Failed to add TNAuthList Uri extension to X509", STIR_SHAKEN_ERROR_SSL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
@@ -775,10 +855,9 @@ X509* stir_shaken_generate_x509_self_signed_ca_cert(stir_shaken_context_t *ss, E
 }
 
 // Create SP certificate.
-X509* stir_shaken_generate_x509_end_entity_cert(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int serial, int expiry_days, const char *number_start, const char *number_end)
+X509* stir_shaken_generate_x509_end_entity_cert(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int serial, int expiry_days, char *tn_auth_list_uri)
 {
 	X509 *x = NULL;
-	char tn_auth_list_uri[100] = { 0 };
 	
 	// Subject and issuer must be different entities
 	if (!strcmp(issuer_c, subject_c) && !strcmp(issuer_cn, subject_cn)) {
@@ -797,16 +876,11 @@ X509* stir_shaken_generate_x509_end_entity_cert(stir_shaken_context_t *ss, X509 
 		goto fail;
 	}
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_add_signalwire_extensions(ss, ca_x, x, number_start, number_end)) {
-		stir_shaken_set_error_if_clear(ss, "Failed to add SignalWire's X509 extensions", STIR_SHAKEN_ERROR_GENERAL);
-		goto fail;
-	}
-
-	sprintf(tn_auth_list_uri, "https://test.com");
-
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_add_tnauthlist_extension_uri(ss, ca_x, x, tn_auth_list_uri)) {
-		stir_shaken_set_error_if_clear(ss, "Failed to add TNAuthList Uri X509 extension", STIR_SHAKEN_ERROR_TNAUTHLIST);
-		goto fail;
+	if (tn_auth_list_uri) {
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_add_tnauthlist_extension_uri(ss, ca_x, x, tn_auth_list_uri)) {
+			stir_shaken_set_error_if_clear(ss, "Failed to add TNAuthList Uri X509 extension", STIR_SHAKEN_ERROR_TNAUTHLIST);
+			goto fail;
+		}
 	}
 	
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sign_x509_cert(ss, x, private_key)) {
@@ -823,11 +897,10 @@ fail:
 }
 
 // Create SP certificate from CSR.
-X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int serial, int expiry_days, const char *number_start, const char *number_end)
+X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int serial, int expiry_days, char *tn_auth_list_uri)
 {
 	X509 *x = NULL;
 	EVP_PKEY *public_key = NULL;
-	char tn_auth_list_uri[100] = { 0 };
 
 	if (!req) {
 		stir_shaken_set_error(ss, "X509 req not set", STIR_SHAKEN_ERROR_GENERAL);
@@ -858,18 +931,13 @@ X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *
 		goto fail;
 	}
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_add_signalwire_extensions(ss, ca_x, x, number_start, number_end)) {
-		stir_shaken_set_error_if_clear(ss, "Failed to add SignalWire's X509 extensions", STIR_SHAKEN_ERROR_GENERAL);
-		goto fail;
+	if (tn_auth_list_uri) {
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_add_tnauthlist_extension_uri(ss, ca_x, x, tn_auth_list_uri)) {
+			stir_shaken_set_error_if_clear(ss, "Failed to add TNAuthList Uri X509 extension", STIR_SHAKEN_ERROR_TNAUTHLIST);
+			goto fail;
+		}
 	}
-	
-	sprintf(tn_auth_list_uri, "https://test.com");
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_add_tnauthlist_extension_uri(ss, ca_x, x, tn_auth_list_uri)) {
-		stir_shaken_set_error_if_clear(ss, "Failed to add TNAuthList Uri X509 extension", STIR_SHAKEN_ERROR_TNAUTHLIST);
-		goto fail;
-	}
-	
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sign_x509_cert(ss, x, private_key)) {
 		stir_shaken_set_error_if_clear(ss, "Failed to sign X509 end entity certificate", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
@@ -1328,7 +1396,7 @@ stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, sti
 	int rc = 1;
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	int verify_error = -1;
-	FILE *file = stderr;
+	FILE *file = NULL; // set to something if want verification callback to print it
 
 	stir_shaken_clear_error(ss);
 
@@ -1367,7 +1435,7 @@ stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, sti
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	//X509_STORE_CTX_set_ex_data(cert->verify_ctx, 0, file);
+	X509_STORE_CTX_set_ex_data(cert->verify_ctx, 0, file);
 
 	rc = X509_verify_cert(cert->verify_ctx);
 	if (rc != 1) {
@@ -1449,7 +1517,6 @@ stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_sha
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
-	// TODO pass CAs list and revocation list
 	if (!STIR_SHAKEN_MOCK_VERIFY_CERT_CHAIN 
 			&& (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_path(ss, cert))) {
 		stir_shaken_set_error_if_clear(ss, "Cert did not pass X509 path validation against CA list and CRL", STIR_SHAKEN_ERROR_CERT_INVALID);
@@ -1701,37 +1768,41 @@ exit:
 	return ss_status;
 }
 
-X509* stir_shaken_load_x509_from_file(stir_shaken_context_t *ss, const char *cert_tmp_name)
+X509* stir_shaken_load_x509_from_file(stir_shaken_context_t *ss, const char *name)
 {
-	BIO				*in = NULL;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	X509			*x = NULL;
-	
-	
+	FILE			*fp = NULL;
+
+	if (!name) return NULL;
+
 	stir_shaken_clear_error(ss);
 
-	in = BIO_new(BIO_s_file());
-	if (!in) {
-		stir_shaken_set_error(ss, "(SSL) Failed to create BIO", STIR_SHAKEN_ERROR_SSL);
-		return NULL;
+
+	fp = fopen(name, "r");
+	if (!fp) {
+		sprintf(err_buf, "Failed to open file %s", name);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
 	}
 
-	if (BIO_read_filename(in, cert_tmp_name) <= 0) {
-		sprintf(err_buf, "Error reading file: %s", cert_tmp_name);
+	x = PEM_read_X509(fp, &x, NULL, NULL);
+	if (!x) {
+		sprintf(err_buf, "Error reading certificate from file %s", name);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-		goto exit;
+		goto fail;
 	}
 
-	x = PEM_read_bio_X509(in, NULL, NULL, NULL);
-	if (x == NULL) {
-		sprintf(err_buf, "(SSL) Failed to read X509 from file: %s", cert_tmp_name);
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
-		goto exit;
-	}
+	if (fp) fclose(fp);
+	fp = NULL;
 
-exit:
-	if (in) BIO_free(in); in = NULL;
 	return x;
+
+fail:
+	if (fp) fclose(fp);
+	sprintf(err_buf, "Cannot read file %s", name);
+	stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+	return NULL;
 }
 
 EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const char *file)
@@ -1752,6 +1823,11 @@ EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const cha
 	}
 
 	in = BIO_new(BIO_s_file());
+	if (!in) {
+		stir_shaken_set_error(ss, "(SSL) Failed to create BIO", STIR_SHAKEN_ERROR_SSL);
+		goto exit;
+	}
+
 	if (BIO_read_filename(in, file) <= 0) {
 		sprintf(err_buf, "Cannot load public key: Error reading file: %s", file);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);

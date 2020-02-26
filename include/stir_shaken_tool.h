@@ -33,7 +33,10 @@
 #define OPTION_SUBJECT_C	9
 #define OPTION_SUBJECT_CN	10
 #define OPTION_SPC			11
-#define OPTION_MAX			12
+#define OPTION_CA_CERT		12
+#define OPTION_CSR			13
+#define OPTION_TN_AUTH_LIST_URI	14
+#define OPTION_MAX			15
 
 #define OPTION_NAME_PUBKEY		"pubkey"
 #define OPTION_NAME_PRIVKEY		"privkey"
@@ -48,6 +51,9 @@
 #define OPTION_NAME_SUBJECT_C	"subject_c"
 #define OPTION_NAME_SUBJECT_CN	"subject_cn"
 #define OPTION_NAME_SPC			"spc"
+#define OPTION_NAME_CA_CERT		"ca_cert"
+#define OPTION_NAME_CSR			"csr"
+#define OPTION_NAME_TN_AUTH_LIST_URI	"uri"
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
     if (stir_shaken_is_error_set(&ss)) { \
@@ -83,8 +89,7 @@ struct ca {
 	int serial_sp;
 	int expiry_days;
 	int expiry_days_sp;
-	const char *number_start_sp;
-	const char *number_end_sp;
+	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
 	char file[STIR_SHAKEN_BUFLEN];
 } ca;
 
@@ -123,6 +128,9 @@ struct options {
 	const char *crl_dir;
 	int serial;
 	int expiry_days;
+	char ca_cert[STIR_SHAKEN_BUFLEN];
+	char csr_name[STIR_SHAKEN_BUFLEN];
+	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
 } options;
 
 int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_name, struct ca *ca, struct sp *sp, struct options *options);

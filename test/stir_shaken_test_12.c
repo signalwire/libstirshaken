@@ -22,6 +22,7 @@ struct ca {
 	int expiry_days_sp;
 	const char *number_start_sp;
 	const char *number_end_sp;
+	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
 } ca;
 
 struct sp {
@@ -139,11 +140,12 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 	ca.expiry_days_sp = 90;
 	ca.number_start_sp = "+44 7483 866 000";
 	ca.number_end_sp = "+44 7483 899 999";
+	snprintf(ca.tn_auth_list_uri, STIR_SHAKEN_BUFLEN, "http://ca.com/api");
 	//sp.cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, sp.code, sp.csr.req, ca.keys.private_key, ca.issuer_c, ca.issuer_cn, sp.serial, sp.expiry_days);
 	pkey = X509_REQ_get_pubkey(sp.csr.req);
 	stir_shaken_assert(1 == EVP_PKEY_cmp(pkey, sp.keys.public_key), "Public key in CSR different than SP's");
 	//sp.cert.x = stir_shaken_generate_x509_end_entity_cert(&ss, ca.cert.x, ca.keys.private_key, sp.keys.public_key, ca.issuer_c, ca.issuer_cn, sp.subject_c, sp.subject_cn, ca.serial_sp, ca.expiry_days_sp, ca.number_start_sp, ca.number_end_sp);
-	sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(&ss, ca.cert.x, ca.keys.private_key, ca.issuer_c, ca.issuer_cn, sp.csr.req, ca.serial_sp, ca.expiry_days_sp, ca.number_start_sp, ca.number_end_sp);
+	sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(&ss, ca.cert.x, ca.keys.private_key, ca.issuer_c, ca.issuer_cn, sp.csr.req, ca.serial_sp, ca.expiry_days_sp, ca.tn_auth_list_uri);
 	PRINT_SHAKEN_ERROR_IF_SET
 		stir_shaken_assert(sp.cert.x != NULL, "Err, generating Cert");
 
