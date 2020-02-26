@@ -228,115 +228,10 @@ stir_shaken_status_t stir_shaken_v3_add_ext(X509 *ca_x, X509 *x, X509_REQ *req, 
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-static int stir_shaken_v3_add_extensions(X509V3_CTX *ctx, const char *ext_name, const char *ext_value, X509_REQ *req, X509 *x)
-{
-	int                         i = 0, ext_type = -1, crit = 0;
-	X509_EXTENSION              *ext = NULL;
-	STACK_OF(X509_EXTENSION)    *extlist = NULL, **sk = NULL;
-	uint8_t                     doing_req = 0, doing_x = 0;
-
-	if (req) {
-		sk = &extlist;
-		doing_req = 1;
-	}
-
-	if (x) {
-		doing_x = 1;
-	}
-
-	if ((doing_req ^ doing_x) == 0) return 0;
-
-	if (doing_x) {
-
-		// Handle adding of extensions for certificate generation
-		crit = 0;   // TODO v3_check_critical(&ext_value);
-		ext_type = 1;  // TODO this may fail at some future, should they change type definitions, can 
-		if (!(ext = v3_generic_extension(ext_name, ext_value, crit, ext_type, NULL)))
-			return 0;
-
-		if (!ext) return 0;
-		if (X509_add_ext(x, ext, -1) == 0) {
-			X509_EXTENSION_free(ext);
-			return 0;
-		}
-
-		X509_EXTENSION_free(ext);
-		return 1;
-	}
-
-	if ((ext = X509V3_EXT_nconf(NULL, ctx, (char *)ext_name, (char*)ext_value)) == NULL)
-		return 0;
-	//if (ctx->flags == X509V3_CTX_REPLACE)
-	//    delete_ext(*sk, ext);
-	if (sk != NULL) {
-		if (X509v3_add_ext(sk, ext, -1) == NULL) {
-			X509_EXTENSION_free(ext);
-			return 0;
-		}
-	}
-	X509_EXTENSION_free(ext);
-	i = X509_REQ_add_extensions(req, extlist);
-	sk_X509_EXTENSION_pop_free(extlist, X509_EXTENSION_free);
-
-	return i;
-}
-
-static int stir_shaken_generate_der(char *der, int der_len, uint32_t sp_code, int include_der_string)
-{
-	int             len = -1, tpl_len = -1, i = 0;
-	// config is in form "SEQUENCE:tn_auth_list\n[tn_auth_list]\nfield1=EXP:0,IA5:1237";
-	const char      *der_string = "DER:";
-	const char      *der_template = "30:08:a0:06:16:04";   // TNAuthorizationList extension value, this is "field1=EXP:0,IA5:" in DER format
-	char sp_code_str[100] = {0};
-
-	len = snprintf(sp_code_str, 100, "%u", sp_code);
-	if (len >= 100) {
-		return -1;
-	}
-
-	tpl_len = snprintf(der, der_len, "%s%s", include_der_string ? der_string : "", der_template);
-	if (tpl_len >= der_len) {
-		return -1;
-	}
-
-	if (3*len + tpl_len + 1 > der_len) {
-		return -1;
-	}
-
-	i = 0;
-	len = strlen(sp_code_str);
-	while (len) {
-		der[tpl_len + 3*i] = ':';
-		der[tpl_len + 3*i + 1] = '3';
-		der[tpl_len + 3*i + 2] = sp_code_str[i];
-		++i;
-		len--;
-	}
-	der[tpl_len + 3*i] = '\0';
-
-	return tpl_len + 3*i; // excluding '\0'
-}
-
-#define EXT_VALUE_DER_LEN 300
 stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn)
 {
 	X509_REQ                *req = NULL;
 	X509_NAME				*tmp = NULL;
-	//const char              *req_subj = "/C=US/ST=VA/L=ItsHere/O=SignalWire, Inc./OU=VOIP/CN=SHAKEN";
-	int                     req_multirdn = 0;
-	unsigned long           req_chtype = 4097;
-	X509V3_CTX              ext_ctx = {0};
-	const EVP_MD            *digest = NULL;
-	// our lovely extension configuration (input to DER) is:
-	// asn1=SEQUENCE:tn_auth_list
-	// [tn_auth_list]
-	// field1=EXP:0,IA5:1237
-	//const char *der_input = "SEQUENCE:tn_auth_list\n[tn_auth_list]\nfield1=EXP:0,IA5:1237";
-	const char              *ext_name = "1.3.6.1.5.5.7.1.26";                   // our lovely TNAuthorizationList extension identifier that we will use to construct v3 extension of type TNAuthorizationList
-	//const char              *ext_value = "DER:30:08:a0:06:16:04:37:38:36:35";   // TNAuthorizationList extension value, this is "asn1=SEQUENCE:tn_auth_list\ntn_auth_list]\nfield1=EXP:0,IA5:1237" in DER format
-	char                    ext_value_der[EXT_VALUE_DER_LEN] = {0};
-	int                     der_len = -1, include_der_string = 1;
-	size_t                  i = 0;
 	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	
 	
@@ -395,40 +290,11 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 		stir_shaken_set_error(ss, "Generate CSR: SSL error while setting EVP_KEY on CSR", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
-
-	// TODO Factor out extensions and CSR signing (as did with cert)
-
-	// Set up V3 context struct
-	X509V3_set_ctx(&ext_ctx, NULL, NULL, req, NULL, 0);
-
-	// DER
-	include_der_string = 1;
-	der_len = stir_shaken_generate_der(ext_value_der, EXT_VALUE_DER_LEN, sp_code, include_der_string);
-	if (der_len == -1) {
-		stir_shaken_set_error(ss, "Generate CSR: Failed to generate DER", STIR_SHAKEN_ERROR_SSL);
+	
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sign_x509_req(ss, req, private_key)) {
+		stir_shaken_set_error_if_clear(ss, "Failed to sign X509 CSR", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
-
-	// Add extensions
-	i = stir_shaken_v3_add_extensions(&ext_ctx, ext_name, ext_value_der, req, NULL);
-	if (i == 0) {
-		stir_shaken_set_error(ss, "Generate CSR: Cannot load extensions into CSR", STIR_SHAKEN_ERROR_SSL);
-		goto fail;
-	}
-
-	digest = EVP_get_digestbyname("sha256");
-	if (!digest) {
-		stir_shaken_set_error(ss, "Generate CSR: SSL error: Failed loading digest", STIR_SHAKEN_ERROR_SSL);
-		goto fail;
-	}
-
-	i = do_X509_REQ_sign(req, private_key, digest, NULL);
-	if (i == 0) {
-		stir_shaken_set_error(ss, "Generate CSR: SSL error: Failed to sign CSR", STIR_SHAKEN_ERROR_SSL);
-		goto fail;
-	}
-
-anyway:
 
 	*csr_req = req;
 	return STIR_SHAKEN_STATUS_OK;
@@ -437,11 +303,42 @@ fail:
 
 	if (req) {
 		X509_REQ_free(req);
-		req = NULL;
 	}
 	
 	stir_shaken_set_error_if_clear(ss, "Generate CSR: Error", STIR_SHAKEN_ERROR_SSL);
 	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+stir_shaken_status_t stir_shaken_sign_x509_req(stir_shaken_context_t *ss, X509_REQ *req, EVP_PKEY *private_key)
+{
+	const EVP_MD    *md = NULL;
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+
+	stir_shaken_clear_error(ss);
+
+	if (!req) {
+		stir_shaken_set_error(ss, "X509 CSR req not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	if (!private_key) {
+		stir_shaken_set_error(ss, "Private key not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	md = EVP_get_digestbyname(STIR_SHAKEN_DIGEST_NAME);
+	if (!md) {
+		sprintf(err_buf, "Cannot get %s digest", STIR_SHAKEN_DIGEST_NAME);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	if (0 == do_X509_REQ_sign(req, private_key, md, NULL)) {
+		stir_shaken_set_error(ss, "Generate CSR: SSL error: Failed to sign CSR", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *req, const char *csr_full_name)
@@ -986,43 +883,11 @@ fail:
 	return NULL;
 }
 
-stir_shaken_status_t stir_shaken_add_tnauthlist_extension_by_hack(stir_shaken_context_t *ss, uint32_t sp_code, X509 *x)
-{
-	int             i = 0;
-	const char      *ext_name = "1.3.6.1.5.5.7.1.26";                   // our lovely TNAuthorizationList extension identifier that we will use to construct v3 extension of type TNAuthorizationList
-	char            ext_value_der[EXT_VALUE_DER_LEN] = {0};
-	int             der_len = -1, include_der_string = 0;
-
-	if (!x) {
-		stir_shaken_set_error(ss, "CSR not set", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
-
-	include_der_string = 0;
-	der_len = stir_shaken_generate_der(ext_value_der, EXT_VALUE_DER_LEN, sp_code, include_der_string);
-	if (der_len == -1) {
-		stir_shaken_set_error(ss, "Failed to generate DER", STIR_SHAKEN_ERROR_SSL);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
-
-	i = stir_shaken_v3_add_extensions(NULL, ext_name, ext_value_der, NULL, x);
-	if (i == 0) {
-		stir_shaken_set_error(ss, "Cannot load extensions into CSR", STIR_SHAKEN_ERROR_SSL);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
-	
-	return STIR_SHAKEN_STATUS_OK;
-}
-
 X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int serial, int expiry_days)
 {
 	X509            *x = NULL;
 	EVP_PKEY        *pkey = NULL;
 	X509_NAME		*tmp = NULL;
-	int             i = 0;
-	const char      *ext_name = "1.3.6.1.5.5.7.1.26";                   // our lovely TNAuthorizationList extension identifier that we will use to construct v3 extension of type TNAuthorizationList
-	char            ext_value_der[EXT_VALUE_DER_LEN] = {0};
-	int             der_len = -1, include_der_string = 0;
 	
 	
 	stir_shaken_clear_error(ss);
@@ -1042,14 +907,12 @@ X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_
 		return NULL;
 	}
 
-	// Check csr
 	if (!(pkey = X509_REQ_get_pubkey(req))) {
 		stir_shaken_set_error(ss, "Cannot get public key from X509_REQ", STIR_SHAKEN_ERROR_SSL);
 		return NULL;
 	}
 
-	i = X509_REQ_verify(req, pkey);
-	if (i < 0) {
+	if (X509_REQ_verify(req, pkey) < 0) {
 		stir_shaken_set_error(ss, "'X509_REQ-public key' pair invalid", STIR_SHAKEN_ERROR_SSL);
 		return NULL;
 	}
@@ -1105,7 +968,6 @@ X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_
 fail:
 	if (x) {
 		X509_free(x);
-		x = NULL;
 	}
 	stir_shaken_set_error_if_clear(ss, "Error creating cert", STIR_SHAKEN_ERROR_SSL);
 	return NULL;
