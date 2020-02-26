@@ -1,9 +1,9 @@
 #include <stir_shaken_tool.h>
 
 
-int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_name, struct ca *ca, struct sp *sp, struct options *options)
+int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_name, struct ca *ca, struct pa *pa, struct sp *sp, struct options *options)
 {
-	if (!command_name || !ca || !sp || !options) {
+	if (!command_name || !options) {
 		return COMMAND_UNKNOWN;
 	}
 
@@ -54,6 +54,13 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		fprintf(stderr, "\n\nConfiguring install CA certificate command...\n\n");
 		return COMMAND_INSTALL_CERT;
 
+	} else if (!strcmp(command_name, COMMAND_NAME_CA)) {
+
+		return COMMAND_CA;
+
+	} else if (!strcmp(command_name, COMMAND_NAME_PA)) {
+
+		return COMMAND_PA;
 	} else {
 
 		stir_shaken_set_error(ss, "Unknown command", STIR_SHAKEN_ERROR_GENERAL);
@@ -61,7 +68,7 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 	}
 }
 
-stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int command, struct ca *ca, struct sp *sp, struct options *options)
+stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int command, struct ca *ca, struct pa *pa, struct sp *sp, struct options *options)
 {
 	switch (command) {
 
@@ -101,6 +108,12 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 		case COMMAND_INSTALL_CERT:
 			break;
 
+		case COMMAND_CA:
+			break;
+
+		case COMMAND_PA:
+			break;
+
 		case COMMAND_CERT:
 		case COMMAND_UNKNOWN:
 		default:
@@ -113,7 +126,7 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int command, struct ca *ca, struct sp *sp, struct options *options)
+stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int command, struct ca *ca, struct pa *pa, struct sp *sp, struct options *options)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
 	unsigned long	hash = 0;
@@ -225,6 +238,16 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			break;
 
 		case COMMAND_INSTALL_CERT:
+			break;
+
+		case COMMAND_CA:
+
+			fprintf(stderr, "Starting CA service...\n");
+			break;
+
+		case COMMAND_PA:
+
+			fprintf(stderr, "Starting PA service...\n");
 			break;
 
 		case COMMAND_UNKNOWN:

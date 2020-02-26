@@ -7,20 +7,25 @@
 
 #define STIR_SHAKEN_BUFLEN 1000
 
+#define COMMAND_KEYS			0
+#define COMMAND_CSR				1
+#define COMMAND_CERT			2
+#define COMMAND_CERT_CA			3
+#define COMMAND_CERT_SP			4
+#define COMMAND_INSTALL_CERT	5
+#define COMMAND_CA				6
+#define COMMAND_PA				7
+#define COMMAND_UNKNOWN			100
+
 #define COMMAND_NAME_KEYS			"keys"
 #define COMMAND_NAME_CSR			"csr"
 #define COMMAND_NAME_CERT			"cert"
 #define COMMAND_NAME_CERT_CA		"cert (CA)"
 #define COMMAND_NAME_CERT_SP		"cert (SP)"
 #define COMMAND_NAME_INSTALL_CERT	"install"
+#define COMMAND_NAME_CA				"ca"
+#define COMMAND_NAME_PA				"pa"
 #define COMMAND_NAME_UNKNOWN		"unknown"
-#define COMMAND_KEYS 0
-#define COMMAND_CSR	1
-#define COMMAND_CERT 2
-#define COMMAND_CERT_CA 3
-#define COMMAND_CERT_SP 4
-#define COMMAND_INSTALL_CERT 5
-#define COMMAND_UNKNOWN 100
 
 #define OPTION_PUBKEY		1
 #define OPTION_PRIVKEY		2
@@ -93,6 +98,12 @@ struct ca {
 	char file[STIR_SHAKEN_BUFLEN];
 } ca;
 
+struct pa {
+	stir_shaken_ssl_keys_t keys;
+	char private_key_name[STIR_SHAKEN_BUFLEN];
+	char public_key_name[STIR_SHAKEN_BUFLEN];
+} pa;
+
 struct sp {
 	stir_shaken_ssl_keys_t keys;
 	uint32_t code;
@@ -133,6 +144,6 @@ struct options {
 	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
 } options;
 
-int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_name, struct ca *ca, struct sp *sp, struct options *options);
-stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int command, struct ca *ca, struct sp *sp, struct options *options);
-stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int command, struct ca *ca, struct sp *sp, struct options *options);
+int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_name, struct ca *ca, struct pa *pa, struct sp *sp, struct options *options);
+stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int command, struct ca *ca, struct pa *pa, struct sp *sp, struct options *options);
+stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int command, struct ca *ca, struct pa *pa, struct sp *sp, struct options *options);

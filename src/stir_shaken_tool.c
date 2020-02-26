@@ -45,13 +45,6 @@ int main(int argc, char *argv[])
 	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
 	int command = COMMAND_UNKNOWN;
 	const char *command_name = COMMAND_NAME_UNKNOWN;
-
-
-	if (argc < 2) {
-		stirshaken_usage(argv[0]);
-		exit(EXIT_FAILURE);
-	}
-
 	int option_index = 0;
 	struct option long_options[] = {
 		{ OPTION_NAME_PUBKEY, required_argument, 0, OPTION_PUBKEY },
@@ -71,14 +64,20 @@ int main(int argc, char *argv[])
 		{ 0 }
 	};
 
+
+	if (argc < 2) {
+		stirshaken_usage(argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
 	// Parse options
 
 	while ((c = getopt_long(argc, argv, "f:", long_options, &option_index)) != -1) {
 
 		if (c < OPTION_MAX) {
-			fprintf(stderr, "+ Processing OPTION %d (%s)\n", c, long_options[option_index].name);
+			fprintf(stderr, "\n+ Processing OPTION %d (%s)\n", c, long_options[option_index].name);
 		} else {
-			fprintf(stderr, "+ Processing OPTION %d ('%c')\n", c, c);
+			fprintf(stderr, "\n+ Processing OPTION %d ('%c')\n", c, c);
 		}
 
 		switch (c) {
@@ -267,7 +266,8 @@ int main(int argc, char *argv[])
 	
 	// Parse the comamnd
 
-	command = stirshaken_command_configure(&ss, argv[optind], &ca, &sp, &options);
+	fprintf(stderr, "\n=== PARSING COMMAND\n\n");
+	command = stirshaken_command_configure(&ss, argv[optind], &ca, &pa, &sp, &options);
 	if (COMMAND_UNKNOWN == command) {
 		fprintf(stderr, "\nError. Invalid command. Type %s --help for usage instructions\n", argv[0]);
 		PRINT_SHAKEN_ERROR_IF_SET
@@ -277,7 +277,8 @@ int main(int argc, char *argv[])
 
 	// Validate the command
 	
-	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_validate(&ss, command, &ca, &sp, &options)) {
+	fprintf(stderr, "\n=== VALIDATING COMMAND\n\n");
+	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_validate(&ss, command, &ca, &pa, &sp, &options)) {
 		fprintf(stderr, "\nError. Invalid parameters. Type %s --help for usage instructions\n", argv[0]);
 		PRINT_SHAKEN_ERROR_IF_SET
 		goto fail;
@@ -285,13 +286,14 @@ int main(int argc, char *argv[])
 
 	// Process the command
 	
-	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_execute(&ss, command, &ca, &sp, &options)) {
+	fprintf(stderr, "\n=== PROCESSING COMMAND\n\n");
+	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_execute(&ss, command, &ca, &pa, &sp, &options)) {
 		fprintf(stderr, "\nError. Command failed.\n");
 		PRINT_SHAKEN_ERROR_IF_SET
 		goto fail;
 	}
 	
-	fprintf(stderr, "=== OK.\n\n");
+	fprintf(stderr, "\n=== Done. Thank you.\n\n");
 	return EXIT_SUCCESS;
 
 fail:
