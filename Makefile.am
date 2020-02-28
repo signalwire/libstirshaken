@@ -2,7 +2,7 @@ dist_doc_DATA = README.txt
 
 AM_CFLAGS    = -I./src -Iinclude -I$(srcdir)/include
 lib_LTLIBRARIES = libstirshaken.la
-libstirshaken_la_SOURCES = src/stir_shaken.c src/stir_shaken_service.c src/stir_shaken_passport.c src/stir_shaken_authorize.c src/stir_shaken_verify.c src/stir_shaken_ssl.c
+libstirshaken_la_SOURCES = src/stir_shaken.c src/stir_shaken_service.c src/stir_shaken_passport.c src/stir_shaken_authorize.c src/stir_shaken_verify.c src/stir_shaken_ssl.c src/mongoose.c src/stir_shaken_ca.c src/stir_shaken_pa.c
 include_HEADERS = include/stir_shaken.h
 libstirshaken_la_LDFLAGS = -version-info 1:0:0
 

@@ -52,6 +52,7 @@
 #define STIR_SHAKEN_MOCK_VERIFY_CERT_CHAIN 0
 #define STIR_SHAKEN_LOAD_CA_FROM_DEFAULT_OS_PATHS 0
 #define STIR_SHAKEN_CERT_ADD_SIGNALWIRE_EXTENSION 1
+#define STIR_SHAKEN_DEFAULT_CA_PORT 80
 
 typedef enum stir_shaken_cert_type {
 	STIR_SHAKEN_CERT_TYPE_ROOT,
@@ -230,6 +231,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_SET_DEFAULT_PATHS,
 	STIR_SHAKEN_ERROR_CERT_EXPIRED,
 	STIR_SHAKEN_ERROR_PASSPORT_EXPIRED,
+	STIR_SHAKEN_ERROR_BIND,
 } stir_shaken_error_t;
 
 typedef enum stir_shaken_http_req_type {
@@ -734,6 +736,27 @@ const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t
 #define stir_shaken_set_error(ss, description, error) stir_shaken_do_set_error(ss, description, error, __FILE__, __LINE__)
 #define stir_shaken_set_error_if_clear(ss, description, error) stir_shaken_do_set_error_if_clear(ss, description, error, __FILE__, __LINE__)
 
+typedef struct stir_shaken_ca_s {
+	stir_shaken_ssl_keys_t keys;
+    stir_shaken_cert_t cert;
+	char private_key_name[STIR_SHAKEN_BUFLEN];
+	char public_key_name[STIR_SHAKEN_BUFLEN];
+	char cert_name[STIR_SHAKEN_BUFLEN];
+	char cert_name_hashed[STIR_SHAKEN_BUFLEN];
+	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
+	uint16_t port;
+} stir_shaken_ca_t;
+
+typedef struct stir_shaken_pa_s {
+	stir_shaken_ssl_keys_t keys;
+	char private_key_name[STIR_SHAKEN_BUFLEN];
+	char public_key_name[STIR_SHAKEN_BUFLEN];
+	uint16_t port;
+} stir_shaken_pa_t;
+
+stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_shaken_ca_t *ca);
+stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_shaken_pa_t *pa);
+
 
 // TEST
 
@@ -741,35 +764,5 @@ stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, 
 
 /* Exit from calling location if test fails. */
 #define stir_shaken_assert(x, m) if (!(x)) return stir_shaken_test_die((m), __FILE__, __LINE__);
-
-// Test 1
-stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void);
-
-// Test 2
-stir_shaken_status_t stir_shaken_unit_test_passport_create(void);
-
-// Test 3
-stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void);
-
-// Test 4
-stir_shaken_status_t stir_shaken_unit_test_sip_identity_header(void);
-
-// Test 5
-stir_shaken_status_t stir_shaken_unit_test_sip_identity_header_keep_passport(void);
-
-// Test 6
-stir_shaken_status_t stir_shaken_unit_test_authorize(void);
-
-// Test 7
-stir_shaken_status_t stir_shaken_unit_test_authorize_keep_passport(void);
-
-// Test 8
-stir_shaken_status_t stir_shaken_unit_test_verify(void);
-
-// Test 9
-stir_shaken_status_t stir_shaken_unit_test_verify_spoofed(void);
-
-// Test 10
-stir_shaken_status_t stir_shaken_unit_test_verify_response(void);
 
 #endif // __STIR_SHAKEN

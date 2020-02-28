@@ -41,7 +41,8 @@
 #define OPTION_CA_CERT		12
 #define OPTION_CSR			13
 #define OPTION_TN_AUTH_LIST_URI	14
-#define OPTION_MAX			15
+#define OPTION_PORT			15
+#define OPTION_MAX			16
 
 #define OPTION_NAME_PUBKEY		"pubkey"
 #define OPTION_NAME_PRIVKEY		"privkey"
@@ -59,6 +60,7 @@
 #define OPTION_NAME_CA_CERT		"ca_cert"
 #define OPTION_NAME_CSR			"csr"
 #define OPTION_NAME_TN_AUTH_LIST_URI	"uri"
+#define OPTION_NAME_PORT		"port"
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
     if (stir_shaken_is_error_set(&ss)) { \
@@ -74,18 +76,29 @@
 		printf("Error code is: '%d'\n", error_code); \
 	}
 
+#define STIR_SHAKEN_CHECK_CONVERSION \
+				if (helper > 0x10000 - 1) { \
+					stirshaken_range_error(c, helper); \
+					goto fail; \
+				} \
+				if ((pCh == optarg) || (*pCh != '\0')) { \
+					fprintf(stderr, "Invalid argument\n"); \
+					fprintf(stderr, "Parameter conversion error, nonconvertible part is: [%s]\n", pCh); \
+					help_hint(argv[0]); \
+					goto fail; \
+				}
+
+#define STIR_SHAKEN_CHECK_OPTARG \
+				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) { \
+					fprintf(stderr, "Option value too long\n"); \
+					goto fail; \
+				}
+
 #define CA_DIR	NULL
 #define CRL_DIR	NULL
 
 struct ca {
-	stir_shaken_ssl_keys_t keys;
-    stir_shaken_cert_t cert;
-	
-	char private_key_name[STIR_SHAKEN_BUFLEN];
-	char public_key_name[STIR_SHAKEN_BUFLEN];
-	char cert_name[STIR_SHAKEN_BUFLEN];
-	char cert_text_name[STIR_SHAKEN_BUFLEN];
-	char cert_name_hashed[STIR_SHAKEN_BUFLEN];
+	stir_shaken_ca_t ca;
 	char issuer_c[STIR_SHAKEN_BUFLEN];
 	char issuer_cn[STIR_SHAKEN_BUFLEN];
 	char subject_c[STIR_SHAKEN_BUFLEN];
@@ -94,14 +107,11 @@ struct ca {
 	int serial_sp;
 	int expiry_days;
 	int expiry_days_sp;
-	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
 	char file[STIR_SHAKEN_BUFLEN];
 } ca;
 
 struct pa {
-	stir_shaken_ssl_keys_t keys;
-	char private_key_name[STIR_SHAKEN_BUFLEN];
-	char public_key_name[STIR_SHAKEN_BUFLEN];
+	stir_shaken_pa_t pa;
 } pa;
 
 struct sp {
@@ -142,6 +152,7 @@ struct options {
 	char ca_cert[STIR_SHAKEN_BUFLEN];
 	char csr_name[STIR_SHAKEN_BUFLEN];
 	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
+	uint16_t port;
 } options;
 
 int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_name, struct ca *ca, struct pa *pa, struct sp *sp, struct options *options);

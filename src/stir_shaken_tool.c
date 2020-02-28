@@ -12,11 +12,15 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s --%s %s --%s key --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY -f certName\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE, OPTION_NAME_TYPE_CA, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY);
 	fprintf(stderr, "\t\t %s --%s %s --%s key --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY --%s ca.pem --%s csr.pem --%s TNAuthList(URI) -f certName\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE, OPTION_NAME_TYPE_SP, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY, OPTION_NAME_CA_CERT, OPTION_NAME_CSR, OPTION_NAME_TN_AUTH_LIST_URI);
 	fprintf(stderr, "\t\t %s -f certName\n", COMMAND_NAME_INSTALL_CERT);
+	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_CA, OPTION_NAME_PORT);
+	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "\t\t %s			: generate key pair\n", COMMAND_NAME_KEYS);
 	fprintf(stderr, "\t\t %s			: generate X509 certificate request for SP identified by SP Code given to --spc\n", COMMAND_NAME_CSR);
 	fprintf(stderr, "\t\t %s			: generate X509 certificate (end entity for --type %s and self-signed for --type %s)\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE_SP, OPTION_NAME_TYPE_CA);
-	fprintf(stderr, "\t\t %s		: hash CA certificate and copy into CA dir\n\n", COMMAND_NAME_INSTALL_CERT);
+	fprintf(stderr, "\t\t %s		: hash CA certificate and copy into CA dir\n", COMMAND_NAME_INSTALL_CERT);
+	fprintf(stderr, "\t\t %s			: run CA service on port given to --%s\n", COMMAND_NAME_CA, OPTION_NAME_PORT);
+	fprintf(stderr, "\t\t %s			: run PA service on port given to --%s\n\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\n");
 }
 
@@ -61,6 +65,7 @@ int main(int argc, char *argv[])
 		{ OPTION_NAME_CA_CERT, required_argument, 0, OPTION_CA_CERT },
 		{ OPTION_NAME_CSR, required_argument, 0, OPTION_CSR },
 		{ OPTION_NAME_TN_AUTH_LIST_URI, required_argument, 0, OPTION_TN_AUTH_LIST_URI },
+		{ OPTION_NAME_PORT, required_argument, 0, OPTION_PORT },
 		{ 0 }
 	};
 
@@ -83,68 +88,38 @@ int main(int argc, char *argv[])
 		switch (c) {
 
 			case OPTION_PUBKEY:
-				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
-					fprintf(stderr, "Option value too long\n");
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.public_key_name, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "Public key name is: %s\n", options.public_key_name);
 				break;
 
 			case OPTION_PRIVKEY:
-				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
-					fprintf(stderr, "Option value too long\n");
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.private_key_name, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "Private key name is: %s\n", options.private_key_name);
 				break;
 
 			case OPTION_ISSUER_C:
-				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
-					fprintf(stderr, "Option value too long\n");
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.issuer_c, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "Issuer C is: %s\n", options.issuer_c);
 				break;
 			
 			case OPTION_ISSUER_CN:
-				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
-					fprintf(stderr, "Option value too long\n");
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.issuer_cn, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "Issuer CN is: %s\n", options.issuer_cn);
 				break;
 			
 			case OPTION_SERIAL:
 				helper = strtoul(optarg, &pCh, 10);
-				if (helper > 0x10000 - 1) {
-					stirshaken_range_error(c, helper);
-					goto fail;
-				}
-				if ((pCh == optarg) || (*pCh != '\0')) {    /* check */
-					fprintf(stderr, "Invalid argument\n");
-					fprintf(stderr, "Parameter conversion error, nonconvertible part is: [%s]\n", pCh);
-					help_hint(argv[0]);
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_CONVERSION
 				options.serial = helper;
 				break;
 			
 			case OPTION_EXPIRY:
 				helper = strtoul(optarg, &pCh, 10);
-				if (helper > 0x10000 - 1) {
-					stirshaken_range_error(c, helper);
-					goto fail;
-				}
-				if ((pCh == optarg) || (*pCh != '\0')) {    /* check */
-					fprintf(stderr, "Invalid argument\n");
-					fprintf(stderr, "Parameter conversion error, nonconvertible part is: [%s]\n", pCh);
-					help_hint(argv[0]);
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_CONVERSION
 				options.expiry_days = helper;
 				break;
 
@@ -172,78 +147,58 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'f':
-				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
-					fprintf(stderr, "-f name too long\n");
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.file, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "Output file is: %s\n", options.file);
 				break;
 
 			case OPTION_SUBJECT_C:
-				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
-					fprintf(stderr, "Option value too long\n");
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.subject_c, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "Subject C is: %s\n", options.subject_c);
 				break;
 			
 			case OPTION_SUBJECT_CN:
-				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
-					fprintf(stderr, "Option value too long\n");
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.subject_cn, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "Subject CN is: %s\n", options.subject_cn);
 				break;
 			
 			case OPTION_SPC:
 				helper = strtoul(optarg, &pCh, 10);
-				if (helper > 0x10000 - 1) {
-					stirshaken_range_error(c, helper);
-					goto fail;
-				}
-				if ((pCh == optarg) || (*pCh != '\0')) {    /* check */
-					fprintf(stderr, "Invalid argument\n");
-					fprintf(stderr, "Parameter conversion error, nonconvertible part is: [%s]\n", pCh);
-					help_hint(argv[0]);
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_CONVERSION
 				options.spc = helper;
 				break;
 			
 			case OPTION_CA_CERT:
-				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
-					fprintf(stderr, "Option value too long\n");
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.ca_cert, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "CA certificate is: %s\n", options.ca_cert);
 				break;
 			
 			case OPTION_CSR:
-				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
-					fprintf(stderr, "Option value too long\n");
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.csr_name, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "CSR is: %s\n", options.csr_name);
 				break;
 			
 			case OPTION_TN_AUTH_LIST_URI:
-				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) {
-					fprintf(stderr, "Option value too long\n");
-					goto fail;
-				}
+				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.tn_auth_list_uri, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "TNAuthList URI is: %s\n", options.tn_auth_list_uri);
 				break;
 
+			case OPTION_PORT:
+				helper = strtoul(optarg, &pCh, 10);
+				STIR_SHAKEN_CHECK_CONVERSION
+				options.port = helper;
+				fprintf(stderr, "Port is: %u\n", options.port);
+				break;
+
 			case '?':
-				if (optopt == 'f')
+				if (optopt == 'f') {
 					fprintf(stderr, "\nOption -%c requires an argument.\n", optopt);
-				else if (isprint(optopt))
+				} else if (isprint(optopt))
 					fprintf(stderr,"Unknown option '-%c'.\n", optopt);
 				else {
 					fprintf(stderr, "Are there any long options? Please check that you have typed them correctly.\n");
