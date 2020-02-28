@@ -15,6 +15,8 @@
 #define COMMAND_INSTALL_CERT	5
 #define COMMAND_CA				6
 #define COMMAND_PA				7
+#define COMMAND_SP_SPC_REQ		8
+#define COMMAND_SP_CERT_REQ		9
 #define COMMAND_UNKNOWN			100
 
 #define COMMAND_NAME_KEYS			"keys"
@@ -25,6 +27,8 @@
 #define COMMAND_NAME_INSTALL_CERT	"install"
 #define COMMAND_NAME_CA				"ca"
 #define COMMAND_NAME_PA				"pa"
+#define COMMAND_NAME_SP_SPC_REQ		"sp-spc-req"
+#define COMMAND_NAME_SP_CERT_REQ	"sp-cert-req"
 #define COMMAND_NAME_UNKNOWN		"unknown"
 
 #define OPTION_PUBKEY		1
@@ -42,7 +46,8 @@
 #define OPTION_CSR			13
 #define OPTION_TN_AUTH_LIST_URI	14
 #define OPTION_PORT			15
-#define OPTION_MAX			16
+#define OPTION_URL			16
+#define OPTION_MAX			17
 
 #define OPTION_NAME_PUBKEY		"pubkey"
 #define OPTION_NAME_PRIVKEY		"privkey"
@@ -61,6 +66,7 @@
 #define OPTION_NAME_CSR			"csr"
 #define OPTION_NAME_TN_AUTH_LIST_URI	"uri"
 #define OPTION_NAME_PORT		"port"
+#define OPTION_NAME_URL			"url"
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
     if (stir_shaken_is_error_set(&ss)) { \
@@ -131,6 +137,7 @@ struct sp {
 	int serial;
 	int expiry_days;
 	char file[STIR_SHAKEN_BUFLEN];
+	char url[STIR_SHAKEN_BUFLEN];
 } sp;
 
 struct options {
@@ -153,6 +160,7 @@ struct options {
 	char csr_name[STIR_SHAKEN_BUFLEN];
 	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
 	uint16_t port;
+	char url[STIR_SHAKEN_BUFLEN];
 } options;
 
 int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_name, struct ca *ca, struct pa *pa, struct sp *sp, struct options *options);

@@ -14,13 +14,17 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s -f certName\n", COMMAND_NAME_INSTALL_CERT);
 	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_CA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
+	fprintf(stderr, "\t\t %s --%s URL\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
+	fprintf(stderr, "\t\t %s --%s URL\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "\t\t %s			: generate key pair\n", COMMAND_NAME_KEYS);
 	fprintf(stderr, "\t\t %s			: generate X509 certificate request for SP identified by SP Code given to --spc\n", COMMAND_NAME_CSR);
 	fprintf(stderr, "\t\t %s			: generate X509 certificate (end entity for --type %s and self-signed for --type %s)\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE_SP, OPTION_NAME_TYPE_CA);
 	fprintf(stderr, "\t\t %s		: hash CA certificate and copy into CA dir\n", COMMAND_NAME_INSTALL_CERT);
 	fprintf(stderr, "\t\t %s			: run CA service on port given to --%s\n", COMMAND_NAME_CA, OPTION_NAME_PORT);
-	fprintf(stderr, "\t\t %s			: run PA service on port given to --%s\n\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
+	fprintf(stderr, "\t\t %s			: run PA service on port given to --%s\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
+	fprintf(stderr, "\t\t %s			: request SP Code token from PA at url given to --%s\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
+	fprintf(stderr, "\t\t %s			: request SP certificate from CA at url given to --%s\n\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL);
 	fprintf(stderr, "\n");
 }
 
@@ -66,6 +70,7 @@ int main(int argc, char *argv[])
 		{ OPTION_NAME_CSR, required_argument, 0, OPTION_CSR },
 		{ OPTION_NAME_TN_AUTH_LIST_URI, required_argument, 0, OPTION_TN_AUTH_LIST_URI },
 		{ OPTION_NAME_PORT, required_argument, 0, OPTION_PORT },
+		{ OPTION_NAME_URL, required_argument, 0, OPTION_URL },
 		{ 0 }
 	};
 
@@ -193,6 +198,12 @@ int main(int argc, char *argv[])
 				STIR_SHAKEN_CHECK_CONVERSION
 				options.port = helper;
 				fprintf(stderr, "Port is: %u\n", options.port);
+				break;
+
+			case OPTION_URL:
+				STIR_SHAKEN_CHECK_OPTARG
+				strncpy(options.url, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "URL is: %s\n", options.url);
 				break;
 
 			case '?':

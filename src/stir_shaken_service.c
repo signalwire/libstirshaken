@@ -774,3 +774,11 @@ char* stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name)
 
 	return found;
 }
+
+stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, const char *url, X509 **x)
+{
+	if (stir_shaken_zstr(url))
+		return STIR_SHAKEN_STATUS_TERM;
+
+	return STIR_SHAKEN_STATUS_OK;
+}

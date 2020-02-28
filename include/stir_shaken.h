@@ -712,6 +712,8 @@ stir_shaken_status_t	stir_shaken_make_http_post_req(stir_shaken_context_t *ss, s
 stir_shaken_status_t	stir_shaken_make_http_head_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data, uint8_t is_json);
 char*					stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name);
 
+stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, const char *url, X509 **x);
+
 // Utility
 
 stir_shaken_status_t stir_shaken_dir_exists(const char *path);

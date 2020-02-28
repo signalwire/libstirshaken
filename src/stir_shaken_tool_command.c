@@ -63,6 +63,18 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 
 		pa->pa.port = options->port;
 		return COMMAND_PA;
+
+	} else if (!strcmp(command_name, COMMAND_NAME_SP_SPC_REQ)) {
+
+		strncpy(sp->url, options->url, STIR_SHAKEN_BUFLEN);
+		return COMMAND_SP_SPC_REQ;
+
+	} else if (!strcmp(command_name, COMMAND_NAME_SP_CERT_REQ)) {
+
+		strncpy(sp->url, options->url, STIR_SHAKEN_BUFLEN);
+		return COMMAND_SP_CERT_REQ;
+
+
 	} else {
 
 		stir_shaken_set_error(ss, "Unknown command", STIR_SHAKEN_ERROR_GENERAL);
@@ -116,9 +128,23 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 		case COMMAND_PA:
 			break;
 
+		case COMMAND_SP_SPC_REQ:
+
+			if (stir_shaken_zstr(sp->url)) {
+				goto fail;
+			}
+			break;
+
+		case COMMAND_SP_CERT_REQ:
+
+			if (stir_shaken_zstr(sp->url)) {
+				goto fail;
+			}
+			break;
+
 		case COMMAND_CERT:
 		case COMMAND_UNKNOWN:
-		default:
+		 default:
 			goto fail;
 	}
 
@@ -246,6 +272,14 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 			fprintf(stderr, "Starting CA service...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_run_ca_service(ss, &ca->ca)) {
+				goto fail;
+			}
+			break;
+
+		case COMMAND_SP_SPC_REQ:
+
+			fprintf(stderr, "Making certificate request...\n");
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req(ss, sp->url, &sp->cert.x)) {
 				goto fail;
 			}
 			break;
