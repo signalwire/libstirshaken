@@ -28,9 +28,9 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\n");
 }
 
-static void stirshaken_range_error(char argument, unsigned long value)
+void stirshaken_range_error(char arg, unsigned long val)
 {
-	fprintf(stderr, "\nERR, argument [%c] too big [%lu]\n\n", argument, value);
+	fprintf(stderr, "\nERR, argument [%c] too big [%lu]\n\n", arg, val);
 }
 
 static void help_hint(const char *name)
@@ -170,9 +170,9 @@ int main(int argc, char *argv[])
 				break;
 			
 			case OPTION_SPC:
-				helper = strtoul(optarg, &pCh, 10);
-				STIR_SHAKEN_CHECK_CONVERSION
-				options.spc = helper;
+				STIR_SHAKEN_CHECK_OPTARG
+				strncpy(options.spc, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "SPC is: %s\n", options.spc);
 				break;
 			
 			case OPTION_CA_CERT:

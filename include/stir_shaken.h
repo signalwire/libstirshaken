@@ -779,6 +779,22 @@ typedef struct stir_shaken_pa_s {
 	uint16_t port;
 } stir_shaken_pa_t;
 
+typedef struct stir_shaken_sp_s {
+	uint32_t code;
+	char *kid;
+	char *nonce;
+	stir_shaken_csr_t csr;
+	stir_shaken_cert_t cert;
+	char *nb;
+	char *na;
+	stir_shaken_ssl_keys_t keys;
+	char private_key_name[STIR_SHAKEN_BUFLEN];
+	char public_key_name[STIR_SHAKEN_BUFLEN];
+	char csr_name[STIR_SHAKEN_BUFLEN];
+	char cert_name[STIR_SHAKEN_BUFLEN];
+	char spc_token[STIR_SHAKEN_BUFLEN];
+} stir_shaken_sp_t;
+
 stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_shaken_pa_t *pa);
 

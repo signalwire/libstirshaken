@@ -14,8 +14,8 @@ stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_sha
 	}
 
 	if (stir_shaken_zstr(nonce)) {
-		stir_shaken_set_error(ss, "Nonce missing", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_TERM;
+		// Allow for empty nonce for now
+		//stir_shaken_set_error(ss, "Nonce missing", STIR_SHAKEN_ERROR_GENERAL);
 	}
 
 	if (stir_shaken_zstr(http_req->url)) {

@@ -94,6 +94,18 @@
 					goto fail; \
 				}
 
+#define STIR_SHAKEN_CHECK_CONVERSION_EXT \
+			helper = strtoul(sp->spc, &pCh, 10); \
+			if (helper > 0x10000 - 1) { \
+				fprintf(stderr, "\nERR, argument too big [%lu]\n\n", helper); \
+				goto fail; \
+			} \
+			if ((pCh == optarg) || (*pCh != '\0')) { \
+				fprintf(stderr, "Invalid argument\n"); \
+				fprintf(stderr, "Parameter conversion error, nonconvertible part is: [%s]\n", pCh); \
+				goto fail; \
+			}
+
 #define STIR_SHAKEN_CHECK_OPTARG \
 				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) { \
 					fprintf(stderr, "Option value too long\n"); \
@@ -121,19 +133,10 @@ struct pa {
 } pa;
 
 struct sp {
-	stir_shaken_ssl_keys_t keys;
-	uint32_t code;
-	stir_shaken_csr_t csr;
-    stir_shaken_cert_t cert;
-	
-	char private_key_name[STIR_SHAKEN_BUFLEN];
-	char public_key_name[STIR_SHAKEN_BUFLEN];
-	char csr_name[STIR_SHAKEN_BUFLEN];
-	char csr_text_name[STIR_SHAKEN_BUFLEN];
-	char cert_name[STIR_SHAKEN_BUFLEN];
-	char cert_text_name[STIR_SHAKEN_BUFLEN];
+	stir_shaken_sp_t sp;
 	char subject_c[STIR_SHAKEN_BUFLEN];
 	char subject_cn[STIR_SHAKEN_BUFLEN];
+	char spc[STIR_SHAKEN_BUFLEN];
 	int serial;
 	int expiry_days;
 	char file[STIR_SHAKEN_BUFLEN];
@@ -145,7 +148,7 @@ struct options {
 	stir_shaken_ssl_keys_t keys;
 	char private_key_name[STIR_SHAKEN_BUFLEN];
 	char public_key_name[STIR_SHAKEN_BUFLEN];
-	uint32_t spc;
+	char spc[STIR_SHAKEN_BUFLEN];
 	char file[STIR_SHAKEN_BUFLEN];
 	char type[STIR_SHAKEN_BUFLEN];
 	char subject_c[STIR_SHAKEN_BUFLEN];
@@ -162,6 +165,8 @@ struct options {
 	uint16_t port;
 	char url[STIR_SHAKEN_BUFLEN];
 } options;
+
+void stirshaken_range_error(char arg, unsigned long val);
 
 int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_name, struct ca *ca, struct pa *pa, struct sp *sp, struct options *options);
 stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int command, struct ca *ca, struct pa *pa, struct sp *sp, struct options *options);
