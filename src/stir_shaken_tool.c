@@ -23,8 +23,8 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s		: hash CA certificate and copy into CA dir\n", COMMAND_NAME_INSTALL_CERT);
 	fprintf(stderr, "\t\t %s			: run CA service on port given to --%s\n", COMMAND_NAME_CA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s			: run PA service on port given to --%s\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
-	fprintf(stderr, "\t\t %s			: request SP Code token from PA at url given to --%s\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
-	fprintf(stderr, "\t\t %s			: request SP certificate from CA at url given to --%s\n\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL);
+	fprintf(stderr, "\t\t %s		: request SP Code token from PA at url given to --%s\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
+	fprintf(stderr, "\t\t %s		: request SP certificate from CA at url given to --%s\n\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL);
 	fprintf(stderr, "\n");
 }
 

@@ -1,350 +1,6 @@
 #include "stir_shaken.h"
 
 
-/*
- * JWT:
- *
- * {
- *	"protected": base64url({
- *		"alg": "ES256",
- *		"kid": " https://sti-ca.com/acme/acct/1",
- *		"nonce": "5XJ1L3lEkMG7tR6pA00clA",
- *		"url": " https://sti-ca.com/acme/new-order"
- *		})
- *	"payload": base64url({
- *		"csr": "5jNudRx6Ye4HzKEqT5...FS6aKdZeGsysoCo4H9P",
- *		"notBefore": "2016-01-01T00:00:00Z",
- *		"notAfter": "2016-01-08T00:00:00Z"
- *		}),
- *	"signature": "H6ZXtGjTZyUnPeKn...wEA4TklBdh3e454g"
- * }
-*/
-char* stir_shaken_as_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, unsigned char *key, uint32_t keylen, char **json)
-{
-	char	*out = NULL;
-	jwt_t	*jwt = NULL;
-	unsigned char	csr_raw[1000] = { 0 };
-	int				csr_raw_len = 1000;
-	char			csr_b64[1500] = { 0 };
-	int				csr_b64_len = 1500;
-
-	if (jwt_new(&jwt) != 0) {
-
-		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
-		return NULL;
-	}
-
-	// Header
-
-	if (key && keylen) {		
-
-		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
-			goto exit;
-		}
-	}
-
-	if (kid) {
-
-		if (jwt_add_header(jwt, "kid", kid) != 0) {
-			goto exit;
-		}
-	}
-
-	if (nonce) {
-
-		if (jwt_add_header(jwt, "nonce", "nonce") != 0) {
-			goto exit;
-		}
-	}
-
-	if (url) {
-
-		if (jwt_add_header(jwt, "url", url) != 0) {
-			goto exit;
-		}
-	}
-
-	// Payload
-
-	if (req) {
-
-		if (stir_shaken_get_csr_raw(ss, req, &csr_raw[0], &csr_raw_len) != STIR_SHAKEN_STATUS_OK) {
-
-			stir_shaken_set_error_if_clear(ss, "Cannot get CSR raw", STIR_SHAKEN_ERROR_SSL);
-			goto exit;
-		}
-
-		if (stir_shaken_b64_encode(csr_raw, csr_raw_len, csr_b64, csr_b64_len) != STIR_SHAKEN_STATUS_OK) {
-
-			stir_shaken_set_error_if_clear(ss, "Cannot base 64 encode CSR raw", STIR_SHAKEN_ERROR_SSL);
-			goto exit;
-		}
-
-		if (jwt_add_grant(jwt, "csr", csr_b64) != 0) {
-			goto exit;
-		}
-	}
-
-	if (nb) {
-
-		if (jwt_add_grant(jwt, "notBefore", nb) != 0) {
-			goto exit;
-		}
-	}
-
-	if (na) {
-
-		if (jwt_add_grant(jwt, "notAfter", na) != 0) {
-			goto exit;
-		}
-	}
-
-	if (json) {
-
-		*json = jwt_dump_str(jwt, 1);
-		if (!*json) {
-			stir_shaken_set_error(ss, "Failed to dump JWT", STIR_SHAKEN_ERROR_GENERAL);
-			goto exit;
-		}
-	}
-
-	out = jwt_encode_str(jwt);
-	if (!out) {
-		stir_shaken_set_error(ss, "Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
-		goto exit;
-	}
-
-exit:
-	if (jwt) jwt_free(jwt);
-	return out;
-}
-
-/**
- * JWT:
- *
- * {
- *	"protected": base64url({
- *		"alg": "ES256",
- *		"kid": "https://sti-ca.com/acme/acct/1",
- *		"nonce": "Q_s3MWoqT05TrdkM2MTDcw",
- *		"url": "https://sti-ca.com/acme/authz/1234/0"
- *	}),
- *	"payload": base64url({
- *		"type": "spc-token",
- *		"keyAuthorization": "IlirfxKKXA...vb29HhjjLPSggwiE"
- *	}),
- *	"signature": "9cbg5JO1Gf5YLjjz...SpkUfcdPai9uVYYQ"
- * }
- */
-char* stir_shaken_as_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *sp_code_token, unsigned char *key, uint32_t keylen, char **json)
-{
-	char	*out = NULL;
-	jwt_t	*jwt = NULL;
-	unsigned char	csr_raw[1000] = { 0 };
-	int				csr_raw_len = 1000;
-	char			csr_b64[1500] = { 0 };
-	int				csr_b64_len = 1500;
-
-	if (jwt_new(&jwt) != 0) {
-
-		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
-		return NULL;
-	}
-
-	// Header
-
-	if (key && keylen) {		
-
-		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
-			goto exit;
-		}
-	}
-
-	if (kid) {
-
-		if (jwt_add_header(jwt, "kid", kid) != 0) {
-			goto exit;
-		}
-	}
-
-	if (nonce) {
-
-		if (jwt_add_header(jwt, "nonce", "nonce") != 0) {
-			goto exit;
-		}
-	}
-
-	if (url) {
-
-		if (jwt_add_header(jwt, "url", url) != 0) {
-			goto exit;
-		}
-	}
-
-	// Payload
-
-	if (jwt_add_grant(jwt, "type", "spc-token") != 0) {
-		goto exit;
-	}
-
-	if (sp_code_token) {
-
-		// TODO Need more details here
-		//
-		// "This challenge response JWS payload shall include the SHAKEN certificate framework specific challenge type of
-		// “spc-token” and the “keyAuthorization” field containing the “token” for the challenge concatenated with the value of
-		// the Service Provider Code token."
-
-		if (jwt_add_grant(jwt, "keyAuthorization", sp_code_token) != 0) {
-			goto exit;
-		}
-	}
-
-	if (json) {
-
-		*json = jwt_dump_str(jwt, 1);
-		if (!*json) {
-			stir_shaken_set_error(ss, "Failed to dump JWT", STIR_SHAKEN_ERROR_GENERAL);
-			goto exit;
-		}
-	}
-
-	out = jwt_encode_str(jwt);
-	if (!out) {
-		stir_shaken_set_error(ss, "Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
-		goto exit;
-	}
-
-exit:
-	if (jwt) jwt_free(jwt);
-	return out;
-}
-
-/*
- * JWT:
- *
- * {
- *	"protected": base64url({
- *		"alg": "ES256",
- *		"jwk": {...},
- *		"nonce": "6S8IqOGY7eL2lsGoTZYifg",
- *		"url": "https://sti-ca.com/acme/new-reg"
- *		}),
- *	"payload": base64url({
- *		"contact": [
- *			"mailto:cert-admin-sp-kms01@sp.com",
- *			"tel:+12155551212"
- *			]
- *		}),
- *	"signature": "RZPOnYoPs1PhjszF...-nh6X1qtOFPB519I"
- * }
-*/
-char* stir_shaken_as_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json)
-{
-	char	*out = NULL;
-	jwt_t	*jwt = NULL;
-
-	if (jwt_new(&jwt) != 0) {
-
-		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
-		return NULL;
-	}
-
-	// Header
-
-	if (key && keylen) {		
-
-		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
-			goto exit;
-		}
-	}
-
-	if (jwk) {
-
-		if (jwt_add_header(jwt, "jwk", jwk) != 0) {
-			goto exit;
-		}
-	}
-
-	if (nonce) {
-
-		if (jwt_add_header(jwt, "nonce", "nonce") != 0) {
-			goto exit;
-		}
-	}
-
-	if (url) {
-
-		if (jwt_add_header(jwt, "url", url) != 0) {
-			goto exit;
-		}
-	}
-
-	// Payload
-
-	if (contact_mail || contact_tel) {
-
-		cJSON *contact = NULL, *e = NULL;
-		char *jstr = NULL;
-
-		contact = cJSON_CreateArray();
-		if (!contact) {
-			stir_shaken_set_error(ss, "Passport create json: Error in cjson, @contact", STIR_SHAKEN_ERROR_CJSON);
-			goto exit;
-		}
-
-		if (contact_mail) {
-
-			e = cJSON_CreateString(contact_mail);
-			if (!e) {
-				stir_shaken_set_error(ss, "Passport create json: Error in cjson, @contact_mail", STIR_SHAKEN_ERROR_CJSON);
-				cJSON_Delete(contact);
-				goto exit;
-			}
-			cJSON_AddItemToArray(contact, e);
-		}
-
-		if (contact_tel) {
-
-			e = cJSON_CreateString(contact_tel);
-			if (!e) {
-				stir_shaken_set_error(ss, "Passport create json: Error in cjson, @contact_tel", STIR_SHAKEN_ERROR_CJSON);
-				cJSON_Delete(contact);
-				goto exit;
-			}
-			cJSON_AddItemToArray(contact, e);
-		}
-
-		jstr = cJSON_PrintUnformatted(contact);
-		if (!jstr || (jwt_add_grant(jwt, "contact", jstr) != 0)) {
-			cJSON_Delete(contact);
-			goto exit;
-		}
-
-		cJSON_Delete(contact);
-		free(jstr);
-	}
-
-	if (json) {
-
-		*json = jwt_dump_str(jwt, 1);
-		if (!*json) {
-			stir_shaken_set_error(ss, "Failed to dump JWT", STIR_SHAKEN_ERROR_GENERAL);
-			goto exit;
-		}
-	}
-
-	out = jwt_encode_str(jwt);
-	if (!out) {
-		stir_shaken_set_error(ss, "Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
-		goto exit;
-	}
-
-exit:
-	if (jwt) jwt_free(jwt);
-	return out;
-}
-
 static size_t stir_shaken_curl_write_callback(void *contents, size_t size, size_t nmemb, void *p)
 {
 	char *m = NULL;
@@ -460,6 +116,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 	CURLcode		res = 0;
 	CURL			*curl_handle = NULL;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	char			user_agent[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 	if (!http_req || !http_req->url) return STIR_SHAKEN_STATUS_RESTART;
 
@@ -478,7 +135,8 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 	curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, (void *) http_req);
 	
 	// Some pple say, some servers don't like requests that are made without a user-agent field, so we provide one.
-	curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "freeswitch-stir-shaken/1.0");
+	snprintf(user_agent, STIR_SHAKEN_ERROR_BUF_LEN, "freeswitch-stir-shaken/%s", STIR_SHAKEN_VERSION);
+	curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, user_agent);
 
 	switch (http_req->type) {
 
@@ -598,14 +256,24 @@ void stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req)
  */
 stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, const char *fingerprint)
 {
-	if (!http_req || !url || !fingerprint) {
+	if (!http_req) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+	
+	if (stir_shaken_zstr(http_req->url)) {
+		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (stir_shaken_zstr(fingerprint)) {
+		stir_shaken_set_error(ss, "Fingerprint missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
 	http_req->data = strdup(fingerprint); // TODO change to JSON if it is not JSON already
 	http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
-	http_req->url = strdup(url);	// this should be similar to http://my-sti-pa.com/sti-pa/account/:id/token
 
 	return stir_shaken_make_http_req(ss, http_req);
 }
@@ -649,21 +317,32 @@ stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url)
+stir_shaken_status_t stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
-	if (!http_req || !url) {
+	if (!http_req) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+	
+	if (stir_shaken_zstr(http_req->url)) {
+		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_GET;
-	http_req->url = strdup(url);
 
 	return stir_shaken_make_http_req(ss, http_req);
 }
 
-stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data, uint8_t is_json)
+stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *data, uint8_t is_json)
 {
-	if (!http_req || !url) {
+	if (!http_req) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+	
+	if (stir_shaken_zstr(http_req->url)) {
+		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -678,14 +357,18 @@ stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, s
 		http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
 	}
 
-	http_req->url = strdup(url);
-
 	return stir_shaken_make_http_req(ss, http_req);
 }
 
-stir_shaken_status_t stir_shaken_make_http_head_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, char *data, uint8_t is_json)
+stir_shaken_status_t stir_shaken_make_http_head_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *data, uint8_t is_json)
 {
-	if (!http_req || !url) {
+	if (!http_req) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+	
+	if (stir_shaken_zstr(http_req->url)) {
+		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -699,7 +382,6 @@ stir_shaken_status_t stir_shaken_make_http_head_req(stir_shaken_context_t *ss, s
 	} else {
 		http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
 	}
-	http_req->url = strdup(url);
 
 	return stir_shaken_make_http_req(ss, http_req);
 }
@@ -773,12 +455,4 @@ char* stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name)
 	}
 
 	return found;
-}
-
-stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, const char *url, X509 **x)
-{
-	if (stir_shaken_zstr(url))
-		return STIR_SHAKEN_STATUS_TERM;
-
-	return STIR_SHAKEN_STATUS_OK;
 }

@@ -1,0 +1,908 @@
+#include "stir_shaken.h"
+
+
+/**
+ * JWT:
+ *
+ * {
+ *	"protected": base64url({
+ *		"alg": "ES256",
+ *		"kid": "https://sti-ca.com/acme/acct/1",
+ *		"nonce": "Q_s3MWoqT05TrdkM2MTDcw",
+ *		"url": "https://sti-ca.com/acme/authz/1234/0"
+ *	}),
+ *	"payload": base64url({
+ *		"type": "spc-token",
+ *		"keyAuthorization": "IlirfxKKXA...vb29HhjjLPSggwiE"
+ *	}),
+ *	"signature": "9cbg5JO1Gf5YLjjz...SpkUfcdPai9uVYYQ"
+ * }
+ */
+char* stir_shaken_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *spc_token, unsigned char *key, uint32_t keylen, char **json)
+{
+	char	*out = NULL;
+	jwt_t	*jwt = NULL;
+	unsigned char	csr_raw[1000] = { 0 };
+	int				csr_raw_len = 1000;
+	char			csr_b64[1500] = { 0 };
+	int				csr_b64_len = 1500;
+
+	if (jwt_new(&jwt) != 0) {
+
+		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	// Header
+
+	if (key && keylen) {		
+
+		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
+			goto exit;
+		}
+	}
+
+	if (kid) {
+
+		if (jwt_add_header(jwt, "kid", kid) != 0) {
+			goto exit;
+		}
+	}
+
+	if (nonce) {
+
+		if (jwt_add_header(jwt, "nonce", "nonce") != 0) {
+			goto exit;
+		}
+	}
+
+	if (url) {
+
+		if (jwt_add_header(jwt, "url", url) != 0) {
+			goto exit;
+		}
+	}
+
+	// Payload
+
+	if (jwt_add_grant(jwt, "type", "spc-token") != 0) {
+		goto exit;
+	}
+
+	if (spc_token) {
+
+		// TODO Need more details here
+		//
+		// "This challenge response JWS payload shall include the SHAKEN certificate framework specific challenge type of
+		// “spc-token” and the “keyAuthorization” field containing the “token” for the challenge concatenated with the value of
+		// the Service Provider Code token."
+
+		if (jwt_add_grant(jwt, "keyAuthorization", spc_token) != 0) {
+			goto exit;
+		}
+	}
+
+	if (json) {
+
+		*json = jwt_dump_str(jwt, 1);
+		if (!*json) {
+			stir_shaken_set_error(ss, "Failed to dump JWT", STIR_SHAKEN_ERROR_GENERAL);
+			goto exit;
+		}
+	}
+
+	out = jwt_encode_str(jwt);
+	if (!out) {
+		stir_shaken_set_error(ss, "Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
+		goto exit;
+	}
+
+exit:
+	if (jwt) jwt_free(jwt);
+	return out;
+}
+
+/*
+ * JWT:
+ *
+ * {
+ *	"protected": base64url({
+ *		"alg": "ES256",
+ *		"jwk": {...},
+ *		"nonce": "6S8IqOGY7eL2lsGoTZYifg",
+ *		"url": "https://sti-ca.com/acme/new-reg"
+ *		}),
+ *	"payload": base64url({
+ *		"contact": [
+ *			"mailto:cert-admin-sp-kms01@sp.com",
+ *			"tel:+12155551212"
+ *			]
+ *		}),
+ *	"signature": "RZPOnYoPs1PhjszF...-nh6X1qtOFPB519I"
+ * }
+*/
+char* stir_shaken_as_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json)
+{
+	char	*out = NULL;
+	jwt_t	*jwt = NULL;
+
+	if (jwt_new(&jwt) != 0) {
+
+		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	// Header
+
+	if (key && keylen) {		
+
+		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
+			goto exit;
+		}
+	}
+
+	if (jwk) {
+
+		if (jwt_add_header(jwt, "jwk", jwk) != 0) {
+			goto exit;
+		}
+	}
+
+	if (nonce) {
+
+		if (jwt_add_header(jwt, "nonce", "nonce") != 0) {
+			goto exit;
+		}
+	}
+
+	if (url) {
+
+		if (jwt_add_header(jwt, "url", url) != 0) {
+			goto exit;
+		}
+	}
+
+	// Payload
+
+	if (contact_mail || contact_tel) {
+
+		cJSON *contact = NULL, *e = NULL;
+		char *jstr = NULL;
+
+		contact = cJSON_CreateArray();
+		if (!contact) {
+			stir_shaken_set_error(ss, "Passport create json: Error in cjson, @contact", STIR_SHAKEN_ERROR_CJSON);
+			goto exit;
+		}
+
+		if (contact_mail) {
+
+			e = cJSON_CreateString(contact_mail);
+			if (!e) {
+				stir_shaken_set_error(ss, "Passport create json: Error in cjson, @contact_mail", STIR_SHAKEN_ERROR_CJSON);
+				cJSON_Delete(contact);
+				goto exit;
+			}
+			cJSON_AddItemToArray(contact, e);
+		}
+
+		if (contact_tel) {
+
+			e = cJSON_CreateString(contact_tel);
+			if (!e) {
+				stir_shaken_set_error(ss, "Passport create json: Error in cjson, @contact_tel", STIR_SHAKEN_ERROR_CJSON);
+				cJSON_Delete(contact);
+				goto exit;
+			}
+			cJSON_AddItemToArray(contact, e);
+		}
+
+		jstr = cJSON_PrintUnformatted(contact);
+		if (!jstr || (jwt_add_grant(jwt, "contact", jstr) != 0)) {
+			cJSON_Delete(contact);
+			goto exit;
+		}
+
+		cJSON_Delete(contact);
+		free(jstr);
+	}
+
+	if (json) {
+
+		*json = jwt_dump_str(jwt, 1);
+		if (!*json) {
+			stir_shaken_set_error(ss, "Failed to dump JWT", STIR_SHAKEN_ERROR_GENERAL);
+			goto exit;
+		}
+	}
+
+	out = jwt_encode_str(jwt);
+	if (!out) {
+		stir_shaken_set_error(ss, "Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
+		goto exit;
+	}
+
+exit:
+	if (jwt) jwt_free(jwt);
+	return out;
+}
+
+#if STIR_SHAKEN_MOCK_ACME_NONCE_REQ
+static void mock_nonce_req_response(stir_shaken_http_req_t *http_req)
+{
+	if (!http_req) return;
+
+	http_req->response.code = 200;
+	free(http_req->response.mem.mem);
+	http_req->response.headers = curl_slist_append(http_req->response.headers, "Replay-Nonce: oFvnlFP1wIhRlYS2jTaXbA");
+	http_req->response.headers = curl_slist_append(http_req->response.headers, "Cache-Control: no-store");
+	http_req->response.headers = curl_slist_append(http_req->response.headers, "Link: <https://example.com/acme/directory>;rel=\"index\"");
+}
+#endif
+
+stir_shaken_status_t stir_shaken_acme_nonce_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
+{
+	return stir_shaken_make_http_head_req(ss, http_req, NULL, 0);
+}
+
+#if STIR_SHAKEN_MOCK_ACME_CERT_REQ
+static char* mock_auth_challenge(void)
+{
+	char *printed = NULL;
+	cJSON *json = cJSON_CreateObject(), *arr = cJSON_CreateArray(), *obj = cJSON_CreateObject(), *s = cJSON_CreateString("https://sti-ca.com/acme/authz/1234");
+	if (!json || !arr || !obj || !s) {
+		return NULL;
+	}
+
+	cJSON_AddStringToObject(json, "status", "pending");
+	cJSON_AddStringToObject(json, "expires", "2015-03-01T14:09:00Z");
+	cJSON_AddStringToObject(json, "csr", "jcRf4uXra7FGYW5ZMewvV...rhlnznwy8YbpMGqwidEXfE");
+	cJSON_AddStringToObject(json, "notBefore", "2016-01-01T00:00:00Z");
+	cJSON_AddStringToObject(json, "notAfter", "2016-01-08T00:00:00Z");
+	//cJSON_AddItemToObject(obj, s);
+	cJSON_AddItemToArray(arr, s); 
+	cJSON_AddItemToObject(json, "authorizations", arr);
+
+	printed = cJSON_PrintUnformatted(json);
+	cJSON_Delete(json);
+	return printed;
+}
+
+static void mock_cert_req_response(sofia_stir_shaken_stisp_as_service_t *as, stir_shaken_http_req_t *http_req)
+{
+	char *cert_mocked = NULL;
+
+	if (!as || !http_req) return SWITCH_STATUS_FALSE;
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "STIR-Shaken: Mocking Service Provider cert response\n");
+	http_req->response.code = 201;
+	free(http_req->response.mem.mem);
+
+	// Get mocked JWT (encoded)
+	http_req->response.mem.mem = mock_auth_challenge();
+}
+#endif
+
+/*
+ * Mocking auth challenge details to be like:
+ * {
+ *	"status": "pending",
+ *	"identifier": {
+ *		"type": "TNAuthList",
+ *		"value":[ "1234"]
+ *	},
+ *	"challenges": [ 
+ *		{	"type": "spc-token",
+ *			"url": "https://sti-ca.com/authz/1234/0",
+ *			"token": "DGyRejmCefe7v4NfDGDKfA"
+ *		}
+ *	],
+ * }
+*/
+#if STIR_SHAKEN_MOCK_ACME_AUTH_CHALLENGE_DETAILS_REQ
+static char* mock_auth_challenge_details(void)
+{
+	char *printed = NULL;
+	cJSON *json = cJSON_CreateObject(), *arr = cJSON_CreateArray(), *o1 = cJSON_CreateObject(), *o2 = cJSON_CreateObject();
+	if (!json || !arr || !o1 || !o2) {
+		return NULL;
+	}
+
+	cJSON_AddStringToObject(json, "status", "pending");
+	cJSON_AddStringToObject(o1, "type", "TNAuthList");
+	cJSON_AddStringToObject(o1, "value", "1234");
+	cJSON_AddStringToObject(o2, "type", "spc-token");
+	cJSON_AddStringToObject(o2, "url", "https://sti-ca.com/authz/1234/0");
+	cJSON_AddStringToObject(o2, "token", "DGyRejmCefe7v4NfDGDKfA");
+	cJSON_AddItemToArray(arr, o2); 
+	cJSON_AddItemToObject(json, "identifier", o1);
+	cJSON_AddItemToObject(json, "challenges", arr);
+
+	printed = cJSON_PrintUnformatted(json);
+	cJSON_Delete(json);
+	return printed;
+}
+#endif
+
+
+/*
+ * In Step 7 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080]
+ * only 'status' field is checked, so even if expecting auth status reponse to be like:
+
+ * {
+ *	"status": "pending",
+ *	"identifier": {
+ *		"type": "TNAuthList",
+ *		"value":[ "1234"]
+ *	},
+ *	"challenges": [ 
+ *		{	"type": "spc-token",
+ *			"url": "https://sti-ca.com/authz/1234/0",
+ *			"token": "DGyRejmCefe7v4NfDGDKfA"
+ *		}
+ *	],
+ * }
+ *
+ * it is enough to produce json with only 'status' field.
+*/
+#if STIR_SHAKEN_MOCK_ACME_POLL_REQ
+static char* mock_poll_response(char *status)
+{
+	char *printed = NULL;
+	cJSON *json = cJSON_CreateObject();
+
+	if (!json || !status) {
+		return NULL;
+	}
+
+	cJSON_AddStringToObject(json, "status", status);
+	printed = cJSON_PrintUnformatted(json);
+	cJSON_Delete(json);
+	return printed;
+}
+#endif
+
+stir_shaken_status_t stir_shaken_acme_retrieve_auth_challenge_details(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
+{
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
+
+	if (!http_req)
+		return STIR_SHAKEN_STATUS_TERM;
+
+	ss_status = stir_shaken_make_http_get_req(ss, http_req);
+
+#if STIR_SHAKEN_MOCK_ACME_AUTH_CHALLENGE_DETAILS_REQ
+	// Mock response
+	ss_status = STIR_SHAKEN_STATUS_OK;
+	http_req->response.code = 200;
+	free(http_req->response.mem.mem);
+	http_req->response.mem.mem = mock_auth_challenge_details();
+#endif
+
+	if (http_req->response.code != 200 && http_req->response.code != 201) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return ss_status;
+}
+
+/*
+ * Expecting @data to be a response with auth challenge details of the form:
+ * {
+ *	"status": "pending",
+ *	"identifier": {
+ *		"type": "TNAuthList",
+ *		"value":[ "1234"]
+ *	},
+ *	"challenges": [ 
+ *		{	"type": "spc-token",
+ *			"url": "https://sti-ca.com/authz/1234/0",
+ *			"token": "DGyRejmCefe7v4NfDGDKfA"
+ *		}
+ *	],
+ * }
+*/
+stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, char **polling_url)
+{
+    stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
+	const char				*error_description = NULL;
+	stir_shaken_error_t		error_code = 0;
+	cJSON *json = NULL, *auth_status = NULL, *challenges_arr = NULL;
+	stir_shaken_http_req_t http_req = { 0 };
+
+
+	if (!data) {
+		stir_shaken_set_error(ss, "Bad params, JWT missing", STIR_SHAKEN_ERROR_ACME);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	if (stir_shaken_zstr(spc_token)) {
+		stir_shaken_set_error(ss, "SPC token NULL or empty", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	if (!key) {
+		stir_shaken_set_error(ss, "Key not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	if (keylen < 1) {
+		stir_shaken_set_error(ss, "Invalid key. Key length must be > 0", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	json = cJSON_Parse(data);
+	if (!json) {
+		goto fail;
+	}
+
+	auth_status = cJSON_GetObjectItem(json, "status");
+	if (!auth_status) {
+		stir_shaken_set_error(ss, "ACME authorization challenge malformed, no 'status' field", STIR_SHAKEN_ERROR_ACME);
+		goto fail;
+	}
+
+	if (auth_status->type != cJSON_String) {
+		stir_shaken_set_error(ss, "ACME authorization challenge malformed, 'status' field is not a string", STIR_SHAKEN_ERROR_ACME);
+		goto fail;
+	}
+
+	if (strcmp("valid", auth_status->valuestring) == 0) {
+
+		// Authorization completed
+
+	} else {
+
+		cJSON	*challenge_item = NULL;
+		cJSON	*url_item = NULL;
+		char	*challenge_url = NULL;
+		char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+
+		char *kid = NULL, *nonce = NULL, *url = NULL;
+		char *jwt_encoded = NULL, *jwt_decoded = NULL;
+
+		if (strcmp("pending", auth_status->valuestring) != 0) {
+			snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')", auth_status->valuestring);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		// ACME authorization is still pending
+		// Retrieve authorization challenge response URL
+
+		challenges_arr = cJSON_GetObjectItem(json, "challenges");
+		if (!challenges_arr) {
+			stir_shaken_set_error(ss, "ACME authorization challenge details do not contain 'challenges' array", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		if (challenges_arr->type != cJSON_Array) {
+			stir_shaken_set_error(ss, "ACME authorization challenge details contain 'challenges' which is not an array", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		challenge_item = cJSON_GetArrayItem(challenges_arr, 0);
+		if (!challenge_item) {
+			stir_shaken_set_error(ss, "ACME authorization challenge details 'challenges' array is empty", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		if (challenge_item->type != cJSON_Object) {
+			stir_shaken_set_error(ss, "ACME authorization challenge item is not a JSON object, expecting compound object", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		url_item = cJSON_GetObjectItem(challenge_item, "url");
+		if (!url_item) {
+			stir_shaken_set_error(ss, "ACME authorization challenge details malformed, no 'url' field in 'challenges' array", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		if (url_item->type != cJSON_String) {
+			stir_shaken_set_error(ss, "ACME authorization challenge details malformed, 'url' field in 'challenges' array is not a string", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		challenge_url = url_item->valuestring;
+		if (polling_url) {
+			*polling_url = strdup(challenge_url);
+		}
+
+		/**
+		 * Respond with SP code token.
+		 * Performing Step 5 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080].
+		 */
+
+		// TODO
+		kid = "https://sti-ca.com/acme/acct/1";			// TODO map to auth challenge details
+		nonce = "Q_s3MWoqT05TrdkM2MTDcw";				// TODO map to auth challenge details
+
+		jwt_encoded = stir_shaken_acme_generate_auth_challenge_token(ss, kid, nonce, challenge_url, spc_token, key, keylen, NULL);
+		if (!jwt_encoded) {
+			stir_shaken_set_error(ss, "Failed to generate JWT with SP Code token as a response to auth challenge", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		http_req.url = strdup(challenge_url);
+
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_post_req(ss, &http_req, jwt_encoded, 1)) {
+			// Mock response
+			// TODO ????
+			//ss_status = STIR_SHAKEN_STATUS_OK;
+			//http_req.response.code = 200;
+			// Content is left unspecified in Step 5 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080]
+			goto fail;
+		}
+	
+		if (http_req.response.code != 200 && http_req.response.code != 201) {
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+
+		stir_shaken_destroy_http_request(&http_req);
+	}
+
+	cJSON_Delete(json);
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+	if (json) cJSON_Delete(json);
+	stir_shaken_destroy_http_request(&http_req);
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data, const char *url)
+{
+	uint8_t					status_is_valid = 0;
+	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_OK;
+	stir_shaken_http_req_t	http_req = { 0 };
+	cJSON					*json = NULL, *auth_status = NULL;
+	int						t = 0;
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+
+	if (!url) {
+		goto fail;
+	}
+
+	http_req.url = strdup(url);
+
+	// Poll until either status is 'valid' or more than 30s passed
+	while (!status_is_valid && t < 30) {
+
+		// Fetch authorization status
+		ss_status = stir_shaken_make_http_get_req(ss, &http_req);
+
+#if STIR_SHAKEN_MOCK_ACME_POLL_REQ
+		ss_status = STIR_SHAKEN_STATUS_OK;
+		http_req.response.code = 200;
+		free(http_req.response.mem.mem);
+
+		if (t < 12) {
+
+			// Mock response indicating status 'pending'
+			http_req.response.mem.mem = sofia_stir_shaken_as_acme_mock_poll_response("pending");
+		} else {
+
+			// After some time, mock response indicating status 'valid'
+			http_req.response.mem.mem = sofia_stir_shaken_as_acme_mock_poll_response("valid");
+		}
+#endif
+		if (ss_status != STIR_SHAKEN_STATUS_OK) {
+			goto fail;
+		}
+	
+		if (http_req.response.code != 200 && http_req.response.code != 201) {
+			goto fail;
+		}
+
+		// Process response
+		json = cJSON_Parse(http_req.response.mem.mem);
+		if (!json) {
+			goto fail;
+		}
+
+		auth_status = cJSON_GetObjectItem(json, "status");
+		if (!auth_status) {
+			stir_shaken_set_error(ss, "ACME auth status malformed, no 'status' field", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		if (auth_status->type != cJSON_String) {
+			stir_shaken_set_error(ss, "ACME auth status malformed, 'status' field is not a string", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		// Check authorization status
+		// If status is "valid" authorization is completed and can proceed to cert acquisition
+		if (strcmp("valid", auth_status->valuestring) == 0) {
+
+			// Authorization completed
+			status_is_valid = 1;
+
+		} else {
+
+			if (strcmp("pending", auth_status->valuestring) != 0) {
+				snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME auth status malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')\n", auth_status->valuestring);
+				stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME);
+				goto fail;
+			}
+
+			// ACME authorization is still pending, poll again after some delay
+			// Wait before next HTTP request
+			sleep(5);
+			t += 5;
+		}
+
+		if (json) {
+			cJSON_Delete(json);
+			json = NULL;
+		}
+	}
+
+	return status_is_valid ? STIR_SHAKEN_STATUS_OK : STIR_SHAKEN_STATUS_FALSE;
+
+fail:
+	if (json) cJSON_Delete(json);
+	return STIR_SHAKEN_STATUS_TERM;
+}
+
+/*
+ * Expecting ACME authorization challenge from STI-CA as a response to STI-SP cert request.
+ * Expecting ACME authorization challenge from STI-CA to be of the form:
+ *
+ * {
+ *	"status": "pending",
+ *	"expires": "2015-03-01T14:09:00Z",
+ *	"csr": "jcRf4uXra7FGYW5ZMewvV...rhlnznwy8YbpMGqwidEXfE",
+ *	"notBefore": "2016-01-01T00:00:00Z",
+ *	"notAfter": "2016-01-08T00:00:00Z",
+ *	"authorizations": [
+ *		"https://sti-ca.com/acme/authz/1234"
+ *	]
+ *	}
+ */
+stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen)
+{
+	cJSON *json = NULL, *auth_status = NULL, *auth_arr = NULL;
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+
+
+	if (!data) {
+		stir_shaken_set_error(ss, "Empty authorization details", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	if (stir_shaken_zstr(spc_token)) {
+		stir_shaken_set_error(ss, "SPC token NULL or empty", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (!key) {
+		stir_shaken_set_error(ss, "Key not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	if (keylen < 1) {
+		stir_shaken_set_error(ss, "Invalid key. Key length must be > 0", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	json = cJSON_Parse(data);
+	if (!json) {
+		goto fail;
+	}
+
+	auth_status = cJSON_GetObjectItem(json, "status");
+	if (!auth_status) {
+		stir_shaken_set_error(ss, "ACME authorization challenge malformed, no 'status' field", STIR_SHAKEN_ERROR_ACME);
+		goto fail;
+	}
+
+	if (auth_status->type != cJSON_String) {
+		stir_shaken_set_error(ss, "ACME authorization challenge malformed, 'status' field is not a string\n", STIR_SHAKEN_ERROR_ACME);
+		goto fail;
+	}
+
+	// If status is "valid" authorization is completed and can proceed to cert acquisition
+	if (strcmp("valid", auth_status->valuestring) == 0) {
+
+		// Authorization completed
+
+	} else {
+
+		cJSON	*auth_item = NULL;
+		char	*auth_url = NULL;
+		stir_shaken_http_req_t http_req = { 0 };
+
+		if (strcmp("pending", auth_status->valuestring) != 0) {
+			snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')\n", auth_status->valuestring);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		// ACME authorization is pending
+		// Retrieve authorization challenge details
+
+		auth_arr = cJSON_GetObjectItem(json, "authorizations");
+		if (!auth_arr) {
+			stir_shaken_set_error(ss, "ACME authorization challenge does not contain 'authorizations' array", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		if (auth_arr->type != cJSON_Array) {
+			stir_shaken_set_error(ss, "ACME authorization challenge contains 'authorizations' which is not an array", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		auth_item = cJSON_GetArrayItem(auth_arr, 0);
+		if (!auth_item) {
+			stir_shaken_set_error(ss, "ACME authorization challenge 'authorizations' array is empty", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		if (auth_item->type != cJSON_String) {
+			stir_shaken_set_error(ss, "ACME 'authorizations' array at item 0  is not a string, expecting string value", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+		}
+
+		auth_url = auth_item->valuestring;
+
+		/*
+		 * Performing Step 4 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080].
+		 */
+	
+		http_req.url = strdup(auth_url);
+
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_retrieve_auth_challenge_details(ss, &http_req)) {
+			stir_shaken_set_error(ss, "Request for ACME authorization challenge details failed. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
+			goto fail;
+
+		} else {
+
+			char *polling_url = NULL;
+
+			/*
+			 * Got authorization challenge details, proceed to Step 5, respond to challenge with SP Code token.
+			 */
+
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_respond_to_challenge(ss, http_req.response.mem.mem, spc_token, key, keylen, &polling_url)) {
+				stir_shaken_set_error(ss, "Failed to respond to ACME authorization challenge. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
+				goto fail;
+			}
+
+			/*
+			 * Polling.
+			 */
+
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_poll(ss, http_req.response.mem.mem, polling_url)) {
+				stir_shaken_set_error(ss, "ACME polling failed. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
+				goto fail;
+			}
+		}
+	}
+
+	cJSON_Delete(json);
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+	if (json) cJSON_Delete(json);
+	stir_shaken_set_error_if_clear(ss, "ACME request failed. Cannot obtain STI certificate.", STIR_SHAKEN_ERROR_ACME);
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+/*
+ * JWT:
+ *
+ * {
+ *	"protected": base64url({
+ *		"alg": "ES256",
+ *		"kid": " https://sti-ca.com/acme/acct/1",
+ *		"nonce": "5XJ1L3lEkMG7tR6pA00clA",
+ *		"url": " https://sti-ca.com/acme/new-order"
+ *		})
+ *	"payload": base64url({
+ *		"csr": "5jNudRx6Ye4HzKEqT5...FS6aKdZeGsysoCo4H9P",
+ *		"notBefore": "2016-01-01T00:00:00Z",
+ *		"notAfter": "2016-01-08T00:00:00Z"
+ *		}),
+ *	"signature": "H6ZXtGjTZyUnPeKn...wEA4TklBdh3e454g"
+ * }
+*/
+char* stir_shaken_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, unsigned char *key, uint32_t keylen, char **json)
+{
+	char	*out = NULL;
+	jwt_t	*jwt = NULL;
+	unsigned char	csr_raw[1000] = { 0 };
+	int				csr_raw_len = 1000;
+	char			csr_b64[1500] = { 0 };
+	int				csr_b64_len = 1500;
+
+	if (jwt_new(&jwt) != 0) {
+
+		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	// Header
+
+	if (key && keylen) {		
+
+		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
+			goto exit;
+		}
+	}
+
+	if (kid) {
+
+		if (jwt_add_header(jwt, "kid", kid) != 0) {
+			goto exit;
+		}
+	}
+
+	if (nonce) {
+
+		if (jwt_add_header(jwt, "nonce", "nonce") != 0) {
+			goto exit;
+		}
+	}
+
+	if (url) {
+
+		if (jwt_add_header(jwt, "url", url) != 0) {
+			goto exit;
+		}
+	}
+
+	// Payload
+
+	if (req) {
+
+		if (stir_shaken_get_csr_raw(ss, req, &csr_raw[0], &csr_raw_len) != STIR_SHAKEN_STATUS_OK) {
+
+			stir_shaken_set_error_if_clear(ss, "Cannot get CSR raw", STIR_SHAKEN_ERROR_SSL);
+			goto exit;
+		}
+
+		if (stir_shaken_b64_encode(csr_raw, csr_raw_len, csr_b64, csr_b64_len) != STIR_SHAKEN_STATUS_OK) {
+
+			stir_shaken_set_error_if_clear(ss, "Cannot base 64 encode CSR raw", STIR_SHAKEN_ERROR_SSL);
+			goto exit;
+		}
+
+		if (jwt_add_grant(jwt, "csr", csr_b64) != 0) {
+			goto exit;
+		}
+	}
+
+	if (nb) {
+
+		if (jwt_add_grant(jwt, "notBefore", nb) != 0) {
+			goto exit;
+		}
+	}
+
+	if (na) {
+
+		if (jwt_add_grant(jwt, "notAfter", na) != 0) {
+			goto exit;
+		}
+	}
+
+	if (json) {
+
+		*json = jwt_dump_str(jwt, 1);
+		if (!*json) {
+			stir_shaken_set_error(ss, "Failed to dump JWT", STIR_SHAKEN_ERROR_GENERAL);
+			goto exit;
+		}
+	}
+
+	out = jwt_encode_str(jwt);
+	if (!out) {
+		stir_shaken_set_error(ss, "Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
+		goto exit;
+	}
+
+exit:
+	if (jwt) jwt_free(jwt);
+	return out;
+}

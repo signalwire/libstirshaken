@@ -1348,7 +1348,7 @@ stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, cons
 	if (ca_list || ca_dir) {
 
 		if (X509_STORE_load_locations(g->store, ca_list, ca_dir) != 1) {
-			stir_shaken_set_error(ss, "Failed to load list of trusted CAs", STIR_SHAKEN_ERROR_LOAD_CA);
+			stir_shaken_set_error(ss, "Failed to load trusted CAs", STIR_SHAKEN_ERROR_LOAD_CA);
 			goto fail;
 		}
 		
@@ -2765,53 +2765,66 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char 
 		return STIR_SHAKEN_STATUS_NOOP;
 	}
 
-	// Init libssl
+	if (ca_dir) {
+		
+		if (stir_shaken_dir_exists(ca_dir) != STIR_SHAKEN_STATUS_OK) {
+
+			if (stir_shaken_dir_create_recursive(ca_dir) != STIR_SHAKEN_STATUS_OK) {
+				sprintf(err_buf, "CA dir does not exist and failed to create. Create %s?", ca_dir);
+				stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+				return STIR_SHAKEN_STATUS_FALSE;
+			}
+		}
+	}
+
+	if (crl_dir) {
+		
+		if (stir_shaken_dir_exists(crl_dir) != STIR_SHAKEN_STATUS_OK) {
+
+			if (stir_shaken_dir_create_recursive(crl_dir) != STIR_SHAKEN_STATUS_OK) {
+				sprintf(err_buf, "CRL dir does not exist and failed to create. Create %s?", crl_dir);
+				stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+				return STIR_SHAKEN_STATUS_FALSE;
+			}
+		}
+	}
+
 	SSL_library_init();
 	//SSL_load_errors();																																// TODO doesn't compile anymore ?
 
-	// Init libcrypto
 	OpenSSL_add_all_algorithms();
 	ERR_load_crypto_strings();
 
-	*ssl_method = SSLv23_server_method();                   /* create server instance */
+	*ssl_method = SSLv23_server_method();
 
 	ERR_clear_error();	
-	*ssl_ctx = SSL_CTX_new(*ssl_method);                    /* create context */
+	*ssl_ctx = SSL_CTX_new(*ssl_method);
 	if (!*ssl_ctx) {
 		//sprintf(err_buf, "SSL ERR: Failed to init SSL context, SSL error: %s", ERR_error(ERR_get_error(), NULL)); 									// TODO doesn't compile anymore ?
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
+		stir_shaken_set_error(ss, "Failed to obtain SSL method", STIR_SHAKEN_ERROR_SSL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	*ssl = SSL_new(*ssl_ctx);
 	if (!*ssl) {
-		sprintf(err_buf, "SSL ERR: Failed to init SSL");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
+		stir_shaken_set_error(ss, "Failed to init SSL", STIR_SHAKEN_ERROR_SSL); 
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	/* 1. Check if 256-bit eliptic curves are supported. */
-
-	// Get total number of curves
 	n = EC_get_builtin_curves(NULL, 0);
 	if (n < 1) {
-		sprintf(err_buf, "SSL ERR: Eliptic curves are not supported (change OpenSSL version to 1.0.2?)");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
+		stir_shaken_set_error(ss, "SSL ERR: Eliptic curves are not supported (change OpenSSL version to 1.0.2?)", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 
-	/* 2. Check support for "X9.62/SECG curve over a 256 bit prime field" */
-
-	// Get curves description
 	curves = malloc(n * sizeof(EC_builtin_curve));
 	if (!curves) {
-		sprintf(err_buf, "SSL ERR: Not enough memory");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL); 
+		stir_shaken_set_error(ss, "Not enough memory", STIR_SHAKEN_ERROR_GENERAL); 
 		goto fail;
 	}
 	EC_get_builtin_curves(curves, n);
 
-	// Search for "prime256v1" curve
+	// TODO Find portable method to search by curve name/id
 	for (i = 0; i < n; ++i) {
 		c = &curves[i];
 		if (strstr(c->comment, "X9.62/SECG curve over a 256 bit prime field")) {
@@ -2821,16 +2834,12 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char 
 	}
 
 	if (curve_nid == -1 || !curve) {
-		
-		sprintf(err_buf, "SSL ERR: Eliptic curve 'X9.62/SECG curve over a 256 bit prime field' is not supported (change OpenSSL version to 1.0.2?)");
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL); 
+		stir_shaken_set_error(ss, "SSL ERR: Eliptic curve 'X9.62/SECG curve over a 256 bit prime field' is not supported (change OpenSSL version to 1.0.2?)", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 
-	} else {
-		
-		// TODO remove
-		printf("SSL: Using (%s [%d]) eliptic curve\n", curve->comment, curve->nid);
 	}
+
+	// printf("SSL: Using (%s [%d]) eliptic curve\n", curve->comment, curve->nid);
 	stir_shaken_globals.curve_nid = curve_nid;
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_register_tnauthlist_extension(ss, &stir_shaken_globals.tn_authlist_nid)) {

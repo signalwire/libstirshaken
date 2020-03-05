@@ -115,7 +115,8 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 	struct mbuf *io = &nc->recv_mbuf;
 	event_handler_t *evh = NULL;
 
-	fprintf(stderr, "Handling event...\n");
+	// TODO remove
+	fprintf(stderr, "Event [%d]...\n", event);
 	
 	switch (event) {
 
@@ -123,6 +124,7 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 			{
 				char addr[32];
 				mg_sock_addr_to_str(&nc->sa, addr, sizeof(addr), MG_SOCK_STRINGIFY_IP | MG_SOCK_STRINGIFY_PORT);
+				// TODO remove
 				fprintf(stderr, "%p: Connection from %s\r\n", nc, addr);
 				break;
 			}
@@ -133,14 +135,14 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 
 		case MG_EV_HTTP_REQUEST:
 			{
-				struct mg_str *path, *user_info, *host;
 				unsigned int port_i = 0;
-				struct mg_str scheme, query, fragment;
 
 				fprintf(stderr, "Handling HTTP request...\n");
 
 				if (m->uri.p) {
+
 					fprintf(stderr, "Searching handler for %s...", m->uri.p);
+
 					evh = handler_registered(&m->uri);
 					if (evh) {
 						fprintf(stderr, "Calling handler...\n");

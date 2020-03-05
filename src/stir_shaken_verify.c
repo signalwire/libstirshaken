@@ -142,66 +142,31 @@ static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
 	return realsize;
 }
 
-stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url)
+stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
 	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
-	long res = CURLE_OK;
-	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 	if (!http_req) {
 		stir_shaken_set_error(ss, "HTTP Req not set", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	if (!url) {
-		stir_shaken_set_error(ss, "Cert url not set", STIR_SHAKEN_ERROR_GENERAL);
+	if (stir_shaken_zstr(http_req->url)) {
+		stir_shaken_set_error(ss, "URL not set. Set URL on HTTP request?", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	ss_status = stir_shaken_make_http_get_req(ss, http_req, url);
-	res = http_req->response.code;
-
-	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-
-		// On fail, http_req->response.code is CURLcode
-		
-		if (res == CURLE_COULDNT_RESOLVE_HOST || res == CURLE_COULDNT_RESOLVE_PROXY || res == CURLE_COULDNT_CONNECT || res != CURLE_REMOTE_ACCESS_DENIED) {
-			
-			// Cannot access
-			sprintf(err_buf, "Verify: Cannot connect to URL: %s", url);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
-
-		} else {
-
-			// res == CURLE_REMOTE_ACCESS_DENIED
-			// Access denied
-			sprintf(err_buf, "Verify: Access denied for URL: %s", url);
-			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
-
-		}
-
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_get_req(ss, http_req)) {
+		stir_shaken_set_error_if_clear(ss, "Cannot connect to URL", STIR_SHAKEN_ERROR_HTTP_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
-
-	} else {
-
-		// On success, http_req->response.code is HTTP response code (200, 403, 404, etc...)
-
-		switch (res) {
-
-			case 200:
-				// OK
-				return STIR_SHAKEN_STATUS_OK;
-
-			case 403:
-				stir_shaken_set_error(ss, "HTTP 403 Forbidden", STIR_SHAKEN_ERROR_HTTP_403_FORBIDDEN);
-				return STIR_SHAKEN_STATUS_FALSE;
-
-			case 404:
-			default:
-				stir_shaken_set_error(ss, "HTTP 404 Invalid request", STIR_SHAKEN_ERROR_HTTP_404_INVALID);
-				return STIR_SHAKEN_STATUS_FALSE;
-		}
 	}
+
+	if (http_req->response.code != 200 && http_req->response.code != 201) {
+		stir_shaken_set_error_if_clear(ss, "HTTP request rejected", STIR_SHAKEN_ERROR_HTTP_GENERAL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 // 5.3.1 PASSporT & Identity Header Verification
@@ -287,6 +252,11 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 		stir_shaken_set_error(ss, "Verify: Cert URL not set", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 		goto fail;
 	}
+	
+	if (stir_shaken_zstr(cert_url)) {
+		stir_shaken_set_error(ss, "Verify: Cert URL is empty", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+		goto fail;
+	}
 
 	if (!passport) {
 		stir_shaken_set_error(ss, "Verify: PASSporT not set", STIR_SHAKEN_ERROR_GENERAL);
@@ -303,8 +273,10 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 		goto fail;
 	}
 	memset(cert, 0, sizeof(stir_shaken_cert_t));
+
+	http_req.url = strdup(cert_url);
 	
-	ss_status = stir_shaken_download_cert(ss, &http_req, cert_url);
+	ss_status = stir_shaken_download_cert(ss, &http_req);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error_if_clear(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 		goto fail;
