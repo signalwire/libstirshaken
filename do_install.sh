@@ -9,6 +9,6 @@ automake --add-missing
 libtoolize
 autoreconf
 ./configure
-make
+make && sudo make install
+make stirshaken
 make check
-sudo make install

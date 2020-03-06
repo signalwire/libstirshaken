@@ -1,6 +1,7 @@
 #include "stir_shaken.h"
 #include "mongoose.h"
 
+
 typedef void handler_t(struct mg_connection *nc, int event, void *hm, void *d);
 
 typedef struct event_handler_s {
@@ -65,13 +66,13 @@ static void unregister_handlers(void)
 
 static void ca_handle_bad_request(struct mg_connection *nc, int event, void *hm, void *d)
 {
-	fprintf(stderr, "Handling bad request...\n");
+	fprintf(stderr, "\n=== Handling: bad request...\n");
 	return;
 }
 
 static void ca_handle_api_account(struct mg_connection *nc, int event, void *hm, void *d)
 {
-	fprintf(stderr, "Handling /ca/api/account request...\n");
+	fprintf(stderr, "\n=== Handling: %s...\n", STI_CA_ACME_NEW_ACCOUNT_URL);
 	return;
 }
 
@@ -80,7 +81,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 	struct http_message *m = (struct http_message*) hm;
 	struct mbuf *io = &nc->recv_mbuf;
 
-	fprintf(stderr, "Handling /ca/api/cert request...\n");
+	fprintf(stderr, "\n=== Handling: %s...\n", STI_CA_ACME_CERT_REQ_URL);
 
 	if (!nc)
 		return;
@@ -141,11 +142,11 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 
 				if (m->uri.p) {
 
-					fprintf(stderr, "Searching handler for %s...", m->uri.p);
+					fprintf(stderr, "Searching handler for %s...\n", m->uri.p);
 
 					evh = handler_registered(&m->uri);
 					if (evh) {
-						fprintf(stderr, "Calling handler...\n");
+						fprintf(stderr, "\nHandler found\n");
 						evh->f(nc, event, hm, d);
 					}
 				}
@@ -187,8 +188,8 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	register_uri_handler("/ca/api/account", ca_handle_api_account);
-	register_uri_handler("/ca/api/cert", ca_handle_api_cert);
+	register_uri_handler(STI_CA_ACME_NEW_ACCOUNT_URL, ca_handle_api_account);
+	register_uri_handler(STI_CA_ACME_CERT_REQ_URL, ca_handle_api_cert);
 
 	mg_set_protocol_http_websocket(nc);
 

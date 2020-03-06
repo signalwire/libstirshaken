@@ -258,7 +258,11 @@ typedef enum stir_shaken_http_req_type {
 } stir_shaken_http_req_type_t;
 
 typedef struct stir_shaken_context_s {
-	char err_buf[1500];
+	char err_buf0[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf1[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf2[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf3[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err[3*STIR_SHAKEN_ERROR_BUF_LEN];
 	stir_shaken_error_t error;
 	uint8_t got_error;
 } stir_shaken_context_t;
@@ -798,6 +802,8 @@ typedef struct stir_shaken_sp_s {
 stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_shaken_pa_t *pa);
 
+#define STI_CA_ACME_CERT_REQ_URL	"/sti-ca/acme/cert"
+#define STI_CA_ACME_NEW_ACCOUNT_URL	"/sti-ca/acme/account"
 
 // TEST
 

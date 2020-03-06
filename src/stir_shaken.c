@@ -321,22 +321,32 @@ int stir_shaken_zstr(const char *str)
 	return 0;
 }
 
+static void shift_errors(stir_shaken_context_t *ss) {
+	if (!ss) return;
+	strncpy(ss->err_buf3, ss->err_buf2, STIR_SHAKEN_ERROR_BUF_LEN);
+	strncpy(ss->err_buf2, ss->err_buf1, STIR_SHAKEN_ERROR_BUF_LEN);
+	strncpy(ss->err_buf1, ss->err_buf0, STIR_SHAKEN_ERROR_BUF_LEN);
+}
+
 void stir_shaken_do_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error, char *file, int line)
 {
 	int i = 0, j = 0;
 
 	if (!ss) return;
-	memset(ss->err_buf, 0, STIR_SHAKEN_ERROR_BUF_LEN);
-	sprintf(ss->err_buf, "%s:%d\t", file, line);
-	i = strlen(ss->err_buf);
+	
+	shift_errors(ss);
+
+	memset(ss->err_buf0, 0, STIR_SHAKEN_ERROR_BUF_LEN);
+	sprintf(ss->err_buf0, "%s:%d\t", file, line);
+	i = strlen(ss->err_buf0);
 
 	while ((i < STIR_SHAKEN_ERROR_BUF_LEN - 1) && (description[j] != '\0')) {
-		ss->err_buf[i] = description[j];
+		ss->err_buf0[i] = description[j];
 		++i;
 		++j;
 	}
 
-	ss->err_buf[i] = '\0';
+	ss->err_buf0[i] = '\0';
 	ss->error = error;
 	ss->got_error = 1;
 }
@@ -366,9 +376,22 @@ uint8_t stir_shaken_is_error_set(stir_shaken_context_t *ss)
 static const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
 {
 	if (!ss) return NULL;
+	
 	if (stir_shaken_is_error_set(ss)) {
-		return ss->err_buf;
+		
+		if (!stir_shaken_zstr(ss->err_buf3)) {
+			snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2, ss->err_buf3);
+		} else if (!stir_shaken_zstr(ss->err_buf2)) {
+			snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2);
+		} else if (!stir_shaken_zstr(ss->err_buf1)) {
+			snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom):\n[ERR 0] %s\n[ERR 1] %s\n", ss->err_buf0, ss->err_buf1);
+		} else {
+			snprintf(ss->err, sizeof(ss->err), "[ERR 0] %s\n", ss->err_buf0);
+		}
+
+		return ss->err;
 	}
+
 	return "No description provided";
 }
 

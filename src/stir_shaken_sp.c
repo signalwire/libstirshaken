@@ -73,7 +73,7 @@ stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_sha
 
 	ss_status = stir_shaken_acme_perform_authorization(ss, http_req->response.mem.mem, spc_token, key, keylen);
 	if (ss_status != STIR_SHAKEN_STATUS_OK) {
-		stir_shaken_set_error(ss, "ACME failed processing response to cert req", STIR_SHAKEN_ERROR_ACME);
+		stir_shaken_set_error(ss, "ACME failed at authorization step", STIR_SHAKEN_ERROR_ACME);
 		goto exit;
 	}
 

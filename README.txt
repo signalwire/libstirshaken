@@ -37,7 +37,8 @@ stirshaken commandline tool
 openssl req -in csr.pem -text -noout
 openssl x509 -in sp.pem -text -noout
 
-./stirshaken csr --privkey priv.key --pubkey pub.key --spc 12 --subject_c US --subject_cn "New SP" -f csr.pem
 ./stirshaken keys --privkey priv.key --pubkey pub.key
+./stirshaken csr --privkey priv.key --pubkey pub.key --spc 12 --subject_c US --subject_cn "New SP" -f csr.pem
+./stirshaken sp-cert-req --url localhost/sti-ca/api --privkey priv.key --pubkey pub.key --csr csr.pem --spc SPCtoken
 ./stirshaken cert --type CA --privkey priv.key --pubkey pub.key --issuer_c US --issuer_cn "New CA" -f ca.pem
 ./stirshaken cert --type SP --privkey priv.key --pubkey pub.key --issuer_c US --issuer_cn "New CA" --serial 3 --expiry 2 --ca_cert ca.pem --csr csr.pem --uri "http://ca.com/api" -f sp.pem
