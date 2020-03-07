@@ -295,6 +295,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 			{
 				stir_shaken_http_req_t http_req = { 0 };
+				char *jwt_encoded = NULL;
 				char *jwt_decoded = NULL;
 
 				fprintf(stderr, "Loading keys...\n");
@@ -311,14 +312,24 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 				fprintf(stderr, "Requesting STI certificate...\n");
 				http_req.url = strdup(sp->url);
-				status = stir_shaken_sp_cert_req(ss, &http_req, sp->sp.kid, sp->sp.nonce, sp->sp.csr.req, sp->sp.nb, sp->sp.na, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, &jwt_decoded, sp->sp.spc_token);
-
-				if (jwt_decoded) {
-					fprintf(stderr, "\nJWT:\n%s\n", jwt_decoded);
-					stir_shaken_free_jwt_str(jwt_decoded);
+				
+				// Can do:
+				// status = stir_shaken_sp_cert_req_ex(ss, &http_req, sp->sp.kid, sp->sp.nonce, sp->sp.csr.req, sp->sp.nb, sp->sp.na, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, &jwt_decoded, sp->sp.spc_token);
+				//
+				// or for explicit JWT:
+				
+				jwt_encoded = stir_shaken_acme_generate_cert_req_payload(ss, sp->sp.kid, sp->sp.nonce, http_req.url, sp->sp.csr.req, sp->sp.nb, sp->sp.na, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, &jwt_decoded);
+				if (!jwt_encoded || !jwt_decoded) {
+					stir_shaken_set_error(ss, "Failed to generate JWT payload", STIR_SHAKEN_ERROR_JWT);
+					goto fail;
 				}
 
-				if (STIR_SHAKEN_STATUS_OK != status) {
+				fprintf(stderr, "\nHTTP POSTing JWT decoded:\n%s\n", jwt_decoded);
+				stir_shaken_free_jwt_str(jwt_decoded);
+				jwt_decoded = NULL;
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req(ss, &http_req, jwt_encoded, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, sp->sp.spc_token)) {
+					stir_shaken_set_error(ss, "SP certificate request failed", STIR_SHAKEN_ERROR_ACME);
 					goto fail;
 				}
 			}

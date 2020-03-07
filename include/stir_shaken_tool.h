@@ -71,8 +71,8 @@
 #define PRINT_SHAKEN_ERROR_IF_SET \
     if (stir_shaken_is_error_set(&ss)) { \
 		error_description = stir_shaken_get_error(&ss, &error_code); \
-		printf("Error description is: '%s'\n", error_description); \
-		printf("Error code is: '%d'\n", error_code); \
+		printf("Error description is: %s\n", error_description); \
+		printf("Error code is: %d\n", error_code); \
 	}
 
 #define PRINT_SHAKEN_ERROR_IF_SET_PTR \
