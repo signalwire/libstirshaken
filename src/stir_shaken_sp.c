@@ -38,8 +38,8 @@ stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_sha
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	jwt_encoded = stir_shaken_acme_generate_cert_req_payload(ss, kid, nonce, http_req->url, req, nb, na, key, keylen, json);
-	if (!jwt_encoded) {
+	jwt_encoded = stir_shaken_acme_generate_cert_req_payload(ss, kid, nonce, http_req->url, req, nb, na, key, keylen, &jwt_decoded);
+	if (!jwt_encoded || !jwt_decoded) {
 		stir_shaken_set_error(ss, "Failed to generate JWT payload", STIR_SHAKEN_ERROR_JWT);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
@@ -91,6 +91,12 @@ stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_sha
 		goto exit;
 	}
 
+	if (json) {
+		*json = jwt_decoded;
+	} else {
+		stir_shaken_free_jwt_str(jwt_decoded);
+	}
+	stir_shaken_free_jwt_str(jwt_encoded);
 	return STIR_SHAKEN_STATUS_OK;
 
 
@@ -98,5 +104,7 @@ exit:
 
 	stir_shaken_set_error_if_clear(ss, "ACME failed to download certificate", STIR_SHAKEN_ERROR_ACME);
 	stir_shaken_destroy_http_request(http_req);
+	if (jwt_encoded) stir_shaken_free_jwt_str(jwt_encoded);
+	if (jwt_decoded) stir_shaken_free_jwt_str(jwt_decoded);
 	return ss_status;
 }

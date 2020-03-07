@@ -324,6 +324,50 @@ static char* mock_auth_challenge_details(void)
 }
 #endif
 
+char* stir_shaken_acme_create_cert_req_auth_challenge_details(stir_shaken_context_t *ss, char *spc, char *token, char *authz_url)
+{
+	char *printed = NULL;
+	cJSON *json = cJSON_CreateObject(), *arr = cJSON_CreateArray(), *o1 = cJSON_CreateObject(), *o2 = cJSON_CreateObject();
+	if (!json || !arr || !o1 || !o2) {
+		stir_shaken_set_error(ss, "Cannot create auth challenge details JSON object", STIR_SHAKEN_ERROR_ACME);
+		goto fail;
+	}
+	
+	if (stir_shaken_zstr(spc) || stir_shaken_zstr(token) || stir_shaken_zstr(authz_url)) {
+		stir_shaken_set_error(ss, "Bad params. Auth challenge details must have: spc, token, auth url", STIR_SHAKEN_ERROR_ACME);
+		goto fail;
+	}
+
+	cJSON_AddStringToObject(json, "status", "pending");
+	cJSON_AddStringToObject(o1, "type", "TNAuthList");
+	cJSON_AddStringToObject(o1, "value", spc);
+	cJSON_AddStringToObject(o2, "type", "spc-token");
+	cJSON_AddStringToObject(o2, "url", authz_url);
+	cJSON_AddStringToObject(o2, "token", token);
+	cJSON_AddItemToArray(arr, o2); 
+	cJSON_AddItemToObject(json, "identifier", o1);
+	cJSON_AddItemToObject(json, "challenges", arr);
+
+	printed = cJSON_PrintUnformatted(json);
+	cJSON_Delete(json);
+	return printed;
+
+fail:
+	if (json) {
+		cJSON_Delete(json);
+	} else {
+		if (arr) {
+			cJSON_Delete(arr);
+		}
+		if (o1) {
+			cJSON_Delete(o1);
+		}
+		if (o2) {
+			cJSON_Delete(o2);
+		}
+	}
+	return NULL;
+}
 
 /*
  * In Step 7 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080]

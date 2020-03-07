@@ -295,6 +295,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 			{
 				stir_shaken_http_req_t http_req = { 0 };
+				char *jwt_decoded = NULL;
 
 				fprintf(stderr, "Loading keys...\n");
 				sp->sp.keys.priv_raw_len = sizeof(sp->sp.keys.priv_raw);
@@ -310,7 +311,14 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 				fprintf(stderr, "Requesting STI certificate...\n");
 				http_req.url = strdup(sp->url);
-				if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req(ss, &http_req, sp->sp.kid, sp->sp.nonce, sp->sp.csr.req, sp->sp.nb, sp->sp.na, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, NULL, sp->sp.spc_token)) {
+				status = stir_shaken_sp_cert_req(ss, &http_req, sp->sp.kid, sp->sp.nonce, sp->sp.csr.req, sp->sp.nb, sp->sp.na, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, &jwt_decoded, sp->sp.spc_token);
+
+				if (jwt_decoded) {
+					fprintf(stderr, "\nJWT:\n%s\n", jwt_decoded);
+					stir_shaken_free_jwt_str(jwt_decoded);
+				}
+
+				if (STIR_SHAKEN_STATUS_OK != status) {
 					goto fail;
 				}
 			}

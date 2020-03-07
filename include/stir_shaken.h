@@ -250,6 +250,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_BIND,
 } stir_shaken_error_t;
 
+#define STIR_SHAKEN_HTTP_REQ_INVALID 404
+
 typedef enum stir_shaken_http_req_type {
 	STIR_SHAKEN_HTTP_REQ_TYPE_GET,
 	STIR_SHAKEN_HTTP_REQ_TYPE_POST,
@@ -262,7 +264,7 @@ typedef struct stir_shaken_context_s {
 	char err_buf1[STIR_SHAKEN_ERROR_BUF_LEN];
 	char err_buf2[STIR_SHAKEN_ERROR_BUF_LEN];
 	char err_buf3[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err[3*STIR_SHAKEN_ERROR_BUF_LEN];
+	char err[4*STIR_SHAKEN_ERROR_BUF_LEN];
 	stir_shaken_error_t error;
 	uint8_t got_error;
 } stir_shaken_context_t;
@@ -709,6 +711,7 @@ char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_
 char*					stir_shaken_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, unsigned char *key, uint32_t keylen, char **json);
 char*					stir_shaken_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *spc_token, unsigned char *key, uint32_t keylen, char **json);
 char*					stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
+char*					stir_shaken_acme_create_cert_req_auth_challenge_details(stir_shaken_context_t *ss, char *spc, char *token, char *authz_url);
 
 stir_shaken_status_t	stir_shaken_acme_nonce_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
 stir_shaken_status_t	stir_shaken_acme_retrieve_auth_challenge_details(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
@@ -766,6 +769,7 @@ const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t
 #define stir_shaken_set_error_if_clear(ss, description, error) stir_shaken_do_set_error_if_clear(ss, description, error, __FILE__, __LINE__)
 
 typedef struct stir_shaken_ca_s {
+	stir_shaken_context_t ss;
 	stir_shaken_ssl_keys_t keys;
     stir_shaken_cert_t cert;
 	char private_key_name[STIR_SHAKEN_BUFLEN];
@@ -802,8 +806,9 @@ typedef struct stir_shaken_sp_s {
 stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_shaken_pa_t *pa);
 
-#define STI_CA_ACME_CERT_REQ_URL	"/sti-ca/acme/cert"
-#define STI_CA_ACME_NEW_ACCOUNT_URL	"/sti-ca/acme/account"
+#define STI_CA_ACME_CERT_REQ_URL		"/sti-ca/acme/cert"
+#define STI_CA_ACME_CERT_REQ_AUTH_URL	"/sti-ca/acme/authz/"
+#define STI_CA_ACME_NEW_ACCOUNT_URL		"/sti-ca/acme/account"
 
 // TEST
 
