@@ -2,6 +2,90 @@
 
 
 /**
+ * JSON:
+ *
+ * {
+ *	"status": "pending",
+ *	"expires": "2025-01-01T14:09:00Z",
+ *	"csr": "jcRf4uXra7FGYW5ZMewvV...rhlnznwy8YbpMGqwidEXfE",
+ *	"notBefore": "2019-01-01T00:00:00Z",
+ *	"notAfter": "2029-01-08T00:00:00Z",
+ *	"authorizations": [
+ *		"https://sti-ca.com/acme/authz/1234"
+ *	]
+ * }
+ */
+char* stir_shaken_acme_generate_auth_challenge(stir_shaken_context_t *ss, char *status, char *expires, char *csr, char *nb, char *na, char *authz_url)
+{
+	char *printed = NULL;
+	cJSON *json = NULL, *arr = NULL, *obj = NULL, *s = NULL;
+	
+	if (stir_shaken_zstr(status)) {
+		stir_shaken_set_error(ss, "Cannot create JSON, 'status' is missing", STIR_SHAKEN_ERROR_ACME);
+		return NULL;
+	}
+
+	if (stir_shaken_zstr(expires)) {
+		stir_shaken_set_error(ss, "Cannot create JSON, 'expires' is missing", STIR_SHAKEN_ERROR_ACME);
+		return NULL;
+	}
+
+	if (stir_shaken_zstr(csr)) {
+		stir_shaken_set_error(ss, "Cannot create JSON, 'csr' is missing", STIR_SHAKEN_ERROR_ACME);
+		return NULL;
+	}
+
+	if (stir_shaken_zstr(nb)) {
+		stir_shaken_set_error(ss, "Cannot create JSON, 'nb' (not before date) is missing", STIR_SHAKEN_ERROR_ACME);
+		return NULL;
+	}
+
+	if (stir_shaken_zstr(na)) {
+		stir_shaken_set_error(ss, "Cannot create JSON, 'na' (not after date) is missing", STIR_SHAKEN_ERROR_ACME);
+		return NULL;
+	}
+
+	if (stir_shaken_zstr(authz_url)) {
+		stir_shaken_set_error(ss, "Cannot create JSON, 'authz_url' (authorization URL) is missing", STIR_SHAKEN_ERROR_ACME);
+		return NULL;
+	}
+
+	s = cJSON_CreateString(authz_url);	
+	if (!s) {
+		stir_shaken_set_error(ss, "Cannot create JSON object for authorization URL", STIR_SHAKEN_ERROR_ACME);
+		return NULL;
+	}
+
+	arr = cJSON_CreateArray();
+	if (!arr) {
+		cJSON_Delete(s);
+		stir_shaken_set_error(ss, "Cannot create JSON array for 'authorizations'", STIR_SHAKEN_ERROR_ACME);
+		return NULL;
+	}
+
+	json = cJSON_CreateObject();
+	if (!json) {
+		cJSON_Delete(arr);
+		cJSON_Delete(s);
+		stir_shaken_set_error(ss, "Cannot create JSON object", STIR_SHAKEN_ERROR_ACME);
+		return NULL;
+	}
+
+	cJSON_AddStringToObject(json, "status", "pending");
+	cJSON_AddStringToObject(json, "expires", "2015-03-01T14:09:00Z");
+	cJSON_AddStringToObject(json, "csr", "jcRf4uXra7FGYW5ZMewvV...rhlnznwy8YbpMGqwidEXfE");
+	cJSON_AddStringToObject(json, "notBefore", "2016-01-01T00:00:00Z");
+	cJSON_AddStringToObject(json, "notAfter", "2016-01-08T00:00:00Z");
+	//cJSON_AddItemToObject(obj, s);
+	cJSON_AddItemToArray(arr, s); 
+	cJSON_AddItemToObject(json, "authorizations", arr);
+
+	printed = cJSON_PrintUnformatted(json);
+	cJSON_Delete(json);
+	return printed;
+}
+
+/**
  * JWT:
  *
  * {
@@ -18,7 +102,7 @@
  *	"signature": "9cbg5JO1Gf5YLjjz...SpkUfcdPai9uVYYQ"
  * }
  */
-char* stir_shaken_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *spc_token, unsigned char *key, uint32_t keylen, char **json)
+char* stir_shaken_acme_generate_auth_challenge_response(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *spc_token, unsigned char *key, uint32_t keylen, char **json)
 {
 	char	*out = NULL;
 	jwt_t	*jwt = NULL;
@@ -28,7 +112,6 @@ char* stir_shaken_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, 
 	int				csr_b64_len = 1500;
 
 	if (jwt_new(&jwt) != 0) {
-
 		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
 		return NULL;
 	}
@@ -36,7 +119,6 @@ char* stir_shaken_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, 
 	// Header
 
 	if (key && keylen) {		
-
 		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
 			goto exit;
 		}
@@ -244,44 +326,6 @@ stir_shaken_status_t stir_shaken_acme_nonce_req(stir_shaken_context_t *ss, stir_
 {
 	return stir_shaken_make_http_head_req(ss, http_req, NULL, 0);
 }
-
-#if STIR_SHAKEN_MOCK_ACME_CERT_REQ
-static char* mock_auth_challenge(void)
-{
-	char *printed = NULL;
-	cJSON *json = cJSON_CreateObject(), *arr = cJSON_CreateArray(), *obj = cJSON_CreateObject(), *s = cJSON_CreateString("https://sti-ca.com/acme/authz/1234");
-	if (!json || !arr || !obj || !s) {
-		return NULL;
-	}
-
-	cJSON_AddStringToObject(json, "status", "pending");
-	cJSON_AddStringToObject(json, "expires", "2015-03-01T14:09:00Z");
-	cJSON_AddStringToObject(json, "csr", "jcRf4uXra7FGYW5ZMewvV...rhlnznwy8YbpMGqwidEXfE");
-	cJSON_AddStringToObject(json, "notBefore", "2016-01-01T00:00:00Z");
-	cJSON_AddStringToObject(json, "notAfter", "2016-01-08T00:00:00Z");
-	//cJSON_AddItemToObject(obj, s);
-	cJSON_AddItemToArray(arr, s); 
-	cJSON_AddItemToObject(json, "authorizations", arr);
-
-	printed = cJSON_PrintUnformatted(json);
-	cJSON_Delete(json);
-	return printed;
-}
-
-static void mock_cert_req_response(sofia_stir_shaken_stisp_as_service_t *as, stir_shaken_http_req_t *http_req)
-{
-	char *cert_mocked = NULL;
-
-	if (!as || !http_req) return SWITCH_STATUS_FALSE;
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "STIR-Shaken: Mocking Service Provider cert response\n");
-	http_req->response.code = 201;
-	free(http_req->response.mem.mem);
-
-	// Get mocked JWT (encoded)
-	http_req->response.mem.mem = mock_auth_challenge();
-}
-#endif
 
 /*
  * Mocking auth challenge details to be like:
@@ -561,7 +605,7 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 		kid = "https://sti-ca.com/acme/acct/1";			// TODO map to auth challenge details
 		nonce = "Q_s3MWoqT05TrdkM2MTDcw";				// TODO map to auth challenge details
 
-		jwt_encoded = stir_shaken_acme_generate_auth_challenge_token(ss, kid, nonce, challenge_url, spc_token, key, keylen, NULL);
+		jwt_encoded = stir_shaken_acme_generate_auth_challenge_response(ss, kid, nonce, challenge_url, spc_token, key, keylen, NULL);
 		if (!jwt_encoded) {
 			stir_shaken_set_error(ss, "Failed to generate JWT with SP Code token as a response to auth challenge", STIR_SHAKEN_ERROR_ACME);
 			goto fail;

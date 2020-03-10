@@ -103,6 +103,20 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 	cJSON *json = NULL;
 	jwt_t *jwt = NULL;
 
+	char *spc = NULL;
+	const char *csr_b64 = NULL;
+	char csr[STIR_SHAKEN_BUFLEN] = { 0 };
+	int csr_len = 0;
+	char *token = NULL;
+	char authz_url[STIR_SHAKEN_BUFLEN] = { 0 };
+	char *expires = "2029-03-01T14:09:00Z";
+	char *nb = "2019-01-01T00:00:00Z";
+	char *na = "2029-01-01T00:00:00Z";
+	char *authorization_challenge = NULL;
+
+	char *nonce = "MYAuvOpaoIiywTezizk5vw";
+
+
 	if (!m || !nc || !ca) {
 		stir_shaken_set_error(&ca->ss, "Bad params, missing HTTP message, connection, and/or ca", STIR_SHAKEN_ERROR_ACME);
 		goto fail;
@@ -119,15 +133,6 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 		case MG_EV_HTTP_REQUEST:
 
 			{
-				char *spc = NULL;
-				const char *csr_b64 = NULL;
-				char csr[STIR_SHAKEN_BUFLEN] = { 0 };
-				int csr_len = 0;
-				char *token = NULL;
-				char authz_url[STIR_SHAKEN_BUFLEN] = { 0 };
-				char *auth_details = NULL;
-
-
 				if ((EINVAL == jwt_decode(&jwt, m->body.p, NULL, 0)) || !jwt) {
 					stir_shaken_set_error(&ca->ss, "Cannot parse message body into JWT", STIR_SHAKEN_ERROR_ACME);
 					goto fail;
@@ -147,11 +152,23 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 				fprintf(stderr, "CSR is:\n%s\n", csr);
 
 				//csr = stir_shaken_acme_cert_req_get_csr(json);
-				auth_details = stir_shaken_acme_create_cert_req_auth_challenge_details(&ca->ss, spc, token, authz_url);
 
-				mg_printf(nc, "%s", "HTTP/1.1 200 OK Kind-of\r\nContent-Length: 0\r\n\r\n");
+				// TODO get SPC
+				spc = "1234";
 
-				//mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nLink: <https://sti-ca.com/acme/some-directory>;rel=\"index\"\r\n{\r\n\"status\": \"pending\"\r\n}\r\n\r\n");
+				// TODO generate 'expires'
+				// TODO generate 'nb'
+				// TODO generate 'na'
+				// TODO generate Replay-Nonce
+				snprintf(authz_url, STIR_SHAKEN_BUFLEN, "http://%s%s/%s", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_API_URL, spc);
+				authorization_challenge = stir_shaken_acme_generate_auth_challenge(&ca->ss, "pending", expires, csr, nb, na, authz_url);
+				if (!authorization_challenge) {
+					stir_shaken_set_error(&ca->ss, "Failed to create authorization challenge", STIR_SHAKEN_ERROR_ACME);
+					goto fail;
+				}
+
+				mg_printf(nc, "HTTP/1.1 201 Created\r\nReplay-Nonce: %s\r\nLocation: %s\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", nonce, authz_url, strlen(authorization_challenge), authorization_challenge);
+
 				// Printf more
 
 				// Send empty chunk, end of response
@@ -181,13 +198,18 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 		jwt = NULL;
 	}
 
+	if (authorization_challenge) {
+		free(authorization_challenge);
+		authorization_challenge = NULL;
+	}
+
 	stir_shaken_clear_error(&ca->ss);
 	return;
 
 fail:
 	
-	if (nc) mg_printf(nc, "%s", "HTTP/1.1 %s Invalid\r\n\r\n", STIR_SHAKEN_HTTP_REQ_INVALID);
-	mg_send_http_chunk(nc, "", 0);
+	if (nc) mg_printf(nc, "HTTP/1.1 %s Invalid\r\n\r\n", STIR_SHAKEN_HTTP_REQ_INVALID);
+	if (nc) mg_send_http_chunk(nc, "", 0);
 	if (io) mbuf_remove(io, io->len);
 	if (nc) nc->flags |= MG_F_SEND_AND_CLOSE;
 
@@ -195,6 +217,12 @@ fail:
 		cJSON_Delete(json);
 		json = NULL;
 	}
+
+	if (authorization_challenge) {
+		free(authorization_challenge);
+		authorization_challenge = NULL;
+	}
+
 	stir_shaken_set_error(&ca->ss, "HTTP Request Failed", STIR_SHAKEN_ERROR_ACME);
 	fprintf(stderr, "=== FAIL\n");
 	return;
@@ -208,6 +236,7 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
 	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
 	const char *error_desc = NULL;
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 	// TODO remove
 	fprintf(stderr, "Event [%d]...\n", event);
@@ -247,10 +276,24 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 					fprintf(stderr, "Searching handler for %s...\n", m->uri.p);
 
 					evh = handler_registered(&m->uri);
-					if (evh) {
-						fprintf(stderr, "\nHandler found\n");
-						evh->f(nc, event, hm, d);
+
+					if (!evh) {
+
+						// Close connection, reply with HTTP error
+						
+						if (nc) mg_printf(nc, "HTTP/1.1 %s Invalid\r\n\r\n", STIR_SHAKEN_HTTP_REQ_INVALID);
+						if (nc) mg_send_http_chunk(nc, "", 0);
+						if (io) mbuf_remove(io, io->len);
+						if (nc) nc->flags |= MG_F_SEND_AND_CLOSE;
+						
+						sprintf(err_buf, "Handler not found, replied with %s\n", STIR_SHAKEN_HTTP_REQ_INVALID);
+						stir_shaken_set_error(&ca->ss, err_buf, STIR_SHAKEN_ERROR_ACME);
+
+						break;
 					}
+
+					fprintf(stderr, "\nHandler found\n");
+					evh->f(nc, event, hm, d);
 				}
 				break;
 			}

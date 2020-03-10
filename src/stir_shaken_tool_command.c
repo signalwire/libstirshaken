@@ -324,7 +324,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 					goto fail;
 				}
 
-				fprintf(stderr, "\nHTTP POSTing JWT decoded:\n%s\n", jwt_decoded);
+				fprintf(stderr, "\nHTTP POSTing JWT:\n%s\n", jwt_decoded);
 				stir_shaken_free_jwt_str(jwt_decoded);
 				jwt_decoded = NULL;
 

@@ -250,7 +250,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_BIND,
 } stir_shaken_error_t;
 
-#define STIR_SHAKEN_HTTP_REQ_INVALID 404
+#define STIR_SHAKEN_HTTP_REQ_INVALID "404"
 
 typedef enum stir_shaken_http_req_type {
 	STIR_SHAKEN_HTTP_REQ_TYPE_GET,
@@ -709,9 +709,10 @@ char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_
 // Service
 
 char*					stir_shaken_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, unsigned char *key, uint32_t keylen, char **json);
-char*					stir_shaken_acme_generate_auth_challenge_token(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *spc_token, unsigned char *key, uint32_t keylen, char **json);
-char*					stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
+char*					stir_shaken_acme_generate_auth_challenge(stir_shaken_context_t *ss, char *status, char *expires, char *csr, char *nb, char *na, char *authz_url);
+char*					stir_shaken_acme_generate_auth_challenge_response(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *spc_token, unsigned char *key, uint32_t keylen, char **json);
 char*					stir_shaken_acme_create_cert_req_auth_challenge_details(stir_shaken_context_t *ss, char *spc, char *token, char *authz_url);
+char*					stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
 
 stir_shaken_status_t	stir_shaken_acme_nonce_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
 stir_shaken_status_t	stir_shaken_acme_retrieve_auth_challenge_details(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
@@ -807,8 +808,9 @@ typedef struct stir_shaken_sp_s {
 stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_shaken_pa_t *pa);
 
+#define STI_CA_ACME_ADDR				"localhost"
 #define STI_CA_ACME_CERT_REQ_URL		"/sti-ca/acme/cert"
-#define STI_CA_ACME_CERT_REQ_AUTH_URL	"/sti-ca/acme/authz/"
+#define STI_CA_ACME_AUTHZ_API_URL		"/sti-ca/acme/authz"
 #define STI_CA_ACME_NEW_ACCOUNT_URL		"/sti-ca/acme/account"
 
 // TEST
