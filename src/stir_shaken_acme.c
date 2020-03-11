@@ -415,7 +415,7 @@ fail:
 
 /*
  * In Step 7 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080]
- * only 'status' field is checked, so even if expecting auth status reponse to be like:
+ * only 'status' field is checked, so even if expecting auth status response to be like:
 
  * {
  *	"status": "pending",
@@ -468,6 +468,7 @@ stir_shaken_status_t stir_shaken_acme_retrieve_auth_challenge_details(stir_shake
 #endif
 
 	if (http_req->response.code != 200 && http_req->response.code != 201) {
+		stir_shaken_set_error(ss, http_req->response.error, STIR_SHAKEN_ERROR_ACME);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -623,6 +624,7 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 		}
 	
 		if (http_req.response.code != 200 && http_req.response.code != 201) {
+			stir_shaken_set_error(ss, http_req.response.error, STIR_SHAKEN_ERROR_ACME);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
 
@@ -679,6 +681,7 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
 		}
 	
 		if (http_req.response.code != 200 && http_req.response.code != 201) {
+			stir_shaken_set_error(ss, http_req.response.error, STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
@@ -890,12 +893,13 @@ fail:
  *	"payload": base64url({
  *		"csr": "5jNudRx6Ye4HzKEqT5...FS6aKdZeGsysoCo4H9P",
  *		"notBefore": "2016-01-01T00:00:00Z",
- *		"notAfter": "2016-01-08T00:00:00Z"
+ *		"notAfter": "2016-01-08T00:00:00Z",
+ *		"spc": "1234",
  *		}),
  *	"signature": "H6ZXtGjTZyUnPeKn...wEA4TklBdh3e454g"
  * }
 */
-char* stir_shaken_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, unsigned char *key, uint32_t keylen, char **json)
+char* stir_shaken_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, const char *spc, unsigned char *key, uint32_t keylen, char **json)
 {
 	char	*out = NULL;
 	jwt_t	*jwt = NULL;
@@ -971,6 +975,13 @@ char* stir_shaken_acme_generate_cert_req_payload(stir_shaken_context_t *ss, cons
 	if (na) {
 
 		if (jwt_add_grant(jwt, "notAfter", na) != 0) {
+			goto exit;
+		}
+	}
+
+	if (spc) {
+
+		if (jwt_add_grant(jwt, "spc", spc) != 0) {
 			goto exit;
 		}
 	}

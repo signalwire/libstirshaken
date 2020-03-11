@@ -6,11 +6,11 @@ stir_shaken_globals_t stir_shaken_globals;
 
 static void stir_shaken_init(void)
 {
-	stir_shaken_do_init(NULL, NULL, NULL);
+	stir_shaken_do_init(NULL, NULL, NULL, STIR_SHAKEN_LOGLEVEL_NOTHING);
 	return;
 }
 
-stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir)
+stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir, int loglevel)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
 
@@ -18,6 +18,8 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *
 		stir_shaken_set_error(ss, "Already initialised", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_NOOP;
 	}
+
+	stir_shaken_globals.loglevel = loglevel;
 	
 	if (pthread_mutexattr_init(&stir_shaken_globals.attr) != 0) {
 		
@@ -337,7 +339,7 @@ void stir_shaken_do_set_error(stir_shaken_context_t *ss, const char *description
 	shift_errors(ss);
 
 	memset(ss->err_buf0, 0, STIR_SHAKEN_ERROR_BUF_LEN);
-	sprintf(ss->err_buf0, "%s:%d\t", file, line);
+	sprintf(ss->err_buf0, "%s:%d: ", file, line);
 	i = strlen(ss->err_buf0);
 
 	while ((i < STIR_SHAKEN_ERROR_BUF_LEN - 1) && (description[j] != '\0')) {

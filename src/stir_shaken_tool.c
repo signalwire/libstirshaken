@@ -17,6 +17,11 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s --%s URL\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
 	fprintf(stderr, "\t\t %s --%s URL\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL);
 	fprintf(stderr, "\n");
+	fprintf(stderr, "\t\t Each command accepts logging verbosity option:\n");
+	fprintf(stderr, "\t\t --v\t\tbasic logging\n");
+	fprintf(stderr, "\t\t --vv\t\tmedium logging\n");
+	fprintf(stderr, "\t\t --vvv\t\thigh logging\n");
+	fprintf(stderr, "\n");
 	fprintf(stderr, "\t\t %s			: generate key pair\n", COMMAND_NAME_KEYS);
 	fprintf(stderr, "\t\t %s			: generate X509 certificate request for SP identified by SP Code given to --spc\n", COMMAND_NAME_CSR);
 	fprintf(stderr, "\t\t %s			: generate X509 certificate (end entity for --type %s and self-signed for --type %s)\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE_SP, OPTION_NAME_TYPE_CA);
@@ -24,7 +29,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s			: run CA service on port given to --%s\n", COMMAND_NAME_CA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s			: run PA service on port given to --%s\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s		: request SP Code token from PA at url given to --%s\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
-	fprintf(stderr, "\t\t %s		: request SP certificate from CA at url given to --%s\n\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL);
+	fprintf(stderr, "\t\t %s		: request SP certificate for Service Provider identified by number given to --%s from CA at url given to --%s\n\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_SPC, OPTION_NAME_URL);
 	fprintf(stderr, "\n");
 }
 
@@ -66,11 +71,15 @@ int main(int argc, char *argv[])
 		{ OPTION_NAME_SUBJECT_C, required_argument, 0, OPTION_SUBJECT_C },
 		{ OPTION_NAME_SUBJECT_CN, required_argument, 0, OPTION_SUBJECT_CN },
 		{ OPTION_NAME_SPC, required_argument, 0, OPTION_SPC },
+		{ OPTION_NAME_SPC_TOKEN, required_argument, 0, OPTION_SPC_TOKEN },
 		{ OPTION_NAME_CA_CERT, required_argument, 0, OPTION_CA_CERT },
 		{ OPTION_NAME_CSR, required_argument, 0, OPTION_CSR },
 		{ OPTION_NAME_TN_AUTH_LIST_URI, required_argument, 0, OPTION_TN_AUTH_LIST_URI },
 		{ OPTION_NAME_PORT, required_argument, 0, OPTION_PORT },
 		{ OPTION_NAME_URL, required_argument, 0, OPTION_URL },
+		{ OPTION_NAME_V, no_argument, 0, OPTION_V },
+		{ OPTION_NAME_VV, no_argument, 0, OPTION_VV },
+		{ OPTION_NAME_VVV, no_argument, 0, OPTION_VVV },
 		{ 0 }
 	};
 
@@ -175,6 +184,12 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "SPC is: %s\n", options.spc);
 				break;
 			
+			case OPTION_SPC_TOKEN:
+				STIR_SHAKEN_CHECK_OPTARG
+				strncpy(options.spc_token, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "SPC token is: %s\n", options.spc_token);
+				break;
+			
 			case OPTION_CA_CERT:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.ca_cert, optarg, STIR_SHAKEN_BUFLEN);
@@ -204,6 +219,18 @@ int main(int argc, char *argv[])
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.url, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "URL is: %s\n", options.url);
+				break;
+
+			case OPTION_V:
+				options.loglevel = STIR_SHAKEN_LOGLEVEL_BASIC;
+				break;
+			
+			case OPTION_VV:
+				options.loglevel = STIR_SHAKEN_LOGLEVEL_MEDIUM;
+				break;
+
+			case OPTION_VVV:
+				options.loglevel = STIR_SHAKEN_LOGLEVEL_HIGH;
 				break;
 
 			case '?':

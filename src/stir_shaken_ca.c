@@ -64,15 +64,23 @@ static void unregister_handlers(void)
 	}
 }
 
+static void close_http_connection_with_error(struct mg_connection *nc, struct mbuf *io)
+{
+	if (nc) mg_printf(nc, "HTTP/1.1 %s Invalid\r\n\r\n", STIR_SHAKEN_HTTP_REQ_INVALID);
+	if (nc) mg_send_http_chunk(nc, "", 0);
+	if (io) mbuf_remove(io, io->len);
+	if (nc) nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
 static void ca_handle_bad_request(struct mg_connection *nc, int event, void *hm, void *d)
 {
-	fprintf(stderr, "\n=== Handling: bad request...\n");
+	fprintif(1, "\n=== Handling: bad request...\n");
 	return;
 }
 
 static void ca_handle_api_account(struct mg_connection *nc, int event, void *hm, void *d)
 {
-	fprintf(stderr, "\n=== Handling: %s...\n", STI_CA_ACME_NEW_ACCOUNT_URL);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling: %s...\n", STI_CA_ACME_NEW_ACCOUNT_URL);
 	return;
 }
 
@@ -103,7 +111,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 	cJSON *json = NULL;
 	jwt_t *jwt = NULL;
 
-	char *spc = NULL;
+	const char *spc = NULL;
 	const char *csr_b64 = NULL;
 	char csr[STIR_SHAKEN_BUFLEN] = { 0 };
 	int csr_len = 0;
@@ -115,6 +123,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 	char *authorization_challenge = NULL;
 
 	char *nonce = "MYAuvOpaoIiywTezizk5vw";
+	X509_REQ *req = NULL;
 
 
 	if (!m || !nc || !ca) {
@@ -124,8 +133,8 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 
 	io = &nc->recv_mbuf;
 
-	fprintf(stderr, "\n=== Handling:\n%s\n", STI_CA_ACME_CERT_REQ_URL);
-	fprintf(stderr, "\n=== Message Body:\n%s\n", m->body.p);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling:\n%s\n", STI_CA_ACME_CERT_REQ_URL);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.p);
 	
 	
 	switch (event) {
@@ -143,18 +152,27 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					stir_shaken_set_error(&ca->ss, "JWT posted by SP is missing CSR", STIR_SHAKEN_ERROR_ACME);
 					goto fail;
 				}
+				
+				// Read SPC from JWT (ATIS standard doesn't reqire SPC to be set on JWT)
+				spc = jwt_get_grant(jwt, "spc");
+				if (stir_shaken_zstr(spc)) {
+					stir_shaken_set_error(&ca->ss, "Cert request SPC (TNAuthList extension missing?)", STIR_SHAKEN_ERROR_ACME);
+					goto fail;
+				}
 
 				if (stir_shaken_b64_decode(csr_b64, csr, sizeof(csr)) < 1 || stir_shaken_zstr(csr)) {
 					stir_shaken_set_error(&ca->ss, "Cannot decode CSR from base 64", STIR_SHAKEN_ERROR_ACME);
 					goto fail;
 				}
 
-				fprintf(stderr, "CSR is:\n%s\n", csr);
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "CSR is:\n%s\n", csr);
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "SPC is: %s\n", spc);
 
-				//csr = stir_shaken_acme_cert_req_get_csr(json);
-
-				// TODO get SPC
-				spc = "1234";
+				req = stir_shaken_load_x509_req_from_pem(&ca->ss, csr);
+				if (!req) {
+					stir_shaken_set_error(&ca->ss, "Cannot load CSR into SSL", STIR_SHAKEN_ERROR_ACME);
+					goto fail;
+				}
 
 				// TODO generate 'expires'
 				// TODO generate 'nb'
@@ -176,7 +194,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 				mbuf_remove(io, io->len);      // Discard data from recv buffer
 				nc->flags |= MG_F_SEND_AND_CLOSE;
 				
-				fprintf(stderr, "=== OK\n");
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
 			}
 
 			break;
@@ -203,15 +221,17 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 		authorization_challenge = NULL;
 	}
 
+	if (req) {
+		X509_REQ_free(req);
+		req = NULL;
+	}
+
 	stir_shaken_clear_error(&ca->ss);
 	return;
 
 fail:
-	
-	if (nc) mg_printf(nc, "HTTP/1.1 %s Invalid\r\n\r\n", STIR_SHAKEN_HTTP_REQ_INVALID);
-	if (nc) mg_send_http_chunk(nc, "", 0);
-	if (io) mbuf_remove(io, io->len);
-	if (nc) nc->flags |= MG_F_SEND_AND_CLOSE;
+
+	close_http_connection_with_error(nc, io);
 
 	if (json) {
 		cJSON_Delete(json);
@@ -222,9 +242,14 @@ fail:
 		free(authorization_challenge);
 		authorization_challenge = NULL;
 	}
+	
+	if (req) {
+		X509_REQ_free(req);
+		req = NULL;
+	}
 
 	stir_shaken_set_error(&ca->ss, "HTTP Request Failed", STIR_SHAKEN_ERROR_ACME);
-	fprintf(stderr, "=== FAIL\n");
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== FAIL\n");
 	return;
 }
 
@@ -238,13 +263,14 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 	const char *error_desc = NULL;
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
-	// TODO remove
-	fprintf(stderr, "Event [%d]...\n", event);
 	
 	if (!ca) {
 		stir_shaken_set_error(&ca->ss, "Bad params", STIR_SHAKEN_ERROR_ACME);
 		goto exit;
 	}
+
+	// TODO remove
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Event [%d]...\n", event);
 
 	if (nc) {
 		io = &nc->recv_mbuf;
@@ -256,43 +282,38 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 			{
 				char addr[32];
 				mg_sock_addr_to_str(&nc->sa, addr, sizeof(addr), MG_SOCK_STRINGIFY_IP | MG_SOCK_STRINGIFY_PORT);
+				
 				// TODO remove
-				fprintf(stderr, "%p: Connection from %s\r\n", nc, addr);
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "%p: Connection from %s\r\n", nc, addr);
+
 				break;
 			}
 
 		case MG_EV_RECV:
-			fprintf(stderr, "RECV... \r\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "RECV... \r\n");
 			break;
 
 		case MG_EV_HTTP_REQUEST:
 			{
 				unsigned int port_i = 0;
 
-				fprintf(stderr, "Handling HTTP request...\n");
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "Handling HTTP request...\n");
 
 				if (m->uri.p) {
 
-					fprintf(stderr, "Searching handler for %s...\n", m->uri.p);
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "Searching handler for %s...\n", m->uri.p);
 
 					evh = handler_registered(&m->uri);
 
 					if (!evh) {
 
-						// Close connection, reply with HTTP error
-						
-						if (nc) mg_printf(nc, "HTTP/1.1 %s Invalid\r\n\r\n", STIR_SHAKEN_HTTP_REQ_INVALID);
-						if (nc) mg_send_http_chunk(nc, "", 0);
-						if (io) mbuf_remove(io, io->len);
-						if (nc) nc->flags |= MG_F_SEND_AND_CLOSE;
-						
-						sprintf(err_buf, "Handler not found, replied with %s\n", STIR_SHAKEN_HTTP_REQ_INVALID);
-						stir_shaken_set_error(&ca->ss, err_buf, STIR_SHAKEN_ERROR_ACME);
+						close_http_connection_with_error(nc, io);
+						stir_shaken_set_error(&ca->ss, "Handler not found. Closed HTTP connection", STIR_SHAKEN_ERROR_ACME);
 
 						break;
 					}
 
-					fprintf(stderr, "\nHandler found\n");
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\nHandler found\n");
 					evh->f(nc, event, hm, d);
 				}
 				break;
@@ -305,7 +326,7 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 exit:
 	if (stir_shaken_is_error_set(&ca->ss)) {
 		error_desc = stir_shaken_get_error(&ca->ss, &error);
-		fprintf(stderr, "Error. %s\n", error_desc);
+		fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Error. %s\n", error_desc);
 		stir_shaken_clear_error(&ca->ss);
 	}
 	return;

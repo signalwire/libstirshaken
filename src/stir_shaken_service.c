@@ -207,11 +207,13 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 		curl_easy_cleanup(curl_handle);
 		curl_global_cleanup();
 		
-		// On fail, http_req->response.code is CURLcode
         return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &http_req->response.code);
+	if (http_req->response.code != 200 && http_req->response.code != 201) {
+		sprintf(http_req->response.error, "HTTP response code: %d (%s)", http_req->response.code, curl_easy_strerror(http_req->response.code));
+	}
 	curl_easy_cleanup(curl_handle);
 	curl_global_cleanup();
 	

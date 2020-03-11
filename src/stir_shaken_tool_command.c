@@ -72,6 +72,7 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 	} else if (!strcmp(command_name, COMMAND_NAME_SP_CERT_REQ)) {
 
 		strncpy(sp->spc, options->spc, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->sp.spc_token, options->spc_token, STIR_SHAKEN_BUFLEN);
 		strncpy(sp->url, options->url, STIR_SHAKEN_BUFLEN);
 		strncpy(sp->sp.public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
 		strncpy(sp->sp.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
@@ -149,10 +150,12 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 		case COMMAND_SP_CERT_REQ:
 
 			if (stir_shaken_zstr(sp->url) || stir_shaken_zstr(sp->sp.private_key_name) || stir_shaken_zstr(sp->sp.public_key_name)
-					|| stir_shaken_zstr(sp->spc) || stir_shaken_zstr(sp->sp.csr_name)) {
+					|| stir_shaken_zstr(sp->spc) || stir_shaken_zstr(sp->sp.spc_token) || stir_shaken_zstr(sp->sp.csr_name)) {
 				goto fail;
 			}
-			strncpy(sp->sp.spc_token, sp->spc, STIR_SHAKEN_BUFLEN);
+			helper = strtoul(sp->spc, &pCh, 10);
+			STIR_SHAKEN_CHECK_CONVERSION_EXT
+			sp->sp.code = helper;
 			break;
 
 		case COMMAND_CERT:
@@ -175,7 +178,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 	int				hashstrlen = 100;
 
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_init(ss, options->ca_dir, options->crl_dir)) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_init(ss, options->ca_dir, options->crl_dir, options->loglevel)) {
 		goto fail;
 	}
 
@@ -297,6 +300,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				stir_shaken_http_req_t http_req = { 0 };
 				char *jwt_encoded = NULL;
 				char *jwt_decoded = NULL;
+				char spc[STIR_SHAKEN_BUFLEN] = { 0 };
 
 				fprintf(stderr, "Loading keys...\n");
 				sp->sp.keys.priv_raw_len = sizeof(sp->sp.keys.priv_raw);
@@ -317,8 +321,9 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				// status = stir_shaken_sp_cert_req_ex(ss, &http_req, sp->sp.kid, sp->sp.nonce, sp->sp.csr.req, sp->sp.nb, sp->sp.na, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, &jwt_decoded, sp->sp.spc_token);
 				//
 				// or for explicit JWT:
-				
-				jwt_encoded = stir_shaken_acme_generate_cert_req_payload(ss, sp->sp.kid, sp->sp.nonce, http_req.url, sp->sp.csr.req, sp->sp.nb, sp->sp.na, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, &jwt_decoded);
+
+				sprintf(spc, "%d", sp->sp.code);
+				jwt_encoded = stir_shaken_acme_generate_cert_req_payload(ss, sp->sp.kid, sp->sp.nonce, http_req.url, sp->sp.csr.req, sp->sp.nb, sp->sp.na, spc, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, &jwt_decoded);
 				if (!jwt_encoded || !jwt_decoded) {
 					stir_shaken_set_error(ss, "Failed to generate JWT payload", STIR_SHAKEN_ERROR_JWT);
 					goto fail;

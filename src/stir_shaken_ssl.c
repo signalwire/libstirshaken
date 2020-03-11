@@ -280,6 +280,30 @@ fail:
 	return NULL;
 }
 
+X509_REQ* stir_shaken_load_x509_req_from_pem(stir_shaken_context_t *ss, char *pem)
+{
+	X509_REQ	*req = NULL;
+	BIO			*cbio = NULL;
+
+	if (!pem) return NULL;
+
+	cbio = BIO_new_mem_buf(pem, -1);
+	if (!cbio) {
+		stir_shaken_set_error(ss, "(SSL) Failed to create BIO", STIR_SHAKEN_ERROR_SSL);
+		return NULL;
+	}
+
+	req = PEM_read_bio_X509_REQ(cbio, NULL, NULL, NULL);
+	if (!req) {
+		BIO_free(cbio);
+		stir_shaken_set_error(ss, "Error loading X509 REQ", STIR_SHAKEN_ERROR_SSL);
+		return NULL;
+	}
+
+	if (cbio) BIO_free(cbio);
+	return req;
+}
+
 X509_REQ* stir_shaken_generate_x509_req(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn)
 {
 	X509_REQ                *req = NULL;
@@ -472,7 +496,63 @@ void stir_shaken_destroy_csr(X509_REQ **csr_req)
 	}
 }
 
-// Create new X509 certificate
+static ASN1_TYPE* stir_shaken_x509_req_get_extension(stir_shaken_context_t *ss, X509_REQ *req, int nid)
+{
+    ASN1_TYPE *ext = NULL;
+    X509_ATTRIBUTE *attr = NULL;
+	int idx = -1;
+
+	if (!req) {
+		stir_shaken_set_error(ss, "CSR not set", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	if (nid == NID_undef) {
+		return NULL;
+	}
+
+	idx = X509_REQ_get_attr_by_NID(req, nid, -1);
+    if (idx == -1) {
+		return NULL;
+	}
+
+	attr = X509_REQ_get_attr(req, idx);
+    ext = X509_ATTRIBUTE_get0_type(attr, 0);
+
+    if (!ext || (ext->type != V_ASN1_SEQUENCE)) {
+        return NULL;
+	}
+	return ext;
+}
+
+void* stir_shaken_x509_req_get_tn_authlist_extension(stir_shaken_context_t *ss, X509_REQ *req)
+{
+	if (!req) {
+		stir_shaken_set_error(ss, "CSR not set", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	return stir_shaken_x509_req_get_extension(ss, req, stir_shaken_globals.tn_authlist_nid);
+}
+
+const unsigned char* stir_shaken_x509_req_get_tn_authlist_extension_value(stir_shaken_context_t *ss, X509_REQ *req)
+{
+    ASN1_TYPE *ext = NULL;
+
+
+	if (!req) {
+		stir_shaken_set_error(ss, "CSR not set", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	ext = stir_shaken_x509_req_get_tn_authlist_extension(ss, req);
+	if (!ext) {
+		return NULL;
+	}
+
+	return ext->value.sequence->data;
+}
+
 X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int serial, int expiry_days)
 {
 	X509 *x = NULL;
@@ -729,6 +809,7 @@ stir_shaken_status_t stir_shaken_x509_add_signalwire_extensions(stir_shaken_cont
 stir_shaken_status_t stir_shaken_x509_req_add_tnauthlist_extension_spc(stir_shaken_context_t *ss, X509_REQ *req, int spc)
 {
 	char buf[100] = { 0 };
+
 	snprintf(buf, 100, "%d", spc);
 	return stir_shaken_v3_add_ext(NULL, NULL, req, NULL, stir_shaken_globals.tn_authlist_nid, buf);
 }
@@ -1712,7 +1793,7 @@ stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X
 	}
 
 	// Load end-entity certificate
-	*x = PEM_read_bio_X509(cbio, NULL, 0, NULL);
+	*x = PEM_read_bio_X509(cbio, NULL, NULL, NULL);
 
 	if (xchain) {
 

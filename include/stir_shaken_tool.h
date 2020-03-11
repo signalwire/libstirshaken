@@ -42,12 +42,16 @@
 #define OPTION_SUBJECT_C	9
 #define OPTION_SUBJECT_CN	10
 #define OPTION_SPC			11
-#define OPTION_CA_CERT		12
-#define OPTION_CSR			13
-#define OPTION_TN_AUTH_LIST_URI	14
-#define OPTION_PORT			15
-#define OPTION_URL			16
-#define OPTION_MAX			17
+#define OPTION_SPC_TOKEN	12
+#define OPTION_CA_CERT		13
+#define OPTION_CSR			14
+#define OPTION_TN_AUTH_LIST_URI	15
+#define OPTION_PORT			16
+#define OPTION_URL			17
+#define OPTION_V			18
+#define OPTION_VV			19
+#define OPTION_VVV			20
+#define OPTION_MAX			21
 
 #define OPTION_NAME_PUBKEY		"pubkey"
 #define OPTION_NAME_PRIVKEY		"privkey"
@@ -62,11 +66,15 @@
 #define OPTION_NAME_SUBJECT_C	"subject_c"
 #define OPTION_NAME_SUBJECT_CN	"subject_cn"
 #define OPTION_NAME_SPC			"spc"
+#define OPTION_NAME_SPC_TOKEN	"spc_token"
 #define OPTION_NAME_CA_CERT		"ca_cert"
 #define OPTION_NAME_CSR			"csr"
 #define OPTION_NAME_TN_AUTH_LIST_URI	"uri"
 #define OPTION_NAME_PORT		"port"
 #define OPTION_NAME_URL			"url"
+#define OPTION_NAME_V			"v"
+#define OPTION_NAME_VV			"vv"
+#define OPTION_NAME_VVV			"vvv"
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
     if (stir_shaken_is_error_set(&ss)) { \
@@ -137,6 +145,7 @@ struct sp {
 	char subject_c[STIR_SHAKEN_BUFLEN];
 	char subject_cn[STIR_SHAKEN_BUFLEN];
 	char spc[STIR_SHAKEN_BUFLEN];
+	char spc_token[STIR_SHAKEN_BUFLEN];
 	int serial;
 	int expiry_days;
 	char file[STIR_SHAKEN_BUFLEN];
@@ -149,6 +158,7 @@ struct options {
 	char private_key_name[STIR_SHAKEN_BUFLEN];
 	char public_key_name[STIR_SHAKEN_BUFLEN];
 	char spc[STIR_SHAKEN_BUFLEN];
+	char spc_token[STIR_SHAKEN_BUFLEN];
 	char file[STIR_SHAKEN_BUFLEN];
 	char type[STIR_SHAKEN_BUFLEN];
 	char subject_c[STIR_SHAKEN_BUFLEN];
@@ -164,6 +174,7 @@ struct options {
 	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
 	uint16_t port;
 	char url[STIR_SHAKEN_BUFLEN];
+	int loglevel;
 } options;
 
 void stirshaken_range_error(char arg, unsigned long val);

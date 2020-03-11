@@ -52,6 +52,7 @@ stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_sha
 	}
 
 	if (http_req->response.code != 200 && http_req->response.code != 201) {
+		stir_shaken_set_error(ss, http_req->response.error, STIR_SHAKEN_ERROR_ACME);
 		ss_status = STIR_SHAKEN_STATUS_FALSE;
 		goto exit;
 	}
@@ -92,7 +93,7 @@ exit:
 	return ss_status;
 }
 
-stir_shaken_status_t stir_shaken_sp_cert_req_ex(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *kid, const char *nonce, X509_REQ *req, const char *nb, const char *na, unsigned char *key, uint32_t keylen, char **json, char *spc_token)
+stir_shaken_status_t stir_shaken_sp_cert_req_ex(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *kid, const char *nonce, X509_REQ *req, const char *nb, const char *na, const char *spc, unsigned char *key, uint32_t keylen, char **json, char *spc_token)
 {
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	char					*jwt_encoded = NULL;
@@ -119,7 +120,7 @@ stir_shaken_status_t stir_shaken_sp_cert_req_ex(stir_shaken_context_t *ss, stir_
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 	
-	jwt_encoded = stir_shaken_acme_generate_cert_req_payload(ss, kid, nonce, http_req->url, req, nb, na, key, keylen, &jwt_decoded);
+	jwt_encoded = stir_shaken_acme_generate_cert_req_payload(ss, kid, nonce, http_req->url, req, nb, na, spc, key, keylen, &jwt_decoded);
 	if (!jwt_encoded || !jwt_decoded) {
 		stir_shaken_set_error(ss, "Failed to generate JWT payload", STIR_SHAKEN_ERROR_JWT);
 		return STIR_SHAKEN_STATUS_TERM;
@@ -138,6 +139,7 @@ stir_shaken_status_t stir_shaken_sp_cert_req_ex(stir_shaken_context_t *ss, stir_
 	}
 
 	if (http_req->response.code != 200 && http_req->response.code != 201) {
+		stir_shaken_set_error(ss, http_req->response.error, STIR_SHAKEN_ERROR_ACME);
 		ss_status = STIR_SHAKEN_STATUS_FALSE;
 		goto exit;
 	}
