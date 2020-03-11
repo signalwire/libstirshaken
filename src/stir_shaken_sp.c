@@ -144,6 +144,14 @@ stir_shaken_status_t stir_shaken_sp_cert_req_ex(stir_shaken_context_t *ss, stir_
 		goto exit;
 	}
 
+	if (stir_shaken_zstr(http_req->response.mem.mem)) {
+		stir_shaken_set_error(ss, "Got empty response from CA", STIR_SHAKEN_ERROR_ACME_EMPTY_CA_RESPONSE);
+		ss_status = STIR_SHAKEN_STATUS_FALSE;
+		goto exit;
+	}
+
+	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Got response from CA:\n%s\n", http_req->response.mem.mem);
+
 	/**
 	 * Process response to cert req, performing authorization if required by STI-CA.
 	 * Authorization is performed by responding to the challenge with the current SP Code Token.

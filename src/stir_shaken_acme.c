@@ -793,10 +793,13 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 		goto fail;
 	}
 
+	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Processing authorization challenge...\n");
+
 	// If status is "valid" authorization is completed and can proceed to cert acquisition
 	if (strcmp("valid", auth_status->valuestring) == 0) {
 
 		// Authorization completed
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Authorization completed\n");
 
 	} else {
 
@@ -812,6 +815,8 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 
 		// ACME authorization is pending
 		// Retrieve authorization challenge details
+
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Authorization is pending\n");
 
 		auth_arr = cJSON_GetObjectItem(json, "authorizations");
 		if (!auth_arr) {
@@ -843,6 +848,8 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 	
 		http_req.url = strdup(auth_url);
 
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Requesting authorization challenge details...\n");
+
 		if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_retrieve_auth_challenge_details(ss, &http_req)) {
 			stir_shaken_set_error(ss, "Request for ACME authorization challenge details failed. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
@@ -855,6 +862,14 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 			 * Got authorization challenge details, proceed to Step 5, respond to challenge with SP Code token.
 			 */
 
+			if (stir_shaken_zstr(http_req.response.mem.mem)) {
+				stir_shaken_set_error(ss, "Got empty response from CA", STIR_SHAKEN_ERROR_ACME_EMPTY_CA_AUTH_DETAILS_RESPONSE);
+				goto fail;
+			}
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got authorization challenge details from CA:\n%s\n", http_req.response.mem.mem);
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Sending a response to authorization challenge...\n");
+
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_respond_to_challenge(ss, http_req.response.mem.mem, spc_token, key, keylen, &polling_url)) {
 				stir_shaken_set_error(ss, "Failed to respond to ACME authorization challenge. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
 				goto fail;
@@ -863,6 +878,8 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 			/*
 			 * Polling.
 			 */
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Polling...\n");
 
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_poll(ss, http_req.response.mem.mem, polling_url)) {
 				stir_shaken_set_error(ss, "ACME polling failed. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);

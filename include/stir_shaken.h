@@ -243,6 +243,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_HTTP_PARAMS,
 	STIR_SHAKEN_ERROR_JWT,
 	STIR_SHAKEN_ERROR_ACME,
+	STIR_SHAKEN_ERROR_ACME_EMPTY_CA_RESPONSE,
+	STIR_SHAKEN_ERROR_ACME_EMPTY_CA_AUTH_DETAILS_RESPONSE,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID,
 	STIR_SHAKEN_ERROR_TNAUTHLIST,
 	STIR_SHAKEN_ERROR_CERT_INIT,
@@ -824,8 +826,9 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_shaken_pa_t *pa);
 
 #define STI_CA_ACME_ADDR				"localhost"
+#define STI_CA_ACME_API_URL				"/sti-ca/acme"
 #define STI_CA_ACME_CERT_REQ_URL		"/sti-ca/acme/cert"
-#define STI_CA_ACME_AUTHZ_API_URL		"/sti-ca/acme/authz"
+#define STI_CA_ACME_AUTHZ_URL			"/sti-ca/acme/authz"
 #define STI_CA_ACME_NEW_ACCOUNT_URL		"/sti-ca/acme/account"
 
 // TEST

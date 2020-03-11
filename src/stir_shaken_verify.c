@@ -125,8 +125,7 @@ static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
 	
 	stir_shaken_clear_error(mem->ss);
 
-	// TODO remove
-	printf("STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, realsize + mem->size);
+	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, realsize + mem->size);
 
 	m = realloc(mem->mem, mem->size + realsize + 1);
 	if(!m) {

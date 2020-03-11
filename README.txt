@@ -39,6 +39,9 @@ openssl x509 -in sp.pem -text -noout
 
 ./stirshaken keys --privkey priv.key --pubkey pub.key
 ./stirshaken csr --privkey priv.key --pubkey pub.key --spc 12 --subject_c US --subject_cn "New SP" -f csr.pem
-./stirshaken sp-cert-req --url localhost/sti-ca/api --privkey priv.key --pubkey pub.key --csr csr.pem --spc SPCtoken
+sudo ./stirshaken ca
+sudo ./stirshaken ca --v
+./stirshaken ca --port 8650
+./stirshaken sp-cert-req --url http://localhost/sti-ca/acme/cert --privkey priv.key --pubkey pub.key --csr csr.pem --spc 12 --spc_token SPCT --v
 ./stirshaken cert --type CA --privkey priv.key --pubkey pub.key --issuer_c US --issuer_cn "New CA" -f ca.pem
 ./stirshaken cert --type SP --privkey priv.key --pubkey pub.key --issuer_c US --issuer_cn "New CA" --serial 3 --expiry 2 --ca_cert ca.pem --csr csr.pem --uri "http://ca.com/api" -f sp.pem

@@ -2181,8 +2181,7 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 		goto fail;
 	}
 	
-	// TODO remove
-	printf("STIR-Shaken: SSL: Got new private/public EC key pair\n");
+	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: SSL: Got new private/public EC key pair\n");
 
 	if (!EC_KEY_check_key(ec_key)) {
 		stir_shaken_set_error(ss, "Generate keys: SSL ERR: EC key pair is invalid", STIR_SHAKEN_ERROR_SSL);
@@ -2920,7 +2919,8 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char 
 
 	}
 
-	// printf("SSL: Using (%s [%d]) eliptic curve\n", curve->comment, curve->nid);
+	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "SSL: Using (%s [%d]) eliptic curve\n", curve->comment, curve->nid);
+
 	stir_shaken_globals.curve_nid = curve_nid;
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_register_tnauthlist_extension(ss, &stir_shaken_globals.tn_authlist_nid)) {
@@ -2928,8 +2928,7 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char 
 		goto fail;
 	}
 
-	// TODO remove
-	printf("Using TNAuthList extension with nid %d\n", stir_shaken_globals.tn_authlist_nid);
+	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "Using TNAuthList extension with nid %d\n", stir_shaken_globals.tn_authlist_nid);
 
 	// TODO pass CAs list and revocation list
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_init_cert_store(ss, NULL, ca_dir, NULL, crl_dir)) {

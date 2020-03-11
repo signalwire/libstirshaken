@@ -51,7 +51,7 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 
 	} else if (!strcmp(command_name, COMMAND_NAME_INSTALL_CERT)) {
 
-		fprintf(stderr, "\n\nConfiguring install CA certificate command...\n\n");
+		fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n\nConfiguring install CA certificate command...\n\n");
 		return COMMAND_INSTALL_CERT;
 
 	} else if (!strcmp(command_name, COMMAND_NAME_CA)) {
@@ -194,17 +194,17 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 		case COMMAND_CSR:
 
-			fprintf(stderr, "Loading keys...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading keys...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_keys(ss, &sp->sp.keys.private_key, &sp->sp.keys.public_key, sp->sp.private_key_name, sp->sp.public_key_name, NULL, NULL)) {
 				goto fail;
 			}
 			
-			fprintf(stderr, "Generating CSR...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Generating CSR...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_generate_csr(ss, sp->sp.code, &sp->sp.csr.req, sp->sp.keys.private_key, sp->sp.keys.public_key, sp->subject_c, sp->subject_cn)) {
 				goto fail;
 			}
 
-			fprintf(stderr, "Saving CSR...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving CSR...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_csr_to_disk(ss, sp->sp.csr.req, sp->sp.csr_name)) {
 				goto fail;
 			}
@@ -212,32 +212,32 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 		case COMMAND_CERT_CA:
 
-			fprintf(stderr, "Loading keys...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading keys...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_keys(ss, &ca->ca.keys.private_key, &ca->ca.keys.public_key, ca->ca.private_key_name, ca->ca.public_key_name, NULL, NULL)) {
 				goto fail;
 			}
 
-			fprintf(stderr, "Generating cert...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Generating cert...\n");
 			ca->ca.cert.x = stir_shaken_generate_x509_self_signed_ca_cert(ss, ca->ca.keys.private_key, ca->ca.keys.public_key, ca->issuer_c, ca->issuer_cn, ca->serial, ca->expiry_days);
 			if (!ca->ca.cert.x) {
 				goto fail;
 			}
 			
-			fprintf(stderr, "Configuring certificate...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Configuring certificate...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_configure(ss, &ca->ca.cert, ca->ca.cert_name, NULL, NULL)) {
 				goto fail;
 			}
 
-			fprintf(stderr, "Saving certificate...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving certificate...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, ca->ca.cert.x, ca->ca.cert.name)) {
 				goto fail;
 			}
 
 			stir_shaken_hash_cert_name(ss, &ca->ca.cert);
-			printf("CA name hash is %lu\n", ca->ca.cert.hash);
-			printf("CA hashed file name is %s\n", ca->ca.cert.cert_name_hashed);
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "CA name hash is %lu\n", ca->ca.cert.hash);
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "CA hashed file name is %s\n", ca->ca.cert.cert_name_hashed);
 
-			fprintf(stderr, "Saving certificate under hashed name...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving certificate under hashed name...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, ca->ca.cert.x, ca->ca.cert.cert_name_hashed)) {
 				goto fail;
 			}
@@ -246,35 +246,35 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 		case COMMAND_CERT_SP:
 
-			fprintf(stderr, "Loading keys...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading keys...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_keys(ss, &ca->ca.keys.private_key, &ca->ca.keys.public_key, ca->ca.private_key_name, ca->ca.public_key_name, NULL, NULL)) {
 				goto fail;
 			}
 
-			fprintf(stderr, "Loading CSR...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading CSR...\n");
 			sp->sp.csr.req = stir_shaken_load_x509_req_from_file(ss, sp->sp.csr_name);
 			if (!sp->sp.csr.req) {
 				goto fail;
 			}
 
-			fprintf(stderr, "Loading CA certificate...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading CA certificate...\n");
 			ca->ca.cert.x = stir_shaken_load_x509_from_file(ss, ca->ca.cert_name);
 			if (!ca->ca.cert.x) {
 				goto fail;
 			}
 
-			fprintf(stderr, "Generating cert...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Generating cert...\n");
 			sp->sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(ss, ca->ca.cert.x, ca->ca.keys.private_key, ca->issuer_c, ca->issuer_cn, sp->sp.csr.req, ca->serial_sp, ca->expiry_days_sp, ca->ca.tn_auth_list_uri);
 			if (!sp->sp.cert.x) {
 				goto fail;
 			}
 
-			fprintf(stderr, "Configuring certificate...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Configuring certificate...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_configure(ss, &sp->sp.cert, sp->sp.cert_name, NULL, NULL)) {
 				goto fail;
 			}
 
-			fprintf(stderr, "Saving certificate...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving certificate...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, sp->sp.cert.x, sp->sp.cert.name)) {
 				goto fail;
 			}
@@ -285,7 +285,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 		case COMMAND_CA:
 
-			fprintf(stderr, "Starting CA service...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Starting CA service...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_run_ca_service(ss, &ca->ca)) {
 				goto fail;
 			}
@@ -302,19 +302,19 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				char *jwt_decoded = NULL;
 				char spc[STIR_SHAKEN_BUFLEN] = { 0 };
 
-				fprintf(stderr, "Loading keys...\n");
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading keys...\n");
 				sp->sp.keys.priv_raw_len = sizeof(sp->sp.keys.priv_raw);
 				if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_keys(ss, &sp->sp.keys.private_key, &sp->sp.keys.public_key, sp->sp.private_key_name, sp->sp.public_key_name, sp->sp.keys.priv_raw, &sp->sp.keys.priv_raw_len)) {
 					goto fail;
 				}
 
-				fprintf(stderr, "Loading CSR...\n");
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading CSR...\n");
 				sp->sp.csr.req = stir_shaken_load_x509_req_from_file(ss, sp->sp.csr_name);
 				if (!sp->sp.csr.req) {
 					goto fail;
 				}
 
-				fprintf(stderr, "Requesting STI certificate...\n");
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Requesting STI certificate...\n");
 				http_req.url = strdup(sp->url);
 				
 				// Can do:
@@ -329,7 +329,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 					goto fail;
 				}
 
-				fprintf(stderr, "\nHTTP POSTing JWT:\n%s\n", jwt_decoded);
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nHTTP POSTing JWT:\n%s\n", jwt_decoded);
 				stir_shaken_free_jwt_str(jwt_decoded);
 				jwt_decoded = NULL;
 
@@ -343,7 +343,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 		case COMMAND_PA:
 
-			fprintf(stderr, "Starting PA service...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Starting PA service...\n");
 			break;
 
 		case COMMAND_UNKNOWN:

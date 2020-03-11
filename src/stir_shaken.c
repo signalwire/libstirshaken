@@ -419,6 +419,6 @@ const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t
 
 stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line)
 {
-	printf("FAIL: %s. %s:%d\n", reason, file, line);
+	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "FAIL: %s. %s:%d\n", reason, file, line);
 	return STIR_SHAKEN_STATUS_FALSE;
 }

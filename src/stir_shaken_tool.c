@@ -17,7 +17,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s --%s URL\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
 	fprintf(stderr, "\t\t %s --%s URL\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL);
 	fprintf(stderr, "\n");
-	fprintf(stderr, "\t\t Each command accepts logging verbosity option:\n");
+	fprintf(stderr, "\t\t Each command accepts setting print/logging verbosity level:\n");
 	fprintf(stderr, "\t\t --v\t\tbasic logging\n");
 	fprintf(stderr, "\t\t --vv\t\tmedium logging\n");
 	fprintf(stderr, "\t\t --vvv\t\thigh logging\n");
@@ -35,7 +35,7 @@ static void stirshaken_usage(const char *name)
 
 void stirshaken_range_error(char arg, unsigned long val)
 {
-	fprintf(stderr, "\nERR, argument [%c] too big [%lu]\n\n", arg, val);
+	fprintf(stderr, "\nERR, argument [%d] too big [%lu]\n\n", (int) arg, val);
 }
 
 static void help_hint(const char *name)
@@ -257,8 +257,6 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	
-	// Parse the comamnd
-
 	fprintf(stderr, "\n=== PARSING COMMAND\n\n");
 	command = stirshaken_command_configure(&ss, argv[optind], &ca, &pa, &sp, &options);
 	if (COMMAND_UNKNOWN == command) {
@@ -268,8 +266,6 @@ int main(int argc, char *argv[])
 	}
 
 
-	// Validate the command
-	
 	fprintf(stderr, "\n=== VALIDATING COMMAND\n\n");
 	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_validate(&ss, command, &ca, &pa, &sp, &options)) {
 		fprintf(stderr, "\nError. Invalid parameters. Type %s --help for usage instructions\n", argv[0]);
@@ -277,8 +273,6 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	// Process the command
-	
 	fprintf(stderr, "\n=== PROCESSING COMMAND\n\n");
 	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_execute(&ss, command, &ca, &pa, &sp, &options)) {
 		fprintf(stderr, "\nError. Command failed.\n");

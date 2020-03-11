@@ -10,8 +10,7 @@ static size_t stir_shaken_curl_write_callback(void *contents, size_t size, size_
 	
 	stir_shaken_clear_error(mem->ss);
 
-	// TODO remove
-	printf("STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, realsize + mem->size);
+	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, realsize + mem->size);
 
 	m = realloc(mem->mem, mem->size + realsize + 1);
 	if(!m) {
@@ -35,7 +34,7 @@ static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nm
 
 	header = malloc(realsize + 1);
 	if (!header) {
-		// TODO panic
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: CURL: Received empty header... skipping\n");
 		return 0;
 	}
 	memcpy(header, ptr, realsize);
@@ -190,9 +189,9 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 
 	// TODO remove
 	if (http_req->data) {
-		printf("STIR-Shaken: making HTTP (%d) call:\nurl:\t%s\ndata:\t%s\n", http_req->type, http_req->url, http_req->data);
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%d) call:\nurl:\t%s\ndata:\t%s\n", http_req->type, http_req->url, http_req->data);
 	} else {
-		printf("STIR-Shaken: making HTTP (%d) call:\nurl:\t%s\n", http_req->type, http_req->url);
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%d) call:\nurl:\t%s\n", http_req->type, http_req->url);
 	}
 
 	res = curl_easy_perform(curl_handle);
@@ -212,7 +211,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 
 	curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &http_req->response.code);
 	if (http_req->response.code != 200 && http_req->response.code != 201) {
-		sprintf(http_req->response.error, "HTTP response code: %d (%s)", http_req->response.code, curl_easy_strerror(http_req->response.code));
+		sprintf(http_req->response.error, "HTTP response code: %d (%s)%s", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " (Bad URL or API call not handled)" : "");
 	}
 	curl_easy_cleanup(curl_handle);
 	curl_global_cleanup();
@@ -305,14 +304,14 @@ stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir
 		if (iterator->type == cJSON_String) {
 
 			// TODO remove
-			printf("%s\n", iterator->valuestring);
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "%s\n", iterator->valuestring);
 
 			if (strcmp(key, iterator->valuestring)) {
 				return STIR_SHAKEN_STATUS_OK;
 			}
 		} else {
 
-			printf("invalid\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "invalid\n");
 		}
 	}
 
@@ -431,9 +430,8 @@ char* stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name)
 				data++;
 			}
 
-			// TODO remove
-			printf("key:\t\t%s\n", header->data);
-			printf("value:\t\t%s\n\n", data);
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "key:\t\t%s\n", header->data);
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "value:\t\t%s\n\n", data);
 
 			if (!strcmp(header->data, name)) {
 
@@ -444,13 +442,9 @@ char* stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name)
 		} else {
 
 			if (!strncmp("HTTP", header->data, 4)) {
-
-				// TODO remove
-				printf("Starts with HTTP: %s\n", header->data);
+				fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "Starts with HTTP: %s\n", header->data);
 			} else {
-
-				// TODO remove
-				printf("Unparsable header: %s\n", header->data);
+				fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "Unparsable header: %s\n", header->data);
 			}
 		}
 		header = header->next;

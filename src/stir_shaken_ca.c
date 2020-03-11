@@ -7,12 +7,13 @@ typedef void handler_t(struct mg_connection *nc, int event, void *hm, void *d);
 typedef struct event_handler_s {
 	char *uri;
 	handler_t *f;
+	int accepts_params;
 } event_handler_t;
 
 #define HANDLERS_N 10
 event_handler_t event_handlers[HANDLERS_N];
 
-static stir_shaken_status_t register_uri_handler(const char *uri, void *handler)
+static stir_shaken_status_t register_uri_handler(const char *uri, void *handler, int accepts_params)
 {
 	int i = 0;
 	event_handler_t *e = NULL;
@@ -23,6 +24,7 @@ static stir_shaken_status_t register_uri_handler(const char *uri, void *handler)
 		if (stir_shaken_zstr(e->uri)) {
 			e->uri = strdup(uri);
 			e->f = handler;
+			e->accepts_params = accepts_params;
 			return STIR_SHAKEN_STATUS_OK;
 		}
 		++i;
@@ -39,8 +41,16 @@ static event_handler_t* handler_registered(struct mg_str *uri)
 	while (i < HANDLERS_N) {
 
 		e = &event_handlers[i];
-		if (e->uri && (0 == mg_vcmp(uri, e->uri))) {
-			return e;
+		if (e->uri) {
+			if (e->accepts_params) {
+				if (strstr(uri->p, e->uri)) {
+					return e;
+				}
+			} else {
+				if (!mg_vcmp(uri, e->uri)) {
+					return e;
+				}
+			}
 		}
 		++i;
 	}
@@ -67,6 +77,13 @@ static void unregister_handlers(void)
 static void close_http_connection_with_error(struct mg_connection *nc, struct mbuf *io)
 {
 	if (nc) mg_printf(nc, "HTTP/1.1 %s Invalid\r\n\r\n", STIR_SHAKEN_HTTP_REQ_INVALID);
+	if (nc) mg_send_http_chunk(nc, "", 0);
+	if (io) mbuf_remove(io, io->len);
+	if (nc) nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
+static void close_http_connection(struct mg_connection *nc, struct mbuf *io)
+{
 	if (nc) mg_send_http_chunk(nc, "", 0);
 	if (io) mbuf_remove(io, io->len);
 	if (nc) nc->flags |= MG_F_SEND_AND_CLOSE;
@@ -174,26 +191,23 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					goto fail;
 				}
 
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Requesting authorization...\n");
+
 				// TODO generate 'expires'
 				// TODO generate 'nb'
 				// TODO generate 'na'
 				// TODO generate Replay-Nonce
-				snprintf(authz_url, STIR_SHAKEN_BUFLEN, "http://%s%s/%s", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_API_URL, spc);
+				snprintf(authz_url, STIR_SHAKEN_BUFLEN, "http://%s%s/%s", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc);
 				authorization_challenge = stir_shaken_acme_generate_auth_challenge(&ca->ss, "pending", expires, csr, nb, na, authz_url);
-				if (!authorization_challenge) {
+				if (stir_shaken_zstr(authorization_challenge)) {
 					stir_shaken_set_error(&ca->ss, "Failed to create authorization challenge", STIR_SHAKEN_ERROR_ACME);
 					goto fail;
 				}
 
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Sending authorization challenge:\n%s\n", authorization_challenge);
+
 				mg_printf(nc, "HTTP/1.1 201 Created\r\nReplay-Nonce: %s\r\nLocation: %s\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", nonce, authz_url, strlen(authorization_challenge), authorization_challenge);
-
-				// Printf more
-
-				// Send empty chunk, end of response
-				mg_send_http_chunk(nc, "", 0);
-				mbuf_remove(io, io->len);      // Discard data from recv buffer
-				nc->flags |= MG_F_SEND_AND_CLOSE;
-				
+				close_http_connection(nc, io);
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
 			}
 
@@ -253,6 +267,22 @@ fail:
 	return;
 }
 
+static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, void *d)
+{
+	struct mbuf *io = NULL;
+	
+	if (nc) {
+		io = &nc->recv_mbuf;
+	}
+
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling: %s...\n", STI_CA_ACME_AUTHZ_URL);
+
+	mg_printf(nc, "HTTP/1.1 200 You are more than welcome\r\n\r\n");
+	close_http_connection(nc, io);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
+	return;
+}
+
 static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void *d)
 {
 	struct http_message *m = (struct http_message*) hm;
@@ -262,6 +292,7 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
 	const char *error_desc = NULL;
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	struct mg_str api_url = mg_mk_str(STI_CA_ACME_API_URL);
 
 	
 	if (!ca) {
@@ -269,7 +300,6 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 		goto exit;
 	}
 
-	// TODO remove
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Event [%d]...\n", event);
 
 	if (nc) {
@@ -282,10 +312,7 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 			{
 				char addr[32];
 				mg_sock_addr_to_str(&nc->sa, addr, sizeof(addr), MG_SOCK_STRINGIFY_IP | MG_SOCK_STRINGIFY_PORT);
-				
-				// TODO remove
 				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "%p: Connection from %s\r\n", nc, addr);
-
 				break;
 			}
 
@@ -297,9 +324,15 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 			{
 				unsigned int port_i = 0;
 
-				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "Handling HTTP request...\n");
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "Processing HTTP request...\n");
 
 				if (m->uri.p) {
+
+					if (!mg_strstr(m->uri, api_url)) {
+						close_http_connection_with_error(nc, io);
+						stir_shaken_set_error(&ca->ss, "URL is not handled by ACME API. Closed HTTP connection", STIR_SHAKEN_ERROR_ACME);
+						break;
+					}
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "Searching handler for %s...\n", m->uri.p);
 
@@ -360,8 +393,9 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	register_uri_handler(STI_CA_ACME_NEW_ACCOUNT_URL, ca_handle_api_account);
-	register_uri_handler(STI_CA_ACME_CERT_REQ_URL, ca_handle_api_cert);
+	register_uri_handler(STI_CA_ACME_NEW_ACCOUNT_URL, ca_handle_api_account, 0);
+	register_uri_handler(STI_CA_ACME_CERT_REQ_URL, ca_handle_api_cert, 0);
+	register_uri_handler(STI_CA_ACME_AUTHZ_URL, ca_handle_api_authz, 1);
 
 	mg_set_protocol_http_websocket(nc);
 
