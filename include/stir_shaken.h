@@ -244,6 +244,13 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_HTTP_PARAMS,
 	STIR_SHAKEN_ERROR_JWT,
 	STIR_SHAKEN_ERROR_ACME,
+	STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG,
+	STIR_SHAKEN_ERROR_ACME_SPC_INVALID,
+	STIR_SHAKEN_ERROR_ACME_SESSION_EXISTS,
+	STIR_SHAKEN_ERROR_ACME_SESSION_NOTFOUND,
+	STIR_SHAKEN_ERROR_ACME_SESSION_NOT_SET,
+	STIR_SHAKEN_ERROR_ACME_SESSION_CREATE,
+	STIR_SHAKEN_ERROR_ACME_SESSION_ENQUEUE,
 	STIR_SHAKEN_ERROR_ACME_EMPTY_CA_RESPONSE,
 	STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_RESPONSE,
 	STIR_SHAKEN_ERROR_ACME_EMPTY_CA_AUTH_DETAILS_RESPONSE,
@@ -795,6 +802,36 @@ const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t
 		fprintf(stderr, (fmt), ##__VA_ARGS__);	\
 	}
 
+typedef void (*stir_shaken_hash_entry_destructor)(void*);
+
+typedef struct stir_shaken_hash_entry_s {
+	size_t key;
+	void *data;
+	stir_shaken_hash_entry_destructor dctor;
+	struct stir_shaken_hash_entry_s *next;
+} stir_shaken_hash_entry_t;
+
+size_t stir_shaken_hash_hash(size_t hashsize, size_t key);
+stir_shaken_hash_entry_t* stir_shaken_hash_entry_find(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key);
+stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, void *dctor);
+void stir_shaken_hash_entry_destroy(stir_shaken_hash_entry_t *e);
+stir_shaken_hash_entry_t* stir_shaken_hash_entry_add(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key, void *data, stir_shaken_hash_entry_destructor dctor);
+stir_shaken_status_t stir_shaken_hash_entry_remove(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key);
+void stir_shaken_hash_destroy_branch(stir_shaken_hash_entry_t *entry);
+void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize);
+
+#define STI_CA_SESSIONS_MAX 1000
+
+#define STI_CA_SESSION_STATE_CHALLENGE	0
+#define STI_CA_SESSION_STATE_POLLING	1
+#define STI_CA_SESSION_STATE_AUTHORIZED	2
+
+typedef struct stir_shaken_ca_session_s {
+	int state;
+	size_t spc;
+	char *authorization_challenge;
+} stir_shaken_ca_session_t;
+
 typedef struct stir_shaken_ca_s {
 	stir_shaken_context_t ss;
 	stir_shaken_ssl_keys_t keys;
@@ -805,6 +842,7 @@ typedef struct stir_shaken_ca_s {
 	char cert_name_hashed[STIR_SHAKEN_BUFLEN];
 	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
 	uint16_t port;
+	stir_shaken_hash_entry_t* sessions[STI_CA_SESSIONS_MAX];
 } stir_shaken_ca_t;
 
 typedef struct stir_shaken_pa_s {

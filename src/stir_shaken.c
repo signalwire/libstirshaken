@@ -417,6 +417,145 @@ const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t
 	return stir_shaken_get_error_string(ss);
 }
 
+size_t stir_shaken_hash_hash(size_t hashsize, size_t key)
+{
+	if (hashsize < 1) return 0;
+	return key % hashsize;
+}
+
+stir_shaken_hash_entry_t* stir_shaken_hash_entry_find(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key)
+{
+	size_t idx = 0;
+	stir_shaken_hash_entry_t *e = NULL;
+
+	if (!hash || hashsize < 1) return NULL;
+	
+	idx = stir_shaken_hash_hash(hashsize, key);
+	e = hash[idx];
+	
+	do {	
+		if (e && e->key == key)
+			return e;
+	} while (e && (e = e->next));
+
+	return NULL;
+}
+
+stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, void *dctor)
+{
+	stir_shaken_hash_entry_t *entry = NULL;
+
+	entry = malloc(sizeof(stir_shaken_hash_entry_t));
+	if (!entry)
+		return NULL;
+	memset(entry, 0, sizeof(*entry));
+
+	entry->key = key;
+	entry->data = data;
+	entry->dctor = dctor;
+	entry->next = NULL;
+
+	return entry;
+}
+
+void stir_shaken_hash_entry_destroy(stir_shaken_hash_entry_t *e)
+{
+	if (!e) return;
+	if (e->dctor) e->dctor(e);
+	if (e->data) free(e->data);
+	free(e);
+}
+
+stir_shaken_hash_entry_t* stir_shaken_hash_entry_add(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key, void *data, stir_shaken_hash_entry_destructor dctor)
+{
+	size_t idx = 0;
+	stir_shaken_hash_entry_t *e = NULL, *entry = NULL;
+
+	if (!hash || hashsize < 1) return NULL;
+
+	e = stir_shaken_hash_entry_find(hash, hashsize, key);
+	if (e)
+		return NULL;
+
+	entry = stir_shaken_hash_entry_create(key, data, dctor);
+	if (!entry)
+		return NULL;
+
+	idx = stir_shaken_hash_hash(hashsize, key);
+	
+	if (hash[idx] == NULL) {
+		hash[idx] = entry;
+	} else {
+
+		e = hash[idx];
+
+		while (e && e->next) {		
+			e = e->next;
+		};
+		e->next = entry;
+	}
+
+	return entry;
+}
+
+stir_shaken_status_t stir_shaken_hash_entry_remove(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key)
+{
+	size_t idx = 0;
+	stir_shaken_hash_entry_t *e = NULL, *prev = NULL;
+
+	if (!hash || hashsize < 1) return STIR_SHAKEN_STATUS_TERM;
+	
+	idx = stir_shaken_hash_hash(hashsize, key);
+	e = hash[idx];
+	
+	do {
+		if (!e) return STIR_SHAKEN_STATUS_FALSE;		
+		if (e->key == key) {
+			if (prev) {
+				prev->next = e->next;
+			} else {
+				hash[idx] = e->next;
+			}
+			stir_shaken_hash_entry_destroy(e);
+			return STIR_SHAKEN_STATUS_OK;
+		}
+		prev = e;
+	} while (e = e->next);
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+void stir_shaken_hash_destroy_branch(stir_shaken_hash_entry_t *entry)
+{
+	stir_shaken_hash_entry_t *e = NULL, *prev = NULL;
+	
+	if (!entry) return;
+	
+	prev = e = entry;
+
+	do {
+		prev = e;
+		e = e->next;
+		stir_shaken_hash_entry_destroy(prev);
+	} while (e);
+}
+
+void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize)
+{
+	size_t idx = 0;
+	stir_shaken_hash_entry_t *e = NULL;
+
+	if (!hash || hashsize < 1) return;
+
+	while (idx < hashsize) {
+		e = hash[idx];
+		stir_shaken_hash_destroy_branch(e);
+		hash[idx] = NULL;
+		++idx;
+	}
+	memset(hash, 0, sizeof(stir_shaken_hash_entry_t*) * hashsize);
+}
+
 stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line)
 {
 	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "FAIL: %s. %s:%d\n", reason, file, line);

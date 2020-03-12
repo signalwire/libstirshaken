@@ -6,7 +6,7 @@ libstirshaken_la_SOURCES = src/stir_shaken.c src/stir_shaken_service.c src/stir_
 include_HEADERS = include/stir_shaken.h
 libstirshaken_la_LDFLAGS = -version-info 1:0:0
 
-check_PROGRAMS = stir_shaken_test_1 stir_shaken_test_2 stir_shaken_test_3 stir_shaken_test_4 stir_shaken_test_5 stir_shaken_test_6 stir_shaken_test_7 stir_shaken_test_8 stir_shaken_test_9 stir_shaken_test_10 stir_shaken_test_11 stir_shaken_test_12 stir_shaken_test_13
+check_PROGRAMS = stir_shaken_test_1 stir_shaken_test_2 stir_shaken_test_3 stir_shaken_test_4 stir_shaken_test_5 stir_shaken_test_6 stir_shaken_test_7 stir_shaken_test_8 stir_shaken_test_9 stir_shaken_test_10 stir_shaken_test_11 stir_shaken_test_12 stir_shaken_test_13 stir_shaken_test_14
 TESTS = $(check_PROGRAMS)
 
 EXTRA_PROGRAMS = stirshaken
@@ -67,3 +67,7 @@ stir_shaken_test_12_LDFLAGS = -lcurl -lstirshaken
 stir_shaken_test_13_SOURCES = test/stir_shaken_test_13.c
 stir_shaken_test_13_CFLAGS = -Iinclude
 stir_shaken_test_13_LDFLAGS = -lcurl -lstirshaken
+
+stir_shaken_test_14_SOURCES = test/stir_shaken_test_14.c
+stir_shaken_test_14_CFLAGS = -Iinclude
+stir_shaken_test_14_LDFLAGS = -lcurl -lstirshaken

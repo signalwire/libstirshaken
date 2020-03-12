@@ -37,7 +37,9 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
 
 	stir_shaken_http_req_t http_req = { 0 };
-	const char *kid = NULL, *nonce = NULL, *url = NULL, *nb = NULL, *na = NULL;
+	const char *kid = NULL, *nonce = NULL, *nb = NULL, *na = NULL;
+	char spc[STIR_SHAKEN_BUFLEN] = { 0 };
+	char url[STIR_SHAKEN_BUFLEN] = { 0 };
 	char *json = NULL;
 	char *spc_token = NULL;
 
@@ -66,6 +68,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 
 	printf("SP: Create CSR\n");
 	sp.code = 7777;
+	sprintf(spc, "%d", sp.code);
 	sp.subject_c = "US";
 	sp.subject_cn = "NewSTI-SP, But Absolutely Fine Inc.";
 
@@ -77,14 +80,14 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 
 	kid = NULL;
 	nonce = NULL;
-	url = "https://sti-ca.com/api";
+	sprintf(url, "http:/localhost%s", STI_CA_ACME_CERT_REQ_URL);
 	nb = "01 Apr 2020";
 	na = "01 Apr 2021";
 	spc_token = "SPCtoken";
 	
 	http_req.url = strdup(url);
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req(&ss, &http_req, kid, nonce, sp.csr.req, nb, na, sp.keys.priv_raw, sp.keys.priv_raw_len, NULL, spc_token)) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req_ex(&ss, &http_req, kid, nonce, sp.csr.req, nb, na, spc, sp.keys.priv_raw, sp.keys.priv_raw_len, NULL, spc_token)) {
 		printf("STIR-Shaken: Failed to execute cert request\n");
 		PRINT_SHAKEN_ERROR_IF_SET
 		return STIR_SHAKEN_STATUS_TERM;
@@ -102,7 +105,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 
 int main(void)
 {
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, NULL, NULL), "Cannot init lib");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, NULL, NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

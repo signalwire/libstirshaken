@@ -879,7 +879,7 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Sending a response to authorization challenge...\n");
 
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_respond_to_challenge(ss, http_req.response.mem.mem, spc_token, key, keylen, &polling_url)) {
-				stir_shaken_set_error(ss, "Failed to respond to ACME authorization challenge. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
+				stir_shaken_set_error(ss, " ACME failed at authorization challenge response step. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
 				goto fail;
 			}
 
