@@ -368,7 +368,7 @@ static char* mock_auth_challenge_details(void)
 }
 #endif
 
-char* stir_shaken_acme_create_cert_req_auth_challenge_details(stir_shaken_context_t *ss, char *spc, char *token, char *authz_url)
+char* stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss, const char *spc, const char *token, const char *authz_url)
 {
 	char *printed = NULL;
 	cJSON *json = cJSON_CreateObject(), *arr = cJSON_CreateArray(), *o1 = cJSON_CreateObject(), *o2 = cJSON_CreateObject();
@@ -377,8 +377,16 @@ char* stir_shaken_acme_create_cert_req_auth_challenge_details(stir_shaken_contex
 		goto fail;
 	}
 	
-	if (stir_shaken_zstr(spc) || stir_shaken_zstr(token) || stir_shaken_zstr(authz_url)) {
-		stir_shaken_set_error(ss, "Bad params. Auth challenge details must have: spc, token, auth url", STIR_SHAKEN_ERROR_ACME);
+	if (stir_shaken_zstr(spc)) {
+		stir_shaken_set_error(ss, "Bad params. Auth challenge details must have: spc, token, authz url: spc is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_RESPONSE);
+		goto fail;
+	}
+	if (stir_shaken_zstr(token)) {
+		stir_shaken_set_error(ss, "Bad params. Auth challenge details must have: spc, token, authz url: token is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_RESPONSE);
+		goto fail;
+	}
+	if (stir_shaken_zstr(authz_url)) {
+		stir_shaken_set_error(ss, "Bad params. Auth challenge details must have: spc, token, authz_url: authz_url is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_RESPONSE);
 		goto fail;
 	}
 
@@ -1021,4 +1029,64 @@ char* stir_shaken_acme_generate_cert_req_payload(stir_shaken_context_t *ss, cons
 exit:
 	if (jwt) jwt_free(jwt);
 	return out;
+}
+
+stir_shaken_status_t stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *authz_api_url, char *buf, int buflen)
+{
+	char *p = NULL, *spc = NULL;
+	char request[STIR_SHAKEN_BUFLEN] = { 0 };
+	int len = 0;
+
+	if (stir_shaken_zstr(uri_request)) {
+		stir_shaken_set_error(ss, "Bad AUTHZ request URI", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (stir_shaken_zstr(authz_api_url)) {
+		stir_shaken_set_error(ss, "Bad params, AUTHZ API URI missing", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	strncpy(request, uri_request, 1 < STIR_SHAKEN_BUFLEN ? STIR_SHAKEN_BUFLEN - 1 : 1);
+	p = strchr(request, ' ');
+	if (!p) p = strchr(request, '\t');
+	if (!p) p = strchr(request, '\r');
+	if (!p) p = strchr(request, '\n');
+	if (p) *p = '\0';
+
+	p = strstr(request, authz_api_url);
+	if (!p) {
+		stir_shaken_set_error(ss, "Not an AUTHZ request URI", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	spc = p + strlen(authz_api_url);
+	if (stir_shaken_zstr(spc)) {
+		stir_shaken_set_error(ss, "Bad AUTHZ request URI, SPC missing", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+	
+	if (*spc != '/') {
+		stir_shaken_set_error(ss, "Bad AUTHZ request URI, '/' missing after API URI", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	spc = spc + 1;
+	if (stir_shaken_zstr(spc)) {
+		stir_shaken_set_error(ss, "Bad AUTHZ request URI, SPC missing (after API URI and '/')", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (strchr(spc, '/')) {
+		stir_shaken_set_error(ss, "Bad AUTHZ request URI, '/' after SPC present", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	len = strlen(spc);
+	if (len > buflen) {
+		stir_shaken_set_error(ss, "Buffer too short for SPC", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+	}
+
+	strncpy(buf, spc, buflen);
+	return STIR_SHAKEN_STATUS_OK;
 }

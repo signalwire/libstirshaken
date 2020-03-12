@@ -74,9 +74,17 @@ static void unregister_handlers(void)
 	}
 }
 
-static void close_http_connection_with_error(struct mg_connection *nc, struct mbuf *io)
+static void close_http_connection_with_error(struct mg_connection *nc, struct mbuf *io, const char *error_desc)
 {
-	if (nc) mg_printf(nc, "HTTP/1.1 %s Invalid\r\n\r\n", STIR_SHAKEN_HTTP_REQ_INVALID);
+	if (nc) {
+		if (stir_shaken_zstr(error_desc)) {
+			mg_printf(nc, "HTTP/1.1 %s Not Found\r\n\r\n", STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND);
+		} else {
+			char error_phrase[STIR_SHAKEN_BUFLEN] = { 0 };
+			stir_shaken_error_desc_to_http_error_phrase(error_desc, error_phrase, STIR_SHAKEN_BUFLEN);
+			mg_printf(nc, "HTTP/1.1 %s %s\r\n\r\n", STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND, error_phrase);
+		}
+	}
 	if (nc) mg_send_http_chunk(nc, "", 0);
 	if (io) mbuf_remove(io, io->len);
 	if (nc) nc->flags |= MG_F_SEND_AND_CLOSE;
@@ -141,6 +149,8 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 
 	char *nonce = "MYAuvOpaoIiywTezizk5vw";
 	X509_REQ *req = NULL;
+	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
+	const char *error_desc = NULL;
 
 
 	if (!m || !nc || !ca) {
@@ -182,8 +192,8 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					goto fail;
 				}
 
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "CSR is:\n%s\n", csr);
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "SPC is: %s\n", spc);
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> CSR is:\n%s\n", csr);
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> SPC is: %s\n", spc);
 
 				req = stir_shaken_load_x509_req_from_pem(&ca->ss, csr);
 				if (!req) {
@@ -203,6 +213,8 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					stir_shaken_set_error(&ca->ss, "Failed to create authorization challenge", STIR_SHAKEN_ERROR_ACME);
 					goto fail;
 				}
+
+				// TODO queue challenge task/job
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Sending authorization challenge:\n%s\n", authorization_challenge);
 
@@ -245,7 +257,10 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 
 fail:
 
-	close_http_connection_with_error(nc, io);
+	if (ca && stir_shaken_is_error_set(&ca->ss)) {
+		error_desc = stir_shaken_get_error(&ca->ss, &error);
+	}
+	close_http_connection_with_error(nc, io, error_desc);
 
 	if (json) {
 		cJSON_Delete(json);
@@ -262,24 +277,99 @@ fail:
 		req = NULL;
 	}
 
-	stir_shaken_set_error(&ca->ss, "HTTP Request Failed", STIR_SHAKEN_ERROR_ACME);
+	stir_shaken_set_error(&ca->ss, "API CERT request failed", STIR_SHAKEN_ERROR_ACME);
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== FAIL\n");
 	return;
 }
 
 static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, void *d)
 {
+	struct http_message *m = (struct http_message*) hm;
+	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
+	struct mg_str authz_api_url = mg_mk_str(STI_CA_ACME_AUTHZ_URL);
 	struct mbuf *io = NULL;
 	
-	if (nc) {
-		io = &nc->recv_mbuf;
+	char spc[STIR_SHAKEN_BUFLEN] = { 0 };;
+	char *token = NULL;
+	char authz_url[STIR_SHAKEN_BUFLEN] = { 0 };
+	char *authz_challenge_details = NULL;
+	const char *error_desc = NULL;
+	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
+	int authz_attempt = 0;
+	
+	
+	if (!m || !nc || !ca) {
+		stir_shaken_set_error(&ca->ss, "Bad params, missing HTTP message, connection, and/or ca", STIR_SHAKEN_ERROR_ACME);
+		goto fail;
 	}
 
+	io = &nc->recv_mbuf;
+	
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling: %s...\n", STI_CA_ACME_AUTHZ_URL);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.p);
+	
+	switch (event) {
 
-	mg_printf(nc, "HTTP/1.1 200 You are more than welcome\r\n\r\n");
-	close_http_connection(nc, io);
-	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
+		case MG_EV_HTTP_REQUEST:
+
+			{
+				if ((STIR_SHAKEN_STATUS_OK != stir_shaken_acme_authz_uri_to_spc(&ca->ss, m->uri.p, authz_api_url.p, spc, STIR_SHAKEN_BUFLEN)) || stir_shaken_zstr(spc)) {
+					stir_shaken_set_error(&ca->ss, "Bad AUTHZ request, SPC is missing", STIR_SHAKEN_ERROR_ACME_AUTHZ_SPC);
+					goto fail;
+				}
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> SPC is: %s\n", spc);
+
+				// TODO check if challenge task/job exists for this SPC
+
+				// TODO generate random token
+				token = "DGyRejmCefe7v4NfDGDKfA";
+
+				// TODO process authz attempts
+				authz_attempt = 0;
+				snprintf(authz_url, STIR_SHAKEN_BUFLEN, "http://%s%s/%s/%d", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc, authz_attempt);
+
+				authz_challenge_details = stir_shaken_acme_generate_auth_challenge_details(&ca->ss, spc, token, authz_url);
+				if (stir_shaken_zstr(authz_challenge_details)) {
+					stir_shaken_set_error(&ca->ss, "AUTHZ request failed, could not produce challenge details", STIR_SHAKEN_ERROR_ACME_AUTHZ_DETAILS);
+					goto fail;
+				}
+
+				mg_printf(nc, "HTTP/1.1 200 You are more than welcome. Here is your challenge:\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(authz_challenge_details), authz_challenge_details);
+				close_http_connection(nc, io);
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
+			}
+
+			break;
+
+		case MG_EV_RECV:
+			break;
+
+		default:
+			break;
+	}
+
+	if (authz_challenge_details) {
+		free(authz_challenge_details);
+		authz_challenge_details = NULL;
+	}
+
+	return;
+
+fail:
+
+	if (ca && stir_shaken_is_error_set(&ca->ss)) {
+		error_desc = stir_shaken_get_error(&ca->ss, &error);
+	}
+	close_http_connection_with_error(nc, io, error_desc);
+
+	if (authz_challenge_details) {
+		free(authz_challenge_details);
+		authz_challenge_details = NULL;
+	}
+	
+	stir_shaken_set_error(&ca->ss, "API AUTHZ request failed", STIR_SHAKEN_ERROR_ACME);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== FAIL\n");
 	return;
 }
 
@@ -329,7 +419,12 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 				if (m->uri.p) {
 
 					if (!mg_strstr(m->uri, api_url)) {
-						close_http_connection_with_error(nc, io);
+						
+						if (ca && stir_shaken_is_error_set(&ca->ss)) {
+							error_desc = stir_shaken_get_error(&ca->ss, &error);
+						}
+
+						close_http_connection_with_error(nc, io, error_desc);
 						stir_shaken_set_error(&ca->ss, "URL is not handled by ACME API. Closed HTTP connection", STIR_SHAKEN_ERROR_ACME);
 						break;
 					}
@@ -339,8 +434,12 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 					evh = handler_registered(&m->uri);
 
 					if (!evh) {
+						
+						if (ca && stir_shaken_is_error_set(&ca->ss)) {
+							error_desc = stir_shaken_get_error(&ca->ss, &error);
+						}
 
-						close_http_connection_with_error(nc, io);
+						close_http_connection_with_error(nc, io, error_desc);
 						stir_shaken_set_error(&ca->ss, "Handler not found. Closed HTTP connection", STIR_SHAKEN_ERROR_ACME);
 
 						break;

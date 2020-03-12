@@ -239,12 +239,17 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_HTTP_400_BAD_REQUEST,
 	STIR_SHAKEN_ERROR_HTTP_403_FORBIDDEN,
 	STIR_SHAKEN_ERROR_HTTP_404_INVALID,
+	STIR_SHAKEN_ERROR_HTTP_404_NOT_FOUND,
 	STIR_SHAKEN_ERROR_HTTP_GENERAL,
 	STIR_SHAKEN_ERROR_HTTP_PARAMS,
 	STIR_SHAKEN_ERROR_JWT,
 	STIR_SHAKEN_ERROR_ACME,
 	STIR_SHAKEN_ERROR_ACME_EMPTY_CA_RESPONSE,
+	STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_RESPONSE,
 	STIR_SHAKEN_ERROR_ACME_EMPTY_CA_AUTH_DETAILS_RESPONSE,
+	STIR_SHAKEN_ERROR_ACME_AUTHZ_SPC,
+	STIR_SHAKEN_ERROR_ACME_AUTHZ_DETAILS,
+	STIR_SHAKEN_ERROR_ACME_AUTHZ_URI,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID,
 	STIR_SHAKEN_ERROR_TNAUTHLIST,
 	STIR_SHAKEN_ERROR_CERT_INIT,
@@ -257,7 +262,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_BIND,
 } stir_shaken_error_t;
 
-#define STIR_SHAKEN_HTTP_REQ_INVALID "404"
+#define STIR_SHAKEN_HTTP_REQ_404_INVALID "404"
+#define STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND "404"
 
 typedef enum stir_shaken_http_req_type {
 	STIR_SHAKEN_HTTP_REQ_TYPE_GET,
@@ -703,7 +709,7 @@ stir_shaken_status_t stir_shaken_as_perform_authorization(EVP_PKEY *pkey, stir_s
  *
  *      // Parameters
  *          //Alg
- * (==x5u)	//Info	(X [needed], but implicitely copied from @x5u)
+ * (==x5u)	//Info	(X [needed], but implicitly copied from @x5u)
  *          //PPT
  */ 
 char* stir_shaken_do_sign(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
@@ -723,8 +729,9 @@ char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_
 char*					stir_shaken_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, const char *spc, unsigned char *key, uint32_t keylen, char **json);
 char*					stir_shaken_acme_generate_auth_challenge(stir_shaken_context_t *ss, char *status, char *expires, char *csr, char *nb, char *na, char *authz_url);
 char*					stir_shaken_acme_generate_auth_challenge_response(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *spc_token, unsigned char *key, uint32_t keylen, char **json);
-char*					stir_shaken_acme_create_cert_req_auth_challenge_details(stir_shaken_context_t *ss, char *spc, char *token, char *authz_url);
+char*					stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss, const char *spc, const char *token, const char *authz_url);
 char*					stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
+stir_shaken_status_t	stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *authz_api_url, char *buf, int buflen);
 
 stir_shaken_status_t	stir_shaken_acme_nonce_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
 stir_shaken_status_t	stir_shaken_acme_retrieve_auth_challenge_details(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
@@ -754,6 +761,7 @@ stir_shaken_status_t	stir_shaken_make_http_get_req(stir_shaken_context_t *ss, st
 stir_shaken_status_t	stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *data, uint8_t json);
 stir_shaken_status_t	stir_shaken_make_http_head_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *data, uint8_t is_json);
 char*					stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name);
+void					stir_shaken_error_desc_to_http_error_phrase(const char *error_desc, char *error_phrase, int buflen);
 
 stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *jwt, unsigned char *key, uint32_t keylen, char *spc_token);
 stir_shaken_status_t stir_shaken_sp_cert_req_ex(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *kid, const char *nonce, X509_REQ *req, const char *nb, const char *na, const char *spc, unsigned char *key, uint32_t keylen, char **json, char *spc_token);
