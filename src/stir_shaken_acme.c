@@ -876,7 +876,7 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 			}
 
 			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got authorization challenge details from CA:\n%s\n", http_req.response.mem.mem);
-			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Sending a response to authorization challenge...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Sending a response to authorization challenge details...\n");
 
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_respond_to_challenge(ss, http_req.response.mem.mem, spc_token, key, keylen, &polling_url)) {
 				stir_shaken_set_error(ss, " ACME failed at authorization challenge response step. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
@@ -1031,7 +1031,7 @@ exit:
 	return out;
 }
 
-stir_shaken_status_t stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *authz_api_url, char *buf, int buflen)
+stir_shaken_status_t stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *authz_api_url, char *buf, int buflen, int *uri_has_secret, unsigned long long *secret)
 {
 	char *p = NULL, *spc = NULL;
 	char request[STIR_SHAKEN_BUFLEN] = { 0 };
@@ -1044,6 +1044,11 @@ stir_shaken_status_t stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss
 
 	if (stir_shaken_zstr(authz_api_url)) {
 		stir_shaken_set_error(ss, "Bad params, AUTHZ API URI missing", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (!uri_has_secret || !secret) {
+		stir_shaken_set_error(ss, "Bad params, 'secret' missing", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
@@ -1060,33 +1065,64 @@ stir_shaken_status_t stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
-	spc = p + strlen(authz_api_url);
-	if (stir_shaken_zstr(spc)) {
+	p = p + strlen(authz_api_url);
+	if (stir_shaken_zstr(p)) {
 		stir_shaken_set_error(ss, "Bad AUTHZ request URI, SPC missing", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
-	if (*spc != '/') {
+	if (*p != '/') {
 		stir_shaken_set_error(ss, "Bad AUTHZ request URI, '/' missing after API URI", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	spc = spc + 1;
-	if (stir_shaken_zstr(spc)) {
+	p = p + 1;
+	if (stir_shaken_zstr(p)) {
 		stir_shaken_set_error(ss, "Bad AUTHZ request URI, SPC missing (after API URI and '/')", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	if (strchr(spc, '/')) {
-		stir_shaken_set_error(ss, "Bad AUTHZ request URI, '/' after SPC present", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
-		return STIR_SHAKEN_STATUS_FALSE;
+	spc = p;
+
+	if (p = strchr(p, '/')) {
+
+		char *pCh = NULL;
+		unsigned long long  val;
+
+		// maybe authz details URI
+
+		*p = '\0';
+
+		strncpy(buf, spc, buflen);
+
+		p = p + 1;
+		if (strchr(p, '/')) {
+			stir_shaken_set_error(ss, "Bad AUTHZ request URI, too many '/'", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+		val = strtoul(p, &pCh, 10); 
+		if (val > 0x10000 - 1) { 
+			stir_shaken_set_error(ss, "Bad URI: Attempt number too big", STIR_SHAKEN_ERROR_ACME_ATTEMPT_TOO_BIG);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+
+		if (*pCh != '\0') { 
+			stir_shaken_set_error(ss, "Bad URI: Attempt number invalid", STIR_SHAKEN_ERROR_ACME_ATTEMPT_INVALID);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+
+		*uri_has_secret = 1;
+		*secret = val;
+
+	} else {
+
+		len = strlen(spc);
+		if (len > buflen) {
+			stir_shaken_set_error(ss, "Buffer too short for SPC", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+		}
+
+		strncpy(buf, spc, buflen);
 	}
 
-	len = strlen(spc);
-	if (len > buflen) {
-		stir_shaken_set_error(ss, "Buffer too short for SPC", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
-	}
-
-	strncpy(buf, spc, buflen);
 	return STIR_SHAKEN_STATUS_OK;
 }

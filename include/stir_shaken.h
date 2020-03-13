@@ -246,8 +246,11 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_ACME,
 	STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG,
 	STIR_SHAKEN_ERROR_ACME_SPC_INVALID,
+	STIR_SHAKEN_ERROR_ACME_ATTEMPT_TOO_BIG,
+	STIR_SHAKEN_ERROR_ACME_ATTEMPT_INVALID,
 	STIR_SHAKEN_ERROR_ACME_SESSION_EXISTS,
 	STIR_SHAKEN_ERROR_ACME_SESSION_NOTFOUND,
+	STIR_SHAKEN_ERROR_ACME_SESSION_BAD_SECRET,
 	STIR_SHAKEN_ERROR_ACME_SESSION_NOT_SET,
 	STIR_SHAKEN_ERROR_ACME_SESSION_CREATE,
 	STIR_SHAKEN_ERROR_ACME_SESSION_ENQUEUE,
@@ -738,7 +741,7 @@ char*					stir_shaken_acme_generate_auth_challenge(stir_shaken_context_t *ss, ch
 char*					stir_shaken_acme_generate_auth_challenge_response(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *spc_token, unsigned char *key, uint32_t keylen, char **json);
 char*					stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss, const char *spc, const char *token, const char *authz_url);
 char*					stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
-stir_shaken_status_t	stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *authz_api_url, char *buf, int buflen);
+stir_shaken_status_t	stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *authz_api_url, char *buf, int buflen, int *uri_has_secret, unsigned long long *secret);
 
 stir_shaken_status_t	stir_shaken_acme_nonce_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
 stir_shaken_status_t	stir_shaken_acme_retrieve_auth_challenge_details(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
@@ -829,7 +832,9 @@ void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize);
 typedef struct stir_shaken_ca_session_s {
 	int state;
 	size_t spc;
-	char *authorization_challenge;
+	unsigned long long authz_secret;
+	char *authz_challenge;
+	char *authz_challenge_details;
 } stir_shaken_ca_session_t;
 
 typedef struct stir_shaken_ca_s {

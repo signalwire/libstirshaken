@@ -461,8 +461,14 @@ stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, 
 void stir_shaken_hash_entry_destroy(stir_shaken_hash_entry_t *e)
 {
 	if (!e) return;
-	if (e->dctor) e->dctor(e);
-	if (e->data) free(e->data);
+	if (e->dctor) {
+		e->dctor(e);
+		e->dctor = NULL;
+	}
+	if (e->data) {
+		free(e->data);
+		e->data = NULL;
+	}
 	free(e);
 }
 
