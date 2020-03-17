@@ -441,7 +441,7 @@ stir_shaken_hash_entry_t* stir_shaken_hash_entry_find(stir_shaken_hash_entry_t *
 	return NULL;
 }
 
-stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, void *dctor)
+stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, int datalen, void *dctor, int hash_copy_type)
 {
 	stir_shaken_hash_entry_t *entry = NULL;
 
@@ -451,14 +451,22 @@ stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, 
 	memset(entry, 0, sizeof(*entry));
 
 	entry->key = key;
-	entry->data = data;
+	if (hash_copy_type == STIR_SHAKEN_HASH_TYPE_SHALLOW) {
+		entry->data = data;
+	} else {
+		if (!(entry->data = malloc(datalen))) {
+			free(entry);
+			return NULL;
+		}
+		memcpy(entry->data, data, datalen);
+	}
 	entry->dctor = dctor;
 	entry->next = NULL;
 
 	return entry;
 }
 
-void stir_shaken_hash_entry_destroy(stir_shaken_hash_entry_t *e)
+void stir_shaken_hash_entry_destroy(stir_shaken_hash_entry_t *e, int hash_copy_type)
 {
 	if (!e) return;
 	if (e->dctor) {
@@ -466,13 +474,15 @@ void stir_shaken_hash_entry_destroy(stir_shaken_hash_entry_t *e)
 		e->dctor = NULL;
 	}
 	if (e->data) {
-		free(e->data);
+		if (hash_copy_type == STIR_SHAKEN_HASH_TYPE_DEEP || hash_copy_type == STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE) {
+			free(e->data);
+		}
 		e->data = NULL;
 	}
 	free(e);
 }
 
-stir_shaken_hash_entry_t* stir_shaken_hash_entry_add(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key, void *data, stir_shaken_hash_entry_destructor dctor)
+stir_shaken_hash_entry_t* stir_shaken_hash_entry_add(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key, void *data, int datalen, stir_shaken_hash_entry_destructor dctor, int hash_copy_type)
 {
 	size_t idx = 0;
 	stir_shaken_hash_entry_t *e = NULL, *entry = NULL;
@@ -483,7 +493,7 @@ stir_shaken_hash_entry_t* stir_shaken_hash_entry_add(stir_shaken_hash_entry_t **
 	if (e)
 		return NULL;
 
-	entry = stir_shaken_hash_entry_create(key, data, dctor);
+	entry = stir_shaken_hash_entry_create(key, data, datalen, dctor, hash_copy_type);
 	if (!entry)
 		return NULL;
 
@@ -504,7 +514,7 @@ stir_shaken_hash_entry_t* stir_shaken_hash_entry_add(stir_shaken_hash_entry_t **
 	return entry;
 }
 
-stir_shaken_status_t stir_shaken_hash_entry_remove(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key)
+stir_shaken_status_t stir_shaken_hash_entry_remove(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key, int hash_copy_type)
 {
 	size_t idx = 0;
 	stir_shaken_hash_entry_t *e = NULL, *prev = NULL;
@@ -522,7 +532,7 @@ stir_shaken_status_t stir_shaken_hash_entry_remove(stir_shaken_hash_entry_t **ha
 			} else {
 				hash[idx] = e->next;
 			}
-			stir_shaken_hash_entry_destroy(e);
+			stir_shaken_hash_entry_destroy(e, hash_copy_type);
 			return STIR_SHAKEN_STATUS_OK;
 		}
 		prev = e;
@@ -531,7 +541,7 @@ stir_shaken_status_t stir_shaken_hash_entry_remove(stir_shaken_hash_entry_t **ha
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-void stir_shaken_hash_destroy_branch(stir_shaken_hash_entry_t *entry)
+void stir_shaken_hash_destroy_branch(stir_shaken_hash_entry_t *entry, int hash_copy_type)
 {
 	stir_shaken_hash_entry_t *e = NULL, *prev = NULL;
 	
@@ -542,11 +552,11 @@ void stir_shaken_hash_destroy_branch(stir_shaken_hash_entry_t *entry)
 	do {
 		prev = e;
 		e = e->next;
-		stir_shaken_hash_entry_destroy(prev);
+		stir_shaken_hash_entry_destroy(prev, hash_copy_type);
 	} while (e);
 }
 
-void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize)
+void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize, int hash_copy_type)
 {
 	size_t idx = 0;
 	stir_shaken_hash_entry_t *e = NULL;
@@ -555,7 +565,7 @@ void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize)
 
 	while (idx < hashsize) {
 		e = hash[idx];
-		stir_shaken_hash_destroy_branch(e);
+		stir_shaken_hash_destroy_branch(e, hash_copy_type);
 		hash[idx] = NULL;
 		++idx;
 	}

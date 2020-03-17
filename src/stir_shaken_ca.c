@@ -2,6 +2,18 @@
 #include "mongoose.h"
 
 
+void stir_shaken_ca_destroy(stir_shaken_ca_t *ca)
+{
+	if (!ca) return;
+	stir_shaken_hash_destroy(ca->sessions, STI_CA_SESSIONS_MAX, STIR_SHAKEN_HASH_TYPE_SHALLOW);	
+}
+
+static int ca_http_method(struct http_message *m)
+{
+	if (!m) return 0;
+	return (strncmp(m->method.p, "GET", 3) ? STIR_SHAKEN_HTTP_REQ_TYPE_POST : STIR_SHAKEN_HTTP_REQ_TYPE_GET);
+}
+
 typedef void handler_t(struct mg_connection *nc, int event, void *hm, void *d);
 
 typedef struct event_handler_s {
@@ -107,7 +119,7 @@ static stir_shaken_ca_session_t* stir_shaken_ca_session_create(size_t sp_code, c
 	memset(session, 0, sizeof(*session));
 	session->spc = sp_code;
 	session->authz_challenge = strdup(authz_challenge);
-	session->state = STI_CA_SESSION_STATE_CHALLENGE;
+	session->state = STI_CA_SESSION_STATE_INIT;
 	return session;
 }
 
@@ -115,6 +127,18 @@ static void stir_shaken_ca_session_dctor(void *o)
 {
 	stir_shaken_ca_session_t *session = (stir_shaken_ca_session_t *) o;
 	if (!session) return;
+	if (session->nonce) {
+		free(session->nonce);
+		session->nonce = NULL;
+	}
+	if (session->authz_url) {
+		free(session->authz_url);
+		session->authz_url = NULL;
+	}
+	if (session->authz_token) {
+		free(session->authz_token);
+		session->authz_token = NULL;
+	}
 	if (session->authz_challenge) {
 		free(session->authz_challenge);
 		session->authz_challenge = NULL;
@@ -124,6 +148,11 @@ static void stir_shaken_ca_session_dctor(void *o)
 		session->authz_challenge_details = NULL;
 	}
 	return;
+}
+
+#define CA_REQUIRE_SESSION_STATE_(required, actual) if ((required) != (actual)) { \
+	stir_shaken_set_error(&ca->ss, "Wrong session state", STIR_SHAKEN_ERROR_ACME_SESSION_WRONG_STATE); \
+	goto fail; \
 }
 
 static void ca_handle_bad_request(struct mg_connection *nc, int event, void *hm, void *d)
@@ -184,6 +213,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 	const char *error_desc = NULL;
 	stir_shaken_hash_entry_t *e = NULL;
 	stir_shaken_ca_session_t *session = NULL;
+	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST; 
 
 
 	if (!m || !nc || !ca) {
@@ -191,9 +221,15 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 		goto fail;
 	}
 
+	http_method = ca_http_method(m);
+	if (http_method != STIR_SHAKEN_HTTP_REQ_TYPE_POST) {
+		stir_shaken_set_error(&ca->ss, "Bad request, only POST supported for this API", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
+		goto fail;
+	}
+
 	io = &nc->recv_mbuf;
 
-	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API call:\n%s\n", STI_CA_ACME_CERT_REQ_URL);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call:\n%s\n", http_method, STI_CA_ACME_CERT_REQ_URL);
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.p);
 	
 	
@@ -245,9 +281,12 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					goto fail;
 				}
 
+				// This check probably should be disabled, as it opens possibility of DoS attack
 				e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
 				if (e) {
-					stir_shaken_set_error(&ca->ss, "Authorization already in progress", STIR_SHAKEN_ERROR_ACME_SESSION_EXISTS);
+
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Authorization already in progress...");
+					stir_shaken_set_error(&ca->ss, "Bad request, authorization already in progress", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
 					goto fail;
 				}
 
@@ -271,7 +310,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					goto fail;
 				}
 
-				e = stir_shaken_hash_entry_add(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, session, stir_shaken_ca_session_dctor);
+				e = stir_shaken_hash_entry_add(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, session, sizeof(*session), stir_shaken_ca_session_dctor, STIR_SHAKEN_HASH_TYPE_SHALLOW);
 				if (!e) {
 					stir_shaken_set_error(&ca->ss, "Oops. Failed to queue new session", STIR_SHAKEN_ERROR_ACME_SESSION_ENQUEUE);
 					goto fail;
@@ -283,6 +322,8 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 				mg_printf(nc, "HTTP/1.1 201 Created\r\nReplay-Nonce: %s\r\nLocation: %s\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", nonce, authz_url, strlen(authz_challenge), authz_challenge);
 				close_http_connection(nc, io);
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
+
+				session->state = STI_CA_SESSION_STATE_AUTHZ_SENT;
 			}
 
 			break;
@@ -365,6 +406,8 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 	
 	stir_shaken_hash_entry_t *e = NULL;
 	stir_shaken_ca_session_t *session = NULL;
+	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
+	char *expires = NULL, *validated = NULL;
 	
 	
 	if (!m || !nc || !ca) {
@@ -372,9 +415,11 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 		goto fail;
 	}
 
+	http_method = ca_http_method(m);
+
 	io = &nc->recv_mbuf;
 	
-	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API call: %s...\n", STI_CA_ACME_AUTHZ_URL);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call: %s...\n", http_method, STI_CA_ACME_AUTHZ_URL);
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.p);
 	
 	switch (event) {
@@ -414,11 +459,102 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Authorization session in progress\n");
 
-				if (uri_has_secret > 0) {
+				if (http_method == STIR_SHAKEN_HTTP_REQ_TYPE_GET) {
 
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Handling response to authz challenge details\n");
+					if (STI_CA_SESSION_STATE_POLLING == session->state) {
+
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Handling polling request\n");
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC is: %s\n", spc);
+
+						if (!session->authz_polling_status) {
+
+							// TODO generate 
+							expires = "never";
+							validated = "just right now";
+
+							session->authz_polling_status = stir_shaken_acme_generate_auth_polling_status(&ca->ss, "pending", expires, validated, spc, session->authz_token, session->authz_url);
+							if (stir_shaken_zstr(session->authz_polling_status)) {
+								stir_shaken_set_error(&ca->ss, "AUTHZ request failed, could not produce polling status", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
+								goto fail;
+							}
+						}
+
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Sending polling status...\n");
+
+						mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(session->authz_polling_status), session->authz_polling_status);
+
+						// continue
+						session->state = STI_CA_SESSION_STATE_POLLING;
+
+					} else {
+
+						if (uri_has_secret > 0) {
+							stir_shaken_set_error(&ca->ss, "Bad request, Secret is set", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
+							goto fail;
+						}
+
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Handling authz challenge-details request\n");
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC is: %s\n", spc);
+
+						if (STI_CA_SESSION_STATE_AUTHZ_SENT != session->state) {
+							stir_shaken_set_error(&ca->ss, "Wrong authorization state", STIR_SHAKEN_ERROR_ACME_SESSION_WRONG_STATE);
+							goto fail;
+						}
+
+						e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
+						if (!e) {
+							stir_shaken_set_error(&ca->ss, "Authorization session for this SPC does not exist", STIR_SHAKEN_ERROR_ACME_SESSION_NOTFOUND);
+							goto fail;
+						}
+
+						session = e->data;
+						if (!session) {
+							stir_shaken_set_error(&ca->ss, "Oops. Authorization session not set", STIR_SHAKEN_ERROR_ACME_SESSION_NOT_SET);
+							goto fail;
+						}
+
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Authorization session challenge was:\n%s\n", session->authz_challenge);
+
+						// TODO generate random token
+						token = "DGyRejmCefe7v4NfDGDKfA";
+
+
+						// TODO process authz secrets
+						authz_secret = rand() % (1 << 16);
+						snprintf(authz_url, STIR_SHAKEN_BUFLEN, "http://%s%s/%s/%d", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc, authz_secret);
+
+						authz_challenge_details = stir_shaken_acme_generate_auth_challenge_details(&ca->ss, "pending", spc, token, authz_url);
+						if (stir_shaken_zstr(authz_challenge_details)) {
+							stir_shaken_set_error(&ca->ss, "AUTHZ request failed, could not produce challenge details", STIR_SHAKEN_ERROR_ACME_AUTHZ_DETAILS);
+							goto fail;
+						}
+						session->authz_challenge_details = strdup(authz_challenge_details);
+						session->authz_secret = authz_secret;
+						session->authz_url = strdup(authz_url);
+						session->authz_token = strdup(token);
+
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Sending challenge details:\n%s\n", authz_challenge_details);
+
+						mg_printf(nc, "HTTP/1.1 200 You are more than welcome. Here is your challenge:\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(authz_challenge_details), authz_challenge_details);
+
+						session->state = STI_CA_SESSION_STATE_AUTHZ_DETAILS_SENT;
+					}
+
+				} else {
+
+					if (!uri_has_secret) {
+						stir_shaken_set_error(&ca->ss, "Bad request, Secret is missing", STIR_SHAKEN_ERROR_ACME_SECRET_MISSING);
+						goto fail;
+					}
+
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Handling response to authz challenge-details challenge\n");
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC is: %s\n", spc);
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Secret: %lu\n", secret);
+
+					if (STI_CA_SESSION_STATE_AUTHZ_DETAILS_SENT != session->state) {
+						stir_shaken_set_error(&ca->ss, "Wrong authorization state", STIR_SHAKEN_ERROR_ACME_SESSION_WRONG_STATE);
+						goto fail;
+					}
 
 					if (secret != session->authz_secret) {
 						stir_shaken_set_error(&ca->ss, "Bad secret for this authorization session", STIR_SHAKEN_ERROR_ACME_SESSION_BAD_SECRET);
@@ -432,43 +568,8 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Sending OK:\n%s\n", spc);
 					mg_printf(nc, "HTTP/1.1 200 Accepted\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(spc), spc);
 
-				} else {
+					session->state = STI_CA_SESSION_STATE_POLLING;
 
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Handling authz challenge details request\n");
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC is: %s\n", spc);
-
-					e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
-					if (!e) {
-						stir_shaken_set_error(&ca->ss, "Authorization session for this SPC does not exist", STIR_SHAKEN_ERROR_ACME_SESSION_NOTFOUND);
-						goto fail;
-					}
-
-					session = e->data;
-					if (!session) {
-						stir_shaken_set_error(&ca->ss, "Oops. Authorization session not set", STIR_SHAKEN_ERROR_ACME_SESSION_NOT_SET);
-						goto fail;
-					}
-
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Authorization session challenge was:\n%s\n", session->authz_challenge);
-
-					// TODO generate random token
-					token = "DGyRejmCefe7v4NfDGDKfA";
-
-					// TODO process authz secrets
-					authz_secret = rand() % (1 << 16);
-					snprintf(authz_url, STIR_SHAKEN_BUFLEN, "http://%s%s/%s/%d", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc, authz_secret);
-
-					authz_challenge_details = stir_shaken_acme_generate_auth_challenge_details(&ca->ss, spc, token, authz_url);
-					if (stir_shaken_zstr(authz_challenge_details)) {
-						stir_shaken_set_error(&ca->ss, "AUTHZ request failed, could not produce challenge details", STIR_SHAKEN_ERROR_ACME_AUTHZ_DETAILS);
-						goto fail;
-					}
-					session->authz_challenge_details = strdup(authz_challenge_details);
-					session->authz_secret = authz_secret;
-
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Sending challenge details:\n%s\n", authz_challenge_details);
-
-					mg_printf(nc, "HTTP/1.1 200 You are more than welcome. Here is your challenge:\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(authz_challenge_details), authz_challenge_details);
 				}
 
 				close_http_connection(nc, io);

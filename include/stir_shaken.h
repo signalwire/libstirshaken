@@ -254,12 +254,18 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_ACME_SESSION_NOT_SET,
 	STIR_SHAKEN_ERROR_ACME_SESSION_CREATE,
 	STIR_SHAKEN_ERROR_ACME_SESSION_ENQUEUE,
+	STIR_SHAKEN_ERROR_ACME_SESSION_WRONG_STATE,
 	STIR_SHAKEN_ERROR_ACME_EMPTY_CA_RESPONSE,
 	STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_RESPONSE,
+	STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_DETAILS,
 	STIR_SHAKEN_ERROR_ACME_EMPTY_CA_AUTH_DETAILS_RESPONSE,
 	STIR_SHAKEN_ERROR_ACME_AUTHZ_SPC,
 	STIR_SHAKEN_ERROR_ACME_AUTHZ_DETAILS,
 	STIR_SHAKEN_ERROR_ACME_AUTHZ_URI,
+	STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING,
+	STIR_SHAKEN_ERROR_ACME_SECRET_MISSING,
+	STIR_SHAKEN_ERROR_ACME_BAD_REQUEST,
+	STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_POLLING_STATUS,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID,
 	STIR_SHAKEN_ERROR_TNAUTHLIST,
 	STIR_SHAKEN_ERROR_CERT_INIT,
@@ -739,7 +745,8 @@ char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_
 char*					stir_shaken_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, const char *spc, unsigned char *key, uint32_t keylen, char **json);
 char*					stir_shaken_acme_generate_auth_challenge(stir_shaken_context_t *ss, char *status, char *expires, char *csr, char *nb, char *na, char *authz_url);
 char*					stir_shaken_acme_generate_auth_challenge_response(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *spc_token, unsigned char *key, uint32_t keylen, char **json);
-char*					stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss, const char *spc, const char *token, const char *authz_url);
+char*					stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss, char *status, const char *spc, const char *token, const char *authz_url);
+char*					stir_shaken_acme_generate_auth_polling_status(stir_shaken_context_t *ss, char *status, char *expires, char *validated, const char *spc, const char *token, const char *authz_url);
 char*					stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
 stir_shaken_status_t	stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *authz_api_url, char *buf, int buflen, int *uri_has_secret, unsigned long long *secret);
 
@@ -805,6 +812,10 @@ const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t
 		fprintf(stderr, (fmt), ##__VA_ARGS__);	\
 	}
 
+#define STIR_SHAKEN_HASH_TYPE_SHALLOW			0
+#define STIR_SHAKEN_HASH_TYPE_DEEP				1
+#define STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE	2
+
 typedef void (*stir_shaken_hash_entry_destructor)(void*);
 
 typedef struct stir_shaken_hash_entry_s {
@@ -816,25 +827,35 @@ typedef struct stir_shaken_hash_entry_s {
 
 size_t stir_shaken_hash_hash(size_t hashsize, size_t key);
 stir_shaken_hash_entry_t* stir_shaken_hash_entry_find(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key);
-stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, void *dctor);
-void stir_shaken_hash_entry_destroy(stir_shaken_hash_entry_t *e);
-stir_shaken_hash_entry_t* stir_shaken_hash_entry_add(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key, void *data, stir_shaken_hash_entry_destructor dctor);
-stir_shaken_status_t stir_shaken_hash_entry_remove(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key);
-void stir_shaken_hash_destroy_branch(stir_shaken_hash_entry_t *entry);
-void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize);
+stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, int datalen, void *dctor, int hash_copy_type);
+void stir_shaken_hash_entry_destroy(stir_shaken_hash_entry_t *e, int hash_copy_type);
+stir_shaken_hash_entry_t* stir_shaken_hash_entry_add(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key, void *data, int datalen, stir_shaken_hash_entry_destructor dctor, int hash_copy_type);
+stir_shaken_status_t stir_shaken_hash_entry_remove(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key, int hash_copy_type);
+void stir_shaken_hash_destroy_branch(stir_shaken_hash_entry_t *entry, int hash_copy_type);
+void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize, int hash_copy_type);
 
 #define STI_CA_SESSIONS_MAX 1000
+#define STI_CA_SESSIONS_MAX 1000
 
-#define STI_CA_SESSION_STATE_CHALLENGE	0
-#define STI_CA_SESSION_STATE_POLLING	1
-#define STI_CA_SESSION_STATE_AUTHORIZED	2
+#define STI_CA_SESSION_STATE_INIT				0
+#define STI_CA_SESSION_STATE_AUTHZ_SENT			1
+#define STI_CA_SESSION_STATE_AUTHZ_DETAILS_SENT	2
+#define STI_CA_SESSION_STATE_POLLING			3
+#define STI_CA_SESSION_STATE_DONE				4
+
+#define STI_CA_HTTP_GET		0
+#define STI_CA_HTTP_POST	1
 
 typedef struct stir_shaken_ca_session_s {
 	int state;
 	size_t spc;
 	unsigned long long authz_secret;
+	char *nonce;
+	char *authz_url;
+	char *authz_token;
 	char *authz_challenge;
 	char *authz_challenge_details;
+	char *authz_polling_status;
 } stir_shaken_ca_session_t;
 
 typedef struct stir_shaken_ca_s {
@@ -873,6 +894,7 @@ typedef struct stir_shaken_sp_s {
 	char spc_token[STIR_SHAKEN_BUFLEN];
 } stir_shaken_sp_t;
 
+void stir_shaken_ca_destroy(stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_shaken_pa_t *pa);
 

@@ -289,6 +289,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_run_ca_service(ss, &ca->ca)) {
 				goto fail;
 			}
+			stir_shaken_ca_destroy(&ca->ca);
 			break;
 
 		case COMMAND_SP_SPC_REQ:

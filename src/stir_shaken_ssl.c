@@ -1477,7 +1477,7 @@ stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, sti
 	int rc = 1;
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	int verify_error = -1;
-	FILE *file = NULL; // set to something if want verification callback to print it
+	FILE *file = NULL; // set to something if want verification callback to print to it
 
 	stir_shaken_clear_error(ss);
 

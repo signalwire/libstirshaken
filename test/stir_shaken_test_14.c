@@ -57,52 +57,52 @@ stir_shaken_status_t stir_shaken_unit_test_hash(void)
 	stir_shaken_assert(e == NULL, "Err, entry should not be found...");
 	
 	spc = 0;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should not be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 	
 	spc = 1;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should not be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 	
 	spc = 12;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should not be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 	
 	spc = 133;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should not be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 	
 	spc = 500;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should not be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 	
 	spc = 1234;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should not be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 	
 	spc = 7777;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should not be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 	
 	spc = 10000;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should not be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 	
 	spc = 0;
-	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), funny_and_useless), "Err, entry not added...");
+	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
 	
 	spc = 1;
-	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), funny_and_useless), "Err, entry not added...");
+	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
 	
 	spc = 12;
-	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), funny_and_useless), "Err, entry not added...");
+	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
 	
 	spc = 133;
-	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), funny_and_useless), "Err, entry not added...");
+	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
 
 	spc = 500;
-	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), funny_and_useless), "Err, entry not added...");
+	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
 	
 	spc = 1234;
-	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), funny_and_useless), "Err, entry not added...");
+	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
 	
 	spc = 7777;
-	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), funny_and_useless), "Err, entry not added...");
+	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
 	
 	spc = 10000;
-	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), funny_and_useless), "Err, entry not added...");
+	stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
 	
 	spc = 0;
 	e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
@@ -137,31 +137,31 @@ stir_shaken_status_t stir_shaken_unit_test_hash(void)
 	stir_shaken_assert(e != NULL, "Err, entry should be found...");
 	
 	spc = 0;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
 	
 	spc = 1;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
 	
 	spc = 12;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
 	
 	spc = 133;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
 	
 	spc = 500;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
 	
 	spc = 1234;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
 	
 	spc = 7777;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
 	
 	spc = 10000;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc), "Err, entry should be removed...");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
 
 	// cleanup
-	stir_shaken_hash_destroy(sessions, STI_CA_SESSIONS_MAX);	
+	stir_shaken_hash_destroy(sessions, STI_CA_SESSIONS_MAX, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);	
 
 	return STIR_SHAKEN_STATUS_OK;
 }

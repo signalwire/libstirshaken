@@ -368,7 +368,7 @@ static char* mock_auth_challenge_details(void)
 }
 #endif
 
-char* stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss, const char *spc, const char *token, const char *authz_url)
+char* stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss, char *status, const char *spc, const char *token, const char *authz_url)
 {
 	char *printed = NULL;
 	cJSON *json = cJSON_CreateObject(), *arr = cJSON_CreateArray(), *o1 = cJSON_CreateObject(), *o2 = cJSON_CreateObject();
@@ -377,24 +377,100 @@ char* stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss
 		goto fail;
 	}
 	
+	if (stir_shaken_zstr(status)) {
+		stir_shaken_set_error(ss, "Cannot create JSON, 'status' is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_DETAILS);
+		return NULL;
+	}
+
 	if (stir_shaken_zstr(spc)) {
-		stir_shaken_set_error(ss, "Bad params. Auth challenge details must have: spc, token, authz url: spc is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_RESPONSE);
+		stir_shaken_set_error(ss, "Bad params. Auth challenge details must have: spc, token, authz url: spc is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_DETAILS);
 		goto fail;
 	}
 	if (stir_shaken_zstr(token)) {
-		stir_shaken_set_error(ss, "Bad params. Auth challenge details must have: spc, token, authz url: token is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_RESPONSE);
+		stir_shaken_set_error(ss, "Bad params. Auth challenge details must have: spc, token, authz url: token is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_DETAILS);
 		goto fail;
 	}
 	if (stir_shaken_zstr(authz_url)) {
-		stir_shaken_set_error(ss, "Bad params. Auth challenge details must have: spc, token, authz_url: authz_url is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_RESPONSE);
+		stir_shaken_set_error(ss, "Bad params. Auth challenge details must have: spc, token, authz_url: authz_url is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_DETAILS);
 		goto fail;
 	}
 
-	cJSON_AddStringToObject(json, "status", "pending");
+	cJSON_AddStringToObject(json, "status", status);
 	cJSON_AddStringToObject(o1, "type", "TNAuthList");
 	cJSON_AddStringToObject(o1, "value", spc);
 	cJSON_AddStringToObject(o2, "type", "spc-token");
 	cJSON_AddStringToObject(o2, "url", authz_url);
+	cJSON_AddStringToObject(o2, "token", token);
+	cJSON_AddItemToArray(arr, o2); 
+	cJSON_AddItemToObject(json, "identifier", o1);
+	cJSON_AddItemToObject(json, "challenges", arr);
+
+	printed = cJSON_PrintUnformatted(json);
+	cJSON_Delete(json);
+	return printed;
+
+fail:
+	if (json) {
+		cJSON_Delete(json);
+	} else {
+		if (arr) {
+			cJSON_Delete(arr);
+		}
+		if (o1) {
+			cJSON_Delete(o1);
+		}
+		if (o2) {
+			cJSON_Delete(o2);
+		}
+	}
+	return NULL;
+}
+
+char* stir_shaken_acme_generate_auth_polling_status(stir_shaken_context_t *ss, char *status, char *expires, char *validated, const char *spc, const char *token, const char *authz_url)
+{
+	char *printed = NULL;
+	cJSON *json = cJSON_CreateObject(), *arr = cJSON_CreateArray(), *o1 = cJSON_CreateObject(), *o2 = cJSON_CreateObject();
+	if (!json || !arr || !o1 || !o2) {
+		stir_shaken_set_error(ss, "Cannot create auth challenge details JSON object", STIR_SHAKEN_ERROR_ACME);
+		goto fail;
+	}
+	
+	if (stir_shaken_zstr(status)) {
+		stir_shaken_set_error(ss, "Cannot create JSON, 'status' is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_POLLING_STATUS);
+		return NULL;
+	}
+	
+	if (stir_shaken_zstr(expires)) {
+		stir_shaken_set_error(ss, "Cannot create JSON, 'expires' is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_POLLING_STATUS);
+		return NULL;
+	}
+	
+	if (stir_shaken_zstr(validated)) {
+		stir_shaken_set_error(ss, "Cannot create JSON, 'validated' is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_POLLING_STATUS);
+		return NULL;
+	}
+
+	if (stir_shaken_zstr(spc)) {
+		stir_shaken_set_error(ss, "Bad params. Auth polling status must have: spc, token, authz url: spc is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_POLLING_STATUS);
+		goto fail;
+	}
+	if (stir_shaken_zstr(token)) {
+		stir_shaken_set_error(ss, "Bad params. Auth polling status must have: spc, token, authz url: token is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_POLLING_STATUS);
+		goto fail;
+	}
+	if (stir_shaken_zstr(authz_url)) {
+		stir_shaken_set_error(ss, "Bad params. Auth polling status must have: spc, token, authz_url: authz_url is missing", STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_POLLING_STATUS);
+		goto fail;
+	}
+
+	cJSON_AddStringToObject(json, "status", status);
+	cJSON_AddStringToObject(json, "expires", expires);
+	cJSON_AddStringToObject(o1, "type", "TNAuthList");
+	cJSON_AddStringToObject(o1, "value", spc);
+	cJSON_AddStringToObject(o2, "type", "spc-token");
+	cJSON_AddStringToObject(o2, "url", authz_url);
+	cJSON_AddStringToObject(o2, "status", status);
+	cJSON_AddStringToObject(o2, "validated", validated);
 	cJSON_AddStringToObject(o2, "token", token);
 	cJSON_AddItemToArray(arr, o2); 
 	cJSON_AddItemToObject(json, "identifier", o1);
