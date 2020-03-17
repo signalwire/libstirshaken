@@ -542,6 +542,12 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 				} else {
 
+					jwt_t *jwt = NULL;
+					char *token = NULL;
+					const char *spc_token = NULL;
+					jwt_t *spc_token_jwt = NULL;
+					const char *cert_url = NULL;
+
 					if (!uri_has_secret) {
 						stir_shaken_set_error(&ca->ss, "Bad request, Secret is missing", STIR_SHAKEN_ERROR_ACME_SECRET_MISSING);
 						goto fail;
@@ -563,12 +569,81 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Secret: OK\n");
 
-					// TODO parse JWT, retrieve SPC token and verify it (download PA public key and check SPC token against it)
+					if (jwt_new(&jwt) != 0) {
+						stir_shaken_set_error(&ca->ss, "Cannot create JWT", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
+						goto fail;
+					}
 
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Sending OK:\n%s\n", spc);
-					mg_printf(nc, "HTTP/1.1 200 Accepted\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(spc), spc);
+					if (0 != jwt_decode(&jwt, m->body.p, NULL, 0)) {
+						stir_shaken_set_error(&ca->ss, "Cannot parse JWT", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
+						goto fail;
+					}
+
+					token = jwt_dump_str(jwt, 0);
+					if (!token) {
+						stir_shaken_set_error(&ca->ss, "Cannot dump JWT", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
+						goto fail;
+					}
+
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Token is:\n%s\n", token);
+					jwt_free_str(token);
+					token = NULL;
+
+					spc_token = jwt_get_grant(jwt, "keyAuthorization");
+					if (stir_shaken_zstr(spc_token)) {
+						stir_shaken_set_error(&ca->ss, "JWT is missing SPC token", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
+						goto fail;
+					}
+
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC token is:\n%s\n", spc_token);
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Entering polling state...\n");
 
 					session->state = STI_CA_SESSION_STATE_POLLING;
+
+					mg_printf(nc, "HTTP/1.1 200 OK, Processing... (you can do polling now)\r\n\r\n");
+					close_http_connection(nc, io);
+
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Verifying SPC token...\n");
+
+					// ...
+					
+					if (jwt_new(&spc_token_jwt) != 0) {
+						stir_shaken_set_error(&ca->ss, "Cannot create JWT for SPC token", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
+						goto fail;
+					}
+
+					if (0 != jwt_decode(&spc_token_jwt, spc_token, NULL, 0)) {
+						stir_shaken_set_error(&ca->ss, "SPC token is not JWT", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
+						goto fail;
+					}
+					
+					token = jwt_dump_str(spc_token_jwt, 0);
+					if (!token) {
+						stir_shaken_set_error(&ca->ss, "Cannot dump SPC token JWT", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
+						goto fail;
+					}
+
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC token is:\n%s\n", token);
+					jwt_free_str(token);
+					token = NULL;
+
+					cert_url = jwt_get_header(spc_token_jwt, "x5u");
+					if (stir_shaken_zstr(cert_url)) {
+						stir_shaken_set_error(&ca->ss, "SPC token is missing x5u, no URL for cert provided", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
+						goto fail;
+					}
+
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Cert URL (x5u) is:\n%s\n", cert_url);
+
+					// download and veirfy jwt
+
+					if (jwt) {
+						jwt_free(jwt);
+						jwt = NULL;
+					}
+
+					session->state = STI_CA_SESSION_STATE_DONE;
+					goto exit;
 
 				}
 
@@ -584,6 +659,8 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 		default:
 			break;
 	}
+
+exit:
 
 	if (authz_challenge_details) {
 		free(authz_challenge_details);
