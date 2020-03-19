@@ -246,6 +246,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_ACME,
 	STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG,
 	STIR_SHAKEN_ERROR_ACME_SPC_INVALID,
+	STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID,
 	STIR_SHAKEN_ERROR_ACME_ATTEMPT_TOO_BIG,
 	STIR_SHAKEN_ERROR_ACME_ATTEMPT_INVALID,
 	STIR_SHAKEN_ERROR_ACME_SESSION_EXISTS,
@@ -263,6 +264,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_ACME_AUTHZ_DETAILS,
 	STIR_SHAKEN_ERROR_ACME_AUTHZ_URI,
 	STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING,
+	STIR_SHAKEN_ERROR_ACME_AUTHZ_UNSUCCESSFUL,
 	STIR_SHAKEN_ERROR_ACME_SECRET_MISSING,
 	STIR_SHAKEN_ERROR_ACME_BAD_REQUEST,
 	STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_POLLING_STATUS,
@@ -645,6 +647,11 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
  */
 stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert_out, time_t iat_freshness);
 
+/**
+ * Verify JWT token by a public key from certificate referenced in x5u header of this JWT. Involves HTTP GET call for a certificate.
+ */
+stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const char *token);
+
 /* PASSporT verification.
  *
  * @passport - (in/out) should point to memory prepared for new PASSporT,
@@ -750,6 +757,7 @@ char*					stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t
 char*					stir_shaken_acme_generate_auth_polling_status(stir_shaken_context_t *ss, char *status, char *expires, char *validated, const char *spc, const char *token, const char *authz_url);
 char*					stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
 stir_shaken_status_t	stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *authz_api_url, char *buf, int buflen, int *uri_has_secret, unsigned long long *secret);
+char*					stir_shaken_acme_generate_spc_token(stir_shaken_context_t *ss, char *issuer, char *url, char *nb, char *na, char *spc, unsigned char *key, uint32_t keylen, char **json);
 
 stir_shaken_status_t	stir_shaken_acme_nonce_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
 stir_shaken_status_t	stir_shaken_acme_retrieve_auth_challenge_details(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
@@ -781,7 +789,7 @@ stir_shaken_status_t	stir_shaken_make_http_head_req(stir_shaken_context_t *ss, s
 char*					stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name);
 void					stir_shaken_error_desc_to_http_error_phrase(const char *error_desc, char *error_phrase, int buflen);
 
-stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *jwt, unsigned char *key, uint32_t keylen, char *spc_token);
+stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *jwt, unsigned char *key, uint32_t keylen, const char *spc, char *spc_token);
 stir_shaken_status_t stir_shaken_sp_cert_req_ex(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *kid, const char *nonce, X509_REQ *req, const char *nb, const char *na, const char *spc, unsigned char *key, uint32_t keylen, char **json, char *spc_token);
 
 // Utility
@@ -791,6 +799,7 @@ stir_shaken_status_t stir_shaken_dir_create(const char *path);
 stir_shaken_status_t stir_shaken_dir_create_recursive(const char *path);
 stir_shaken_status_t stir_shaken_file_exists(const char *path);
 stir_shaken_status_t stir_shaken_file_remove(const char *path);
+stir_shaken_status_t stir_shaken_save_to_file(const char *data, const char *name);
 stir_shaken_status_t stir_shaken_b64_encode(unsigned char *in, size_t ilen, unsigned char *out, size_t olen);
 size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen);
 char* stir_shaken_remove_multiple_adjacent(char *in, char what);
@@ -857,6 +866,7 @@ typedef struct stir_shaken_ca_session_s {
 	char *authz_challenge;
 	char *authz_challenge_details;
 	char *authz_polling_status;
+	int	authorized;
 } stir_shaken_ca_session_t;
 
 typedef struct stir_shaken_ca_s {

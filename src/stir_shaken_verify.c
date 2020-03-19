@@ -168,6 +168,85 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_s
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const char *token)
+{
+	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
+	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	stir_shaken_http_req_t	http_req = { 0 };
+	long					res = CURLE_OK;
+	stir_shaken_cert_t		cert = { 0 };
+	const char				*cert_url = NULL;
+	jwt_t					*jwt = NULL;
+	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+	int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
+	
+	stir_shaken_clear_error(ss);
+	memset(&http_req, 0, sizeof(http_req));
+
+	if (!token) {
+		stir_shaken_set_error(ss, "Bad params: JWT token is missing", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+		goto fail;
+	}
+
+	if (jwt_new(&jwt) != 0) {
+		stir_shaken_set_error(ss, "Cannot create JWT for the token", STIR_SHAKEN_ERROR_JWT);
+		goto fail;
+	}
+
+	if (0 != jwt_decode(&jwt, token, NULL, 0)) {
+		stir_shaken_set_error(ss, "Token is not JWT", STIR_SHAKEN_ERROR_JWT);
+		goto fail;
+	}
+
+	cert_url = jwt_get_header(jwt, "x5u");
+	if (stir_shaken_zstr(cert_url)) {
+		stir_shaken_set_error(ss, "SPC token is missing x5u, cannot download certificate", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
+		goto fail;
+	}
+	http_req.url = strdup(cert_url);
+
+	jwt_free(jwt);
+	jwt = NULL;
+
+	ss_status = stir_shaken_download_cert(ss, &http_req);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+		stir_shaken_set_error_if_clear(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+		goto fail;
+	}
+
+	ss_status = stir_shaken_load_x509_from_mem(ss, &cert.x, &cert.xchain, http_req.response.mem.mem, http_req.response.mem.size);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+		stir_shaken_set_error_if_clear(ss, "Error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
+	}
+
+	cert.len = http_req.response.mem.size;
+
+	if (stir_shaken_get_pubkey_raw_from_cert(ss, &cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_if_clear(ss, "Failed to get public key in raw format from certificate", STIR_SHAKEN_ERROR_SSL);
+		goto fail;
+	}
+
+	if (jwt_decode(&jwt, token, key, key_len)) {
+		stir_shaken_set_error_if_clear(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		jwt_free(jwt);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	stir_shaken_destroy_cert(&cert);
+	if (jwt) jwt_free(jwt);
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+
+	stir_shaken_set_error_if_clear(ss, "Unknown error while verifying JWT", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+
+	stir_shaken_destroy_cert(&cert);
+	stir_shaken_destroy_http_request(&http_req);
+	if (jwt) jwt_free(jwt);
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
 // 5.3.1 PASSporT & Identity Header Verification
 // The certificate referenced in the info parameter of the Identity header field shall be validated by performing the
 // following:
@@ -331,7 +410,6 @@ fail:
 
 	stir_shaken_set_error_if_clear(ss, "Unknown error while processing request", STIR_SHAKEN_ERROR_GENERAL);
 
-	// Release all memory used by http_req
 	stir_shaken_destroy_http_request(&http_req);
 
 	if (cert_out) {

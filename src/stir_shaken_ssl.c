@@ -249,7 +249,10 @@ X509_REQ* stir_shaken_load_x509_req_from_file(stir_shaken_context_t *ss, const c
 	X509_REQ		*req = NULL;
 	FILE			*fp = NULL;
 
-	if (!name) return NULL;
+	if (stir_shaken_zstr(name)) {
+		stir_shaken_set_error(ss, "File name is missing", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
 
 	stir_shaken_clear_error(ss);
 
@@ -1167,14 +1170,12 @@ stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, sti
 	stir_shaken_clear_error(ss);
 
 	if (!cert) {
-
 		stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
 	x = cert->x;
 	if (!x) {
-
 		stir_shaken_set_error(ss, "Cert has no X509 struct", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
@@ -2116,8 +2117,8 @@ stir_shaken_status_t stir_shaken_load_keys(stir_shaken_context_t *ss, EVP_PKEY *
 		}
 	}
 
-	*pub = pubkey;
-	*priv = privkey;
+	if (pub) *pub = pubkey;
+	if (priv) *priv = privkey;
 
 	return STIR_SHAKEN_STATUS_OK;
 
@@ -2131,7 +2132,7 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 {
 	EC_KEY                  *ec_key = NULL;
 	EVP_PKEY                *pk = NULL;
-	BIO                     *out = NULL, *bio = NULL;
+	BIO                     *bio = NULL;
 	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	int						pkey_type = EVP_PKEY_EC;
 	FILE					*fp = NULL;
@@ -2188,14 +2189,6 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 		goto fail;
 	}
 	
-	// Print them out
-	out = BIO_new_fp(stdout, BIO_NOCLOSE);
-	PEM_write_bio_ECPrivateKey(out, ec_key, NULL, NULL, 0, NULL, NULL);
-	PEM_write_bio_EC_PUBKEY(out, ec_key);
-	BIO_free_all(out);
-	out = NULL;
-
-	// Save
 	bio = BIO_new_file(private_key_full_name, "w");
 	if (!bio) {
 		stir_shaken_set_error(ss, "Generate keys: SSL ERR: Cannot open private key into bio", STIR_SHAKEN_ERROR_GENERAL);
@@ -2252,14 +2245,12 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
 		goto fail;
 	}
 	
-	if (out) BIO_free_all(out); out = NULL;
 	if (bio) BIO_free_all(bio); bio = NULL;
 
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
 
-	if (out) BIO_free_all(out); out = NULL;
 	if (bio) BIO_free_all(bio); bio = NULL;
 	stir_shaken_set_error_if_clear(ss, "Generate keys: Error", STIR_SHAKEN_ERROR_GENERAL);
 

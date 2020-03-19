@@ -54,6 +54,15 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n\nConfiguring install CA certificate command...\n\n");
 		return COMMAND_INSTALL_CERT;
 
+	} else if (!strcmp(command_name, COMMAND_NAME_SPC_TOKEN)) {
+
+		strncpy(pa->spc, options->spc, STIR_SHAKEN_BUFLEN);
+		strncpy(pa->pa.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
+		strncpy(pa->issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
+		strncpy(pa->url, options->url, STIR_SHAKEN_BUFLEN);
+		strncpy(pa->file_name, options->file, STIR_SHAKEN_BUFLEN);
+		return COMMAND_SPC_TOKEN;
+
 	} else if (!strcmp(command_name, COMMAND_NAME_CA)) {
 
 		ca->ca.port = options->port;
@@ -108,6 +117,11 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 				goto fail;
 			}
 
+			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(sp->sp.csr_name)) {
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", sp->sp.csr_name);
+				goto fail;
+			}
+
 			helper = strtoul(sp->spc, &pCh, 10);
 			STIR_SHAKEN_CHECK_CONVERSION_EXT
 			sp->sp.code = helper;
@@ -120,6 +134,11 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 					|| stir_shaken_zstr(ca->issuer_c) || stir_shaken_zstr(ca->issuer_cn)) {
 				goto fail;
 			}
+
+			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(ca->ca.cert_name)) {
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", ca->ca.cert_name);
+				goto fail;
+			}
 			break;
 		
 		case COMMAND_CERT_SP:
@@ -129,9 +148,30 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 					|| stir_shaken_zstr(ca->issuer_c) || stir_shaken_zstr(ca->issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri)) {
 				goto fail;
 			}
+
+			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(sp->sp.cert_name)) {
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", sp->sp.cert_name);
+				goto fail;
+			}
 			break;
 
 		case COMMAND_INSTALL_CERT:
+			break;
+		
+		case COMMAND_SPC_TOKEN:
+
+			if (stir_shaken_zstr(pa->pa.private_key_name) || stir_shaken_zstr(pa->issuer_cn) || stir_shaken_zstr(pa->spc) || stir_shaken_zstr(pa->url)) {
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(pa->file_name)) {
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", pa->file_name);
+				goto fail;
+			}
+
+			helper = strtoul(pa->spc, &pCh, 10);
+			STIR_SHAKEN_CHECK_CONVERSION_EXT
+			pa->sp_code = helper;
 			break;
 
 		case COMMAND_CA:
@@ -176,6 +216,9 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 	unsigned long	hash = 0;
 	char			hashstr[100] = { 0 }, cert_hashed_as_text[1000] = { 0 };
 	int				hashstrlen = 100;
+	char			*spc_token_encoded = NULL;
+	char			*spc_token_decoded = NULL;
+	char			token[STIR_SHAKEN_BUFLEN] = { 0 };
 
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_init(ss, options->ca_dir, options->crl_dir, options->loglevel)) {
@@ -282,6 +325,37 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 		case COMMAND_INSTALL_CERT:
 			break;
+		
+		case COMMAND_SPC_TOKEN:
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading keys...\n");
+			pa->pa.keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_keys(ss, &pa->pa.keys.private_key, NULL, pa->pa.private_key_name, NULL, pa->pa.keys.priv_raw, &pa->pa.keys.priv_raw_len)) {
+				goto fail;
+			}
+
+			// TODO get nb/na from user
+			snprintf(pa->nb, STIR_SHAKEN_BUFLEN, "today");
+			snprintf(pa->na, STIR_SHAKEN_BUFLEN, "1 year from now");
+			
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Generating SPC token...\n");
+			spc_token_encoded = stir_shaken_acme_generate_spc_token(ss, pa->issuer_cn, pa->url, pa->nb, pa->na, pa->spc, pa->pa.keys.priv_raw, pa->pa.keys.priv_raw_len, &spc_token_decoded);
+			if (!spc_token_encoded || !spc_token_decoded) {
+				goto fail;
+			}
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nSPC token encoded:\n\n%s\n", spc_token_encoded);
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nSPC token decoded:\n\n%s\n", spc_token_decoded);
+			snprintf(token, STIR_SHAKEN_BUFLEN, "SPC token encoded:\n\n%s\n\nSPC token decoded:\n\n%s", spc_token_encoded, spc_token_decoded);
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving...\n");
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_save_to_file(token, pa->file_name)) {
+				goto fail;
+			}
+
+			free(spc_token_encoded);
+			free(spc_token_decoded);
+			break;
 
 		case COMMAND_CA:
 
@@ -334,7 +408,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				stir_shaken_free_jwt_str(jwt_decoded);
 				jwt_decoded = NULL;
 
-				if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req(ss, &http_req, jwt_encoded, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, sp->sp.spc_token)) {
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req(ss, &http_req, jwt_encoded, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, spc, sp->sp.spc_token)) {
 					stir_shaken_set_error(ss, "SP certificate request failed", STIR_SHAKEN_ERROR_ACME);
 					goto fail;
 				}
@@ -355,5 +429,8 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
+
+	if (spc_token_encoded) free(spc_token_encoded);
+	if (spc_token_decoded) free(spc_token_decoded);
 	return STIR_SHAKEN_STATUS_FALSE;
 }

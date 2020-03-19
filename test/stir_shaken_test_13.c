@@ -83,8 +83,25 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	sprintf(url, "http:/localhost%s", STI_CA_ACME_CERT_REQ_URL);
 	nb = "01 Apr 2020";
 	na = "01 Apr 2021";
-	spc_token = "SPCtoken";
-	
+
+	// Set SPC token to this:
+	// {
+	//	"alg": "ES256",
+	//	"issuer": "SignalWire STI-PA",
+	//	"typ": "JWT",
+	//	"x5u": "http://190.102.98.199/pa.pem"
+	// }.{
+	//	"notAfter": "1 year from now",
+	//	"notBefore": "today",
+	//	"spc": "7889",
+	//	"type": "spc-token"
+	// }
+	//
+	// Obtained by running:
+	//		
+	//		stirshaken spc-token --privkey pa_priv.pem --url http://pa.com --spc 7889 --issuer_cn "SignalWire STI-PA" -f spc_token.txt --vvv
+	//
+	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cDovLzE5MC4xMDIuOTguMTk5L3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiNzg4OSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.DOKQh5NfwWX01oVNMUJn1ut1N6vElTo57DGJ1fdBqOe3LRCZ4Nr-bm7LZAV5VBGUFt9VyYqsDRZGQY30afRW2w";
 	http_req.url = strdup(url);
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req_ex(&ss, &http_req, kid, nonce, sp.csr.req, nb, na, spc, sp.keys.priv_raw, sp.keys.priv_raw_len, NULL, spc_token)) {

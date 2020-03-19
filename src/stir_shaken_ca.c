@@ -285,7 +285,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 				e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
 				if (e) {
 
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Authorization already in progress...");
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Authorization already in progress...\n");
 					stir_shaken_set_error(&ca->ss, "Bad request, authorization already in progress", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
 					goto fail;
 				}
@@ -407,7 +407,6 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 	stir_shaken_hash_entry_t *e = NULL;
 	stir_shaken_ca_session_t *session = NULL;
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
-	char *expires = NULL, *validated = NULL;
 	
 	
 	if (!m || !nc || !ca) {
@@ -461,22 +460,14 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 				if (http_method == STIR_SHAKEN_HTTP_REQ_TYPE_GET) {
 
-					if (STI_CA_SESSION_STATE_POLLING == session->state) {
+					if (STI_CA_SESSION_STATE_POLLING == session->state || STI_CA_SESSION_STATE_DONE == session->state) {
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Handling polling request\n");
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC is: %s\n", spc);
 
 						if (!session->authz_polling_status) {
-
-							// TODO generate 
-							expires = "never";
-							validated = "just right now";
-
-							session->authz_polling_status = stir_shaken_acme_generate_auth_polling_status(&ca->ss, "pending", expires, validated, spc, session->authz_token, session->authz_url);
-							if (stir_shaken_zstr(session->authz_polling_status)) {
-								stir_shaken_set_error(&ca->ss, "AUTHZ request failed, could not produce polling status", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
-								goto fail;
-							}
+							stir_shaken_set_error(&ca->ss, "Oops, no polling status", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
+							goto fail;
 						}
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Sending polling status...\n");
@@ -547,6 +538,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 					const char *spc_token = NULL;
 					jwt_t *spc_token_jwt = NULL;
 					const char *cert_url = NULL;
+					char *expires = NULL, *validated = NULL;
 
 					if (!uri_has_secret) {
 						stir_shaken_set_error(&ca->ss, "Bad request, Secret is missing", STIR_SHAKEN_ERROR_ACME_SECRET_MISSING);
@@ -597,6 +589,16 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC token is:\n%s\n", spc_token);
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Entering polling state...\n");
+							
+					// TODO generate 
+					expires = "never";
+					validated = "just right now";
+
+					session->authz_polling_status = stir_shaken_acme_generate_auth_polling_status(&ca->ss, "pending", expires, validated, spc, session->authz_token, session->authz_url);
+					if (stir_shaken_zstr(session->authz_polling_status)) {
+						stir_shaken_set_error(&ca->ss, "AUTHZ request failed, could not produce polling status", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
+						goto fail;
+					}
 
 					session->state = STI_CA_SESSION_STATE_POLLING;
 
@@ -605,8 +607,6 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Verifying SPC token...\n");
 
-					// ...
-					
 					if (jwt_new(&spc_token_jwt) != 0) {
 						stir_shaken_set_error(&ca->ss, "Cannot create JWT for SPC token", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
 						goto fail;
@@ -629,13 +629,42 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 					cert_url = jwt_get_header(spc_token_jwt, "x5u");
 					if (stir_shaken_zstr(cert_url)) {
-						stir_shaken_set_error(&ca->ss, "SPC token is missing x5u, no URL for cert provided", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
+						stir_shaken_set_error(&ca->ss, "SPC token is missing x5u, cannot download certificate", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
 						goto fail;
 					}
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Cert URL (x5u) is:\n%s\n", cert_url);
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Verifying SPC token..\n");
 
-					// download and veirfy jwt
+					if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(&ca->ss, spc_token)) {
+						stir_shaken_set_error(&ca->ss, "SPC token did not pass verification", STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID);
+						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [-] SP failed authorization\n");
+					} else {
+						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [+] SP authorized\n");
+						session->authorized = 1;
+					}
+
+					// Set polling status, keep authorization session life for some time, allowing SP to query polling status and to download cert
+					if (session->authz_polling_status) {
+						free(session->authz_polling_status);
+						session->authz_polling_status = NULL;
+					}
+
+					if (session->authorized) {
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> OK (SP authorized)\n");
+						session->authz_polling_status = stir_shaken_acme_generate_auth_polling_status(&ca->ss, "valid", expires, validated, spc, session->authz_token, session->authz_url);
+					} else {
+						// set polling status to 'failed'
+						// This is not what draft ATIS-1000080 says, but it seems reasonable (ATIS only says that 'Once successful, the state of the challenge shall be changed from pending to valid' but doesn't say how to signal failed authorization
+						session->authz_polling_status = stir_shaken_acme_generate_auth_polling_status(&ca->ss, "failed", expires, validated, spc, session->authz_token, session->authz_url);
+					}
+
+					if (stir_shaken_zstr(session->authz_polling_status)) {
+						stir_shaken_set_error(&ca->ss, "AUTHZ request failed, could not produce polling status", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
+						goto fail;
+					}
+
+					// TODO generate SP certificate and install for download
 
 					if (jwt) {
 						jwt_free(jwt);

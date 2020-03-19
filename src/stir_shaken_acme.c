@@ -792,14 +792,27 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
 
 			// Authorization completed
 			status_is_valid = 1;
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got 'valid' polling status\n");
 
 		} else {
 
 			if (strcmp("pending", auth_status->valuestring) != 0) {
-				snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME auth status malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')\n", auth_status->valuestring);
+				
+				if (0 == strcmp("failed", auth_status->valuestring)) {
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got 'failed' polling status");
+					snprintf(err_buf, STIR_SHAKEN_BUFLEN, "\t-> Got 'failed' polling status: ACME authorization unsuccessful\n", auth_status->valuestring);
+					stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME_AUTHZ_UNSUCCESSFUL);
+					goto fail;
+				}
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got malformed polling status\n");
+
+				snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME auth status malformed, 'status' field is neither 'valid' nor 'pending' nor 'failed' (status is: '%s')\n", auth_status->valuestring);
 				stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME);
 				goto fail;
 			}
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got 'pending' polling status, continue polling...\n");
 
 			// ACME authorization is still pending, poll again after some delay
 			// Wait before next HTTP request
@@ -969,6 +982,8 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 				stir_shaken_set_error(ss, "ACME polling failed. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
 				goto fail;
 			}
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Polling finished...\n");
 		}
 	}
 
@@ -1201,4 +1216,83 @@ stir_shaken_status_t stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss
 	}
 
 	return STIR_SHAKEN_STATUS_OK;
+}
+
+char* stir_shaken_acme_generate_spc_token(stir_shaken_context_t *ss, char *issuer, char *url, char *nb, char *na, char *spc, unsigned char *key, uint32_t keylen, char **json)
+{
+	char	*out = NULL;
+	jwt_t	*jwt = NULL;
+
+	if (jwt_new(&jwt) != 0) {
+		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
+
+	// Header
+
+	if (key && keylen) {		
+		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
+			goto exit;
+		}
+	}
+	
+	if (issuer) {
+
+		if (jwt_add_header(jwt, "issuer", issuer) != 0) {
+			goto exit;
+		}
+	}
+
+	if (url) {
+
+		if (jwt_add_header(jwt, "x5u", url) != 0) {
+			goto exit;
+		}
+	}
+
+	// Payload
+
+	if (jwt_add_grant(jwt, "type", "spc-token") != 0) {
+		goto exit;
+	}
+
+	if (nb) {
+
+		if (jwt_add_grant(jwt, "notBefore", nb) != 0) {
+			goto exit;
+		}
+	}
+
+	if (na) {
+
+		if (jwt_add_grant(jwt, "notAfter", na) != 0) {
+			goto exit;
+		}
+	}
+
+	if (spc) {
+
+		if (jwt_add_grant(jwt, "spc", spc) != 0) {
+			goto exit;
+		}
+	}
+
+	if (json) {
+
+		*json = jwt_dump_str(jwt, 1);
+		if (!*json) {
+			stir_shaken_set_error(ss, "Failed to dump JWT", STIR_SHAKEN_ERROR_GENERAL);
+			goto exit;
+		}
+	}
+
+	out = jwt_encode_str(jwt);
+	if (!out) {
+		stir_shaken_set_error(ss, "Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
+		goto exit;
+	}
+
+exit:
+	if (jwt) jwt_free(jwt);
+	return out;
 }

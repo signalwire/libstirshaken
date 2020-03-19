@@ -161,6 +161,32 @@ stir_shaken_status_t stir_shaken_file_remove(const char *path)
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
+stir_shaken_status_t stir_shaken_save_to_file(const char *data, const char *name)
+{
+	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	FILE			*fp = NULL;
+	size_t			datalen = 0;
+
+	if (!data || stir_shaken_zstr(name)) {
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	datalen = strlen(data);
+
+	fp = fopen(name, "w");
+	if (!fp) {
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	if (datalen != fwrite(data, 1, datalen, fp)) {
+		fclose(fp);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	fclose(fp);
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 static const char stir_shaken_b64_table[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 #define B64BUFFLEN 1024
 

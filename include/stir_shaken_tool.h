@@ -13,10 +13,11 @@
 #define COMMAND_CERT_CA			3
 #define COMMAND_CERT_SP			4
 #define COMMAND_INSTALL_CERT	5
-#define COMMAND_CA				6
-#define COMMAND_PA				7
-#define COMMAND_SP_SPC_REQ		8
-#define COMMAND_SP_CERT_REQ		9
+#define COMMAND_SPC_TOKEN		6
+#define COMMAND_CA				7
+#define COMMAND_PA				8
+#define COMMAND_SP_SPC_REQ		9
+#define COMMAND_SP_CERT_REQ		10
 #define COMMAND_UNKNOWN			100
 
 #define COMMAND_NAME_KEYS			"keys"
@@ -25,6 +26,7 @@
 #define COMMAND_NAME_CERT_CA		"cert (CA)"
 #define COMMAND_NAME_CERT_SP		"cert (SP)"
 #define COMMAND_NAME_INSTALL_CERT	"install"
+#define COMMAND_NAME_SPC_TOKEN		"spc-token"
 #define COMMAND_NAME_CA				"ca"
 #define COMMAND_NAME_PA				"pa"
 #define COMMAND_NAME_SP_SPC_REQ		"sp-spc-req"
@@ -138,6 +140,13 @@ struct ca {
 
 struct pa {
 	stir_shaken_pa_t pa;
+	char issuer_cn[STIR_SHAKEN_BUFLEN];
+	char spc[STIR_SHAKEN_BUFLEN];
+	char url[STIR_SHAKEN_BUFLEN];
+	char nb[STIR_SHAKEN_BUFLEN];
+	char na[STIR_SHAKEN_BUFLEN];
+	char file_name[STIR_SHAKEN_BUFLEN];
+	size_t sp_code;
 } pa;
 
 struct sp {
