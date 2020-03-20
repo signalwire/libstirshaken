@@ -214,7 +214,7 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
 		goto fail;
 	}
 
-	ss_status = stir_shaken_load_x509_from_mem(ss, &cert.x, &cert.xchain, http_req.response.mem.mem, http_req.response.mem.size);
+	ss_status = stir_shaken_load_x509_from_mem(ss, &cert.x, &cert.xchain, http_req.response.mem.mem);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error_if_clear(ss, "Error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
@@ -360,7 +360,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 		goto fail;
 	}
 
-    ss_status = stir_shaken_load_x509_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem, http_req.response.mem.size);
+    ss_status = stir_shaken_load_x509_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error_if_clear(ss, "Verify: error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;

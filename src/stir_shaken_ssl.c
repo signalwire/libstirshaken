@@ -1777,7 +1777,7 @@ void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
 //
 // see: https://stackoverflow.com/questions/3810058/read-certificate-files-from-memory-instead-of-a-file-using-openssl
 //
-stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem, size_t n)
+stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem)
 {
 	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_OK;
 	BIO	*cbio = NULL;
@@ -1790,11 +1790,16 @@ stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X
 	cbio = BIO_new_mem_buf(mem, -1);
 	if (!cbio) {
 		stir_shaken_set_error(ss, "(SSL) Failed to create BIO", STIR_SHAKEN_ERROR_SSL);
-		return STIR_SHAKEN_STATUS_FALSE;
+		return STIR_SHAKEN_STATUS_TERM;
 	}
 
 	// Load end-entity certificate
 	*x = PEM_read_bio_X509(cbio, NULL, NULL, NULL);
+	if (!*x) {
+		stir_shaken_set_error(ss, "(SSL) Failed to read X509 from BIO", STIR_SHAKEN_ERROR_SSL);
+		ss_status = STIR_SHAKEN_STATUS_TERM;
+		goto exit;
+	}
 
 	if (xchain) {
 

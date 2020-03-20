@@ -215,7 +215,9 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 	}
 	curl_easy_cleanup(curl_handle);
 	curl_global_cleanup();
-	
+
+	// fprintf(stdout, "\n//////////////// HTTP GOT:\n%s\n///////////////////////\n", http_req->response.mem.mem);	
+
 	// On success, http_req->response.code is HTTP response code (200, 403, 404, etc...)
 	return STIR_SHAKEN_STATUS_OK;
 }
@@ -248,6 +250,7 @@ void stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req)
 		curl_slist_free_all(http_req->rx_headers);
 		http_req->rx_headers = NULL;
 	}
+	memset(http_req, 0, sizeof(*http_req));
 }
 
 /**

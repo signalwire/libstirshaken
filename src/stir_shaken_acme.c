@@ -1122,24 +1122,24 @@ exit:
 	return out;
 }
 
-stir_shaken_status_t stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *authz_api_url, char *buf, int buflen, int *uri_has_secret, unsigned long long *secret)
+stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *buf, int buflen, int *uri_has_secret, unsigned long long *secret)
 {
 	char *p = NULL, *spc = NULL;
 	char request[STIR_SHAKEN_BUFLEN] = { 0 };
 	int len = 0;
 
 	if (stir_shaken_zstr(uri_request)) {
-		stir_shaken_set_error(ss, "Bad AUTHZ request URI", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+		stir_shaken_set_error(ss, "Bad AUTHZ request URI", STIR_SHAKEN_ERROR_ACME_URI);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	if (stir_shaken_zstr(authz_api_url)) {
-		stir_shaken_set_error(ss, "Bad params, AUTHZ API URI missing", STIR_SHAKEN_ERROR_GENERAL);
+	if (stir_shaken_zstr(api_url)) {
+		stir_shaken_set_error(ss, "Bad params, API URI missing", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
 	if (!uri_has_secret || !secret) {
-		stir_shaken_set_error(ss, "Bad params, 'secret' missing", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Bad params, 'secret' not set", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
@@ -1150,26 +1150,26 @@ stir_shaken_status_t stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss
 	if (!p) p = strchr(request, '\n');
 	if (p) *p = '\0';
 
-	p = strstr(request, authz_api_url);
+	p = strstr(request, api_url);
 	if (!p) {
-		stir_shaken_set_error(ss, "Not an AUTHZ request URI", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+		stir_shaken_set_error(ss, "Request doesn't contain API URI", STIR_SHAKEN_ERROR_ACME_URI);
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
-	p = p + strlen(authz_api_url);
+	p = p + strlen(api_url);
 	if (stir_shaken_zstr(p)) {
-		stir_shaken_set_error(ss, "Bad AUTHZ request URI, SPC missing", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+		stir_shaken_set_error(ss, "Bad AUTHZ request URI, SPC missing", STIR_SHAKEN_ERROR_ACME_URI);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
 	if (*p != '/') {
-		stir_shaken_set_error(ss, "Bad AUTHZ request URI, '/' missing after API URI", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+		stir_shaken_set_error(ss, "Bad AUTHZ request URI, '/' missing after API URI", STIR_SHAKEN_ERROR_ACME_URI);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	p = p + 1;
 	if (stir_shaken_zstr(p)) {
-		stir_shaken_set_error(ss, "Bad AUTHZ request URI, SPC missing (after API URI and '/')", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+		stir_shaken_set_error(ss, "Bad AUTHZ request URI, SPC missing (after API URI and '/')", STIR_SHAKEN_ERROR_ACME_URI);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -1180,7 +1180,7 @@ stir_shaken_status_t stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss
 		char *pCh = NULL;
 		unsigned long long  val;
 
-		// maybe authz details URI
+		// maybe authz details URI, or cert URI
 
 		*p = '\0';
 
@@ -1188,17 +1188,17 @@ stir_shaken_status_t stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss
 
 		p = p + 1;
 		if (strchr(p, '/')) {
-			stir_shaken_set_error(ss, "Bad AUTHZ request URI, too many '/'", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+			stir_shaken_set_error(ss, "Bad AUTHZ request URI, too many '/'", STIR_SHAKEN_ERROR_ACME_URI);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
 		val = strtoul(p, &pCh, 10); 
 		if (val > 0x10000 - 1) { 
-			stir_shaken_set_error(ss, "Bad URI: Attempt number too big", STIR_SHAKEN_ERROR_ACME_ATTEMPT_TOO_BIG);
+			stir_shaken_set_error(ss, "Bad URI: Attempt number too big", STIR_SHAKEN_ERROR_ACME_SECRET_TOO_BIG);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
 
 		if (*pCh != '\0') { 
-			stir_shaken_set_error(ss, "Bad URI: Attempt number invalid", STIR_SHAKEN_ERROR_ACME_ATTEMPT_INVALID);
+			stir_shaken_set_error(ss, "Bad URI: Attempt number invalid", STIR_SHAKEN_ERROR_ACME_SECRET_INVALID);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
 
@@ -1209,7 +1209,7 @@ stir_shaken_status_t stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss
 
 		len = strlen(spc);
 		if (len > buflen) {
-			stir_shaken_set_error(ss, "Buffer too short for SPC", STIR_SHAKEN_ERROR_ACME_AUTHZ_URI);
+			stir_shaken_set_error(ss, "Buffer too short for SPC", STIR_SHAKEN_ERROR_ACME_URI);
 		}
 
 		strncpy(buf, spc, buflen);

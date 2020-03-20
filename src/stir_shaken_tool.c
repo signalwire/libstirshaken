@@ -16,7 +16,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s --%s 80 --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY --%s ca.pem --%s TNAuthList(URI)\n", COMMAND_NAME_CA, OPTION_NAME_PORT, OPTION_NAME_PRIVKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY, OPTION_NAME_CA_CERT, OPTION_NAME_TN_AUTH_LIST_URI);
 	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s --%s URL\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
-	fprintf(stderr, "\t\t %s --%s URL\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL);
+	fprintf(stderr, "\t\t %s --%s URL --%s key --%s key --%s csr.pem --%s CODE --%s SPC_TOKEN -f CERT_NAME\\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_CSR, OPTION_NAME_SPC, OPTION_NAME_SPC_TOKEN);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "\t\t Each command accepts setting print/logging verbosity level:\n");
 	fprintf(stderr, "\t\t --v\t\tbasic logging\n");

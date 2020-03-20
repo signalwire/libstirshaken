@@ -97,6 +97,7 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		strncpy(sp->sp.public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
 		strncpy(sp->sp.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
 		strncpy(sp->sp.csr_name, options->csr_name, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->sp.cert_name, options->file, STIR_SHAKEN_BUFLEN);
 		return COMMAND_SP_CERT_REQ;
 
 	} else {
@@ -203,7 +204,7 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 
 		case COMMAND_SP_CERT_REQ:
 
-			if (stir_shaken_zstr(sp->url) || stir_shaken_zstr(sp->sp.private_key_name) || stir_shaken_zstr(sp->sp.public_key_name)
+			if (stir_shaken_zstr(sp->sp.cert_name) || stir_shaken_zstr(sp->url) || stir_shaken_zstr(sp->sp.private_key_name) || stir_shaken_zstr(sp->sp.public_key_name)
 					|| stir_shaken_zstr(sp->spc) || stir_shaken_zstr(sp->sp.spc_token) || stir_shaken_zstr(sp->sp.csr_name)) {
 				goto fail;
 			}
@@ -435,6 +436,24 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 				if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req(ss, &http_req, jwt_encoded, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, spc, sp->sp.spc_token)) {
 					stir_shaken_set_error(ss, "SP certificate request failed", STIR_SHAKEN_ERROR_ACME);
+					goto fail;
+				}
+				
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading certificate into X509...\n");
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_x509_from_mem(ss, &sp->sp.cert.x, NULL, http_req.response.mem.mem)) {
+					stir_shaken_set_error(ss, "Failed to load SP certificate into X509", STIR_SHAKEN_ERROR_ACME);
+					goto fail;
+				}
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Configuring certificate...\n");
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_configure(ss, &sp->sp.cert, sp->sp.cert_name, NULL, NULL)) {
+					stir_shaken_set_error(ss, "Failed to configure SP certificate", STIR_SHAKEN_ERROR_ACME);
+					goto fail;
+				}
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving certificate...\n");
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, sp->sp.cert.x, sp->sp.cert.name)) {
+					stir_shaken_set_error(ss, "Failed to save SP certificate", STIR_SHAKEN_ERROR_ACME);
 					goto fail;
 				}
 			}

@@ -245,11 +245,12 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_HTTP_PARAMS,
 	STIR_SHAKEN_ERROR_JWT,
 	STIR_SHAKEN_ERROR_ACME,
+	STIR_SHAKEN_ERROR_ACME_URI,
 	STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG,
 	STIR_SHAKEN_ERROR_ACME_SPC_INVALID,
 	STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID,
-	STIR_SHAKEN_ERROR_ACME_ATTEMPT_TOO_BIG,
-	STIR_SHAKEN_ERROR_ACME_ATTEMPT_INVALID,
+	STIR_SHAKEN_ERROR_ACME_SECRET_TOO_BIG,
+	STIR_SHAKEN_ERROR_ACME_SECRET_INVALID,
 	STIR_SHAKEN_ERROR_ACME_SESSION_EXISTS,
 	STIR_SHAKEN_ERROR_ACME_SESSION_NOTFOUND,
 	STIR_SHAKEN_ERROR_ACME_SESSION_BAD_SECRET,
@@ -257,6 +258,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_ACME_SESSION_CREATE,
 	STIR_SHAKEN_ERROR_ACME_SESSION_ENQUEUE,
 	STIR_SHAKEN_ERROR_ACME_SESSION_WRONG_STATE,
+	STIR_SHAKEN_ERROR_ACME_SESSION_NOT_AUTHORIZED,
 	STIR_SHAKEN_ERROR_ACME_EMPTY_CA_RESPONSE,
 	STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_RESPONSE,
 	STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_CHALLENGE_DETAILS,
@@ -266,6 +268,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_ACME_AUTHZ_URI,
 	STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING,
 	STIR_SHAKEN_ERROR_ACME_AUTHZ_UNSUCCESSFUL,
+	STIR_SHAKEN_ERROR_ACME_CERT,
+	STIR_SHAKEN_ERROR_ACME_CERT_SPC,
 	STIR_SHAKEN_ERROR_ACME_SECRET_MISSING,
 	STIR_SHAKEN_ERROR_ACME_BAD_REQUEST,
 	STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_POLLING_STATUS,
@@ -602,7 +606,7 @@ int stir_shaken_cert_get_version(stir_shaken_cert_t *cert);
 
 EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const char *file);
 EVP_PKEY* stir_shaken_load_privkey_from_file(stir_shaken_context_t *ss, const char *file);
-stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem, size_t n);
+stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem);
 X509* stir_shaken_load_x509_from_file(stir_shaken_context_t *ss, const char *name);
 stir_shaken_status_t stir_shaken_load_x509_req_from_mem(stir_shaken_context_t *ss, X509_REQ **req, void *mem);
 EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const char *file);
@@ -758,7 +762,7 @@ char*					stir_shaken_acme_generate_auth_challenge_response(stir_shaken_context_
 char*					stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss, char *status, const char *spc, const char *token, const char *authz_url);
 char*					stir_shaken_acme_generate_auth_polling_status(stir_shaken_context_t *ss, char *status, char *expires, char *validated, const char *spc, const char *token, const char *authz_url);
 char*					stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
-stir_shaken_status_t	stir_shaken_acme_authz_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *authz_api_url, char *buf, int buflen, int *uri_has_secret, unsigned long long *secret);
+stir_shaken_status_t	stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *buf, int buflen, int *uri_has_secret, unsigned long long *secret);
 char*					stir_shaken_acme_generate_spc_token(stir_shaken_context_t *ss, char *issuer, char *url, char *nb, char *na, char *spc, unsigned char *key, uint32_t keylen, char **json);
 
 stir_shaken_status_t	stir_shaken_acme_nonce_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);

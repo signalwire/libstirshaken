@@ -117,7 +117,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	stir_shaken_destroy_keys(&sp.keys.ec_key, &sp.keys.private_key, &sp.keys.public_key);
 	stir_shaken_destroy_http_request(&http_req);
 
-	return status;
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 int main(void)
