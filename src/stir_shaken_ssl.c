@@ -1887,6 +1887,24 @@ fail:
 	return NULL;
 }
 
+stir_shaken_status_t stir_shaken_load_x509_req_from_mem(stir_shaken_context_t *ss, X509_REQ **req, void *mem)
+{
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_OK;
+	BIO	*cbio = NULL;
+	
+	stir_shaken_clear_error(ss);
+
+	cbio = BIO_new_mem_buf(mem, -1);
+	if (!cbio) {
+		stir_shaken_set_error(ss, "(SSL) Failed to create BIO", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	*req = PEM_read_bio_X509_REQ(cbio, NULL, NULL, NULL);
+	BIO_free(cbio);
+	return ss_status;
+}
+
 EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const char *file)
 {
 	BIO			*in = NULL;

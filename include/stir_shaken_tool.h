@@ -64,6 +64,7 @@
 #define OPTION_NAME_TYPE		"type"
 #define OPTION_NAME_TYPE_SP		"SP"
 #define OPTION_NAME_TYPE_CA		"CA"
+#define OPTION_NAME_TYPE_PA		"PA"
 #define OPTION_NAME_HELP		"help"
 #define OPTION_NAME_SUBJECT_C	"subject_c"
 #define OPTION_NAME_SUBJECT_CN	"subject_cn"
@@ -132,9 +133,7 @@ struct ca {
 	char subject_c[STIR_SHAKEN_BUFLEN];
 	char subject_cn[STIR_SHAKEN_BUFLEN];
 	int serial;
-	int serial_sp;
 	int expiry_days;
-	int expiry_days_sp;
 	char file[STIR_SHAKEN_BUFLEN];
 } ca;
 

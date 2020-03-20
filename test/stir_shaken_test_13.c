@@ -98,10 +98,10 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	// }
 	//
 	// Obtained by running:
-	//		
-	//		stirshaken spc-token --privkey pa_priv.pem --url http://pa.com --spc 7889 --issuer_cn "SignalWire STI-PA" -f spc_token.txt --vvv
 	//
-	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cDovLzE5MC4xMDIuOTguMTk5L3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiNzg4OSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.DOKQh5NfwWX01oVNMUJn1ut1N6vElTo57DGJ1fdBqOe3LRCZ4Nr-bm7LZAV5VBGUFt9VyYqsDRZGQY30afRW2w";
+	//		./stirshaken spc-token --privkey test/ref/pa/pa.priv --url http://190.102.98.199/pa.pem --spc 7889 --issuer_cn "SignalWire STI-PA" -f test/ref/sp/spc_token.txt --vvv
+	//
+	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cDovLzE5MC4xMDIuOTguMTk5L3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiNzg4OSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.INBoiPqIRdsumUCKmxQFJquSccMz2BnHXYI7bR38R9MmkBd8vYoDBIJ2Ls3nd1PsyS64UyoYEUgnci6Txy7jEw";
 	http_req.url = strdup(url);
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req_ex(&ss, &http_req, kid, nonce, sp.csr.req, nb, na, spc, sp.keys.priv_raw, sp.keys.priv_raw_len, NULL, spc_token)) {

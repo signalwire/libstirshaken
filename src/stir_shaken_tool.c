@@ -13,7 +13,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s --%s %s --%s key --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY --%s ca.pem --%s csr.pem --%s TNAuthList(URI) -f certName\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE, OPTION_NAME_TYPE_SP, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY, OPTION_NAME_CA_CERT, OPTION_NAME_CSR, OPTION_NAME_TN_AUTH_LIST_URI);
 	fprintf(stderr, "\t\t %s -f certName\n", COMMAND_NAME_INSTALL_CERT);
 	fprintf(stderr, "\t\t %s --%s key --%s x5u_URL --%s CODE --%s CN -f spc_token_file_name\n", COMMAND_NAME_SPC_TOKEN, OPTION_NAME_PRIVKEY, OPTION_NAME_URL, OPTION_NAME_SPC, OPTION_NAME_ISSUER_CN);
-	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_CA, OPTION_NAME_PORT);
+	fprintf(stderr, "\t\t %s --%s 80 --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY --%s ca.pem --%s TNAuthList(URI)\n", COMMAND_NAME_CA, OPTION_NAME_PORT, OPTION_NAME_PRIVKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY, OPTION_NAME_CA_CERT, OPTION_NAME_TN_AUTH_LIST_URI);
 	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s --%s URL\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
 	fprintf(stderr, "\t\t %s --%s URL\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL);
@@ -145,6 +145,12 @@ int main(int argc, char *argv[])
 					options.command_cert_type = COMMAND_CERT_CA;
 					fprintf(stderr, "Certificate type is: CA\n");
 				
+				} else if (!strcmp(optarg, OPTION_NAME_TYPE_PA)) {
+					
+					options.command_cert_type = COMMAND_CERT_CA;
+					fprintf(stderr, "Certificate type is: PA\n");
+					// but as can be seen above, we're doing same as for CA
+
 				} else if (!strcmp(optarg, OPTION_NAME_TYPE_SP)) {
 
 					options.command_cert_type = COMMAND_CERT_SP;

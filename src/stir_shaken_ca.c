@@ -109,7 +109,7 @@ static void close_http_connection(struct mg_connection *nc, struct mbuf *io)
 	if (nc) nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
-static stir_shaken_ca_session_t* stir_shaken_ca_session_create(size_t sp_code, char *authz_challenge)
+static stir_shaken_ca_session_t* stir_shaken_ca_session_create(size_t sp_code, char *authz_challenge, void *csr_pem)
 {
 	stir_shaken_ca_session_t *session = malloc(sizeof(stir_shaken_ca_session_t));
 
@@ -120,6 +120,7 @@ static stir_shaken_ca_session_t* stir_shaken_ca_session_create(size_t sp_code, c
 	session->spc = sp_code;
 	session->authz_challenge = strdup(authz_challenge);
 	session->state = STI_CA_SESSION_STATE_INIT;
+	session->sp.csr.pem = strdup(csr_pem);
 	return session;
 }
 
@@ -304,7 +305,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 				}
 
 				// TODO queue challenge task/job
-				session = stir_shaken_ca_session_create(sp_code, authz_challenge);
+				session = stir_shaken_ca_session_create(sp_code, authz_challenge, csr);
 				if (!session) {
 					stir_shaken_set_error(&ca->ss, "Cannot create authorization session", STIR_SHAKEN_ERROR_ACME_SESSION_CREATE);
 					goto fail;
@@ -539,6 +540,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 					jwt_t *spc_token_jwt = NULL;
 					const char *cert_url = NULL;
 					char *expires = NULL, *validated = NULL;
+					stir_shaken_sp_t sp = { 0 };
 
 					if (!uri_has_secret) {
 						stir_shaken_set_error(&ca->ss, "Bad request, Secret is missing", STIR_SHAKEN_ERROR_ACME_SECRET_MISSING);
@@ -547,7 +549,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Handling response to authz challenge-details challenge\n");
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC is: %s\n", spc);
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Secret: %lu\n", secret);
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Secret: %llu\n", secret);
 
 					if (STI_CA_SESSION_STATE_AUTHZ_DETAILS_SENT != session->state) {
 						stir_shaken_set_error(&ca->ss, "Wrong authorization state", STIR_SHAKEN_ERROR_ACME_SESSION_WRONG_STATE);
@@ -651,7 +653,6 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 					}
 
 					if (session->authorized) {
-						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> OK (SP authorized)\n");
 						session->authz_polling_status = stir_shaken_acme_generate_auth_polling_status(&ca->ss, "valid", expires, validated, spc, session->authz_token, session->authz_url);
 					} else {
 						// set polling status to 'failed'
@@ -664,7 +665,47 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 						goto fail;
 					}
 
-					// TODO generate SP certificate and install for download
+					if (session->authorized) {
+
+						if (!ca->cert.x) {
+							fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "Loading CA certificate...\n");
+							ca->cert.x = stir_shaken_load_x509_from_file(&ca->ss, ca->cert_name);
+							if (!ca->cert.x) {
+								stir_shaken_set_error(&ca->ss, "Error loading CA certificate", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
+								goto fail;
+							}
+						}
+
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "Issuing STI certificate...\n");
+
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Loading CSR...\n");
+						if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_x509_req_from_mem(&ca->ss, &session->sp.csr.req, session->sp.csr.pem)) {
+							stir_shaken_set_error(&ca->ss, "Error loading CSR", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
+							goto fail;
+						}
+
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Generating cert...\n");
+						session->sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(&ca->ss, ca->cert.x, ca->keys.private_key, ca->issuer_c, ca->issuer_cn, session->sp.csr.req, ca->serial_sp, ca->expiry_days_sp, ca->tn_auth_list_uri);
+						if (!session->sp.cert.x) {
+							stir_shaken_set_error(&ca->ss, "Error creating SP certificate", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
+							goto fail;
+						}
+
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Configuring certificate...\n");
+						snprintf(session->sp.cert_name, sizeof(session->sp.cert_name), "sp_%s_%llu_%zu.pem", spc, secret, time(NULL));
+						if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_configure(&ca->ss, &session->sp.cert, session->sp.cert_name, NULL, NULL)) {
+							stir_shaken_set_error(&ca->ss, "Error configuring SP certificate", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
+							goto fail;
+						}
+
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t ->Saving certificate (%s)...\n", session->sp.cert_name);
+						if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(&ca->ss, session->sp.cert.x, session->sp.cert.name)) {
+							stir_shaken_set_error(&ca->ss, "Error saving SP certificate", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
+							goto fail;
+						}
+
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> [++] STI certificate ready for download\n");
+					}
 
 					if (jwt) {
 						jwt_free(jwt);

@@ -88,6 +88,7 @@ typedef enum stir_shaken_status {
 
 typedef struct stir_shaken_csr_s {
 	X509_REQ    *req;
+	char		*pem;
 } stir_shaken_csr_t;
 
 // Note:
@@ -603,6 +604,7 @@ EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const cha
 EVP_PKEY* stir_shaken_load_privkey_from_file(stir_shaken_context_t *ss, const char *file);
 stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem, size_t n);
 X509* stir_shaken_load_x509_from_file(stir_shaken_context_t *ss, const char *name);
+stir_shaken_status_t stir_shaken_load_x509_req_from_mem(stir_shaken_context_t *ss, X509_REQ **req, void *mem);
 EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const char *file);
 EVP_PKEY* stir_shaken_load_privkey_from_file(stir_shaken_context_t *ss, const char *file);
 stir_shaken_status_t stir_shaken_load_key_raw(stir_shaken_context_t *ss, const char *file, unsigned char *key_raw, uint32_t *key_raw_len);
@@ -856,39 +858,6 @@ void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize, 
 #define STI_CA_HTTP_GET		0
 #define STI_CA_HTTP_POST	1
 
-typedef struct stir_shaken_ca_session_s {
-	int state;
-	size_t spc;
-	unsigned long long authz_secret;
-	char *nonce;
-	char *authz_url;
-	char *authz_token;
-	char *authz_challenge;
-	char *authz_challenge_details;
-	char *authz_polling_status;
-	int	authorized;
-} stir_shaken_ca_session_t;
-
-typedef struct stir_shaken_ca_s {
-	stir_shaken_context_t ss;
-	stir_shaken_ssl_keys_t keys;
-    stir_shaken_cert_t cert;
-	char private_key_name[STIR_SHAKEN_BUFLEN];
-	char public_key_name[STIR_SHAKEN_BUFLEN];
-	char cert_name[STIR_SHAKEN_BUFLEN];
-	char cert_name_hashed[STIR_SHAKEN_BUFLEN];
-	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
-	uint16_t port;
-	stir_shaken_hash_entry_t* sessions[STI_CA_SESSIONS_MAX];
-} stir_shaken_ca_t;
-
-typedef struct stir_shaken_pa_s {
-	stir_shaken_ssl_keys_t keys;
-	char private_key_name[STIR_SHAKEN_BUFLEN];
-	char public_key_name[STIR_SHAKEN_BUFLEN];
-	uint16_t port;
-} stir_shaken_pa_t;
-
 typedef struct stir_shaken_sp_s {
 	uint32_t code;
 	char *kid;
@@ -904,6 +873,48 @@ typedef struct stir_shaken_sp_s {
 	char cert_name[STIR_SHAKEN_BUFLEN];
 	char spc_token[STIR_SHAKEN_BUFLEN];
 } stir_shaken_sp_t;
+
+typedef struct stir_shaken_ca_session_s {
+	int state;
+	size_t spc;
+	unsigned long long authz_secret;
+	char *nonce;
+	char *authz_url;
+	char *authz_token;
+	char *authz_challenge;
+	char *authz_challenge_details;
+	char *authz_polling_status;
+	int	authorized;
+	stir_shaken_sp_t sp;
+} stir_shaken_ca_session_t;
+
+typedef struct stir_shaken_ca_s {
+	stir_shaken_context_t ss;
+	stir_shaken_ssl_keys_t keys;
+    stir_shaken_cert_t cert;
+	char private_key_name[STIR_SHAKEN_BUFLEN];
+	char public_key_name[STIR_SHAKEN_BUFLEN];
+	char cert_name[STIR_SHAKEN_BUFLEN];
+	char cert_name_hashed[STIR_SHAKEN_BUFLEN];
+	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
+	char issuer_c[STIR_SHAKEN_BUFLEN];
+	char issuer_cn[STIR_SHAKEN_BUFLEN];
+	char subject_c[STIR_SHAKEN_BUFLEN];
+	char subject_cn[STIR_SHAKEN_BUFLEN];
+	int serial;
+	int serial_sp;
+	int expiry_days;
+	int expiry_days_sp;
+	uint16_t port;
+	stir_shaken_hash_entry_t* sessions[STI_CA_SESSIONS_MAX];
+} stir_shaken_ca_t;
+
+typedef struct stir_shaken_pa_s {
+	stir_shaken_ssl_keys_t keys;
+	char private_key_name[STIR_SHAKEN_BUFLEN];
+	char public_key_name[STIR_SHAKEN_BUFLEN];
+	uint16_t port;
+} stir_shaken_pa_t;
 
 void stir_shaken_ca_destroy(stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_shaken_ca_t *ca);

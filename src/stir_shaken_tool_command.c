@@ -26,10 +26,12 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		if (COMMAND_CERT_CA == options->command_cert_type) {
 
 			strncpy(ca->ca.cert_name, options->file, STIR_SHAKEN_BUFLEN);
-			strncpy(ca->issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
-			strncpy(ca->issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
 			strncpy(ca->ca.public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
 			strncpy(ca->ca.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
+			ca->ca.expiry_days = options->expiry_days;
+			ca->ca.serial = options->serial;
 			return COMMAND_CERT_CA;
 
 		} else if (COMMAND_CERT_SP == options->command_cert_type) {
@@ -39,9 +41,11 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 			strncpy(sp->sp.csr_name, options->csr_name, STIR_SHAKEN_BUFLEN);
 			strncpy(ca->ca.cert_name, options->ca_cert, STIR_SHAKEN_BUFLEN);
 			strncpy(sp->sp.cert_name, options->file, STIR_SHAKEN_BUFLEN);
-			strncpy(ca->issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
-			strncpy(ca->issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
 			strncpy(ca->ca.tn_auth_list_uri, options->tn_auth_list_uri, STIR_SHAKEN_BUFLEN);
+			ca->ca.expiry_days = options->expiry_days;
+			ca->ca.serial = options->serial;
 			return COMMAND_CERT_SP;
 
 		} else {
@@ -66,6 +70,13 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 	} else if (!strcmp(command_name, COMMAND_NAME_CA)) {
 
 		ca->ca.port = options->port;
+		strncpy(ca->ca.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
+		strncpy(ca->ca.cert_name, options->ca_cert, STIR_SHAKEN_BUFLEN);
+		strncpy(ca->ca.issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
+		strncpy(ca->ca.issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
+		strncpy(ca->ca.tn_auth_list_uri, options->tn_auth_list_uri, STIR_SHAKEN_BUFLEN);
+		ca->ca.expiry_days = options->expiry_days;
+		ca->ca.serial = options->serial;
 		return COMMAND_CA;
 
 	} else if (!strcmp(command_name, COMMAND_NAME_PA)) {
@@ -131,7 +142,7 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 		case COMMAND_CERT_CA:
 
 			if (stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.public_key_name)
-					|| stir_shaken_zstr(ca->issuer_c) || stir_shaken_zstr(ca->issuer_cn)) {
+					|| stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || ca->ca.expiry_days == 0 || ca->ca.serial == 0) {
 				goto fail;
 			}
 
@@ -145,7 +156,7 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 
 			if (stir_shaken_zstr(sp->sp.cert_name) || stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.public_key_name)
 					|| stir_shaken_zstr(sp->sp.csr_name) || stir_shaken_zstr(ca->ca.cert_name)
-					|| stir_shaken_zstr(ca->issuer_c) || stir_shaken_zstr(ca->issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri)) {
+					|| stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri) || ca->ca.expiry_days == 0 || ca->ca.serial == 0) {
 				goto fail;
 			}
 
@@ -175,6 +186,9 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 			break;
 
 		case COMMAND_CA:
+			if (stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri)) {
+				goto fail;
+			}
 			break;
 
 		case COMMAND_PA:
@@ -261,7 +275,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			}
 
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Generating cert...\n");
-			ca->ca.cert.x = stir_shaken_generate_x509_self_signed_ca_cert(ss, ca->ca.keys.private_key, ca->ca.keys.public_key, ca->issuer_c, ca->issuer_cn, ca->serial, ca->expiry_days);
+			ca->ca.cert.x = stir_shaken_generate_x509_self_signed_ca_cert(ss, ca->ca.keys.private_key, ca->ca.keys.public_key, ca->ca.issuer_c, ca->ca.issuer_cn, ca->ca.serial, ca->ca.expiry_days);
 			if (!ca->ca.cert.x) {
 				goto fail;
 			}
@@ -307,7 +321,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			}
 
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Generating cert...\n");
-			sp->sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(ss, ca->ca.cert.x, ca->ca.keys.private_key, ca->issuer_c, ca->issuer_cn, sp->sp.csr.req, ca->serial_sp, ca->expiry_days_sp, ca->ca.tn_auth_list_uri);
+			sp->sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(ss, ca->ca.cert.x, ca->ca.keys.private_key, ca->ca.issuer_c, ca->ca.issuer_cn, sp->sp.csr.req, ca->ca.serial, ca->ca.expiry_days, ca->ca.tn_auth_list_uri);
 			if (!sp->sp.cert.x) {
 				goto fail;
 			}
@@ -358,6 +372,17 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			break;
 
 		case COMMAND_CA:
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading keys...\n");
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_keys(ss, &ca->ca.keys.private_key, NULL, ca->ca.private_key_name, NULL, NULL, NULL)) {
+				goto fail;
+			}
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading CA certificate...\n");
+			ca->ca.cert.x = stir_shaken_load_x509_from_file(ss, ca->ca.cert_name);
+			if (!ca->ca.cert.x) {
+				goto fail;
+			}
 
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Starting CA service...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_run_ca_service(ss, &ca->ca)) {
