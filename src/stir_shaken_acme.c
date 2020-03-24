@@ -203,7 +203,7 @@ exit:
  *	"signature": "RZPOnYoPs1PhjszF...-nh6X1qtOFPB519I"
  * }
 */
-char* stir_shaken_as_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json)
+char* stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json)
 {
 	char	*out = NULL;
 	jwt_t	*jwt = NULL;
