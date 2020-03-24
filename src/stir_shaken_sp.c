@@ -181,3 +181,17 @@ exit:
 	if (jwt_decoded) stir_shaken_free_jwt_str(jwt_decoded);
 	return ss_status;
 }
+
+void stir_shaken_sp_destroy(stir_shaken_sp_t *sp)
+{
+	if (sp) {
+		stir_shaken_destroy_csr(&sp->csr);
+		stir_shaken_destroy_cert(&sp->cert);
+		stir_shaken_destroy_keys(&sp->keys);
+		if (sp->kid) free(sp->kid);
+		if (sp->nonce) free(sp->nonce);
+		if (sp->nb) free(sp->nb);
+		if (sp->na) free(sp->na);
+		memset(sp, 0, sizeof(*sp));
+	}
+}

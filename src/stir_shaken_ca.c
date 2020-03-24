@@ -2,10 +2,13 @@
 #include "mongoose.h"
 
 
+pthread_mutex_t big_fat_lock = PTHREAD_MUTEX_INITIALIZER;
+
 void stir_shaken_ca_destroy(stir_shaken_ca_t *ca)
 {
 	if (!ca) return;
-	stir_shaken_hash_destroy(ca->sessions, STI_CA_SESSIONS_MAX, STIR_SHAKEN_HASH_TYPE_SHALLOW);	
+	stir_shaken_hash_destroy(ca->sessions, STI_CA_SESSIONS_MAX, STIR_SHAKEN_HASH_TYPE_SHALLOW);
+	stir_shaken_destroy_keys(&ca->keys);
 }
 
 static int ca_http_method(struct http_message *m)
@@ -81,6 +84,7 @@ static void unregister_handlers(void)
 		if (e->uri) {
 			free(e->uri);
 			e->uri = NULL;
+			memset(e, 0, sizeof(*e));
 		}
 		++i;
 	}
@@ -121,6 +125,7 @@ static stir_shaken_ca_session_t* stir_shaken_ca_session_create(size_t sp_code, c
 	session->authz_challenge = strdup(authz_challenge);
 	session->state = STI_CA_SESSION_STATE_INIT;
 	session->sp.csr.pem = strdup(csr_pem);
+	session->ts = time(NULL);
 	return session;
 }
 
@@ -144,11 +149,24 @@ static void stir_shaken_ca_session_dctor(void *o)
 		free(session->authz_challenge);
 		session->authz_challenge = NULL;
 	}
+
+	stir_shaken_sp_destroy(&session->sp);
+
 	if (session->authz_challenge_details) {
 		free(session->authz_challenge_details);
 		session->authz_challenge_details = NULL;
 	}
+
+	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "-> Session %zu/%llu deleted ;~\n", session->spc, session->authz_secret);
+
+	memset(session, 0, sizeof(*session));
 	return;
+}
+
+stir_shaken_status_t ca_session_expired(stir_shaken_ca_session_t *session)
+{
+	if (!session) return STIR_SHAKEN_STATUS_TERM;
+	return (stir_shaken_time_elapsed_s(session->ts, time(NULL)) > STI_CA_SESSION_EXPIRY_SECONDS ? STIR_SHAKEN_STATUS_OK : STIR_SHAKEN_STATUS_FALSE);
 }
 
 #define CA_REQUIRE_SESSION_STATE_(required, actual) if ((required) != (actual)) { \
@@ -296,9 +314,20 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
 					if (e) {
 
-						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Authorization already in progress...\n");
-						stir_shaken_set_error(&ca->ss, "Bad request, authorization already in progress", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
-						goto fail;
+						session = e->data;
+						if (!session) {
+							stir_shaken_set_error(&ca->ss, "Oops, session not set", STIR_SHAKEN_ERROR_ACME_SESSION_NOT_SET);
+							goto fail;
+						}
+
+						if (STIR_SHAKEN_STATUS_OK != ca_session_expired(session)) {
+							fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Authorization already in progress...\n");
+							stir_shaken_set_error(&ca->ss, "Bad request, authorization already in progress", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
+							goto fail;
+						}
+
+						// expired, remove
+						stir_shaken_hash_entry_remove(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
 					}
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Requesting authorization...\n");
@@ -321,7 +350,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 						goto fail;
 					}
 
-					e = stir_shaken_hash_entry_add(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, session, sizeof(*session), stir_shaken_ca_session_dctor, STIR_SHAKEN_HASH_TYPE_SHALLOW);
+					e = stir_shaken_hash_entry_add(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, session, sizeof(*session), stir_shaken_ca_session_dctor, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
 					if (!e) {
 						stir_shaken_set_error(&ca->ss, "Oops. Failed to queue new session", STIR_SHAKEN_ERROR_ACME_SESSION_ENQUEUE);
 						goto fail;
@@ -406,6 +435,8 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(cert), cert);
 
 					session->state = STI_CA_SESSION_STATE_DONE;
+
+					stir_shaken_hash_entry_remove(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
 
 				}
 
@@ -855,6 +886,8 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	struct mg_str api_url = mg_mk_str(STI_CA_ACME_API_URL);
 
+
+	pthread_mutex_lock(&big_fat_lock);
 	
 	if (!ca) {
 		stir_shaken_set_error(&ca->ss, "Bad params", STIR_SHAKEN_ERROR_ACME);
@@ -932,6 +965,9 @@ exit:
 		fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Error. %s\n", error_desc);
 		stir_shaken_clear_error(&ca->ss);
 	}
+
+	pthread_mutex_unlock(&big_fat_lock);
+
 	return;
 }
 

@@ -152,7 +152,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_authenticate_keep_passport(void)
 	X509_free(cert.x);
 	cert.x = NULL;
 	
-	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
+	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
     
     return status;
 }

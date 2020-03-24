@@ -1,25 +1,9 @@
 #include <stir_shaken.h>
 
+
 const char *path = "./test/run";
 
-
-struct sp {
-	stir_shaken_ssl_keys_t keys;
-	uint32_t code;
-	stir_shaken_csr_t csr;
-	stir_shaken_cert_t cert;
-
-	char private_key_name[300];
-	char public_key_name[300];
-	char csr_name[300];
-	char csr_text_name[300];
-	char cert_name[300];
-	char cert_text_name[300];
-	const char *subject_c;
-	const char *subject_cn;
-	int serial;
-	int expiry_days;
-} sp;
+stir_shaken_sp_t sp;
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
 	if (stir_shaken_is_error_set(&ss)) { \
@@ -47,9 +31,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	sprintf(sp.private_key_name, "%s%c%s", path, '/', "13_sp_private_key.pem");
 	sprintf(sp.public_key_name, "%s%c%s", path, '/', "13_sp_public_key.pem");
 	sprintf(sp.csr_name, "%s%c%s", path, '/', "13_sp_csr.pem");
-	sprintf(sp.csr_text_name, "%s%c%s", path, '/', "13_sp_csr_text.pem");
 	sprintf(sp.cert_name, "%s%c%s", path, '/', "13_sp_cert.crt");
-	sprintf(sp.cert_text_name, "%s%c%s", path, '/', "13_sp_cert_text.crt");
 
 
 	// 1
@@ -69,8 +51,8 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	printf("SP: Create CSR\n");
 	sp.code = 7777;
 	sprintf(spc, "%d", sp.code);
-	sp.subject_c = "US";
-	sp.subject_cn = "NewSTI-SP, But Absolutely Fine Inc.";
+	snprintf(sp.subject_c, STIR_SHAKEN_BUFLEN, "US");
+	snprintf(sp.subject_cn, STIR_SHAKEN_BUFLEN, "NewSTI-SP, But Absolutely Fine Inc.");
 
 	status = stir_shaken_generate_csr(&ss, sp.code, &sp.csr.req, sp.keys.private_key, sp.keys.public_key, sp.subject_c, sp.subject_cn);
 	PRINT_SHAKEN_ERROR_IF_SET
@@ -112,9 +94,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 
 
 	// SP cleanup	
-	stir_shaken_destroy_cert(&sp.cert);
-	stir_shaken_destroy_csr(&sp.csr.req);
-	stir_shaken_destroy_keys(&sp.keys.ec_key, &sp.keys.private_key, &sp.keys.public_key);
+	stir_shaken_sp_destroy(&sp);
 	stir_shaken_destroy_http_request(&http_req);
 
 	return STIR_SHAKEN_STATUS_OK;

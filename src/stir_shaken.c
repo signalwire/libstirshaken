@@ -477,7 +477,7 @@ stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, 
 	memset(entry, 0, sizeof(*entry));
 
 	entry->key = key;
-	if (hash_copy_type == STIR_SHAKEN_HASH_TYPE_SHALLOW) {
+	if ((hash_copy_type == STIR_SHAKEN_HASH_TYPE_SHALLOW) || (hash_copy_type == STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE)) {
 		entry->data = data;
 	} else {
 		if (!(entry->data = malloc(datalen))) {
@@ -496,7 +496,7 @@ void stir_shaken_hash_entry_destroy(stir_shaken_hash_entry_t *e, int hash_copy_t
 {
 	if (!e) return;
 	if (e->dctor) {
-		e->dctor(e);
+		e->dctor(e->data);
 		e->dctor = NULL;
 	}
 	if (e->data) {
@@ -596,6 +596,12 @@ void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize, 
 		++idx;
 	}
 	memset(hash, 0, sizeof(stir_shaken_hash_entry_t*) * hashsize);
+}
+
+time_t stir_shaken_time_elapsed_s(time_t ts, time_t now)
+{
+	if (ts <= now) return 0;
+	return ts - now;
 }
 
 stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line)

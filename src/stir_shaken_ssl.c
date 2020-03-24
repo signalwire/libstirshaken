@@ -486,7 +486,7 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-void stir_shaken_destroy_csr(X509_REQ **csr_req)
+void stir_shaken_destroy_csr_req(X509_REQ **csr_req)
 {
 	if (csr_req) {
 	
@@ -496,6 +496,17 @@ void stir_shaken_destroy_csr(X509_REQ **csr_req)
 		}
 
 		*csr_req = NULL;
+	}
+}
+
+void stir_shaken_destroy_csr(stir_shaken_csr_t *csr)
+{
+	if (csr) {
+		stir_shaken_destroy_csr_req(&csr->req);
+		if (csr->pem) {
+			free(csr->pem);
+		}
+		memset(csr, 0, sizeof(*csr));
 	}
 }
 
@@ -2280,7 +2291,7 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-void stir_shaken_destroy_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub)
+void stir_shaken_destroy_keys_ex(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub)
 {
 	if (eck && *eck) {
 		EC_KEY_free(*eck);
@@ -2298,6 +2309,14 @@ void stir_shaken_destroy_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub)
     EVP_cleanup();
 	CRYPTO_cleanup_all_ex_data();
 	ENGINE_cleanup();
+}
+
+void stir_shaken_destroy_keys(stir_shaken_ssl_keys_t *keys)
+{
+	if (keys) {
+		stir_shaken_destroy_keys_ex(&keys->ec_key, &keys->private_key, &keys->public_key);
+		memset(keys, 0, sizeof(*keys));
+	}
 }
 
 /**

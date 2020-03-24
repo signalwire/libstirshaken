@@ -133,7 +133,7 @@ stir_shaken_status_t stir_shaken_unit_test_call_authorization(void)
 	free(sih); sih = NULL;
 	
 	pthread_mutex_lock(&stir_shaken_globals.mutex);
-	stir_shaken_destroy_keys(&ec_key, &private_key, &public_key);
+	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
 	pthread_mutex_unlock(&stir_shaken_globals.mutex);
 
 	return status;

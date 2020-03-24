@@ -539,7 +539,8 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name, unsigned char *priv_raw, uint32_t *priv_raw_len);
 
 // Call SSL destructors and release memory used for SSL keys.
-void stir_shaken_destroy_keys(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub);
+void stir_shaken_destroy_keys_ex(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub);
+void stir_shaken_destroy_keys(stir_shaken_ssl_keys_t *keys);
 
 X509_REQ* stir_shaken_load_x509_req_from_file(stir_shaken_context_t *ss, const char *name);
 X509_REQ* stir_shaken_generate_x509_req(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn);
@@ -547,7 +548,8 @@ X509_REQ* stir_shaken_load_x509_req_from_pem(stir_shaken_context_t *ss, char *pe
 stir_shaken_status_t stir_shaken_sign_x509_req(stir_shaken_context_t *ss, X509_REQ *req, EVP_PKEY *private_key);
 stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn);
 stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *csr_req, const char *csr_full_name);
-void stir_shaken_destroy_csr(X509_REQ **csr_req);
+void stir_shaken_destroy_csr_req(X509_REQ **csr_req);
+void stir_shaken_destroy_csr(stir_shaken_csr_t *csr);
 void*					stir_shaken_x509_req_get_tn_authlist_extension(stir_shaken_context_t *ss, X509_REQ *req);
 const unsigned char*	stir_shaken_x509_req_get_tn_authlist_extension_value(stir_shaken_context_t *ss, X509_REQ *req);
 
@@ -850,7 +852,10 @@ stir_shaken_status_t stir_shaken_hash_entry_remove(stir_shaken_hash_entry_t **ha
 void stir_shaken_hash_destroy_branch(stir_shaken_hash_entry_t *entry, int hash_copy_type);
 void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize, int hash_copy_type);
 
-#define STI_CA_SESSIONS_MAX 1000
+#define STI_CA_SESSION_EXPIRY_SECONDS 30
+
+time_t stir_shaken_time_elapsed_s(time_t ts, time_t now);
+
 #define STI_CA_SESSIONS_MAX 1000
 
 #define STI_CA_SESSION_STATE_INIT				0
@@ -863,6 +868,8 @@ void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize, 
 #define STI_CA_HTTP_POST	1
 
 typedef struct stir_shaken_sp_s {
+	char subject_c[STIR_SHAKEN_BUFLEN];
+	char subject_cn[STIR_SHAKEN_BUFLEN];
 	uint32_t code;
 	char *kid;
 	char *nonce;
@@ -890,6 +897,7 @@ typedef struct stir_shaken_ca_session_s {
 	char *authz_polling_status;
 	int	authorized;
 	stir_shaken_sp_t sp;
+	size_t ts;
 } stir_shaken_ca_session_t;
 
 typedef struct stir_shaken_ca_s {
@@ -923,6 +931,8 @@ typedef struct stir_shaken_pa_s {
 void stir_shaken_ca_destroy(stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_shaken_pa_t *pa);
+
+void stir_shaken_sp_destroy(stir_shaken_sp_t *sp);
 
 #define STI_CA_ACME_ADDR				"localhost"
 #define STI_CA_ACME_API_URL				"/sti-ca/acme"
