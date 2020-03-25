@@ -14,7 +14,7 @@ stirshaken_SOURCES = src/stir_shaken_tool_command.c src/stir_shaken_tool.c
 stirshaken_CFLAGS = -Iinclude
 stirshaken_LDFLAGS = -lstirshaken
 
-LIBS += -lcjson -lcurl -lcrypto -lssl -ljwt -pthread
+LIBS += -lcjson -lcurl -lcrypto -lssl -ljwt -luuid -pthread
 
 stir_shaken_test_1_SOURCES = test/stir_shaken_test_1.c
 stir_shaken_test_1_CFLAGS = -Iinclude

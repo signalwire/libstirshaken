@@ -40,7 +40,7 @@ static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nm
 	memcpy(header, ptr, realsize);
 	header[realsize] = '\0';
 
-	http_req->rx_headers = curl_slist_append(http_req->rx_headers, header);
+	http_req->response.headers = curl_slist_append(http_req->response.headers, header);
 
 	return realsize;
 }
@@ -211,7 +211,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 
 	curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &http_req->response.code);
 	if (http_req->response.code != 200 && http_req->response.code != 201) {
-		sprintf(http_req->response.error, "HTTP response code: %d (%s%s), HTTP response phrase: %s", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " [Bad URL or API call not handled?]" : "", http_req->rx_headers && http_req->rx_headers->data ? http_req->rx_headers->data : "");
+		sprintf(http_req->response.error, "HTTP response code: %d (%s%s), HTTP response phrase: %s", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " [Bad URL or API call not handled?]" : "", http_req->response.headers && http_req->response.headers->data ? http_req->response.headers->data : "");
 	}
 	curl_easy_cleanup(curl_handle);
 	curl_global_cleanup();
@@ -246,9 +246,9 @@ void stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req)
 		http_req->tx_headers = NULL;
 	}
 
-	if (http_req->rx_headers) {
-		curl_slist_free_all(http_req->rx_headers);
-		http_req->rx_headers = NULL;
+	if (http_req->response.headers) {
+		curl_slist_free_all(http_req->response.headers);
+		http_req->response.headers = NULL;
 	}
 	memset(http_req, 0, sizeof(*http_req));
 }

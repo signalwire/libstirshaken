@@ -16,6 +16,9 @@
 // For JSON Web Token, used to implement PASSporT
 #include <jwt.h>
 
+// For nonce (CA)
+#include <uuid/uuid.h>
+
 #include <pthread.h>
 
 #include <openssl/crypto.h>
@@ -331,7 +334,6 @@ typedef struct stir_shaken_http_req_s {
 	stir_shaken_http_req_type_t	type;
 	const char					*data;
 	curl_slist_t				*tx_headers;
-	curl_slist_t				*rx_headers;
 	stir_shaken_http_req_content_type_t content_type;
 	stir_shaken_http_response_t	response;
 } stir_shaken_http_req_t;
@@ -938,6 +940,7 @@ void stir_shaken_sp_destroy(stir_shaken_sp_t *sp);
 #define STI_CA_ACME_API_URL				"/sti-ca/acme"
 #define STI_CA_ACME_CERT_REQ_URL		"/sti-ca/acme/cert"
 #define STI_CA_ACME_AUTHZ_URL			"/sti-ca/acme/authz"
+#define STI_CA_ACME_NONCE_REQ_URL		"/sti-ca/acme/nonce"
 #define STI_CA_ACME_NEW_ACCOUNT_URL		"/sti-ca/acme/account"
 
 // TEST

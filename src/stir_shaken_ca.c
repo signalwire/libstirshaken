@@ -13,8 +13,20 @@ void stir_shaken_ca_destroy(stir_shaken_ca_t *ca)
 
 static int ca_http_method(struct http_message *m)
 {
-	if (!m) return 0;
-	return (strncmp(m->method.p, "GET", 3) ? STIR_SHAKEN_HTTP_REQ_TYPE_POST : STIR_SHAKEN_HTTP_REQ_TYPE_GET);
+	if (!m) return 13;
+	if (!strncmp(m->method.p, "GET", 3)) {
+		return STIR_SHAKEN_HTTP_REQ_TYPE_GET;
+	}
+	if (!strncmp(m->method.p, "POST", 4)) {
+		return STIR_SHAKEN_HTTP_REQ_TYPE_POST;
+	}
+	if (!strncmp(m->method.p, "HEAD", 4)) {
+		return STIR_SHAKEN_HTTP_REQ_TYPE_HEAD;
+	}
+	if (!strncmp(m->method.p, "PUT", 3)) {
+		return STIR_SHAKEN_HTTP_REQ_TYPE_PUT;
+	}
+	return 1000;
 }
 
 typedef void handler_t(struct mg_connection *nc, int event, void *hm, void *d);
@@ -195,6 +207,78 @@ static void ca_handle_api_account(struct mg_connection *nc, int event, void *hm,
 		stir_shaken_set_error(&ca->ss, "Bad request, only POST supported for this API", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
 		//goto fail;
 	}
+	return;
+}
+
+static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, void *d)
+{
+	struct http_message *m = (struct http_message*) hm;
+	struct mbuf *io = NULL;
+	stir_shaken_context_t ss = { 0 };
+	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
+	struct mg_str nonce_api_url = mg_mk_str(STI_CA_ACME_NONCE_REQ_URL);
+	uuid_t uuid = { 0 };
+	char nonce[STIR_SHAKEN_BUFLEN] = { 0 };
+	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST; 
+	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
+	const char *error_desc = NULL;
+
+
+	if (!m || !nc || !ca) {
+		stir_shaken_set_error(&ca->ss, "Bad params, missing HTTP message, connection, and/or ca", STIR_SHAKEN_ERROR_ACME);
+		goto fail;
+	}
+
+	http_method = ca_http_method(m);
+	io = &nc->recv_mbuf;
+
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call:\n%s\n", http_method, STI_CA_ACME_NONCE_REQ_URL);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.p);
+
+
+	switch (event) {
+
+		case MG_EV_HTTP_REQUEST:
+
+			{
+				if (http_method != STIR_SHAKEN_HTTP_REQ_TYPE_HEAD && http_method != STIR_SHAKEN_HTTP_REQ_TYPE_GET) {
+					stir_shaken_set_error(&ca->ss, "Bad request, only HEAD or GET supported for this API", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
+					goto fail;
+				}
+
+				uuid_generate_random(uuid);
+				uuid_unparse_upper(uuid, nonce);
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Sending nonce:\n%s\n", nonce);
+
+				mg_printf(nc, "HTTP/1.1 200 OK\r\nReplay-Nonce: %s\r\nCache-Control: no-store\r\n\r\n", nonce);
+
+
+				close_http_connection(nc, io);
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
+
+				break;
+
+				case MG_EV_RECV:
+				break;
+
+				default:
+				break;
+			}
+	}
+
+	stir_shaken_clear_error(&ca->ss);
+	return;
+
+fail:
+
+	if (ca && stir_shaken_is_error_set(&ca->ss)) {
+		error_desc = stir_shaken_get_error(&ca->ss, &error);
+	}
+	close_http_connection_with_error(nc, io, error_desc);
+
+	stir_shaken_set_error(&ca->ss, "API NONCE request failed", STIR_SHAKEN_ERROR_ACME);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== FAIL\n");
 	return;
 }
 
@@ -929,7 +1013,8 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 						}
 
 						close_http_connection_with_error(nc, io, error_desc);
-						stir_shaken_set_error(&ca->ss, "URL is not handled by ACME API. Closed HTTP connection", STIR_SHAKEN_ERROR_ACME);
+						snprintf(err_buf, STIR_SHAKEN_BUFLEN, "URL (%s) is not handled by ACME API. Closed HTTP connection", m->uri.p);
+						stir_shaken_set_error(&ca->ss, err_buf, STIR_SHAKEN_ERROR_ACME);
 						break;
 					}
 
@@ -1002,6 +1087,7 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 	register_uri_handler(STI_CA_ACME_NEW_ACCOUNT_URL, ca_handle_api_account, 0);
 	register_uri_handler(STI_CA_ACME_CERT_REQ_URL, ca_handle_api_cert, 1);
 	register_uri_handler(STI_CA_ACME_AUTHZ_URL, ca_handle_api_authz, 1);
+	register_uri_handler(STI_CA_ACME_NONCE_REQ_URL, ca_handle_api_nonce, 0);
 
 	mg_set_protocol_http_websocket(nc);
 
