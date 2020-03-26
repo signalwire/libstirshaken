@@ -7,7 +7,7 @@ This will install dependencies as well as tools needed to make build, and will b
 
 Dependencies:
 
-LIBS += -lcjson -lcurl -lcrypto -lssl -ljwt -pthread
+LIBS += -lcjson -lcurl -lcrypto -lssl -ljwt -luuid -pthread
 cJSON: https://github.com/DaveGamble/cJSON
 CURL: https://github.com/curl/curl
 OpenSSL: https://github.com/openssl/openssl

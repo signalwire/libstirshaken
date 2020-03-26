@@ -839,6 +839,12 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Cert URL (x5u) is:\n%s\n", cert_url);
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Verifying SPC token..\n");
 
+                    // TODO  check URL, if it's URL this CA is running, then do not make CURL call, serve from mem
+                    if (strstr(cert_url, "localhost") || strstr(cert_url, "190.102.98.199")) {
+						stir_shaken_set_error(&ca->ss, "Bad URL for PA cert (localhost and 190.102.98.199 are forbidden)", STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID);
+                        goto authorization_result;
+                    }
+
 					if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(&ca->ss, spc_token)) {
 						stir_shaken_set_error(&ca->ss, "SPC token did not pass verification", STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID);
 						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [-] SP failed authorization\n");

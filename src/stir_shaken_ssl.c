@@ -259,7 +259,7 @@ X509_REQ* stir_shaken_load_x509_req_from_file(stir_shaken_context_t *ss, const c
 
 	fp = fopen(name, "r");
 	if (!fp) {
-		sprintf(err_buf, "Failed to open file %s", name);
+		sprintf(err_buf, "Failed to open file %s. Does it exist?", name);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
@@ -307,7 +307,7 @@ X509_REQ* stir_shaken_load_x509_req_from_pem(stir_shaken_context_t *ss, char *pe
 	return req;
 }
 
-X509_REQ* stir_shaken_generate_x509_req(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn)
+X509_REQ* stir_shaken_generate_x509_req(stir_shaken_context_t *ss, const char *subject_c, const char *subject_cn)
 {
 	X509_REQ                *req = NULL;
 	X509_NAME				*tmp = NULL;
@@ -412,7 +412,7 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 	stir_shaken_clear_error(ss);
 
 
-	req = stir_shaken_generate_x509_req(ss, private_key, public_key, subject_c, subject_cn);
+	req = stir_shaken_generate_x509_req(ss, subject_c, subject_cn);
 	if (!req) {
 		stir_shaken_set_error(ss, "Generate CSR: SSL error while creating X509 CSR req", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
@@ -423,10 +423,12 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 		goto fail;
 	}
 
-	if (!X509_REQ_set_pubkey(req, public_key)) {
-		stir_shaken_set_error(ss, "Generate CSR: SSL error while setting EVP_KEY on CSR", STIR_SHAKEN_ERROR_SSL);
-		goto fail;
-	}
+    if (public_key) {
+        if (!X509_REQ_set_pubkey(req, public_key)) {
+            stir_shaken_set_error(ss, "Generate CSR: SSL error while setting EVP_KEY on CSR", STIR_SHAKEN_ERROR_SSL);
+            goto fail;
+        }
+    }
 	
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sign_x509_req(ss, req, private_key)) {
 		stir_shaken_set_error_if_clear(ss, "Failed to sign X509 CSR", STIR_SHAKEN_ERROR_GENERAL);
@@ -1879,7 +1881,7 @@ X509* stir_shaken_load_x509_from_file(stir_shaken_context_t *ss, const char *nam
 
 	fp = fopen(name, "r");
 	if (!fp) {
-		sprintf(err_buf, "Failed to open file %s", name);
+		sprintf(err_buf, "Failed to open file %s. Does it exist?", name);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}

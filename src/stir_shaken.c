@@ -601,7 +601,7 @@ void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize, 
 time_t stir_shaken_time_elapsed_s(time_t ts, time_t now)
 {
 	if (ts >= now) return 0;
-	return ts - now;
+	return now - ts;
 }
 
 stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line)
