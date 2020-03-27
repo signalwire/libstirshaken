@@ -305,7 +305,11 @@ char* stir_shaken_get_dir_path(const char *path)
 	if (!(p1 = strdup(path))) return NULL;
 	dname = dirname(p1);
 
-	if (!(p2 = strdup(path))) return NULL;
+	if (!(p2 = strdup(path))) {
+        free(p1);
+        return NULL;
+    }
+
 	bname = basename(p2);
 
 	len = strlen(dname) + 1 + strlen(bname) + 1 + 1;
@@ -339,6 +343,12 @@ char* stir_shaken_make_complete_path(char *buf, int buflen, const char *dir, con
 
 	// TODO extend for multichar path separators
 	return stir_shaken_remove_multiple_adjacent(buf, *path_separator);
+}
+
+const char* stir_shaken_path_to_base_file_name(const char *path)
+{
+    char *p = NULL;
+    return ((p = strrchr(path, '/')) ? ++p : path);
 }
 
 // Return 1 if string is NULL or empty (0-length)
