@@ -54,6 +54,8 @@ static void stir_shaken_deinit(void)
 
 void stir_shaken_do_deinit(void)
 {
+	pthread_mutex_lock(&stir_shaken_globals.mutex);
+
 	if (stir_shaken_globals.initialised == 0) {
 		return;
 	}
