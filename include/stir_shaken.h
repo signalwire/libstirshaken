@@ -936,7 +936,7 @@ stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_
 
 void stir_shaken_sp_destroy(stir_shaken_sp_t *sp);
 
-#define STI_CA_ACME_ADDR				"localhost"
+#define STI_CA_ACME_ADDR				"190.102.98.199"
 #define STI_CA_ACME_API_URL				"/sti-ca/acme"
 #define STI_CA_ACME_CERT_REQ_URL		"/sti-ca/acme/cert"
 #define STI_CA_ACME_AUTHZ_URL			"/sti-ca/acme/authz"
