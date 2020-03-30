@@ -919,7 +919,6 @@ typedef struct stir_shaken_ca_s {
 	int serial;
 	int serial_sp;
 	int expiry_days;
-	int expiry_days_sp;
 	uint16_t port;
 	stir_shaken_hash_entry_t* sessions[STI_CA_SESSIONS_MAX];
 } stir_shaken_ca_t;

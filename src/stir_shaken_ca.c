@@ -894,7 +894,7 @@ authorization_result:
 						}
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Generating cert...\n");
-						session->sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(&ca->ss, ca->cert.x, ca->keys.private_key, ca->issuer_c, ca->issuer_cn, session->sp.csr.req, ca->serial_sp, ca->expiry_days_sp, ca->tn_auth_list_uri);
+						session->sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(&ca->ss, ca->cert.x, ca->keys.private_key, ca->issuer_c, ca->issuer_cn, session->sp.csr.req, ca->serial_sp, ca->expiry_days, ca->tn_auth_list_uri);
 						if (!session->sp.cert.x) {
 							stir_shaken_set_error(&ca->ss, "Error creating SP certificate", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
 							goto fail;
