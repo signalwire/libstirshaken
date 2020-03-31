@@ -38,6 +38,10 @@ openssl req -in csr.pem -text -noout
 openssl x509 -in sp.pem -text -noout
 openssl x509 -hash -noout -in ca.pem
 
+openssl pkey -in priv.pem -pubout -outform pem | sha256sum
+openssl x509 -in cert.pem -pubkey -noout -outform pem | sha256sum
+openssl req -in csr.pem -pubkey -noout -outform pem | sha256sum
+
 ./stirshaken keys --privkey priv.key --pubkey pub.key
 ./stirshaken csr --privkey priv.key --pubkey pub.key --spc 12 --subject_c US --subject_cn "New SP" -f csr.pem
 sudo ./stirshaken ca --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "New CA" --serial 1 --expiry 1000 --ca_cert test/ref/ca/ca.pem --uri http://190.102.98.199/api --v
