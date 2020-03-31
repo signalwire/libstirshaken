@@ -36,6 +36,7 @@ stirshaken commandline tool
 
 openssl req -in csr.pem -text -noout
 openssl x509 -in sp.pem -text -noout
+openssl x509 -hash -noout -in ca.pem
 
 ./stirshaken keys --privkey priv.key --pubkey pub.key
 ./stirshaken csr --privkey priv.key --pubkey pub.key --spc 12 --subject_c US --subject_cn "New SP" -f csr.pem

@@ -2966,7 +2966,7 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char 
 	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "Using TNAuthList extension with nid %d\n", stir_shaken_globals.tn_authlist_nid);
 
 	// TODO pass CAs list and revocation list
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_init_cert_store(ss, NULL, ca_dir, NULL, crl_dir)) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_init_cert_store(ss, NULL, ca_dir, NULL, NULL)) {
 		sprintf(err_buf, "Cannot init x509 cert store (with: CA list: %s, CRL: %s", ca_dir ? ca_dir : "(null)", crl_dir ? crl_dir : "(null)");
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CERT_STORE); 
 		goto fail;
