@@ -55,7 +55,7 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 
 	} else if (!strcmp(command_name, COMMAND_NAME_INSTALL_CERT)) {
 
-		fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n\nConfiguring install CA certificate command...\n\n");
+		strncpy(ca->ca.cert_name, options->file, STIR_SHAKEN_BUFLEN);
 		return COMMAND_INSTALL_CERT;
 
 	} else if (!strcmp(command_name, COMMAND_NAME_SPC_TOKEN)) {
@@ -168,6 +168,14 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 			break;
 
 		case COMMAND_INSTALL_CERT:
+			if (stir_shaken_zstr(ca->ca.cert_name)) {
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(ca->ca.cert_name)) {
+				fprintf(stderr, "ERROR: File %s does not exist.\n\n", ca->ca.cert_name);
+				goto fail;
+			}
 			break;
 		
 		case COMMAND_SPC_TOKEN:
@@ -339,6 +347,27 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			break;
 
 		case COMMAND_INSTALL_CERT:
+			
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading certificate...\n");
+			ca->ca.cert.x = stir_shaken_load_x509_from_file(ss, ca->ca.cert_name);
+			if (!ca->ca.cert.x) {
+				goto fail;
+			}
+
+			hash = stir_shaken_get_cert_name_hashed(ss, ca->ca.cert.x);
+			if (hash == 0) {
+				goto fail;
+			}
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Certificate name hash is %lu\n", hash);
+			stir_shaken_cert_name_hashed_2_string(hash, hashstr, hashstrlen);
+			sprintf(ca->ca.cert_name_hashed, "%s.0", hashstr);
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Certificate name hashed is %s\n", ca->ca.cert_name_hashed);
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving certificate as %s...\n", ca->ca.cert_name_hashed);
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, ca->ca.cert.x, ca->ca.cert_name_hashed)) {
+				goto fail;
+			}
 			break;
 		
 		case COMMAND_SPC_TOKEN:
