@@ -163,7 +163,7 @@ stir_shaken_status_t stir_shaken_file_remove(const char *path)
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_save_to_file(const char *data, const char *name)
+stir_shaken_status_t stir_shaken_save_to_file(stir_shaken_context_t *ss, const char *data, const char *name)
 {
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	FILE			*fp = NULL;
@@ -177,11 +177,13 @@ stir_shaken_status_t stir_shaken_save_to_file(const char *data, const char *name
 
 	fp = fopen(name, "w");
 	if (!fp) {
+		stir_shaken_set_error(ss, "Can't open file for writing", STIR_SHAKEN_ERROR_FILE_OPEN);
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
 	if (datalen != fwrite(data, 1, datalen, fp)) {
 		fclose(fp);
+		stir_shaken_set_error(ss, "Error writing to file", STIR_SHAKEN_ERROR_FILE_WRITE);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 

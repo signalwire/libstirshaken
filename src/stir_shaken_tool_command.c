@@ -393,7 +393,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			snprintf(token, STIR_SHAKEN_BUFLEN, "SPC token encoded:\n\n%s\n\nSPC token decoded:\n\n%s", spc_token_encoded, spc_token_decoded);
 
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving...\n");
-			if (STIR_SHAKEN_STATUS_OK != stir_shaken_save_to_file(token, pa->file_name)) {
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_save_to_file(ss, token, pa->file_name)) {
 				goto fail;
 			}
 

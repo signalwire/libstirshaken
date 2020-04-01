@@ -287,6 +287,9 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_CERT_EXPIRED,
 	STIR_SHAKEN_ERROR_PASSPORT_EXPIRED,
 	STIR_SHAKEN_ERROR_BIND,
+	STIR_SHAKEN_ERROR_FILE_OPEN,
+	STIR_SHAKEN_ERROR_FILE_READ,
+	STIR_SHAKEN_ERROR_FILE_WRITE,
 } stir_shaken_error_t;
 
 #define STIR_SHAKEN_HTTP_REQ_404_INVALID "404"
@@ -809,7 +812,7 @@ stir_shaken_status_t stir_shaken_dir_create(const char *path);
 stir_shaken_status_t stir_shaken_dir_create_recursive(const char *path);
 stir_shaken_status_t stir_shaken_file_exists(const char *path);
 stir_shaken_status_t stir_shaken_file_remove(const char *path);
-stir_shaken_status_t stir_shaken_save_to_file(const char *data, const char *name);
+stir_shaken_status_t stir_shaken_save_to_file(stir_shaken_context_t *ss, const char *data, const char *name);
 stir_shaken_status_t stir_shaken_b64_encode(unsigned char *in, size_t ilen, unsigned char *out, size_t olen);
 size_t stir_shaken_b64_decode(const char *in, char *out, size_t olen);
 char* stir_shaken_remove_multiple_adjacent(char *in, char what);

@@ -49,7 +49,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	stir_shaken_assert(sp.keys.public_key != NULL, "Err, failed to generate public key");
 
 	printf("SP: Create CSR\n");
-	sp.code = 7777;
+	sp.code = 7889;
 	sprintf(spc, "%d", sp.code);
 	snprintf(sp.subject_c, STIR_SHAKEN_BUFLEN, "US");
 	snprintf(sp.subject_cn, STIR_SHAKEN_BUFLEN, "NewSTI-SP, But Absolutely Fine Inc.");
@@ -62,7 +62,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 
 	kid = NULL;
 	nonce = NULL;
-	sprintf(url, "http:/localhost%s", STI_CA_ACME_CERT_REQ_URL);
+	sprintf(url, "http://%s%s", STI_CA_ACME_ADDR, STI_CA_ACME_CERT_REQ_URL);
 	nb = "01 Apr 2020";
 	na = "01 Apr 2021";
 
@@ -71,7 +71,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	//	"alg": "ES256",
 	//	"issuer": "SignalWire STI-PA",
 	//	"typ": "JWT",
-	//	"x5u": "http://190.102.98.199/pa.pem"
+	//	"x5u": "https://jazzchat.pl/pa.pem"
 	// }.{
 	//	"notAfter": "1 year from now",
 	//	"notBefore": "today",
@@ -83,7 +83,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	//
 	//		./stirshaken spc-token --privkey test/ref/pa/pa.priv --url http://190.102.98.199/pa.pem --spc 7889 --issuer_cn "SignalWire STI-PA" -f test/ref/sp/spc_token.txt --vvv
 	//
-	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cDovLzE5MC4xMDIuOTguMTk5L3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiNzg4OSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.INBoiPqIRdsumUCKmxQFJquSccMz2BnHXYI7bR38R9MmkBd8vYoDBIJ2Ls3nd1PsyS64UyoYEUgnci6Txy7jEw";
+	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cHM6Ly9qYXp6Y2hhdC5wbC9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiNzg4OSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.QLfCOj8sSxqe3ghSN1r2cm6AxOGXodAQdYM5KNqnu2GNz5zNJfq-Bv7fUHDRuTgfkyqqaSLgzfLa-25G_awizA";
 	http_req.url = strdup(url);
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req_ex(&ss, &http_req, kid, nonce, sp.csr.req, nb, na, spc, sp.keys.priv_raw, sp.keys.priv_raw_len, NULL, spc_token)) {
