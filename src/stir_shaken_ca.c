@@ -102,7 +102,7 @@ static void unregister_handlers(void)
 	}
 }
 
-static void close_http_connection_with_error(struct mg_connection *nc, struct mbuf *io, const char *error_desc)
+static void close_http_connection_with_error(struct mg_connection *nc, struct mbuf *io, const char *error_desc, const char *error_body)
 {
 	if (nc) {
 		if (stir_shaken_zstr(error_desc)) {
@@ -110,7 +110,10 @@ static void close_http_connection_with_error(struct mg_connection *nc, struct mb
 		} else {
 			char error_phrase[STIR_SHAKEN_BUFLEN] = { 0 };
 			stir_shaken_error_desc_to_http_error_phrase(error_desc, error_phrase, STIR_SHAKEN_BUFLEN);
-			mg_printf(nc, "HTTP/1.1 %s %s\r\n\r\n", STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND, error_phrase);
+            if (error_body)
+			    mg_printf(nc, "HTTP/1.1 %s %s\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND, error_phrase, strlen(error_body), error_body);
+            else
+			    mg_printf(nc, "HTTP/1.1 %s %s\r\n\r\n", STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND, error_phrase);
 		}
 	}
 	if (nc) mg_send_http_chunk(nc, "", 0);
@@ -275,7 +278,7 @@ fail:
 	if (ca && stir_shaken_is_error_set(&ca->ss)) {
 		error_desc = stir_shaken_get_error(&ca->ss, &error);
 	}
-	close_http_connection_with_error(nc, io, error_desc);
+	close_http_connection_with_error(nc, io, error_desc, NULL);
 
 	stir_shaken_set_error(&ca->ss, "API NONCE request failed", STIR_SHAKEN_ERROR_ACME);
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== FAIL\n");
@@ -565,7 +568,7 @@ fail:
 	if (ca && stir_shaken_is_error_set(&ca->ss)) {
 		error_desc = stir_shaken_get_error(&ca->ss, &error);
 	}
-	close_http_connection_with_error(nc, io, error_desc);
+	close_http_connection_with_error(nc, io, error_desc, NULL);
 
 	if (json) {
 		cJSON_Delete(json);
@@ -949,7 +952,7 @@ fail:
 	if (ca && stir_shaken_is_error_set(&ca->ss)) {
 		error_desc = stir_shaken_get_error(&ca->ss, &error);
 	}
-	close_http_connection_with_error(nc, io, error_desc);
+	close_http_connection_with_error(nc, io, error_desc, NULL);
 
 	if (authz_challenge_details) {
 		free(authz_challenge_details);
@@ -1010,11 +1013,7 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 
 					if (!mg_strstr(m->uri, api_url)) {
 						
-						if (ca && stir_shaken_is_error_set(&ca->ss)) {
-							error_desc = stir_shaken_get_error(&ca->ss, &error);
-						}
-
-						close_http_connection_with_error(nc, io, error_desc);
+						close_http_connection_with_error(nc, io, "This is STI-CA handling STIR-Shaken. The request you submitted is not handled by this API.", "This is STI-CA handling STIR-Shaken. The request you submitted is not handled by this API.");
 						snprintf(err_buf, STIR_SHAKEN_BUFLEN, "URL (%s) is not handled by ACME API. Closed HTTP connection", m->uri.p);
 						stir_shaken_set_error(&ca->ss, err_buf, STIR_SHAKEN_ERROR_ACME);
 						break;
@@ -1030,7 +1029,7 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 							error_desc = stir_shaken_get_error(&ca->ss, &error);
 						}
 
-						close_http_connection_with_error(nc, io, error_desc);
+						close_http_connection_with_error(nc, io, error_desc, NULL);
 						stir_shaken_set_error(&ca->ss, "Handler not found. Closed HTTP connection", STIR_SHAKEN_ERROR_ACME);
 
 						break;
