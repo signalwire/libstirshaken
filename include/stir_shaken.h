@@ -234,7 +234,12 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_CURL,
 	STIR_SHAKEN_ERROR_STICA_NOT_APPROVED,
 	STIR_SHAKEN_ERROR_SSL,
+	STIR_SHAKEN_ERROR_CERT_INIT,
+	STIR_SHAKEN_ERROR_CERT_INVALID,
 	STIR_SHAKEN_ERROR_CERT_STORE,
+	STIR_SHAKEN_ERROR_CERT_VERSION,
+	STIR_SHAKEN_ERROR_CERT_NOT_VALID_YET,
+	STIR_SHAKEN_ERROR_CERT_EXPIRED,
 	STIR_SHAKEN_ERROR_SIP_403_STALE_DATE,
 	STIR_SHAKEN_ERROR_SIP_428_USE_IDENTITY_HEADER,
 	STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO,
@@ -279,12 +284,9 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID,
 	STIR_SHAKEN_ERROR_TNAUTHLIST,
-	STIR_SHAKEN_ERROR_CERT_INIT,
-	STIR_SHAKEN_ERROR_CERT_INVALID,
 	STIR_SHAKEN_ERROR_LOAD_CA,
 	STIR_SHAKEN_ERROR_LOAD_CRL,
 	STIR_SHAKEN_ERROR_SET_DEFAULT_PATHS,
-	STIR_SHAKEN_ERROR_CERT_EXPIRED,
 	STIR_SHAKEN_ERROR_PASSPORT_EXPIRED,
 	STIR_SHAKEN_ERROR_BIND,
 	STIR_SHAKEN_ERROR_FILE_OPEN,
@@ -634,6 +636,7 @@ void stir_shaken_deinit_ssl(void);
 
 // Verification service
 
+stir_shaken_status_t stir_shaken_basic_cert_check(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, cJSON *array);
 int stir_shaken_verify_data(stir_shaken_context_t *ss, const char *data, const char *signature, size_t siglen, EVP_PKEY *pkey);
 int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);

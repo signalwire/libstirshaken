@@ -4,6 +4,46 @@
 #define BUFSIZE 1024*8
 
 
+stir_shaken_status_t stir_shaken_basic_cert_check(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
+{
+	int version = -1;
+	int res = 0;
+	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+
+	if (!cert) return STIR_SHAKEN_STATUS_TERM;
+
+	version = stir_shaken_cert_get_version(cert);
+	if (version < 1) {
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "Invalid STI cert: wrong version: %d", version);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CERT_VERSION);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	res = X509_cmp_current_time(cert->notBefore_ASN1);
+	if (res == 0) {
+		stir_shaken_set_error(ss, "Error validating STI Cert's notBefore timestamp", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (res > 0) {
+		stir_shaken_set_error(ss, "Invalid STI Certificate: (Not valid yet) notBefore timestamp ahead of now", STIR_SHAKEN_ERROR_CERT_NOT_VALID_YET);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	res = X509_cmp_current_time(cert->notAfter_ASN1);
+	if (res == 0) {
+		stir_shaken_set_error(ss, "Error validating STI Cert's notAfter timestamp", STIR_SHAKEN_ERROR_SSL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (res < 0) {
+		stir_shaken_set_error(ss, "Invalid STI Certificate: (Expired) notAfter timestamp has already passed", STIR_SHAKEN_ERROR_CERT_EXPIRED);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 stir_shaken_status_t stir_shaken_vs_verify_stica_against_list(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
 {
 	if (!cert) return STIR_SHAKEN_STATUS_FALSE;
@@ -171,7 +211,6 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_s
 stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const char *token)
 {
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
-	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	stir_shaken_http_req_t	http_req = { 0 };
 	long					res = CURLE_OK;
 	stir_shaken_cert_t		cert = { 0 };
@@ -313,7 +352,6 @@ fail:
 stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert_out, time_t iat_freshness)
 {
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
-	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	stir_shaken_http_req_t	http_req = { 0 };
 	long					res = CURLE_OK;
 	stir_shaken_cert_t		*cert = NULL;
@@ -378,6 +416,12 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	ss_status = stir_shaken_read_cert_fields(ss, cert);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error_if_clear(ss, "Verify: error parsing certificate", STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
+	}
+
+	ss_status = stir_shaken_basic_cert_check(ss, cert);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+		stir_shaken_set_error_if_clear(ss, "Cert did not pass basic check (wrong version or expired)", STIR_SHAKEN_ERROR_CERT_INVALID);
 		goto fail;
 	}
 
