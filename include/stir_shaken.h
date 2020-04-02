@@ -694,14 +694,6 @@ stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_context_t *s
 stir_shaken_status_t stir_shaken_passport_create(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
 
 /**
- * @name - physiacall location (complete name)
- * @install_dir - directory where the cert will be placed under name of (basename(@name))
- * @install_url - directory part of publicly accessible URL that will be embedded as @x5u in PASSporT (complete URL in @x5u will be set to @public_url = @install_url + @name)
- */
-stir_shaken_status_t stir_shaken_cert_configure(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, const char *name, const char *install_dir, const char *install_url);
-stir_shaken_status_t stir_shaken_install_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
-
-/**
  * Authorize the call and keep PASSporT if the @keep_pasport is true.
  */
 stir_shaken_status_t stir_shaken_authorize_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport, uint8_t keep_passport, EVP_PKEY *pkey, stir_shaken_cert_t *cert);

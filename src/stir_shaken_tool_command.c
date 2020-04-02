@@ -289,11 +289,6 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				goto fail;
 			}
 			
-			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Configuring certificate...\n");
-			if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_configure(ss, &ca->ca.cert, ca->ca.cert_name, NULL, NULL)) {
-				goto fail;
-			}
-
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving certificate...\n");
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, ca->ca.cert.x, ca->ca.cert.name)) {
 				goto fail;
@@ -332,11 +327,6 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Generating cert...\n");
 			sp->sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(ss, ca->ca.cert.x, ca->ca.keys.private_key, ca->ca.issuer_c, ca->ca.issuer_cn, sp->sp.csr.req, ca->ca.serial, ca->ca.expiry_days, ca->ca.tn_auth_list_uri);
 			if (!sp->sp.cert.x) {
-				goto fail;
-			}
-
-			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Configuring certificate...\n");
-			if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_configure(ss, &sp->sp.cert, sp->sp.cert_name, NULL, NULL)) {
 				goto fail;
 			}
 
@@ -471,12 +461,6 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading certificate into X509...\n");
 				if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_x509_from_mem(ss, &sp->sp.cert.x, NULL, http_req.response.mem.mem)) {
 					stir_shaken_set_error(ss, "Failed to load SP certificate into X509", STIR_SHAKEN_ERROR_ACME);
-					goto fail;
-				}
-
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Configuring certificate...\n");
-				if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_configure(ss, &sp->sp.cert, sp->sp.cert_name, NULL, NULL)) {
-					stir_shaken_set_error(ss, "Failed to configure SP certificate", STIR_SHAKEN_ERROR_ACME);
 					goto fail;
 				}
 

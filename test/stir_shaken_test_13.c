@@ -92,6 +92,9 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_load_x509_from_mem(&ss, &sp.cert.x, NULL, http_req.response.mem.mem), "Failed to load X509 from memory");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_x509_to_disk(&ss, sp.cert.x, "test/run/13_sp.pem"), "Failed to save the certificate");
+
 
 	// SP cleanup	
 	stir_shaken_sp_destroy(&sp);
