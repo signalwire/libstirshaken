@@ -121,7 +121,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 
 	if (stir_shaken_jwt_sih_to_jwt_encoded(ss, identity_header, &jwt_encoded[0], STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN) != STIR_SHAKEN_STATUS_OK) {
 
-		stir_shaken_set_error_if_clear(ss, "Failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+		stir_shaken_set_error(ss, "Failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -146,7 +146,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 
 	if (jwt_decode(&jwt, jwt_encoded, key, key_len)) {
 
-		stir_shaken_set_error_if_clear(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 		jwt_free(jwt);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
@@ -196,12 +196,12 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_s
 	}
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_get_req(ss, http_req)) {
-		stir_shaken_set_error_if_clear(ss, "Cannot connect to URL", STIR_SHAKEN_ERROR_HTTP_GENERAL);
+		stir_shaken_set_error(ss, "Cannot connect to URL", STIR_SHAKEN_ERROR_HTTP_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	if (http_req->response.code != 200 && http_req->response.code != 201) {
-		stir_shaken_set_error_if_clear(ss, "HTTP request rejected", STIR_SHAKEN_ERROR_HTTP_GENERAL);
+		stir_shaken_set_error(ss, "HTTP request rejected", STIR_SHAKEN_ERROR_HTTP_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -249,25 +249,25 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
 
 	ss_status = stir_shaken_download_cert(ss, &http_req);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error_if_clear(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+		stir_shaken_set_error(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 		goto fail;
 	}
 
 	ss_status = stir_shaken_load_x509_from_mem(ss, &cert.x, &cert.xchain, http_req.response.mem.mem);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error_if_clear(ss, "Error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 
 	cert.len = http_req.response.mem.size;
 
 	if (stir_shaken_get_pubkey_raw_from_cert(ss, &cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
-		stir_shaken_set_error_if_clear(ss, "Failed to get public key in raw format from certificate", STIR_SHAKEN_ERROR_SSL);
+		stir_shaken_set_error(ss, "Failed to get public key in raw format from certificate", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 
 	if (jwt_decode(&jwt, token, key, key_len)) {
-		stir_shaken_set_error_if_clear(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 		jwt_free(jwt);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
@@ -394,13 +394,13 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	
 	ss_status = stir_shaken_download_cert(ss, &http_req);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error_if_clear(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+		stir_shaken_set_error(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 		goto fail;
 	}
 
     ss_status = stir_shaken_load_x509_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error_if_clear(ss, "Verify: error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Verify: error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
     }
 
@@ -415,32 +415,32 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 
 	ss_status = stir_shaken_read_cert_fields(ss, cert);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error_if_clear(ss, "Verify: error parsing certificate", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Verify: error parsing certificate", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
 
 	ss_status = stir_shaken_basic_cert_check(ss, cert);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error_if_clear(ss, "Cert did not pass basic check (wrong version or expired)", STIR_SHAKEN_ERROR_CERT_INVALID);
+		stir_shaken_set_error(ss, "Cert did not pass basic check (wrong version or expired)", STIR_SHAKEN_ERROR_CERT_INVALID);
 		goto fail;
 	}
 
 	ss_status = stir_shaken_verify_cert_path(ss, cert);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error_if_clear(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_CERT_INVALID);
+		stir_shaken_set_error(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_CERT_INVALID);
 		goto fail;
 	}
 
 	// TODO remove stica_array from here?
 	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, cert, passport, stica_array);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error_if_clear(ss, "Cert does not match the PASSporT", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		stir_shaken_set_error(ss, "Cert does not match the PASSporT", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 		goto fail;
 	}
 
 	ss_status = stir_shaken_passport_validate_headers_and_grants(ss, passport);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error_if_clear(ss, "PASSporT invalid", STIR_SHAKEN_ERROR_PASSPORT_INVALID);
+		stir_shaken_set_error(ss, "PASSporT invalid", STIR_SHAKEN_ERROR_PASSPORT_INVALID);
 		goto fail;
 	}
 

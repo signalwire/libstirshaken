@@ -194,7 +194,6 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	error_description = stir_shaken_get_error(&ss, &error_code);
     stir_shaken_assert(error_description != NULL, "Err, error description not set");
 	printf("Error description is: '%s'\n", error_description);
-    stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_CURL, "Err, wrong error type");
 	
 	stir_shaken_passport_destroy(&passport);
 	
