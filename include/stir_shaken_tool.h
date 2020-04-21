@@ -12,7 +12,7 @@
 #define COMMAND_CERT			2
 #define COMMAND_CERT_CA			3
 #define COMMAND_CERT_SP			4
-#define COMMAND_INSTALL_CERT	5
+#define COMMAND_HASH_CERT	    5
 #define COMMAND_SPC_TOKEN		6
 #define COMMAND_CA				7
 #define COMMAND_PA				8
@@ -25,7 +25,7 @@
 #define COMMAND_NAME_CERT			"cert"
 #define COMMAND_NAME_CERT_CA		"cert (CA)"
 #define COMMAND_NAME_CERT_SP		"cert (SP)"
-#define COMMAND_NAME_INSTALL_CERT	"install"
+#define COMMAND_NAME_HASH_CERT	    "hash"
 #define COMMAND_NAME_SPC_TOKEN		"spc-token"
 #define COMMAND_NAME_CA				"ca"
 #define COMMAND_NAME_PA				"pa"

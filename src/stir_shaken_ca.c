@@ -907,7 +907,7 @@ authorization_result:
 						snprintf(session->sp.cert_name, sizeof(session->sp.cert_name), "sp_%s_%llu_%zu.pem", spc, secret, time(NULL));
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t ->Saving certificate (%s)...\n", session->sp.cert_name);
-						if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(&ca->ss, session->sp.cert.x, session->sp.cert.name)) {
+						if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(&ca->ss, session->sp.cert.x, session->sp.cert_name)) {
 							stir_shaken_set_error(&ca->ss, "Error saving SP certificate", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
 							goto fail;
 						}

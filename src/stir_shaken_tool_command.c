@@ -53,10 +53,10 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 			return COMMAND_UNKNOWN;
 		}
 
-	} else if (!strcmp(command_name, COMMAND_NAME_INSTALL_CERT)) {
+	} else if (!strcmp(command_name, COMMAND_NAME_HASH_CERT)) {
 
 		strncpy(ca->ca.cert_name, options->file, STIR_SHAKEN_BUFLEN);
-		return COMMAND_INSTALL_CERT;
+		return COMMAND_HASH_CERT;
 
 	} else if (!strcmp(command_name, COMMAND_NAME_SPC_TOKEN)) {
 
@@ -167,7 +167,7 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 			}
 			break;
 
-		case COMMAND_INSTALL_CERT:
+		case COMMAND_HASH_CERT:
 			if (stir_shaken_zstr(ca->ca.cert_name)) {
 				goto fail;
 			}
@@ -336,7 +336,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			}
 			break;
 
-		case COMMAND_INSTALL_CERT:
+		case COMMAND_HASH_CERT:
 			
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading certificate...\n");
 			ca->ca.cert.x = stir_shaken_load_x509_from_file(ss, ca->ca.cert_name);
