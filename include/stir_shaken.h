@@ -107,10 +107,6 @@ typedef struct stir_shaken_cert_s {
 	char        *body;
 	size_t		len;
 	uint8_t     is_fresh;
-	char		name[STIR_SHAKEN_BUFLEN];					// name of the certificate, also used in file part of the publicly accessible URL
-	char		name_text[STIR_SHAKEN_BUFLEN];
-	char		full_name[STIR_SHAKEN_BUFLEN];
-	char		full_name_text[STIR_SHAKEN_BUFLEN];
 	char		install_dir[STIR_SHAKEN_BUFLEN];			// folder, where cert must be put to be accessible with @public_url for other SPs
 	char		install_url[STIR_SHAKEN_BUFLEN];			// directory part of the publicly accessible URL
 	char		public_url[STIR_SHAKEN_BUFLEN];				// publicly accessible URL which can be used to download the certificate, this is concatenated from @install_url and cert's @name and is put into PASSporT as @x5u and @params.info
@@ -141,6 +137,8 @@ typedef struct stir_shaken_ssl_keys {
     EVP_PKEY	*public_key;
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
 	uint32_t		priv_raw_len;
+	unsigned char	pub_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
+	uint32_t		pub_raw_len;
 } stir_shaken_ssl_keys_t;
 
 typedef struct curl_slist curl_slist_t;

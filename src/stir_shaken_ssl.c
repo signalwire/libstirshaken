@@ -2078,8 +2078,6 @@ stir_shaken_status_t stir_shaken_load_x509_and_privkey(stir_shaken_context_t *ss
 		goto err;
 	}
 
-	strncpy(cert->name, cert_name, STIR_SHAKEN_BUFLEN);
-
 	*pkey = stir_shaken_load_privkey_from_file(ss, private_key_name);
 	if (*pkey == NULL) {
 		sprintf(err_buf, "Load cert and key: Error geting SSL key from file: %s", private_key_name);

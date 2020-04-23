@@ -49,10 +49,10 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	stir_shaken_assert(sp.keys.public_key != NULL, "Err, failed to generate public key");
 
 	printf("SP: Create CSR\n");
-	sp.code = 7889;
+	sp.code = 101;
 	sprintf(spc, "%d", sp.code);
 	snprintf(sp.subject_c, STIR_SHAKEN_BUFLEN, "US");
-	snprintf(sp.subject_cn, STIR_SHAKEN_BUFLEN, "NewSTI-SP, But Absolutely Fine Inc.");
+	snprintf(sp.subject_cn, STIR_SHAKEN_BUFLEN, "NewSTI-SP 101");
 
 	status = stir_shaken_generate_csr(&ss, sp.code, &sp.csr.req, sp.keys.private_key, sp.keys.public_key, sp.subject_c, sp.subject_cn);
 	PRINT_SHAKEN_ERROR_IF_SET
@@ -83,8 +83,9 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	//
 	//		./stirshaken spc-token --privkey test/ref/pa/pa.priv --url http://190.102.98.199/pa.pem --spc 7889 --issuer_cn "SignalWire STI-PA" -f test/ref/sp/spc_token.txt --vvv
 	//
-	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cHM6Ly9qYXp6Y2hhdC5wbC9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiNzg4OSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.QLfCOj8sSxqe3ghSN1r2cm6AxOGXodAQdYM5KNqnu2GNz5zNJfq-Bv7fUHDRuTgfkyqqaSLgzfLa-25G_awizA";
-	http_req.url = strdup(url);
+	//spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cHM6Ly9qYXp6Y2hhdC5wbC9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiNzg4OSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.QLfCOj8sSxqe3ghSN1r2cm6AxOGXodAQdYM5KNqnu2GNz5zNJfq-Bv7fUHDRuTgfkyqqaSLgzfLa-25G_awizA";
+	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cHM6Ly9qYXp6Y2hhdC5wbC9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMTAxIiwidHlwZSI6InNwYy10b2tlbiJ9.iCoBGdA6sD4FYfSsGGXWMfL4ja9aW747llHHSSY7rvcH67L_l0Q-mFhjiMuEpq2gBkihz7g67CZCs4Tr0FfWNw";
+    http_req.url = strdup(url);
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req_ex(&ss, &http_req, kid, nonce, sp.csr.req, nb, na, spc, sp.keys.priv_raw, sp.keys.priv_raw_len, NULL, spc_token)) {
 		printf("STIR-Shaken: Failed to execute cert request\n");

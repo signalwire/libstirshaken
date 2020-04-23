@@ -100,6 +100,12 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		strncpy(sp->sp.cert_name, options->file, STIR_SHAKEN_BUFLEN);
 		return COMMAND_SP_CERT_REQ;
 
+    } else if (!strcmp(command_name, COMMAND_NAME_JWT_CHECK)) {
+        return COMMAND_JWT_CHECK;
+    
+    } else if (!strcmp(command_name, COMMAND_NAME_JWT_DUMP)) {
+        return COMMAND_JWT_DUMP;
+
 	} else {
 
 		stir_shaken_set_error(ss, "Unknown command", STIR_SHAKEN_ERROR_GENERAL);
@@ -220,6 +226,20 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 			STIR_SHAKEN_CHECK_CONVERSION_EXT
 			sp->sp.code = helper;
 			break;
+		
+        case COMMAND_JWT_CHECK:
+
+			if (stir_shaken_zstr(options->public_key_name) || stir_shaken_zstr(options->jwt)) {
+				goto fail;
+			}
+			break;
+        
+        case COMMAND_JWT_DUMP:
+
+			if (stir_shaken_zstr(options->jwt)) {
+				goto fail;
+			}
+			break;
 
 		case COMMAND_CERT:
 		case COMMAND_UNKNOWN:
@@ -242,6 +262,8 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 	char			*spc_token_encoded = NULL;
 	char			*spc_token_decoded = NULL;
 	char			token[STIR_SHAKEN_BUFLEN] = { 0 };
+	jwt_t			*jwt = NULL;
+    char            *jwt_decoded = NULL;
 
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_init(ss, options->ca_dir, options->crl_dir, options->loglevel)) {
@@ -290,7 +312,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			}
 			
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving certificate...\n");
-			if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, ca->ca.cert.x, ca->ca.cert.name)) {
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, ca->ca.cert.x, ca->ca.cert_name)) {
 				goto fail;
 			}
 
@@ -331,7 +353,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			}
 
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving certificate...\n");
-			if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, sp->sp.cert.x, sp->sp.cert.name)) {
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, sp->sp.cert.x, sp->sp.cert_name)) {
 				goto fail;
 			}
 			break;
@@ -465,7 +487,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				}
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving certificate...\n");
-				if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, sp->sp.cert.x, sp->sp.cert.name)) {
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, sp->sp.cert.x, sp->sp.cert_name)) {
 					stir_shaken_set_error(ss, "Failed to save SP certificate", STIR_SHAKEN_ERROR_ACME);
 					goto fail;
 				}
@@ -477,8 +499,50 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Starting PA service...\n");
 			break;
+		
+        case COMMAND_JWT_CHECK:
 
-		case COMMAND_UNKNOWN:
+            fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading keys...\n");
+            options->keys.pub_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
+            if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, options->public_key_name, options->keys.pub_raw, &options->keys.pub_raw_len)) {
+                goto fail;
+            }
+
+            fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT...\n");
+            if (jwt_decode(&jwt, options->jwt, options->keys.pub_raw, options->keys.pub_raw_len)) {
+                stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+                fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT and public key don't match\n");
+                goto fail;
+            }
+
+            fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verified. JWT and public key match\n");
+
+            jwt_free(jwt);
+            break;
+
+        case COMMAND_JWT_DUMP:
+
+            if (jwt_new(&jwt) != 0) {
+                stir_shaken_set_error(ss, "Cannot create JWT for the token", STIR_SHAKEN_ERROR_JWT);
+                goto fail;
+            }
+
+            if (0 != jwt_decode(&jwt, options->jwt, NULL, 0)) {
+                stir_shaken_set_error(ss, "Token is not JWT", STIR_SHAKEN_ERROR_JWT);
+                goto fail;
+            }
+
+            jwt_decoded = jwt_dump_str(jwt, 1);
+            if (!jwt_decoded) {
+                stir_shaken_set_error(ss, "Cannot print JWT", STIR_SHAKEN_ERROR_JWT);
+                goto fail;
+            }
+
+            fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT is:\n\n%s\n", jwt_decoded);
+            free(jwt_decoded);
+            break;
+
+        case COMMAND_UNKNOWN:
 		default:
 			goto fail;
 	}
@@ -489,5 +553,6 @@ fail:
 
 	if (spc_token_encoded) free(spc_token_encoded);
 	if (spc_token_decoded) free(spc_token_decoded);
+    if (jwt) jwt_free(jwt);
 	return STIR_SHAKEN_STATUS_FALSE;
 }

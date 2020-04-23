@@ -13,6 +13,8 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s --%s %s --%s key --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY --%s ca.pem --%s csr.pem --%s TNAuthList(URI) -f certName\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE, OPTION_NAME_TYPE_SP, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY, OPTION_NAME_CA_CERT, OPTION_NAME_CSR, OPTION_NAME_TN_AUTH_LIST_URI);
 	fprintf(stderr, "\t\t %s -f certName\n", COMMAND_NAME_HASH_CERT);
 	fprintf(stderr, "\t\t %s --%s key --%s x5u_URL --%s CODE --%s CN -f spc_token_file_name\n", COMMAND_NAME_SPC_TOKEN, OPTION_NAME_PRIVKEY, OPTION_NAME_URL, OPTION_NAME_SPC, OPTION_NAME_ISSUER_CN);
+	fprintf(stderr, "\t\t %s --%s token --%s key\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_JWT, OPTION_NAME_PUBKEY);
+	fprintf(stderr, "\t\t %s --%s token\n", COMMAND_NAME_JWT_DUMP, OPTION_NAME_JWT);
 	fprintf(stderr, "\t\t %s --%s 80 --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY --%s ca.pem --%s TNAuthList(URI)\n", COMMAND_NAME_CA, OPTION_NAME_PORT, OPTION_NAME_PRIVKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY, OPTION_NAME_CA_CERT, OPTION_NAME_TN_AUTH_LIST_URI);
 	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s --%s URL\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
@@ -28,6 +30,8 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s			: generate X509 certificate (end entity for --type %s and self-signed for --type %s)\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE_SP, OPTION_NAME_TYPE_CA);
 	fprintf(stderr, "\t\t %s		: save CA certificate under hashed name (in this form it can be put into CA dir)\n", COMMAND_NAME_HASH_CERT);
 	fprintf(stderr, "\t\t %s		: generate SPC token for SP identified by SP Code given to --spc (set token's PA issuer to name given as --%s, and token's x5u URL of the PA certificate to URL given as --%s)\n", COMMAND_NAME_SPC_TOKEN, OPTION_NAME_ISSUER_CN, OPTION_NAME_URL);
+	fprintf(stderr, "\t\t %s			: decode JWT and verify signature using public key given to --%s\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_PUBKEY);
+	fprintf(stderr, "\t\t %s			: decode JWT and print it (do not verify signature)\n", COMMAND_NAME_JWT_DUMP);
 	fprintf(stderr, "\t\t %s			: run CA service on port given to --%s\n", COMMAND_NAME_CA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s			: run PA service on port given to --%s\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s		: request SP Code token from PA at url given to --%s\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
@@ -79,6 +83,7 @@ int main(int argc, char *argv[])
 		{ OPTION_NAME_TN_AUTH_LIST_URI, required_argument, 0, OPTION_TN_AUTH_LIST_URI },
 		{ OPTION_NAME_PORT, required_argument, 0, OPTION_PORT },
 		{ OPTION_NAME_URL, required_argument, 0, OPTION_URL },
+		{ OPTION_NAME_JWT, required_argument, 0, OPTION_JWT },
 		{ OPTION_NAME_V, no_argument, 0, OPTION_V },
 		{ OPTION_NAME_VV, no_argument, 0, OPTION_VV },
 		{ OPTION_NAME_VVV, no_argument, 0, OPTION_VVV },
@@ -227,6 +232,12 @@ int main(int argc, char *argv[])
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.url, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "URL is: %s\n", options.url);
+				break;
+			
+            case OPTION_JWT:
+				STIR_SHAKEN_CHECK_OPTARG
+				strncpy(options.jwt, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "JWT is: %s\n", options.jwt);
 				break;
 
 			case OPTION_V:

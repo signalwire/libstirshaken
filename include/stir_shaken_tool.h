@@ -14,10 +14,12 @@
 #define COMMAND_CERT_SP			4
 #define COMMAND_HASH_CERT	    5
 #define COMMAND_SPC_TOKEN		6
-#define COMMAND_CA				7
-#define COMMAND_PA				8
-#define COMMAND_SP_SPC_REQ		9
-#define COMMAND_SP_CERT_REQ		10
+#define COMMAND_JWT_CHECK		7
+#define COMMAND_JWT_DUMP		8
+#define COMMAND_CA				9
+#define COMMAND_PA				10
+#define COMMAND_SP_SPC_REQ		11
+#define COMMAND_SP_CERT_REQ		12
 #define COMMAND_UNKNOWN			100
 
 #define COMMAND_NAME_KEYS			"keys"
@@ -27,6 +29,8 @@
 #define COMMAND_NAME_CERT_SP		"cert (SP)"
 #define COMMAND_NAME_HASH_CERT	    "hash"
 #define COMMAND_NAME_SPC_TOKEN		"spc-token"
+#define COMMAND_NAME_JWT_CHECK		"jwt-check"
+#define COMMAND_NAME_JWT_DUMP		"jwt-dump"
 #define COMMAND_NAME_CA				"ca"
 #define COMMAND_NAME_PA				"pa"
 #define COMMAND_NAME_SP_SPC_REQ		"sp-spc-req"
@@ -50,10 +54,11 @@
 #define OPTION_TN_AUTH_LIST_URI	15
 #define OPTION_PORT			16
 #define OPTION_URL			17
-#define OPTION_V			18
-#define OPTION_VV			19
-#define OPTION_VVV			20
-#define OPTION_MAX			21
+#define OPTION_JWT          18
+#define OPTION_V			19
+#define OPTION_VV			20
+#define OPTION_VVV			21
+#define OPTION_MAX			22
 
 #define OPTION_NAME_PUBKEY		"pubkey"
 #define OPTION_NAME_PRIVKEY		"privkey"
@@ -70,11 +75,13 @@
 #define OPTION_NAME_SUBJECT_CN	"subject_cn"
 #define OPTION_NAME_SPC			"spc"
 #define OPTION_NAME_SPC_TOKEN	"spc_token"
+#define OPTION_NAME_JWT         "jwt"
 #define OPTION_NAME_CA_CERT		"ca_cert"
 #define OPTION_NAME_CSR			"csr"
 #define OPTION_NAME_TN_AUTH_LIST_URI	"uri"
 #define OPTION_NAME_PORT		"port"
 #define OPTION_NAME_URL			"url"
+#define OPTION_NAME_JWT			"jwt"
 #define OPTION_NAME_V			"v"
 #define OPTION_NAME_VV			"vv"
 #define OPTION_NAME_VVV			"vvv"
@@ -182,6 +189,7 @@ struct options {
 	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];
 	uint16_t port;
 	char url[STIR_SHAKEN_BUFLEN];
+	char jwt[STIR_SHAKEN_BUFLEN];
 	int loglevel;
 } options;
 
