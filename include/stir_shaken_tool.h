@@ -75,7 +75,6 @@
 #define OPTION_NAME_SUBJECT_CN	"subject_cn"
 #define OPTION_NAME_SPC			"spc"
 #define OPTION_NAME_SPC_TOKEN	"spc_token"
-#define OPTION_NAME_JWT         "jwt"
 #define OPTION_NAME_CA_CERT		"ca_cert"
 #define OPTION_NAME_CSR			"csr"
 #define OPTION_NAME_TN_AUTH_LIST_URI	"uri"
