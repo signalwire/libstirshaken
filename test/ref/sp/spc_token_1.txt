@@ -1,0 +1,20 @@
+SPC token encoded:
+
+eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cHM6Ly9qYXp6Y2hhdC5wbC9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.dokaa_H9tFxPNhxmstDyCd0mau0ZP1ROsIfC06hhVitGOKVpUK8NPD7UT4KnQldLRp91XgXUJy0LjLt2Xmjzeg
+
+SPC token decoded:
+
+
+{
+    "alg": "ES256",
+    "issuer": "SignalWire STI-PA",
+    "typ": "JWT",
+    "x5u": "https://jazzchat.pl/pa.pem"
+}
+.
+{
+    "notAfter": "1 year from now",
+    "notBefore": "today",
+    "spc": "1",
+    "type": "spc-token"
+}
