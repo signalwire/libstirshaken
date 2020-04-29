@@ -8,7 +8,7 @@ static stir_shaken_status_t ca_authority_over_a_number_check(char *sp, char *ori
 
 	if (!sp || !origin_identity) return STIR_SHAKEN_STATUS_TERM;
 
-	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Blindly granting the [%s] authority over the call origin [%s]\n%s\n", sp, origin_identity);
+	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Blindly granting the [%s] authority over the call origin [%s]\n", sp, origin_identity);
 	
 	// Plug in proper check for athority over a number here
  
@@ -356,11 +356,6 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 		goto fail;
 	}
 
-	if (m->body.len < 1) {
-		stir_shaken_set_error(&ca->ss, "Bad params, empty HTTP body", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		goto fail;
-	}
-
 	http_method = ca_http_method(m);
 	io = &nc->recv_mbuf;
 
@@ -373,9 +368,14 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 		case MG_EV_HTTP_REQUEST:
 
 			{
-				if (STIR_SHAKEN_HTTP_REQ_TYPE_POST == http_method) {
-					
-					if ((EINVAL == jwt_decode(&jwt, m->body.p, NULL, 0)) || !jwt) {
+                if (STIR_SHAKEN_HTTP_REQ_TYPE_POST == http_method) {
+
+                    if (m->body.len < 1) {
+                        stir_shaken_set_error(&ca->ss, "Bad params, empty HTTP body", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+                        goto fail;
+                    }
+
+                    if ((EINVAL == jwt_decode(&jwt, m->body.p, NULL, 0)) || !jwt) {
 						stir_shaken_set_error(&ca->ss, "Cannot parse message body into JWT", STIR_SHAKEN_ERROR_ACME);
 						goto fail;
 					}
