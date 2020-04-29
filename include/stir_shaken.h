@@ -243,6 +243,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO,
 	STIR_SHAKEN_ERROR_SIP_437_UNSUPPORTED_CREDENTIAL,
 	STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER,
+	STIR_SHAKEN_ERROR_AUTHORITY_CHECK,
 	STIR_SHAKEN_ERROR_HTTP_400_BAD_REQUEST,
 	STIR_SHAKEN_ERROR_HTTP_403_FORBIDDEN,
 	STIR_SHAKEN_ERROR_HTTP_404_INVALID,
@@ -250,6 +251,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_HTTP_GENERAL,
 	STIR_SHAKEN_ERROR_HTTP_PARAMS,
 	STIR_SHAKEN_ERROR_JWT,
+	STIR_SHAKEN_ERROR_JSON,
 	STIR_SHAKEN_ERROR_ACME,
 	STIR_SHAKEN_ERROR_ACME_URI,
 	STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG,
@@ -630,12 +632,13 @@ stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *e
 void stir_shaken_print_cert_fields(FILE *file, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir);
 void stir_shaken_deinit_ssl(void);
-
+stir_shaken_status_t stir_shaken_cert_to_authority_check_url(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *authority_check_url, int buflen);
 
 // Verification service
 
 stir_shaken_status_t stir_shaken_basic_cert_check(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, cJSON *array);
+stir_shaken_status_t stir_shaken_make_authority_over_number_check_req(stir_shaken_context_t *ss, const char *url, const char *origin_identity);
 int stir_shaken_verify_data(stir_shaken_context_t *ss, const char *data, const char *signature, size_t siglen, EVP_PKEY *pkey);
 int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);
 int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size_t datalen, const unsigned char *sig, size_t siglen, EVP_PKEY *public_key);
@@ -649,6 +652,8 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_s
  */
 stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert);
 
+stir_shaken_status_t stir_shaken_check_authority_over_number(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport);
+
 /**
  * Perform STIR-Shaken verification of the @identity_header.
  *
@@ -659,7 +664,7 @@ stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, con
  *
  * NOTE: @passport should point to allocated memory big enough to create PASSporT, @cert may be NULL (will be malloced then and it is caller's responsibility to free it).
  */
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert_out, time_t iat_freshness);
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, stir_shaken_cert_t **cert_out, time_t iat_freshness);
 
 /**
  * Verify JWT token by a public key from certificate referenced in x5u header of this JWT. Involves HTTP GET call for a certificate.
@@ -670,10 +675,8 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
  *
  * @passport - (in/out) should point to memory prepared for new PASSporT,
  *				on exit retrieved and verified PASSporT JWT is moved into that @passport
- * @stica_array - if not NULL then validate the root of the digital signature in the STI certificate
- *				by determining whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs
  */ 
-stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport, cJSON *stica_array);
+stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport);
 
 
 // Authorization service
@@ -763,6 +766,7 @@ char*					stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t
 char*					stir_shaken_acme_generate_auth_polling_status(stir_shaken_context_t *ss, char *status, char *expires, char *validated, const char *spc, const char *token, const char *authz_url);
 char*					stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
 stir_shaken_status_t	stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *buf, int buflen, int *uri_has_secret, unsigned long long *secret);
+stir_shaken_status_t	stir_shaken_acme_api_uri_parse(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *arg1, int arg1_len, char *arg2, int arg2_len, int *args_n);
 char*					stir_shaken_acme_generate_spc_token(stir_shaken_context_t *ss, char *issuer, char *url, char *nb, char *na, char *spc, unsigned char *key, uint32_t keylen, char **json);
 
 stir_shaken_status_t	stir_shaken_acme_nonce_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
@@ -938,6 +942,7 @@ void stir_shaken_sp_destroy(stir_shaken_sp_t *sp);
 #define STI_CA_ACME_AUTHZ_URL			"/sti-ca/acme/authz"
 #define STI_CA_ACME_NONCE_REQ_URL		"/sti-ca/acme/nonce"
 #define STI_CA_ACME_NEW_ACCOUNT_URL		"/sti-ca/acme/account"
+#define STI_CA_AUTHORITY_CHECK_URL		"/sti-ca/authority-over-the-number-check"
 
 // TEST
 

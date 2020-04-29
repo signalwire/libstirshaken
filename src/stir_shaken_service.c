@@ -321,6 +321,62 @@ stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
+stir_shaken_status_t stir_shaken_make_authority_over_number_check_req(stir_shaken_context_t *ss, const char *url, const char *origin_identity)
+{
+	stir_shaken_http_req_t http_req = { 0 };
+	char req_url[STIR_SHAKEN_BUFLEN] = { 0 };
+	stir_shaken_status_t result = STIR_SHAKEN_STATUS_FALSE;
+	cJSON *json = NULL, *authority_check_result = NULL;
+	
+	if (stir_shaken_zstr(url)) {
+		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	if (stir_shaken_zstr(origin_identity)) {
+		stir_shaken_set_error(ss, "Origin identity missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	snprintf(req_url, STIR_SHAKEN_BUFLEN, "%s/%s", url, origin_identity); 
+	http_req.url = strdup(req_url);
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_get_req(ss, &http_req)) {
+		stir_shaken_set_error(ss, "HTTP request for authority over number check failed", STIR_SHAKEN_ERROR_HTTP_GENERAL);
+		goto fail;
+	}
+
+	json = cJSON_Parse(http_req.response.mem.mem);
+	if (!json) {
+		stir_shaken_set_error(ss, "Error parsing into JSON", STIR_SHAKEN_ERROR_JSON);
+		goto fail;
+	}
+
+	authority_check_result = cJSON_GetObjectItem(json, "authority");
+	if (!authority_check_result) {
+		stir_shaken_set_error(ss, "Bad JSON, no 'authority' field", STIR_SHAKEN_ERROR_JSON);
+		goto fail;
+	}
+
+	if (authority_check_result->type != cJSON_String) {
+		stir_shaken_set_error(ss, "Bad JSON, 'authority' field is not a string", STIR_SHAKEN_ERROR_JSON);
+		goto fail;
+	}
+
+	if (strcmp("true", authority_check_result->valuestring) == 0) {
+		result = STIR_SHAKEN_STATUS_OK;
+	} else {
+		result = STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	stir_shaken_destroy_http_request(&http_req);
+	return result;
+
+fail:
+	stir_shaken_destroy_http_request(&http_req);
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
 stir_shaken_status_t stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
 	if (!http_req) {

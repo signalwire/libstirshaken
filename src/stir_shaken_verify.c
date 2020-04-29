@@ -107,10 +107,8 @@ static stir_shaken_status_t stir_shaken_jwt_sih_to_jwt_encoded(stir_shaken_conte
  *
  * @passport - (in/out) should point to memory prepared for new PASSporT,
  *				on exit retrieved and verified PASSporT JWT is moved into that @passport
- * @stica_array - if not NULL then validate the root of the digital signature in the STI certificate
- *				by determining whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs
  */ 
-stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport, cJSON *stica_array)
+stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport)
 {
 	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
 	unsigned char jwt_encoded[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
@@ -123,18 +121,6 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 
 		stir_shaken_set_error(ss, "Failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
 		return STIR_SHAKEN_STATUS_FALSE;
-	}
-
-	// We do not really do it this way now, but it can be
-	if (stica_array) {
-
-		// Validate the root of the digital signature in the STI certificate
-		// by determining whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs
-		if (stir_shaken_vs_verify_stica(ss, cert, stica_array) != STIR_SHAKEN_STATUS_OK) {
-
-			stir_shaken_set_error(ss, "STI-CA is not in a trusted list of approved STI-CAs", STIR_SHAKEN_ERROR_STICA_NOT_APPROVED);
-			return STIR_SHAKEN_STATUS_FALSE;
-		}
 	}
 
 	// Get raw public key from cert
@@ -286,6 +272,36 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
+stir_shaken_status_t stir_shaken_check_authority_over_number(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport)
+{
+	char *origin_identity = NULL;
+	char authority_check_url[STIR_SHAKEN_BUFLEN] = { 0 };
+	int is_tn = 0;
+
+	if (!cert || !cert->x || !passport) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+   	if ((STIR_SHAKEN_STATUS_OK != stir_shaken_cert_to_authority_check_url(ss, cert, authority_check_url, STIR_SHAKEN_BUFLEN)) || stir_shaken_zstr(authority_check_url)) {
+		stir_shaken_set_error(ss, "Cannot get SPC from certificate", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+   	
+	origin_identity = stir_shaken_passport_get_identity(ss, passport, &is_tn);
+	if (stir_shaken_zstr(origin_identity)) {
+		stir_shaken_set_error(ss, "PASSporT has no identity claim", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_authority_over_number_check_req(ss, authority_check_url, origin_identity)) {
+		stir_shaken_set_error(ss, "Caller has no authority over the number", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 // 5.3.1 PASSporT & Identity Header Verification
 // The certificate referenced in the info parameter of the Identity header field shall be validated by performing the
 // following:
@@ -349,7 +365,7 @@ fail:
 // STIR_SHAKEN_ERROR_PASSPORT_INVALID							- Bad Identity Header, specifically: PASSporT is missing some mandatory fields
 // STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO					- Cannot download referenced certificate
 //
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, cJSON *stica_array, stir_shaken_cert_t **cert_out, time_t iat_freshness)
+stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, stir_shaken_cert_t **cert_out, time_t iat_freshness)
 {
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	stir_shaken_http_req_t	http_req = { 0 };
@@ -431,8 +447,7 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 		goto fail;
 	}
 
-	// TODO remove stica_array from here?
-	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, cert, passport, stica_array);
+	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, cert, passport);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "Cert does not match the PASSporT", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 		goto fail;
@@ -447,6 +462,12 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	ss_status = stir_shaken_passport_validate_iat_against_freshness(ss, passport, iat_freshness);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "PASSporT expired", STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
+		goto fail;
+	}
+	
+	ss_status = stir_shaken_check_authority_over_number(ss, cert, passport);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+		stir_shaken_set_error(ss, "Caller has no authority over the call origin", STIR_SHAKEN_ERROR_AUTHORITY_CHECK);
 		goto fail;
 	}
 

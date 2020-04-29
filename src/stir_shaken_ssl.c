@@ -3003,3 +3003,16 @@ void stir_shaken_deinit_ssl(void)
 
 	stir_shaken_cert_store_cleanup();
 }
+
+stir_shaken_status_t stir_shaken_cert_to_authority_check_url(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *authority_check_url, int buflen)
+{
+	if (!cert || !authority_check_url || buflen == 0) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	// TODO Get authority check URL from cert
+	strncpy(authority_check_url, "http://190.102.98.199/sti-ca/authority-over-the-number-check/0/", buflen);
+
+	return STIR_SHAKEN_STATUS_OK;
+}

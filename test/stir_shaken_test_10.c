@@ -183,7 +183,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 
 	// Test 1: Test case: Cannot download referenced certificate
     printf("=== Testing case [1]: Cannot download referenced certificate\n");
-    status = stir_shaken_verify(&ss, sih, "Bad url", &passport, NULL, &res_cert, 3600);
+    status = stir_shaken_verify(&ss, sih, "Bad url", &passport, &res_cert, 3600);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -211,7 +211,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	*p = 'X';  // (Screw it) Hah, everything you would expect but not this!
 
 	stir_shaken_clear_error(&ss);
-	status = stir_shaken_jwt_verify_with_cert(&ss, sih_malformed, &cert, &passport, NULL);
+	status = stir_shaken_jwt_verify_with_cert(&ss, sih_malformed, &cert, &passport);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Err, should return STATUS_FALSE");
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 1, "Err, error condition not set (but should be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
@@ -239,7 +239,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 		sih_spoofed[0] = 'a';
 	}
 
-    status = stir_shaken_jwt_verify_with_cert(&ss, sih_spoofed, &cert, &passport, NULL);
+    status = stir_shaken_jwt_verify_with_cert(&ss, sih_spoofed, &cert, &passport);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Err, should return STATUS_FALSE");
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 1, "Err, error condition not set (but should be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);

@@ -116,7 +116,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_x509_to_disk(&ss, cert.x, cert_name), "Failed to write cert to disk");
 
 	printf("Verifying SIP Identity Header's signature with Cert...\n\n");
-    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport, NULL);
+    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);

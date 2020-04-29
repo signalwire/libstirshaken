@@ -886,7 +886,7 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 	}
 
 	if (auth_status->type != cJSON_String) {
-		stir_shaken_set_error(ss, "ACME authorization challenge malformed, 'status' field is not a string\n", STIR_SHAKEN_ERROR_ACME);
+		stir_shaken_set_error(ss, "ACME authorization challenge malformed, 'status' field is not a string", STIR_SHAKEN_ERROR_ACME);
 		goto fail;
 	}
 
@@ -905,7 +905,7 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 		stir_shaken_http_req_t http_req = { 0 };
 
 		if (strcmp("pending", auth_status->valuestring) != 0) {
-			snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')\n", auth_status->valuestring);
+			snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')", auth_status->valuestring);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
@@ -1213,6 +1213,99 @@ stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, 
 		}
 
 		strncpy(buf, spc, buflen);
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_acme_api_uri_parse(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *arg1, int arg1_len, char *arg2, int arg2_len, int *args_n)
+{
+	char *p = NULL, *args = NULL;
+	char request[STIR_SHAKEN_BUFLEN] = { 0 };
+	int len = 0;
+
+	if (!args_n) {
+		stir_shaken_set_error(ss, "Bad params, args_n missing", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	
+	if (stir_shaken_zstr(uri_request)) {
+		stir_shaken_set_error(ss, "Bad request URI", STIR_SHAKEN_ERROR_ACME_URI);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (stir_shaken_zstr(api_url)) {
+		stir_shaken_set_error(ss, "Bad params, API URI missing", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (!arg1 || !arg2 || !arg1_len || !arg2_len) {
+		stir_shaken_set_error(ss, "Bad params, buffers missing or too short", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	strncpy(request, uri_request, 1 < STIR_SHAKEN_BUFLEN ? STIR_SHAKEN_BUFLEN - 1 : 1);
+	p = strchr(request, ' ');
+	if (!p) p = strchr(request, '\t');
+	if (!p) p = strchr(request, '\r');
+	if (!p) p = strchr(request, '\n');
+	if (p) *p = '\0';
+
+	p = strstr(request, api_url);
+	if (!p) {
+		stir_shaken_set_error(ss, "Request doesn't contain API URI", STIR_SHAKEN_ERROR_ACME_URI);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	p = p + strlen(api_url);
+	if (stir_shaken_zstr(p)) {
+		*args_n = 0;
+		return STIR_SHAKEN_STATUS_OK;
+	}
+	
+	if (*p != '/') {
+		stir_shaken_set_error(ss, "Bad request URI, '/' missing after API URI", STIR_SHAKEN_ERROR_ACME_URI);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	p = p + 1;
+	if (stir_shaken_zstr(p)) {
+		*args_n = 0;
+		return STIR_SHAKEN_STATUS_OK;
+	}
+
+	args = p;
+
+	if (p = strchr(p, '/')) {
+
+		char *pCh = NULL;
+		unsigned long long  val;
+
+		// maybe 2 args
+
+		*p = '\0';
+
+		strncpy(arg1, args, arg1_len);
+
+		p = p + 1;
+		if (strchr(p, '/')) {
+			stir_shaken_set_error(ss, "Bad request URI, too many '/'", STIR_SHAKEN_ERROR_ACME_URI);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+
+		strncpy(arg2, p, arg2_len);
+		*args_n = 2;
+
+	} else {
+
+		len = strlen(args);
+		if (len > arg1_len) {
+			stir_shaken_set_error(ss, "Buffer too short for first arg", STIR_SHAKEN_ERROR_ACME_URI);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+
+		strncpy(arg1, args, arg1_len);
+		*args_n = 1;
 	}
 
 	return STIR_SHAKEN_STATUS_OK;

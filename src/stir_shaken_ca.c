@@ -4,6 +4,17 @@
 
 pthread_mutex_t big_fat_lock = PTHREAD_MUTEX_INITIALIZER;
 
+static stir_shaken_status_t ca_authority_over_a_number_check(char *sp, char *origin_identity) {
+
+	if (!sp || !origin_identity) return STIR_SHAKEN_STATUS_TERM;
+
+	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Blindly granting the [%s] authority over the call origin [%s]\n%s\n", sp, origin_identity);
+	
+	// Plug in proper check for athority over a number here
+ 
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 void stir_shaken_ca_destroy(stir_shaken_ca_t *ca)
 {
 	if (!ca) return;
@@ -261,13 +272,13 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
 
 				break;
-
-				case MG_EV_RECV:
-				break;
-
-				default:
-				break;
 			}
+
+		case MG_EV_RECV:
+			break;
+
+		default:
+			break;
 	}
 
 	stir_shaken_clear_error(&ca->ss);
@@ -608,6 +619,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 	int uri_has_secret = 0;
 	unsigned long long secret = 0;
 	int authz_secret = 0;
+	int args_n = 0;
 	
 	stir_shaken_hash_entry_t *e = NULL;
 	stir_shaken_ca_session_t *session = NULL;
@@ -635,7 +647,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 					stir_shaken_set_error(&ca->ss, "Bad AUTHZ request, SPC is missing", STIR_SHAKEN_ERROR_ACME_AUTHZ_SPC);
 					goto fail;
 				}
-				
+
 				sp_code = strtoul(spc, &pCh, 10); 
 				if (sp_code > 0x10000 - 1) { 
 					stir_shaken_set_error(&ca->ss, "SPC number too big", STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG);
@@ -964,6 +976,113 @@ fail:
 	return;
 }
 
+static void ca_handle_api_authority_check(struct mg_connection *nc, int event, void *hm, void *d)
+{
+	struct http_message *m = (struct http_message*) hm;
+	struct mbuf *io = NULL;
+	stir_shaken_context_t ss = { 0 };
+	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
+	struct mg_str authority_check_api_url = mg_mk_str(STI_CA_AUTHORITY_CHECK_URL);
+	uuid_t uuid = { 0 };
+	char nonce[STIR_SHAKEN_BUFLEN] = { 0 };
+	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST; 
+	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
+	const char *error_desc = NULL;
+	int authority_check = 0;
+	char arg1[STIR_SHAKEN_BUFLEN] = { 0 };
+	char arg2[STIR_SHAKEN_BUFLEN] = { 0 };
+	int arg1_len = STIR_SHAKEN_BUFLEN, arg2_len = STIR_SHAKEN_BUFLEN;
+	int args_n = 0;
+
+
+	if (!m || !nc || !ca) {
+		stir_shaken_set_error(&ca->ss, "Bad params, missing HTTP message, connection, and/or ca", STIR_SHAKEN_ERROR_ACME);
+		goto fail;
+	}
+
+	http_method = ca_http_method(m);
+	io = &nc->recv_mbuf;
+
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call:\n%s\n", http_method, STI_CA_AUTHORITY_CHECK_URL);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.p);
+
+
+	switch (event) {
+
+		case MG_EV_HTTP_REQUEST:
+
+			{
+				char *check_result = "false", *json_str = NULL;
+				cJSON *json = NULL;
+
+				if (http_method != STIR_SHAKEN_HTTP_REQ_TYPE_GET) {
+					stir_shaken_set_error(&ca->ss, "Bad request, only GET supported for this API", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
+					goto fail;
+				}
+				
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_api_uri_parse(&ca->ss, m->uri.p, authority_check_api_url.p, arg1, arg1_len, arg2, arg2_len, &args_n)) {
+					stir_shaken_set_error(&ca->ss, "Bad request, parsing with errors", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
+					goto fail;
+				}
+
+				if (args_n != 2) {
+					stir_shaken_set_error(&ca->ss, "Expected 2 args in URI request", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
+					goto fail;
+				}
+
+				// Here is a place to plug in a method for authority over a number checking, implement ca_authority_over_a_number_check according to your requirements
+
+				if (STIR_SHAKEN_STATUS_OK != ca_authority_over_a_number_check(arg1, arg2)) {
+					check_result = "false";
+				} else {
+					check_result = "true";
+				}
+	
+				json = cJSON_CreateObject();
+				if (!json) {
+					stir_shaken_set_error(&ca->ss, "Cannot create JSON object", STIR_SHAKEN_ERROR_JSON);
+					goto fail;
+				}
+
+				cJSON_AddStringToObject(json, "authority", check_result);
+				json_str = cJSON_PrintUnformatted(json);
+				cJSON_Delete(json);
+				json = NULL;
+
+				mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(json_str), json_str);
+
+				close_http_connection(nc, io);
+				if (json_str) {
+					free(json_str);
+					json_str = NULL;
+				}
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
+
+				break;
+			}
+		
+		case MG_EV_RECV:
+			break;
+
+		default:
+			break;
+	}
+
+	stir_shaken_clear_error(&ca->ss);
+	return;
+
+fail:
+
+	if (ca && stir_shaken_is_error_set(&ca->ss)) {
+		error_desc = stir_shaken_get_error(&ca->ss, &error);
+	}
+	close_http_connection_with_error(nc, io, error_desc, NULL);
+
+	stir_shaken_set_error(&ca->ss, "API AUTHORITY CHECK request failed", STIR_SHAKEN_ERROR_HTTP_GENERAL);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== FAIL\n");
+	return;
+}
+
 static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void *d)
 {
 	struct http_message *m = (struct http_message*) hm;
@@ -1089,6 +1208,7 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 	register_uri_handler(STI_CA_ACME_CERT_REQ_URL, ca_handle_api_cert, 1);
 	register_uri_handler(STI_CA_ACME_AUTHZ_URL, ca_handle_api_authz, 1);
 	register_uri_handler(STI_CA_ACME_NONCE_REQ_URL, ca_handle_api_nonce, 0);
+	register_uri_handler(STI_CA_AUTHORITY_CHECK_URL, ca_handle_api_authority_check, 1);
 
 	mg_set_protocol_http_websocket(nc);
 
