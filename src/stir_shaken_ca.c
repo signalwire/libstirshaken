@@ -1092,7 +1092,7 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
 	const char *error_desc = NULL;
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-	struct mg_str api_url = mg_mk_str(STI_CA_ACME_API_URL);
+	struct mg_str api_url = mg_mk_str(STI_CA_API_URL);
 
 
 	pthread_mutex_lock(&big_fat_lock);

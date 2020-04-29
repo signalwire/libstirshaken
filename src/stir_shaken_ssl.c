@@ -3012,7 +3012,7 @@ stir_shaken_status_t stir_shaken_cert_to_authority_check_url(stir_shaken_context
 	}
 
 	// TODO Get authority check URL from cert
-	strncpy(authority_check_url, "http://190.102.98.199/sti-ca/authority-over-the-number-check/0/", buflen);
+	strncpy(authority_check_url, "http://190.102.98.199/sti-ca/authority-over-the-number-check/0", buflen);
 
 	return STIR_SHAKEN_STATUS_OK;
 }
