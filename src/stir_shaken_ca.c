@@ -243,11 +243,16 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 		goto fail;
 	}
 
+	if (m->body.len < 1) {
+		stir_shaken_set_error(&ca->ss, "Bad params, empty HTTP body", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+		goto fail;
+	}
+
 	http_method = ca_http_method(m);
 	io = &nc->recv_mbuf;
 
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call:\n%s\n", http_method, STI_CA_ACME_NONCE_REQ_URL);
-	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.p);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.len ? m->body.p : "");
 
 
 	switch (event) {
@@ -351,11 +356,16 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 		goto fail;
 	}
 
+	if (m->body.len < 1) {
+		stir_shaken_set_error(&ca->ss, "Bad params, empty HTTP body", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+		goto fail;
+	}
+
 	http_method = ca_http_method(m);
 	io = &nc->recv_mbuf;
 
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call:\n%s\n", http_method, STI_CA_ACME_CERT_REQ_URL);
-	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.p);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.len ? m->body.p : "");
 	
 	
 	switch (event) {
@@ -636,7 +646,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 	io = &nc->recv_mbuf;
 	
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call: %s...\n", http_method, STI_CA_ACME_AUTHZ_URL);
-	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.p);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.len ? m->body.p : "");
 	
 	switch (event) {
 
@@ -778,6 +788,11 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 					}
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Secret: OK\n");
+
+					if (m->body.len < 1) {
+						stir_shaken_set_error(&ca->ss, "Bad params, empty HTTP body", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+						goto fail;
+					}
 
 					if (jwt_new(&jwt) != 0) {
 						stir_shaken_set_error(&ca->ss, "Cannot create JWT", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
@@ -1004,7 +1019,7 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 	io = &nc->recv_mbuf;
 
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call:\n%s\n", http_method, STI_CA_AUTHORITY_CHECK_URL);
-	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.p);
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.len ? m->body.p : "");
 
 
 	switch (event) {
