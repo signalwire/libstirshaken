@@ -575,7 +575,7 @@ stir_shaken_status_t stir_shaken_acme_retrieve_auth_challenge_details(stir_shake
  *	],
  * }
 */
-stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, char **polling_url)
+stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, char **polling_url, uint16_t remote_port)
 {
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	const char				*error_description = NULL;
@@ -697,6 +697,7 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 		}
 
 		http_req.url = strdup(challenge_url);
+        http_req.remote_port = remote_port;
 
 		if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_post_req(ss, &http_req, jwt_encoded, 1)) {
 			// Mock response
@@ -724,7 +725,7 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data, const char *url)
+stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data, const char *url, uint16_t remote_port)
 {
 	uint8_t					status_is_valid = 0;
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_OK;
@@ -738,6 +739,7 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
 	}
 
 	http_req.url = strdup(url);
+    http_req.remote_port = remote_port;
 
 	// Poll until either status is 'valid' or more than 30s passed
 	while (!status_is_valid && t < 30) {
@@ -848,7 +850,7 @@ fail:
  *	]
  *	}
  */
-stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen)
+stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, uint16_t remote_port)
 {
 	cJSON *json = NULL, *auth_status = NULL, *auth_arr = NULL;
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
@@ -944,6 +946,7 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 		 */
 	
 		http_req.url = strdup(auth_url);
+        http_req.remote_port = remote_port;
 
 		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Requesting authorization challenge details...\n");
 
@@ -967,7 +970,7 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got authorization challenge details from CA:\n%s\n", http_req.response.mem.mem);
 			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Sending a response to authorization challenge details...\n");
 
-			if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_respond_to_challenge(ss, http_req.response.mem.mem, spc_token, key, keylen, &polling_url)) {
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_respond_to_challenge(ss, http_req.response.mem.mem, spc_token, key, keylen, &polling_url, remote_port)) {
 				stir_shaken_set_error(ss, " ACME failed at authorization challenge response step. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
 				goto fail;
 			}
@@ -978,7 +981,7 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 
 			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Polling...\n");
 
-			if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_poll(ss, http_req.response.mem.mem, polling_url)) {
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_poll(ss, http_req.response.mem.mem, polling_url, remote_port)) {
 				stir_shaken_set_error(ss, "ACME polling failed. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
 				goto fail;
 			}

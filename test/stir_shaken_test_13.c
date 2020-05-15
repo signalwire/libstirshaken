@@ -107,6 +107,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 
 	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cHM6Ly9qYXp6Y2hhdC5wbC9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMTA3IiwidHlwZSI6InNwYy10b2tlbiJ9.9QjeRBFXUecbdP-HF8G0flRBu1_hM0ftoH5jQ2PGz8sjlEV3NDQqpxrBuFr8MGcVcqywN8_WtHtW76XFfnNEuA";
     http_req.url = strdup(url);
+    http_req.remote_port = 8082;
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req_ex(&ss, &http_req, kid, nonce, sp.csr.req, nb, na, spc, sp.keys.priv_raw, sp.keys.priv_raw_len, NULL, spc_token)) {
 		printf("STIR-Shaken: Failed to execute cert request\n");

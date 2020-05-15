@@ -5,11 +5,14 @@ stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_sha
 {
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	char cert_download_url[STIR_SHAKEN_BUFLEN] = { 0 };
+    uint16_t remote_port = STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT;
 
 	if (!http_req) {
 		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
+
+    remote_port = http_req->remote_port;
 
 	if (stir_shaken_zstr(http_req->url)) {
 		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_GENERAL);
@@ -70,7 +73,7 @@ stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_sha
 	 * Performing Steps 4, 5, 7 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080].
 	 */
 
-	ss_status = stir_shaken_acme_perform_authorization(ss, http_req->response.mem.mem, spc_token, key, keylen);
+	ss_status = stir_shaken_acme_perform_authorization(ss, http_req->response.mem.mem, spc_token, key, keylen, http_req->remote_port);
 	if (ss_status != STIR_SHAKEN_STATUS_OK) {
 		stir_shaken_set_error(ss, "ACME failed at authorization step", STIR_SHAKEN_ERROR_ACME);
 		goto exit;
@@ -84,6 +87,7 @@ stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_sha
 	stir_shaken_destroy_http_request(http_req);
 
 	http_req->url = strdup(cert_download_url);
+    http_req->remote_port = remote_port;
 	ss_status = stir_shaken_download_cert(ss, http_req);
 	if (ss_status != STIR_SHAKEN_STATUS_OK) {
 		stir_shaken_set_error(ss, "ACME failed to download certificate", STIR_SHAKEN_ERROR_ACME);

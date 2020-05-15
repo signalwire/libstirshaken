@@ -132,6 +132,10 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 	curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *) http_req);
 	curl_easy_setopt(curl_handle, CURLOPT_HEADERFUNCTION, stir_shaken_curl_header_callback);
 	curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, (void *) http_req);
+
+    if (http_req->remote_port) {
+        curl_easy_setopt(curl_handle, CURLOPT_PORT, http_req->remote_port);
+    }
 	
 	// Some pple say, some servers don't like requests that are made without a user-agent field, so we provide one.
 	snprintf(user_agent, STIR_SHAKEN_ERROR_BUF_LEN, "freeswitch-stir-shaken/%s", STIR_SHAKEN_VERSION);
@@ -189,9 +193,9 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 
 	// TODO remove
 	if (http_req->data) {
-		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%d) call:\nurl:\t%s\ndata:\t%s\n", http_req->type, http_req->url, http_req->data);
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%d) call:\nurl:\t%s\nport:\t%u\ndata:\t%s\n", http_req->type, http_req->url, http_req->remote_port, http_req->data);
 	} else {
-		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%d) call:\nurl:\t%s\n", http_req->type, http_req->url);
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%d) call:\nurl:\t%s\nport:\t%u\n", http_req->type, http_req->url, http_req->remote_port);
 	}
 
 	res = curl_easy_perform(curl_handle);
