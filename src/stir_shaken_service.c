@@ -135,6 +135,8 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 
     if (http_req->remote_port) {
         curl_easy_setopt(curl_handle, CURLOPT_PORT, http_req->remote_port);
+    } else {
+        curl_easy_setopt(curl_handle, CURLOPT_PORT, STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT);
     }
 	
 	// Some pple say, some servers don't like requests that are made without a user-agent field, so we provide one.
