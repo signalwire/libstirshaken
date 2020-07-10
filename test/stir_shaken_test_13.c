@@ -49,10 +49,10 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	stir_shaken_assert(sp.keys.public_key != NULL, "Err, failed to generate public key");
 
 	printf("SP: Create CSR\n");
-	sp.code = 107;
+	sp.code = 1;
 	sprintf(spc, "%d", sp.code);
 	snprintf(sp.subject_c, STIR_SHAKEN_BUFLEN, "US");
-	snprintf(sp.subject_cn, STIR_SHAKEN_BUFLEN, "NewSTI-SP 107");
+	snprintf(sp.subject_cn, STIR_SHAKEN_BUFLEN, "NewSTI-SP Number 1");
 
 	status = stir_shaken_generate_csr(&ss, sp.code, &sp.csr.req, sp.keys.private_key, sp.keys.public_key, sp.subject_c, sp.subject_cn);
 	PRINT_SHAKEN_ERROR_IF_SET
@@ -69,43 +69,26 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	// Set SPC token to this:
 	// SPC token encoded:
 	//
-	// eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cHM6Ly9qYXp6Y2hhdC5wbC9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMTA3IiwidHlwZSI6InNwYy10b2tlbiJ9.9QjeRBFXUecbdP-HF8G0flRBu1_hM0ftoH5jQ2PGz8sjlEV3NDQqpxrBuFr8MGcVcqywN8_WtHtW76XFfnNEuA
+	// eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cDovLzMuOC4xOTMuMTQyL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ._xMcM3CalCOdHltFkZrq82L3z-lFP8RLXUspc6Sqhtp22_fxxLupaVyjGO5CcZhF_W5jALQSpAM4irmtU5Nvdg
 	//
 	// SPC token decoded:
 	//
 	//
 	// {
-	//    "alg": "ES256",
-	//    "issuer": "SignalWire STI-PA",
-	//    "typ": "JWT",
-	//    "x5u": "https://jazzchat.pl/pa.pem"
+	//     "alg": "ES256",
+	//      "issuer": "SignalWire STI-PA",
+	//      "typ": "JWT",
+	//      "x5u": "http://3.8.193.142/pa.pem"
 	// }
 	// .
 	// {
-	//    "notAfter": "1 year from now",
-	//    "notBefore": "today",
-	//    "spc": "107",
-	//    "type": "spc-token"
+	//      "notAfter": "1 year from now",
+	//      "notBefore": "today",
+	//      "spc": "1",
+	//      "type": "spc-token"
 	// }
-	//
-	// Obtained by running:
-	//
-	//			./stirshaken spc-token --privkey test/ref/pa/pa.priv --url https://jazzchat.pl/pa.pem --spc 107 --issuer_cn "SignalWire STI-PA" -f spc_token_107.txt --vvv
-	//
-	// Priv key is:
-	//-----BEGIN EC PRIVATE KEY-----
-	// MHcCAQEEICXt51bPA4beaKOFTOiD+CVNL7AmhvVnwnSF5TQN8eEUoAoGCCqGSM49
-	// AwEHoUQDQgAEDjJOep8dsSCN5Nx3wek851dXIYhoOXWkeEGvPgnTFvHA98febb7w
-	// iR5NoqB04oKMR9Z8vrYfpJozdhZpZEAyMg==
-	// -----END EC PRIVATE KEY-----
-	//
-	// public key is:
-	// -----BEGIN PUBLIC KEY-----
-	// MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDjJOep8dsSCN5Nx3wek851dXIYho
-	// OXWkeEGvPgnTFvHA98febb7wiR5NoqB04oKMR9Z8vrYfpJozdhZpZEAyMg==
-	// -----END PUBLIC KEY-----
 
-	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cHM6Ly9qYXp6Y2hhdC5wbC9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMTA3IiwidHlwZSI6InNwYy10b2tlbiJ9.9QjeRBFXUecbdP-HF8G0flRBu1_hM0ftoH5jQ2PGz8sjlEV3NDQqpxrBuFr8MGcVcqywN8_WtHtW76XFfnNEuA";
+	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cDovLzMuOC4xOTMuMTQyL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ._xMcM3CalCOdHltFkZrq82L3z-lFP8RLXUspc6Sqhtp22_fxxLupaVyjGO5CcZhF_W5jALQSpAM4irmtU5Nvdg";
     http_req.url = strdup(url);
     http_req.remote_port = 8082;
 
