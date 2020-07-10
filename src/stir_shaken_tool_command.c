@@ -91,6 +91,7 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 
 	} else if (!strcmp(command_name, COMMAND_NAME_SP_CERT_REQ)) {
 
+		sp->sp.port = options->port;
 		strncpy(sp->spc, options->spc, STIR_SHAKEN_BUFLEN);
 		strncpy(sp->sp.spc_token, options->spc_token, STIR_SHAKEN_BUFLEN);
 		strncpy(sp->url, options->url, STIR_SHAKEN_BUFLEN);
@@ -458,6 +459,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Requesting STI certificate...\n");
 				http_req.url = strdup(sp->url);
+				http_req.remote_port = sp->sp.port;
 				
 				// Can do:
 				// status = stir_shaken_sp_cert_req_ex(ss, &http_req, sp->sp.kid, sp->sp.nonce, sp->sp.csr.req, sp->sp.nb, sp->sp.na, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, &jwt_decoded, sp->sp.spc_token);

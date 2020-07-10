@@ -889,6 +889,7 @@ typedef struct stir_shaken_sp_s {
 	char csr_name[STIR_SHAKEN_BUFLEN];
 	char cert_name[STIR_SHAKEN_BUFLEN];
 	char spc_token[STIR_SHAKEN_BUFLEN];
+	uint16_t port;
 } stir_shaken_sp_t;
 
 typedef struct stir_shaken_ca_session_s {
