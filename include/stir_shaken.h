@@ -334,7 +334,7 @@ typedef struct stir_shaken_http_response_s {
 	curl_slist_t	*headers;
 } stir_shaken_http_response_t;
 
-#define STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT 80
+#define STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT 80u
 
 typedef struct stir_shaken_http_req_s {
 	const char					*url;

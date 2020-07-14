@@ -133,12 +133,13 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 	curl_easy_setopt(curl_handle, CURLOPT_HEADERFUNCTION, stir_shaken_curl_header_callback);
 	curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, (void *) http_req);
 
-    if (http_req->remote_port) {
-        curl_easy_setopt(curl_handle, CURLOPT_PORT, http_req->remote_port);
-    } else {
-        curl_easy_setopt(curl_handle, CURLOPT_PORT, STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT);
+    if (http_req->remote_port == 0) {
+		http_req->remote_port = STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT;
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to DEFAULT %u cause port not set\n", http_req->remote_port);
     }
-	
+
+	curl_easy_setopt(curl_handle, CURLOPT_PORT, http_req->remote_port);
+
 	// Some pple say, some servers don't like requests that are made without a user-agent field, so we provide one.
 	snprintf(user_agent, STIR_SHAKEN_ERROR_BUF_LEN, "freeswitch-stir-shaken/%s", STIR_SHAKEN_VERSION);
 	curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, user_agent);
@@ -186,7 +187,8 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 			break;
 
 		default:
-			break;
+			stir_shaken_set_error(ss, "Unknown HTTP type Request", STIR_SHAKEN_ERROR_HTTP_GENERAL);
+			return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	if (http_req->tx_headers) {
@@ -195,9 +197,9 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 
 	// TODO remove
 	if (http_req->data) {
-		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%d) call:\nurl:\t%s\nport:\t%u\ndata:\t%s\n", http_req->type, http_req->url, http_req->remote_port, http_req->data);
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%s) call:\nurl:\t%s\nport:\t%u\ndata:\t%s\n", http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_GET ? "GET" : (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_POST ? "POST" : (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_PUT ? "PUT" : (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_HEAD ? "HEAD" : "BAD REQUEST"))), http_req->url, http_req->remote_port, http_req->data);
 	} else {
-		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%d) call:\nurl:\t%s\nport:\t%u\n", http_req->type, http_req->url, http_req->remote_port);
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%s) call:\nurl:\t%s\nport:\t%u\n", http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_GET ? "GET" : http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_POST ? "POST" : http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_PUT ? "PUT" : http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_HEAD ? "HEAD" : "BAD REQUEST", http_req->url, http_req->remote_port);
 	}
 
 	res = curl_easy_perform(curl_handle);
