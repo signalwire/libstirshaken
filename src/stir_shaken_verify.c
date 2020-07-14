@@ -464,12 +464,16 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 		stir_shaken_set_error(ss, "PASSporT expired", STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
 		goto fail;
 	}
-	
+
+#if STIR_SHAKEN_CHECK_AUTHORITY_OVER_NUMBER
+
 	ss_status = stir_shaken_check_authority_over_number(ss, cert, passport);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "Caller has no authority over the call origin", STIR_SHAKEN_ERROR_AUTHORITY_CHECK);
 		goto fail;
 	}
+
+#endif
 
 fail:
 
