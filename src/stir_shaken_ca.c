@@ -244,8 +244,7 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 	}
 
 	if (m->body.len < 1) {
-		stir_shaken_set_error(&ca->ss, "Bad params, empty HTTP body", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		goto fail;
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "Warning, empty HTTP body...");
 	}
 
 	http_method = ca_http_method(m);
