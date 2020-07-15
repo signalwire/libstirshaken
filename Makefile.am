@@ -16,9 +16,6 @@ stirshaken_LDFLAGS = -lstirshaken
 
 LIBS += -lcjson -lcurl -lcrypto -lssl -ljwt -luuid -pthread
 
-install-exec-hook:
-	test -f .libs/stirshaken && cp .libs/stirshaken /usr/bin
-
 stir_shaken_test_1_SOURCES = test/stir_shaken_test_1.c
 stir_shaken_test_1_CFLAGS = -Iinclude
 stir_shaken_test_1_LDFLAGS = -lstirshaken
