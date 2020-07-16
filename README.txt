@@ -4,6 +4,8 @@ COMPILATION
 If you just want to get on with it, then please run
 ./do_install.sh
 This will install dependencies as well as tools needed to make build, and will build and install it.
+If there are problems with dependencies, then install them manually and rerun ./do_install.sh.
+This will build all Shaken targets if packages are installed.
 
 Dependencies:
 
