@@ -1,0 +1,50 @@
+---
+kind: pipeline
+name: scan-build
+
+node:
+  freeswitch: stack
+
+steps:
+    - name: scan-build
+      image: signalwire/freeswitch-public-base
+      pull: true
+      commands:
+      - apt-get update && apt-get install -y clang-tools-7 libjansson-dev libcjson-dev libcurl-ocaml-dev libjwt-dev uuid-dev
+      - autoreconf -i
+      - automake --add-missing
+      - libtoolize
+      - autoreconf
+      - ./configure
+      - mkdir -p scan-build
+      - echo '#!/bin/bash\nscan-build-7 -o ./scan-build/ make -j`nproc --all` |& tee ./scan-build-result.txt\nexitstatus=$${PIPESTATUS[0]}\necho $$exitstatus > ./scan-build-status.txt\n' > scan.sh
+      - chmod +x scan.sh
+      - ./scan.sh
+      - exitstatus=`cat ./scan-build-status.txt`
+      - echo "*** Exit status is $exitstatus"
+
+    - name: notify
+      image: signalwire/scan-build-notify
+      pull: true
+      environment:
+        GITHUB_CI_APP_PEM:
+          from_secret: github_ci_app_pem
+        SSH_KEY:
+          from_secret: ssh_key
+        SLACK_WEBHOOK_URL:
+          from_secret: slack_webhook_url
+      commands:
+      - /root/notify.sh
+
+      
+trigger:
+  branch:
+  - master
+  event:
+  - pull_request
+  - push
+---
+kind: signature
+hmac: bbf7276e66d4ae645a0db82f7c0176207b52d50d9d7273a34bb2ab8fd6995b6c
+
+...
