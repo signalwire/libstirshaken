@@ -35,6 +35,7 @@ make check
 
 stirshaken commandline tool
 ===========================
+make stirshaken
 
 openssl req -in csr.pem -text -noout
 openssl x509 -in sp.pem -text -noout
@@ -58,3 +59,5 @@ nohup sudo ./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c 
 ./stirshaken spc-token --privkey test/ref/pa/pa.priv --url https://jazzchat.pl/pa.pem --spc 1 --issuer_cn "SignalWire STI-PA" -f spc_token_1.txt --vvv
 ./stirshaken jwt-check --jwt "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUiLCJ0eXAiOiJKV1QiLCJ4NXUiOiJodHRwczovL2phenpjaGF0LnBsL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMTAxIiwidHlwZSI6InNwYy10b2tlbiJ9.PGNPGieDuNIhxtpLFUPwS0qyy61_iW4hNqyio-jeSn8o8d7zgLW1SsQ6JFNB4txR8cW-99mKO1fO7qmSrbOAOw" --pubkey tsst/ref/pa/pa.pub --vvv
 ./stirshaken jwt-dump --jwt "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUiLCJ0eXAiOiJKV1QiLCJ4NXUiOiJodHRwczovL2phenpjaGF0LnBsL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMTAxIiwidHlwZSI6InNwYy10b2tlbiJ9.PGNPGieDuNIhxtpLFUPwS0qyy61_iW4hNqyio-jeSn8o8d7zgLW1SsQ6JFNB4txR8cW-99mKO1fO7qmSrbOAOw" --vvv
+./stirshaken sp-cert-req --url http://localhost/sti-ca/acme/cert --privkey priv.key --pubkey pub.key --csr csr.pem --spc 12 --spc_token SPCT --v
+./stirshaken sp-cert-req --url 190.102.98.199/sti-ca/acme/cert --privkey priv.pem --pubkey pub.pem  --csr csr.pem --spc 1 -f sp.pem --vvv --port 8082 --spc_token eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cDovLzMuMTcuMTc3LjE3NC9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.SXvxvFWE68aSQgo9BVrw4bH_GVAtIjPyd8llvHGMzfQctwKi7k2mM0Lb2fzHNL-Z_CldLq-iiBhcgNHiZnv-1A
