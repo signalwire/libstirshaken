@@ -376,33 +376,34 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	memset(&http_req, 0, sizeof(http_req));
 	
 	if (!sih) {
-		stir_shaken_set_error(ss, "Verify: SIP Identity Header not set", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
-		goto fail;
+		stir_shaken_set_error(ss, "SIP Identity Header not set", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		goto end;
 	}
 	
 	if (!cert_url) {
-		stir_shaken_set_error(ss, "Verify: Cert URL not set", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
-		goto fail;
+		stir_shaken_set_error(ss, "Cert URL not set", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+		goto end;
 	}
 	
 	if (stir_shaken_zstr(cert_url)) {
-		stir_shaken_set_error(ss, "Verify: Cert URL is empty", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
-		goto fail;
+		stir_shaken_set_error(ss, "Cert URL is empty", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+		goto end;
 	}
 
 	if (!passport) {
-		stir_shaken_set_error(ss, "Verify: PASSporT not set", STIR_SHAKEN_ERROR_GENERAL);
-		goto fail;
+		stir_shaken_set_error(ss, "PASSporT not set", STIR_SHAKEN_ERROR_GENERAL);
+		goto end;
 	}
 
 	if (!cert_out) {
-		stir_shaken_set_error(ss, "Verify: Cert (out) not set", STIR_SHAKEN_ERROR_GENERAL);
-		goto fail;
+		stir_shaken_set_error(ss, "Cert (out) not set", STIR_SHAKEN_ERROR_GENERAL);
+		goto end;
 	}
 
 	cert = malloc(sizeof(stir_shaken_cert_t));
 	if (!cert) {
-		goto fail;
+		stir_shaken_set_error(ss, "Cannot allocate cert", STIR_SHAKEN_ERROR_GENERAL);
+		goto end;
 	}
 	memset(cert, 0, sizeof(stir_shaken_cert_t));
 
@@ -411,19 +412,20 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	ss_status = stir_shaken_download_cert(ss, &http_req);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
-		goto fail;
+		goto end;
 	}
 
     ss_status = stir_shaken_load_x509_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error(ss, "Verify: error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
-		goto fail;
+		stir_shaken_set_error(ss, "Error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
+		goto end;
     }
 
 	cert->body = malloc(http_req.response.mem.size);
 	if (!cert->body) {
-		stir_shaken_set_error(ss, "Verify: out of memory (will this work?)", STIR_SHAKEN_ERROR_GENERAL);
-		goto fail;
+		ss_status = STIR_SHAKEN_STATUS_FALSE;
+		stir_shaken_set_error(ss, "Out of memory (will this work?)", STIR_SHAKEN_ERROR_GENERAL);
+		goto end;
 	}
 
 	memcpy(cert->body, http_req.response.mem.mem, http_req.response.mem.size);
@@ -431,38 +433,38 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 
 	ss_status = stir_shaken_read_cert_fields(ss, cert);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error(ss, "Verify: error parsing certificate", STIR_SHAKEN_ERROR_GENERAL);
-		goto fail;
+		stir_shaken_set_error(ss, "Error parsing certificate", STIR_SHAKEN_ERROR_GENERAL);
+		goto end;
 	}
 
 	ss_status = stir_shaken_basic_cert_check(ss, cert);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "Cert did not pass basic check (wrong version or expired)", STIR_SHAKEN_ERROR_CERT_INVALID);
-		goto fail;
+		goto end;
 	}
 
 	ss_status = stir_shaken_verify_cert_path(ss, cert);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_CERT_INVALID);
-		goto fail;
+		goto end;
 	}
 
 	ss_status = stir_shaken_jwt_verify_with_cert(ss, sih, cert, passport);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "Cert does not match the PASSporT", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
-		goto fail;
+		goto end;
 	}
 
 	ss_status = stir_shaken_passport_validate_headers_and_grants(ss, passport);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "PASSporT invalid", STIR_SHAKEN_ERROR_PASSPORT_INVALID);
-		goto fail;
+		goto end;
 	}
 
 	ss_status = stir_shaken_passport_validate_iat_against_freshness(ss, passport, iat_freshness);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "PASSporT expired", STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
-		goto fail;
+		goto end;
 	}
 
 #if STIR_SHAKEN_CHECK_AUTHORITY_OVER_NUMBER
@@ -470,14 +472,16 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
 	ss_status = stir_shaken_check_authority_over_number(ss, cert, passport);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "Caller has no authority over the call origin", STIR_SHAKEN_ERROR_AUTHORITY_CHECK);
-		goto fail;
+		goto end;
 	}
 
 #endif
 
-fail:
+end:
 
-	stir_shaken_set_error_if_clear(ss, "Unknown error while processing request", STIR_SHAKEN_ERROR_GENERAL);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+		stir_shaken_set_error_if_clear(ss, "Unknown error while processing request", STIR_SHAKEN_ERROR_GENERAL);
+	}
 
 	stir_shaken_destroy_http_request(&http_req);
 
