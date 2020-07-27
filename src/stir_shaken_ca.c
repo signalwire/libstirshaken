@@ -236,6 +236,7 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST; 
 	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
 	const char *error_desc = NULL;
+    char mbody[STIR_SHAKEN_BUFLEN * 4] = { 0 };
 
 
 	if (!m || !nc || !ca) {
@@ -250,8 +251,11 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 	http_method = ca_http_method(m);
 	io = &nc->recv_mbuf;
 
+    strncpy(mbody, m->body.p, stir_shaken_min(STIR_SHAKEN_BUFLEN * 4, m->body.len));
+    mbody[STIR_SHAKEN_BUFLEN * 4 - 1] = '\0';
+
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call:\n%s\n", http_method, STI_CA_ACME_NONCE_REQ_URL);
-	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.len ? m->body.p : "");
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", mbody);
 
 
 	switch (event) {
@@ -348,6 +352,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 	stir_shaken_hash_entry_t *e = NULL;
 	stir_shaken_ca_session_t *session = NULL;
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST; 
+    char mbody[STIR_SHAKEN_BUFLEN * 4] = { 0 };
 
 
 	if (!m || !nc || !ca) {
@@ -357,9 +362,12 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 
 	http_method = ca_http_method(m);
 	io = &nc->recv_mbuf;
+    
+    strncpy(mbody, m->body.p, stir_shaken_min(STIR_SHAKEN_BUFLEN * 4, m->body.len));
+    mbody[STIR_SHAKEN_BUFLEN * 4 - 1] = '\0';
 
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call:\n%s\n", http_method, STI_CA_ACME_CERT_REQ_URL);
-	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.len ? m->body.p : "");
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", mbody);
 	
 	
 	switch (event) {
@@ -633,6 +641,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 	stir_shaken_hash_entry_t *e = NULL;
 	stir_shaken_ca_session_t *session = NULL;
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
+    char mbody[STIR_SHAKEN_BUFLEN * 4] = { 0 };
 	
 	
 	if (!m || !nc || !ca) {
@@ -643,9 +652,12 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 	http_method = ca_http_method(m);
 
 	io = &nc->recv_mbuf;
+
+    strncpy(mbody, m->body.p, stir_shaken_min(STIR_SHAKEN_BUFLEN * 4, m->body.len));
+    mbody[STIR_SHAKEN_BUFLEN * 4 - 1] = '\0';
 	
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call: %s...\n", http_method, STI_CA_ACME_AUTHZ_URL);
-	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.len ? m->body.p : "");
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", mbody);
 	
 	switch (event) {
 
@@ -1007,6 +1019,7 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 	char arg2[STIR_SHAKEN_BUFLEN] = { 0 };
 	int arg1_len = STIR_SHAKEN_BUFLEN, arg2_len = STIR_SHAKEN_BUFLEN;
 	int args_n = 0;
+    char mbody[STIR_SHAKEN_BUFLEN * 4] = { 0 };
 
 
 	if (!m || !nc || !ca) {
@@ -1017,8 +1030,11 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 	http_method = ca_http_method(m);
 	io = &nc->recv_mbuf;
 
+    strncpy(mbody, m->body.p, stir_shaken_min(STIR_SHAKEN_BUFLEN * 4, m->body.len));
+    mbody[STIR_SHAKEN_BUFLEN * 4 - 1] = '\0';
+
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call:\n%s\n", http_method, STI_CA_AUTHORITY_CHECK_URL);
-	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", m->body.len ? m->body.p : "");
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", mbody);
 
 
 	switch (event) {
@@ -1139,6 +1155,7 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 		case MG_EV_HTTP_REQUEST:
 			{
 				unsigned int port_i = 0;
+                char this_uri[STIR_SHAKEN_BUFLEN] = { 0 };
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\n=== +++ Processing HTTP request...\n");
 
@@ -1152,7 +1169,10 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 						break;
 					}
 
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\n-> Searching handler for %s...\n", m->uri.p);
+                    strncpy(this_uri, m->uri.p, stir_shaken_min(STIR_SHAKEN_BUFLEN, m->uri.len));
+                    this_uri[STIR_SHAKEN_BUFLEN - 1] = '\0';
+                    
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\n-> Searching handler for %s...\n", this_uri);
 
 					evh = handler_registered(&m->uri);
 

@@ -38,6 +38,8 @@
 #include <openssl/conf_api.h>
 #include <libgen.h>
 
+#define stir_shaken_min(x, y) ((x) < (y)? (x) : (y))
+
 #define STIR_SHAKEN_VERSION "1.0"
 
 #define PBUF_LEN 1000
