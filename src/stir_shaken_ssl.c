@@ -311,8 +311,6 @@ X509_REQ* stir_shaken_generate_x509_req(stir_shaken_context_t *ss, const char *s
 {
 	X509_REQ                *req = NULL;
 	X509_NAME				*tmp = NULL;
-	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-	
 	
 	stir_shaken_clear_error(ss);
 	
@@ -406,7 +404,6 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 {
 	X509_REQ                *req = NULL;
 	X509_NAME				*tmp = NULL;
-	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	
 	
 	stir_shaken_clear_error(ss);
@@ -1181,8 +1178,6 @@ stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, sti
 	char			*serialDec = NULL;
 	char			*issuer = NULL;
 	char			*subject = NULL;
-	char			not_before_str[ASN1_DATE_LEN] = { 0 };
-	char			not_after_str[ASN1_DATE_LEN] = { 0 };
 	ASN1_TIME		*notBefore = NULL;
 	ASN1_TIME		*notAfter = NULL;
 	int				version = -1;

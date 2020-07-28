@@ -294,63 +294,63 @@ void cs_base64_finish(struct cs_base64_ctx *ctx) {
   }
 }
 
-#define BASE64_ENCODE_BODY                                                \
-  static const char *b64 =                                                \
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; \
-  int i, j, a, b, c;                                                      \
-                                                                          \
-  for (i = j = 0; i < src_len; i += 3) {                                  \
-    a = src[i];                                                           \
-    b = i + 1 >= src_len ? 0 : src[i + 1];                                \
-    c = i + 2 >= src_len ? 0 : src[i + 2];                                \
-                                                                          \
-    BASE64_OUT(b64[a >> 2]);                                              \
-    BASE64_OUT(b64[((a & 3) << 4) | (b >> 4)]);                           \
-    if (i + 1 < src_len) {                                                \
-      BASE64_OUT(b64[(b & 15) << 2 | (c >> 6)]);                          \
-    }                                                                     \
-    if (i + 2 < src_len) {                                                \
-      BASE64_OUT(b64[c & 63]);                                            \
-    }                                                                     \
-  }                                                                       \
-                                                                          \
-  while (j % 4 != 0) {                                                    \
-    BASE64_OUT('=');                                                      \
-  }                                                                       \
-  BASE64_FLUSH()
-
-#define BASE64_OUT(ch) \
-  do {                 \
-    dst[j++] = (ch);   \
-  } while (0)
-
-#define BASE64_FLUSH() \
-  do {                 \
-    dst[j++] = '\0';   \
-  } while (0)
-
 void cs_base64_encode(const unsigned char *src, int src_len, char *dst) {
-  BASE64_ENCODE_BODY;
+  static const char *b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  int i, j, a, b, c;
+
+  for (i = j = 0; i < src_len; i += 3) {
+    a = src[i];
+    b = i + 1 >= src_len ? 0 : src[i + 1];
+    c = i + 2 >= src_len ? 0 : src[i + 2];
+
+    dst[j++] = (b64[a >> 2]);
+    dst[j++] = (b64[((a & 3) << 4) | (b >> 4)]);
+    if (i + 1 < src_len) {
+      dst[j++] = (b64[(b & 15) << 2 | (c >> 6)]);
+    }
+    if (i + 2 < src_len) {
+      dst[j++] = (b64[c & 63]);
+    }
+  }
+
+  while (j % 4 != 0) {
+    dst[j++] = ('=');
+  }
+  dst[j++] = '\0';
 }
 
-#undef BASE64_OUT
-#undef BASE64_FLUSH
 
 #if CS_ENABLE_STDIO
-#define BASE64_OUT(ch)      \
-  do {                      \
-    fprintf(f, "%c", (ch)); \
-    j++;                    \
-  } while (0)
-
-#define BASE64_FLUSH()
 
 void cs_fprint_base64(FILE *f, const unsigned char *src, int src_len) {
-  BASE64_ENCODE_BODY;
+  static const char *b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  int i, j, a, b, c;
+
+  for (i = j = 0; i < src_len; i += 3) {
+    a = src[i];
+    b = i + 1 >= src_len ? 0 : src[i + 1];
+    c = i + 2 >= src_len ? 0 : src[i + 2];
+
+    fprintf(f, "%c", (b64[a >> 2]));
+    j++;
+    fprintf(f, "%c", (b64[((a & 3) << 4) | (b >> 4)]));
+    j++;
+    if (i + 1 < src_len) {
+      fprintf(f, "%c", (b64[(b & 15) << 2 | (c >> 6)]));
+      j++;
+    }
+    if (i + 2 < src_len) {
+      fprintf(f, "%c", (b64[c & 63]));
+      j++;
+    }
+  }
+
+  while (j % 4 != 0) {
+    fprintf(f, "%c", ('='));
+    j++;
+  }
 }
 
-#undef BASE64_OUT
-#undef BASE64_FLUSH
 #endif /* CS_ENABLE_STDIO */
 
 /* Convert one byte of encoded base64 input stream to 6-bit chunk */
@@ -2101,7 +2101,9 @@ int mg_avprintf(char **buf, size_t size, const char *fmt, va_list ap) {
      * Microsoft version of vsnprintf() is not always null-terminated, so put
      * the terminator manually
      */
-    (*buf)[len] = 0;
+    if (*buf) {
+        (*buf)[len] = 0;
+    }
     /* LCOV_EXCL_STOP */
   } else if (len >= (int) size) {
     /* Standard-compliant code path. Allocate a buffer that is large enough. */
@@ -3304,6 +3306,7 @@ void mg_broadcast(struct mg_mgr *mgr, mg_event_handler_t cb, void *data,
     memcpy(ctl_msg.message, data, len);
     dummy = MG_SEND_FUNC(mgr->ctl[0], (char *) &ctl_msg,
                          offsetof(struct ctl_msg, message) + len, 0);
+    (void) dummy; /* https://gcc.gnu.org/bugzilla/show_bug.cgi?id=25509 */
     dummy = MG_RECV_FUNC(mgr->ctl[0], (char *) &len, 1, 0);
     (void) dummy; /* https://gcc.gnu.org/bugzilla/show_bug.cgi?id=25509 */
   }
@@ -3979,7 +3982,7 @@ void mg_add_to_set(sock_t sock, fd_set *set, sock_t *max_fd) {
 
 time_t mg_socket_if_poll(struct mg_iface *iface, int timeout_ms) {
   struct mg_mgr *mgr = iface->mgr;
-  double now = mg_time();
+  double now;
   double min_timer;
   struct mg_connection *nc, *tmp;
   struct timeval tv;
@@ -5591,8 +5594,7 @@ int mg_assemble_uri(const struct mg_str *scheme, const struct mg_str *user_info,
   if (path != NULL && path->len > 0) {
     if (normalize_path) {
       struct mg_str npath = mg_strdup(*path);
-      if (npath.len != path->len) goto out;
-      if (!mg_normalize_uri_path(path, &npath)) {
+      if (npath.len != path->len || !mg_normalize_uri_path(path, &npath)) {
         free((void *) npath.p);
         goto out;
       }
@@ -5978,7 +5980,7 @@ MG_INTERNAL int mg_get_mime_type_encoding(
     struct mg_str path, struct mg_str *type, struct mg_str *encoding,
     const struct mg_serve_http_opts *opts) {
   const char *ext, *overrides;
-  struct mg_str k, v;
+  struct mg_str k = { 0 }, v = { 0 };
 
   overrides = opts->custom_mime_types;
   while ((overrides = mg_next_comma_list_entry(overrides, &k, &v)) != NULL) {
@@ -6107,7 +6109,7 @@ int mg_parse_http(const char *s, int n, struct http_message *hm, int is_req) {
     s = mg_skip(s, end, "\r\n", &hm->resp_status_msg);
   }
 
-  s = mg_http_parse_headers(s, end, len, hm);
+  mg_http_parse_headers(s, end, len, hm);
 
   /*
    * mg_parse_http() is used to parse both HTTP requests and HTTP
@@ -7834,6 +7836,7 @@ MG_INTERNAL void mg_find_index_file(const char *path, const char *list,
   struct mg_str vec;
   size_t path_len = strlen(path);
   int found = 0;
+  char *tmp = NULL;
   *index_file = NULL;
 
   /* Traverse index files list. For each entry, append it to the given */
@@ -7841,8 +7844,13 @@ MG_INTERNAL void mg_find_index_file(const char *path, const char *list,
   while ((list = mg_next_comma_list_entry(list, &vec, NULL)) != NULL) {
     cs_stat_t st;
     size_t len = path_len + 1 + vec.len + 1;
+    tmp = *index_file;
     *index_file = (char *) MG_REALLOC(*index_file, len);
-    if (*index_file == NULL) break;
+    if (*index_file == NULL) {
+      *index_file = tmp;
+      break;
+    }
+
     snprintf(*index_file, len, "%s%c%.*s", path, DIRSEP, (int) vec.len, vec.p);
 
     /* Does it exist? Is it a file? */
@@ -7923,7 +7931,7 @@ void mg_http_reverse_proxy(struct mg_connection *nc,
   struct mg_connection *be;
   char burl[256], *purl = burl;
   int i;
-  const char *error;
+  const char *error = "";
   struct mg_connect_opts opts;
   struct mg_str path = MG_NULL_STR, user_info = MG_NULL_STR, host = MG_NULL_STR;
   memset(&opts, 0, sizeof(opts));
@@ -10204,7 +10212,7 @@ void mg_send_websocket_handshake3v(struct mg_connection *nc,
                                    const struct mg_str pass) {
   struct mbuf auth;
   char key[25];
-  uint32_t nonce[4];
+  uint32_t nonce[4] = { 0 };
   nonce[0] = mg_ws_random_mask();
   nonce[1] = mg_ws_random_mask();
   nonce[2] = mg_ws_random_mask();
@@ -10315,6 +10323,8 @@ int mg_stat(const char *path, cs_stat_t *st) {
   DBG(("[%ls] -> %d", wpath, _wstati64(wpath, st)));
   return _wstati64(wpath, st);
 #else
+  if (!path) return ENOENT;
+
   return stat(path, st);
 #endif
 }
@@ -10731,7 +10741,6 @@ MG_INTERNAL int parse_mqtt(struct mbuf *io, struct mg_mqtt_message *mm) {
     case MG_MQTT_CMD_SUBACK:
       if (end - p < 2) return MG_MQTT_ERROR_MALFORMED_MSG;
       mm->message_id = getu16(p);
-      p += 2;
       break;
     case MG_MQTT_CMD_PUBLISH: {
       p = scanto(p, &mm->topic);
@@ -10954,11 +10963,11 @@ void mg_send_mqtt_handshake_opt(struct mg_connection *nc, const char *client_id,
     total_len += 2 + wt_len + 2 + wm_len;
   }
   if (opts.flags & MG_MQTT_HAS_USER_NAME) {
-    user_len = strlen(opts.user_name);
+    user_len = (opts.user_name ? strlen(opts.user_name) : 0);
     total_len += 2 + user_len;
   }
   if (opts.flags & MG_MQTT_HAS_PASSWORD) {
-    pw_len = strlen(opts.password);
+    pw_len = (opts.password ? strlen(opts.password) : 0);
     total_len += 2 + pw_len;
   }
 
@@ -11550,9 +11559,9 @@ void mg_send_dns_query(struct mg_connection *nc, const char *name,
   }
 
   mg_send(nc, pkt.buf, pkt.len);
-  mbuf_free(&pkt);
 
 cleanup:
+  mbuf_free(&pkt);
   MG_FREE(msg);
 }
 

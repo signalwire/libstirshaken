@@ -106,10 +106,6 @@ char* stir_shaken_acme_generate_auth_challenge_response(stir_shaken_context_t *s
 {
 	char	*out = NULL;
 	jwt_t	*jwt = NULL;
-	unsigned char	csr_raw[1000] = { 0 };
-	int				csr_raw_len = 1000;
-	char			csr_b64[1500] = { 0 };
-	int				csr_b64_len = 1500;
 
 	if (jwt_new(&jwt) != 0) {
 		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
@@ -802,7 +798,7 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
 				
 				if (0 == strcmp("failed", auth_status->valuestring)) {
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got 'failed' polling status");
-					snprintf(err_buf, STIR_SHAKEN_BUFLEN, "\t-> Got 'failed' polling status: ACME authorization unsuccessful\n", auth_status->valuestring);
+					snprintf(err_buf, STIR_SHAKEN_BUFLEN, "\t-> Got 'failed' polling status (%s): ACME authorization unsuccessful\n", auth_status->valuestring);
 					stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME_AUTHZ_UNSUCCESSFUL);
 					goto fail;
 				}
@@ -946,7 +942,7 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 		 */
 	
 		http_req.url = strdup(auth_url);
-        http_req.remote_port = remote_port;
+		http_req.remote_port = remote_port;
 
 		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Requesting authorization challenge details...\n");
 
@@ -972,6 +968,7 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_respond_to_challenge(ss, http_req.response.mem.mem, spc_token, key, keylen, &polling_url, remote_port)) {
 				stir_shaken_set_error(ss, " ACME failed at authorization challenge response step. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
+				free(polling_url);
 				goto fail;
 			}
 
@@ -983,9 +980,11 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_poll(ss, http_req.response.mem.mem, polling_url, remote_port)) {
 				stir_shaken_set_error(ss, "ACME polling failed. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
+				free(polling_url);
 				goto fail;
 			}
 
+			free(polling_url);
 			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Polling finished...\n");
 		}
 	}
@@ -1178,7 +1177,7 @@ stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, 
 
 	spc = p;
 
-	if (p = strchr(p, '/')) {
+	if ((p = strchr(p, '/'))) {
 
 		char *pCh = NULL;
 		unsigned long long  val;
@@ -1279,7 +1278,7 @@ stir_shaken_status_t stir_shaken_acme_api_uri_parse(stir_shaken_context_t *ss, c
 
 	args = p;
 
-	if (p = strchr(p, '/')) {
+	if ((p = strchr(p, '/'))) {
 
 		char *pCh = NULL;
 		unsigned long long  val;

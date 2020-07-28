@@ -35,7 +35,6 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 		const char *origtn_key = params->origtn_key;
 		const char *origtn_val = params->origtn_val;
 		const char *origid = params->origid;
-		uint8_t ppt_ignore = params->ppt_ignore;
 
 
 		// Header
@@ -357,7 +356,7 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 		if (stir_shaken_is_error_set(ss)) {
 			error = stir_shaken_get_error(ss, &error_code);
 		}
-		sprintf(err_buf, "SIP Identity create: Bad JWT (fix PASSporT params)%s%s%s", error? ": [" : "", error? error : "", error? "]" : "", STIR_SHAKEN_ERROR_GENERAL);
+		sprintf(err_buf, "SIP Identity create: Bad JWT (fix PASSporT params)%s%s%s", error ? ": [" : "", error ? error : "", error ? "]" : "");
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
 		jwt_free_str(token);
 		return NULL;
@@ -544,6 +543,7 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 		cJSON_Delete(origjson);
 		return id;
 	}
+	return NULL;
 }
 
 /**
@@ -620,7 +620,7 @@ stir_shaken_status_t stir_shaken_passport_validate_grants(stir_shaken_context_t 
 	
 	h = stir_shaken_passport_get_grant(passport, "attest");
 	if (!h || !strcmp(h, "")) {
-		sprintf(err_buf, "PASSporT Invalid. @attest is missing", h);  
+		sprintf(err_buf, "PASSporT Invalid. @attest is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}

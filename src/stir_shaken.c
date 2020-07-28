@@ -165,7 +165,6 @@ stir_shaken_status_t stir_shaken_file_remove(const char *path)
 
 stir_shaken_status_t stir_shaken_save_to_file(stir_shaken_context_t *ss, const char *data, const char *name)
 {
-	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	FILE			*fp = NULL;
 	size_t			datalen = 0;
 
@@ -439,7 +438,7 @@ static const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
 
 stir_shaken_error_t stir_shaken_get_error_code(stir_shaken_context_t *ss)
 {
-	if (!ss || !stir_shaken_is_error_set(ss)) {
+	if (!stir_shaken_is_error_set(ss)) {
 		// This function must always be called with ss pointer set and only if error has been set,
 		// otherwise will return spurious results.
 		return STIR_SHAKEN_ERROR_GENERAL;
@@ -545,7 +544,7 @@ stir_shaken_hash_entry_t* stir_shaken_hash_entry_add(stir_shaken_hash_entry_t **
 
 		e = hash[idx];
 
-		while (e && e->next) {		
+		while (e->next) {
 			e = e->next;
 		};
 		e->next = entry;
@@ -576,7 +575,7 @@ stir_shaken_status_t stir_shaken_hash_entry_remove(stir_shaken_hash_entry_t **ha
 			return STIR_SHAKEN_STATUS_OK;
 		}
 		prev = e;
-	} while (e = e->next);
+	} while ((e = e->next));
 
 	return STIR_SHAKEN_STATUS_OK;
 }
@@ -587,7 +586,7 @@ void stir_shaken_hash_destroy_branch(stir_shaken_hash_entry_t *entry, int hash_c
 	
 	if (!entry) return;
 	
-	prev = e = entry;
+	e = entry;
 
 	do {
 		prev = e;
