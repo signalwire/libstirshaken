@@ -334,7 +334,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 
 	const char *spc = NULL;
 	char *pCh = NULL;
-	unsigned long long  sp_code;
+	unsigned long long  int sp_code = 0;
 	const char *csr_b64 = NULL;
 	char csr[STIR_SHAKEN_BUFLEN] = { 0 };
 	int csr_len = 0;
@@ -417,7 +417,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					}
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> CSR is:\n%s\n", csr);
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC is: %s\n", spc);
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from cert request jwt) is: %s\n", spc);
 
 					req = stir_shaken_load_x509_req_from_pem(&ca->ss, csr);
 					if (!req) {
@@ -627,7 +627,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 	
 	char spc[STIR_SHAKEN_BUFLEN] = { 0 };
 	char *pCh = NULL;
-	unsigned long long  sp_code;
+	unsigned long long int sp_code = 0;
 	char *token = NULL;
 	char authz_url[STIR_SHAKEN_BUFLEN] = { 0 };
 	char *authz_challenge_details = NULL;
@@ -642,6 +642,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 	stir_shaken_ca_session_t *session = NULL;
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
     char mbody[STIR_SHAKEN_BUFLEN * 4] = { 0 };
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	
 	
 	if (!m || !nc || !ca) {
@@ -680,7 +681,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 					goto fail; 
 				}
 
-				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC is: %s\n", spc);
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from URI) is: %s\n", spc);
 
 				e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
 				if (!e) {
@@ -773,8 +774,11 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 					jwt_t *jwt = NULL;
 					char *token = NULL;
+					char *spc_jwt_str = NULL;
+					const char *spc_str = NULL;
 					const char *spc_token = NULL;
 					jwt_t *spc_token_jwt = NULL;
+                    unsigned long long  int sp_code = 0;
 					const char *cert_url = NULL;
 					char *expires = NULL, *validated = NULL;
 					stir_shaken_sp_t sp = { 0 };
@@ -861,15 +865,15 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 						goto authorization_result;
 					}
 					
-					token = jwt_dump_str(spc_token_jwt, 0);
-					if (!token) {
+					spc_jwt_str = jwt_dump_str(spc_token_jwt, 0);
+					if (!spc_jwt_str) {
 						stir_shaken_set_error(&ca->ss, "Cannot dump SPC token JWT", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
 						goto authorization_result;
 					}
 
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC token is:\n%s\n", token);
-					jwt_free_str(token);
-					token = NULL;
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC token is:\n%s\n", spc_jwt_str);
+					jwt_free_str(spc_jwt_str);
+					spc_jwt_str = NULL;
 
 					cert_url = jwt_get_header(spc_token_jwt, "x5u");
 					if (stir_shaken_zstr(cert_url)) {
@@ -877,8 +881,33 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 						goto authorization_result;
 					}
 
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Cert URL (x5u) is:\n%s\n", cert_url);
+                    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Cert URL (x5u) is:\n%s\n", cert_url);
+
+                    spc_str = jwt_get_grant(spc_token_jwt, "spc");
+					if (stir_shaken_zstr(spc_str)) {
+						stir_shaken_set_error(&ca->ss, "SPC token is missing SPC", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
+						goto authorization_result;
+					}
+
+					sp_code = strtoul(spc_str, &pCh, 10); 
+					if (sp_code > 0x10000 - 1) { 
+						stir_shaken_set_error(&ca->ss, "SPC number too big", STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG);
+						goto authorization_result; 
+					}
+
+					if (*pCh != '\0') { 
+						stir_shaken_set_error(&ca->ss, "SPC invalid", STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
+						goto authorization_result; 
+					}
+
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Verifying SPC token..\n");
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC from SPC token is: %lu\n", sp_code);
+
+                    if (sp_code != session->spc) {
+						snprintf(err_buf, STIR_SHAKEN_BUFLEN, "SPC from SPC token (%lu) does not match this session SPC (%zu) (was cert request initiated for different SPC?)", sp_code, session->spc);
+						stir_shaken_set_error(&ca->ss, err_buf, STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
+						goto authorization_result; 
+                    }
 
                     // TODO  check URL, if it's URL this CA is running, then do not make CURL call, serve from mem
                     if (strstr(cert_url, "localhost") || strstr(cert_url, "190.102.98.199")) {
