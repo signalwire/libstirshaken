@@ -901,7 +901,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 					}
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Verifying SPC token..\n");
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC from SPC token is: %lu\n", sp_code);
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from SPC token) is: %lu\n", sp_code);
 
                     if (sp_code != session->spc) {
 						snprintf(err_buf, STIR_SHAKEN_BUFLEN, "SPC from SPC token (%lu) does not match this session SPC (%zu) (was cert request initiated for different SPC?)", sp_code, session->spc);
@@ -973,7 +973,7 @@ authorization_result:
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Configuring certificate...\n");
 						snprintf(session->sp.cert_name, sizeof(session->sp.cert_name), "sp_%s_%llu_%zu.pem", spc, secret, time(NULL));
 
-						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t ->Saving certificate (%s)...\n", session->sp.cert_name);
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Saving certificate (%s)...\n", session->sp.cert_name);
 						if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(&ca->ss, session->sp.cert.x, session->sp.cert_name)) {
 							stir_shaken_set_error(&ca->ss, "Error saving SP certificate", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
 							goto fail;
