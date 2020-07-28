@@ -228,9 +228,7 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 {
 	struct http_message *m = (struct http_message*) hm;
 	struct mbuf *io = NULL;
-	stir_shaken_context_t ss = { 0 };
 	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
-	struct mg_str nonce_api_url = mg_mk_str(STI_CA_ACME_NONCE_REQ_URL);
 	uuid_t uuid = { 0 };
 	char nonce[STIR_SHAKEN_BUFLEN] = { 0 };
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST; 
@@ -326,7 +324,6 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 {
 	struct http_message *m = (struct http_message*) hm;
 	struct mbuf *io = NULL;
-	stir_shaken_context_t ss = { 0 };
 	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
 	cJSON *json = NULL;
 	jwt_t *jwt = NULL;
@@ -781,7 +778,6 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
                     unsigned long long  int sp_code = 0;
 					const char *cert_url = NULL;
 					char *expires = NULL, *validated = NULL;
-					stir_shaken_sp_t sp = { 0 };
 
 					if (!uri_has_secret) {
 						stir_shaken_set_error(&ca->ss, "Bad request, Secret is missing", STIR_SHAKEN_ERROR_ACME_SECRET_MISSING);
@@ -1035,11 +1031,8 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 {
 	struct http_message *m = (struct http_message*) hm;
 	struct mbuf *io = NULL;
-	stir_shaken_context_t ss = { 0 };
 	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
 	struct mg_str authority_check_api_url = mg_mk_str(STI_CA_AUTHORITY_CHECK_URL);
-	uuid_t uuid = { 0 };
-	char nonce[STIR_SHAKEN_BUFLEN] = { 0 };
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST; 
 	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
 	const char *error_desc = NULL;

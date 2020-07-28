@@ -41,6 +41,7 @@ static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nm
 	header[realsize] = '\0';
 
 	http_req->response.headers = curl_slist_append(http_req->response.headers, header);
+	free(header);
 
 	return realsize;
 }
@@ -219,7 +220,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 
 	curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &http_req->response.code);
 	if (http_req->response.code != 200 && http_req->response.code != 201) {
-		sprintf(http_req->response.error, "HTTP response code: %d (%s%s), HTTP response phrase: %s", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " [Bad URL or API call not handled?]" : "", http_req->response.headers && http_req->response.headers->data ? http_req->response.headers->data : "");
+		sprintf(http_req->response.error, "HTTP response code: %ld (%s%s), HTTP response phrase: %s", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " [Bad URL or API call not handled?]" : "", http_req->response.headers && http_req->response.headers->data ? http_req->response.headers->data : "");
 	}
 	curl_easy_cleanup(curl_handle);
 	curl_global_cleanup();
@@ -533,12 +534,12 @@ void stir_shaken_error_desc_to_http_error_phrase(const char *error_desc, char *e
 	while (p && (*p != '\0')) {
 
 		d = p;
-		if (p = strstr(d, "\r\n")) {
+		if ((p = strstr(d, "\r\n"))) {
 			*p = ';';
 			p++;
 			*p = ' ';
 		} else {
-			if (p = strstr(d, "\n")) {
+		  if ((p = strstr(d, "\n"))) {
 				*p = ';';
 			} else {
 				return;
