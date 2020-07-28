@@ -488,7 +488,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 					goto fail;
 				}
 
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving certificate...\n");
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Saving certificate as %s...\n", sp->sp.cert_name);
 				if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, sp->sp.cert.x, sp->sp.cert_name)) {
 					stir_shaken_set_error(ss, "Failed to save SP certificate", STIR_SHAKEN_ERROR_ACME);
 					goto fail;
