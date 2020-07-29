@@ -11,8 +11,8 @@ TESTS = $(check_PROGRAMS)
 
 EXTRA_PROGRAMS = stirshaken
 stirshaken_SOURCES = util/src/stir_shaken_tool_command.c util/src/stir_shaken_tool.c util/src/stir_shaken_ca.c util/src/mongoose.c
-stirshaken_CFLAGS = -Iutil/include
-stirshaken_LDFLAGS = -lstirshaken
+stirshaken_CFLAGS = -Iinclude -Iutil/include
+stirshaken_LDADD = libstirshaken.la
 
 LIBS += -lcjson -lcurl -lcrypto -lssl -ljwt -luuid -pthread
 
