@@ -141,7 +141,6 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 				goto fail;
 			}
 
-			helper = strtoul(sp->spc, &pCh, 10);
 			STIR_SHAKEN_CHECK_CONVERSION_EXT
 			sp->sp.code = helper;
 
@@ -196,7 +195,6 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 				goto fail;
 			}
 
-			helper = strtoul(pa->spc, &pCh, 10);
 			STIR_SHAKEN_CHECK_CONVERSION_EXT
 			pa->sp_code = helper;
 			break;
@@ -223,7 +221,6 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 					|| stir_shaken_zstr(sp->spc) || stir_shaken_zstr(sp->sp.spc_token) || stir_shaken_zstr(sp->sp.csr_name)) {
 				goto fail;
 			}
-			helper = strtoul(sp->spc, &pCh, 10);
 			STIR_SHAKEN_CHECK_CONVERSION_EXT
 			sp->sp.code = helper;
 			break;
@@ -258,7 +255,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
 	unsigned long	hash = 0;
-	char			hashstr[100] = { 0 }, cert_hashed_as_text[1000] = { 0 };
+	char			hashstr[100] = { 0 };
 	int				hashstrlen = 100;
 	char			*spc_token_encoded = NULL;
 	char			*spc_token_decoded = NULL;
@@ -470,6 +467,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				jwt_encoded = stir_shaken_acme_generate_cert_req_payload(ss, sp->sp.kid, sp->sp.nonce, http_req.url, sp->sp.csr.req, sp->sp.nb, sp->sp.na, spc, sp->sp.keys.priv_raw, sp->sp.keys.priv_raw_len, &jwt_decoded);
 				if (!jwt_encoded || !jwt_decoded) {
 					stir_shaken_set_error(ss, "Failed to generate JWT payload", STIR_SHAKEN_ERROR_JWT);
+					free((void *)http_req.url);
 					goto fail;
 				}
 
