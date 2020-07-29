@@ -122,7 +122,7 @@ static void close_http_connection_with_error(struct mg_connection *nc, struct mb
 			char error_phrase[STIR_SHAKEN_BUFLEN] = { 0 };
 			stir_shaken_error_desc_to_http_error_phrase(error_desc, error_phrase, STIR_SHAKEN_BUFLEN);
             if (error_body)
-			    mg_printf(nc, "HTTP/1.1 %s %s\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND, error_phrase, strlen(error_body), error_body);
+			    mg_printf(nc, "HTTP/1.1 %s %s\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND, error_phrase, strlen(error_body), error_body);
             else
 			    mg_printf(nc, "HTTP/1.1 %s %s\r\n\r\n", STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND, error_phrase);
 		}
@@ -471,7 +471,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Added authorization session to queue\n");
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Sending authorization challenge:\n%s\n", authz_challenge);
 
-					mg_printf(nc, "HTTP/1.1 201 Created\r\nReplay-Nonce: %s\r\nLocation: %s\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", nonce, authz_url, strlen(authz_challenge), authz_challenge);
+					mg_printf(nc, "HTTP/1.1 201 Created\r\nReplay-Nonce: %s\r\nLocation: %s\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", nonce, authz_url, strlen(authz_challenge), authz_challenge);
 
 					session->state = STI_CA_SESSION_STATE_AUTHZ_SENT;
 
@@ -544,7 +544,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t\t-> STI-SP certificate is:\n%s\n", cert);
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t-> Sending STI-SP certificate...\n");
-					mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(cert), cert);
+					mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen((const char *)cert), cert);
 
 					session->state = STI_CA_SESSION_STATE_DONE;
 
@@ -708,7 +708,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Sending polling status...\n");
 
-						mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(session->authz_polling_status), session->authz_polling_status);
+						mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(session->authz_polling_status), session->authz_polling_status);
 
 						// continue
 						session->state = STI_CA_SESSION_STATE_POLLING;
@@ -762,7 +762,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Sending challenge details:\n%s\n", authz_challenge_details);
 
-						mg_printf(nc, "HTTP/1.1 200 You are more than welcome. Here is your challenge:\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(authz_challenge_details), authz_challenge_details);
+						mg_printf(nc, "HTTP/1.1 200 You are more than welcome. Here is your challenge:\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(authz_challenge_details), authz_challenge_details);
 
 						session->state = STI_CA_SESSION_STATE_AUTHZ_DETAILS_SENT;
 					}
@@ -897,10 +897,10 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 					}
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Verifying SPC token..\n");
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from SPC token) is: %lu\n", sp_code);
+					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from SPC token) is: %llu\n", sp_code);
 
                     if (sp_code != session->spc) {
-						snprintf(err_buf, STIR_SHAKEN_BUFLEN, "SPC from SPC token (%lu) does not match this session SPC (%zu) (was cert request initiated for different SPC?)", sp_code, session->spc);
+						snprintf(err_buf, STIR_SHAKEN_BUFLEN, "SPC from SPC token (%llu) does not match this session SPC (%zu) (was cert request initiated for different SPC?)", sp_code, session->spc);
 						stir_shaken_set_error(&ca->ss, err_buf, STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
 						goto authorization_result; 
                     }
@@ -1101,7 +1101,7 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 				cJSON_Delete(json);
 				json = NULL;
 
-				mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(json_str), json_str);
+				mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(json_str), json_str);
 
 				close_http_connection(nc, io);
 				if (json_str) {

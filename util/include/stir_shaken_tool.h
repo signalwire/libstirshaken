@@ -114,7 +114,7 @@
 #define STIR_SHAKEN_CHECK_CONVERSION_EXT \
 			helper = strtoul(sp->spc, &pCh, 10); \
 			if (helper > 0x10000 - 1) { \
-				fprintf(stderr, "\nERR, argument too big [%lu]\n\n", helper); \
+				fprintf(stderr, "\nERR, argument too big [%llu]\n\n", helper); \
 				goto fail; \
 			} \
 			if ((pCh == optarg) || (*pCh != '\0')) { \
