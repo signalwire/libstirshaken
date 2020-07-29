@@ -1,8 +1,16 @@
 AC_INIT([libstirshaken], [1.0.0], [stirshaken@dataandsignal.com, bugs: add_url], [libstirshaken], [dataandsignal.com])
-AM_PROG_AR
-LT_INIT
+
 AM_INIT_AUTOMAKE([subdir-objects -Wall -Werror foreign])
-AC_PROG_CC
+
+AC_CONFIG_MACRO_DIRS([build/m4])
+
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+
+AM_PROG_CC_C_O
+
+AM_PROG_AR
+
+AC_PROG_LIBTOOL
 
 AC_CANONICAL_HOST
 
