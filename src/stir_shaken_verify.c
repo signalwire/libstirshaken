@@ -130,7 +130,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	if (jwt_decode(&jwt, jwt_encoded, key, key_len)) {
+	if (jwt_decode(&jwt, (const char*) jwt_encoded, key, key_len)) {
 
 		stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 		jwt_free(jwt);
