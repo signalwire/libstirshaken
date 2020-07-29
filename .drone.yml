@@ -22,6 +22,8 @@ steps:
       - ./scan.sh
       - exitstatus=`cat ./scan-build-status.txt`
       - echo "*** Exit status is $exitstatus"
+      - make install
+      - make check
 
     - name: notify
       image: signalwire/scan-build-notify
@@ -45,6 +47,6 @@ trigger:
   - push
 ---
 kind: signature
-hmac: bbf7276e66d4ae645a0db82f7c0176207b52d50d9d7273a34bb2ab8fd6995b6c
+hmac: 69c3119bb2c0cbd6bc280d66e595345518749cff85d15cc561a6a1e3bc20c77d
 
 ...
