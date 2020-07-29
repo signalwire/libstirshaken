@@ -6,7 +6,8 @@ static void stirshaken_usage(const char *name)
 	if (name == NULL)
 		return;
 	
-	fprintf(stderr, "\nusage:\t command\n\n", name);
+	fprintf(stderr, "\nusage:\t %s command\n\n", name);
+	fprintf(stderr, "\n\nWhere command is one of:\n\n");
 	fprintf(stderr, "\t\t %s --%s pub.pem --%s priv.pem\n", COMMAND_NAME_KEYS, OPTION_NAME_PUBKEY, OPTION_NAME_PRIVKEY);
 	fprintf(stderr, "\t\t %s --%s key --%s key --%s C --%s CN --%s CODE -f csrName\n", COMMAND_NAME_CSR, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_SUBJECT_C, OPTION_NAME_SUBJECT_CN, OPTION_NAME_SPC);
 	fprintf(stderr, "\t\t %s --%s %s --%s key --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY -f certName\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE, OPTION_NAME_TYPE_CA, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY);
