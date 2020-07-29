@@ -592,7 +592,7 @@ X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *
  * @buf - (out) will contain fingerprint, must be of size at least 3*EVP_MAX_MD_SIZE bytes
  * @buflen - (out) will contain string len including '\0'
  */
-stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, X509* x509, const char *digest_name, char *buf, int *buflen);
+stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, X509* x509, const char *digest_name, char *buf, unsigned int *buflen);
 
 X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY *pkey);
 

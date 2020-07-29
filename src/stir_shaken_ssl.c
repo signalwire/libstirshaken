@@ -341,12 +341,12 @@ X509_REQ* stir_shaken_generate_x509_req(stir_shaken_context_t *ss, const char *s
 		goto fail;
 	}
 
-	if (!X509_NAME_add_entry_by_txt(tmp, "C", MBSTRING_ASC, subject_c, -1, -1, 0)) {
+	if (!X509_NAME_add_entry_by_txt(tmp, "C", MBSTRING_ASC, (const unsigned char*) subject_c, -1, -1, 0)) {
 		stir_shaken_set_error(ss, "Failed to set X509_REQ subject 'C'", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 
-	if (!X509_NAME_add_entry_by_txt(tmp,"CN", MBSTRING_ASC, subject_cn, -1, -1, 0)) {
+	if (!X509_NAME_add_entry_by_txt(tmp,"CN", MBSTRING_ASC, (const unsigned char*) subject_cn, -1, -1, 0)) {
 		stir_shaken_set_error(ss, "Failed to set X509_REQ subject 'CN'", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
@@ -624,12 +624,12 @@ X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public
 		goto fail;
 	}
 
-	if (!X509_NAME_add_entry_by_txt(tmp, "C", MBSTRING_ASC, issuer_c, -1, -1, 0)) {
+	if (!X509_NAME_add_entry_by_txt(tmp, "C", MBSTRING_ASC, (const unsigned char*) issuer_c, -1, -1, 0)) {
 		stir_shaken_set_error(ss, "Failed to set X509 issuer 'C'", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
 
-	if (!X509_NAME_add_entry_by_txt(tmp,"CN", MBSTRING_ASC, issuer_cn, -1, -1, 0)) {
+	if (!X509_NAME_add_entry_by_txt(tmp,"CN", MBSTRING_ASC, (const unsigned char*) issuer_cn, -1, -1, 0)) {
 		stir_shaken_set_error(ss, "Failed to set X509 issuer 'CN'", STIR_SHAKEN_ERROR_SSL);
 		goto fail;
 	}
@@ -652,12 +652,12 @@ X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public
 			goto fail;
 		}
 
-		if (!X509_NAME_add_entry_by_txt(tmp, "C", MBSTRING_ASC, subject_c, -1, -1, 0)) {
+		if (!X509_NAME_add_entry_by_txt(tmp, "C", MBSTRING_ASC, (const unsigned char*) subject_c, -1, -1, 0)) {
 			stir_shaken_set_error(ss, "Failed to set X509 subject 'C'", STIR_SHAKEN_ERROR_SSL);
 			goto fail;
 		}
 
-		if (!X509_NAME_add_entry_by_txt(tmp,"CN", MBSTRING_ASC, subject_cn, -1, -1, 0)) {
+		if (!X509_NAME_add_entry_by_txt(tmp,"CN", MBSTRING_ASC, (const unsigned char*) subject_cn, -1, -1, 0)) {
 			stir_shaken_set_error(ss, "Failed to set X509 subject 'CN'", STIR_SHAKEN_ERROR_SSL);
 			goto fail;
 		}
@@ -1107,12 +1107,12 @@ X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_
 		return NULL;
 	}
 
-	if (!X509_NAME_add_entry_by_txt(tmp, "C", MBSTRING_ASC, issuer_c, -1, -1, 0)) {
+	if (!X509_NAME_add_entry_by_txt(tmp, "C", MBSTRING_ASC, (const unsigned char*) issuer_c, -1, -1, 0)) {
 		stir_shaken_set_error(ss, "Failed to set X509 issuer 'C'", STIR_SHAKEN_ERROR_SSL);
 		return NULL;
 	}
 
-	if (!X509_NAME_add_entry_by_txt(tmp,"CN", MBSTRING_ASC, issuer_cn, -1, -1, 0)) {
+	if (!X509_NAME_add_entry_by_txt(tmp,"CN", MBSTRING_ASC, (const unsigned char*) issuer_cn, -1, -1, 0)) {
 		stir_shaken_set_error(ss, "Failed to set X509 issuer 'CN'", STIR_SHAKEN_ERROR_SSL);
 		return NULL;
 	}
@@ -1674,7 +1674,7 @@ int stir_shaken_cert_get_version(stir_shaken_cert_t *cert)
  * @buf - (out) will contain fingerprint, must be of size at least 3*EVP_MAX_MD_SIZE bytes
  * @buflen - (out) will contain string len including '\0'
  */
-stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, X509* x509, const char *digest_name, char *buf, int *buflen)
+stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, X509* x509, const char *digest_name, char *buf, unsigned int *buflen)
 {
 	const EVP_MD *evp = NULL;
 	unsigned int i = 0, j = 0;
@@ -2038,7 +2038,7 @@ stir_shaken_status_t stir_shaken_load_key_raw(stir_shaken_context_t *ss, const c
 
 	raw_key_len = fread(key_raw, 1, *key_raw_len, fp);
 	if (raw_key_len != sz || ferror(fp)) {
-		sprintf(err_buf, "Error reading key from file %s, which is %zu bytes", file, sz);
+		sprintf(err_buf, "Error reading key from file %s, which is %u bytes", file, sz);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
 		goto err;
 	}
