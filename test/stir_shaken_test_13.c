@@ -67,28 +67,30 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 	na = "01 Apr 2021";
 
 	// Set SPC token to this:
+	//
 	// SPC token encoded:
 	//
-	// eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cDovLzMuOC4xOTMuMTQyL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ._xMcM3CalCOdHltFkZrq82L3z-lFP8RLXUspc6Sqhtp22_fxxLupaVyjGO5CcZhF_W5jALQSpAM4irmtU5Nvdg
-	//
+	// eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoicGEuc2hha2VuLnNpZ25hbHdpcmUuY29tL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.i4h-yFR3Xofu35mzkq85o45iXMBfzBCuII4Se0g6n40KRJqKD8L1Wnzqf0xwbW7yN2nY8-LbGBmouq-uBhx09Q
+
 	// SPC token decoded:
 	//
 	//
-	// {
-	//     "alg": "ES256",
-	//      "issuer": "SignalWire STI-PA",
-	//      "typ": "JWT",
-	//      "x5u": "http://3.8.193.142/pa.pem"
-	// }
-	// .
-	// {
-	//      "notAfter": "1 year from now",
-	//      "notBefore": "today",
-	//      "spc": "1",
-	//      "type": "spc-token"
-	// }
+	//	{
+	//		"alg": "ES256",
+    //		"issuer": "SignalWire STI-PA",
+    //		"typ": "JWT",
+    //		"x5u": "pa.shaken.signalwire.com/pa.pem"
+	//	}
+	//	.
+	//	{
+    //		"notAfter": "1 year from now",
+	//	    "notBefore": "today",
+    //		"spc": "1",
+    //		"type": "spc-token"
+	//	}
 
-	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cDovLzMuOC4xOTMuMTQyL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ._xMcM3CalCOdHltFkZrq82L3z-lFP8RLXUspc6Sqhtp22_fxxLupaVyjGO5CcZhF_W5jALQSpAM4irmtU5Nvdg";
+
+	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoicGEuc2hha2VuLnNpZ25hbHdpcmUuY29tL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.i4h-yFR3Xofu35mzkq85o45iXMBfzBCuII4Se0g6n40KRJqKD8L1Wnzqf0xwbW7yN2nY8-LbGBmouq-uBhx09Q";
     http_req.url = strdup(url);
     http_req.remote_port = 8082;
 
