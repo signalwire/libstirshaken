@@ -133,6 +133,11 @@ stir_shaken_status_t stir_shaken_dir_create_recursive(const char *path)
 		goto fail;
 	}
 
+	if (tmp) {
+		free(tmp);
+		tmp = NULL;
+	}
+
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
