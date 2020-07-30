@@ -2807,9 +2807,9 @@ stir_shaken_status_t stir_shaken_get_pubkey_raw_from_cert(stir_shaken_context_t 
 	return ret;
 }
 
-stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *ec_key, const char *kid, cJSON **jwk)
+stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *ec_key, const char *kid, ks_json_t **jwk)
 {
-	cJSON *j = NULL;
+	ks_json_t *j = NULL;
 	BIGNUM *x = NULL, *y = NULL;
 	const EC_GROUP *group = NULL;
 	const EC_POINT *point = NULL;
@@ -2837,18 +2837,18 @@ stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *e
 
 	// TODO need to get x and y coordinates in base 64
 
-	j = cJSON_CreateObject();
+	j = ks_json_create_object();
 	if (!j) {
-		stir_shaken_set_error(ss, "Error in cjson, cannot create object", STIR_SHAKEN_ERROR_CJSON);
+		stir_shaken_set_error(ss, "Error in ks_json, cannot create object", STIR_SHAKEN_ERROR_KSJSON);
 		return STIR_SHAKEN_STATUS_ERR;
 	}
 
-	cJSON_AddStringToObject(j, "kty", "EC");
-	cJSON_AddStringToObject(j, "crv", "P-256");
-	cJSON_AddStringToObject(j, "x", x_b64);
-	cJSON_AddStringToObject(j, "y", y_b64);
+	ks_json_add_string_to_object(j, "kty", "EC");
+	ks_json_add_string_to_object(j, "crv", "P-256");
+	ks_json_add_string_to_object(j, "x", x_b64);
+	ks_json_add_string_to_object(j, "y", y_b64);
 	if (kid) {
-		cJSON_AddStringToObject(j, "kid", kid); // kid should be something like "sp.com Reg Public key 123XYZ"
+		ks_json_add_string_to_object(j, "kid", kid); // kid should be something like "sp.com Reg Public key 123XYZ"
 	}
 
 	*jwk = j;

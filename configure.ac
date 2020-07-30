@@ -30,9 +30,9 @@ else
 	AC_MSG_ERROR([OpenSSL >= 1.0.1e and associated developement headers required])
 fi
 
-PKG_CHECK_MODULES([CURL], [libcurl >= 7.19], [have_curl=true], [have_curl=false])
-PKG_CHECK_MODULES([CJSON], [libcjson], [have_cjson=true], [have_cjson=false])
-PKG_CHECK_MODULES([JWT], [libjwt], [have_jwt=true], [have_jwt=false])
+PKG_CHECK_MODULES([CURL], [libcurl >= 7.19])
+PKG_CHECK_MODULES([JWT], [libjwt >= 1.12])
+PKG_CHECK_MODULES([KS], [libks >= 1.1.0])
 
 #  Enable clang address sanitizer bit build
 AC_ARG_ENABLE(address_sanitizer,

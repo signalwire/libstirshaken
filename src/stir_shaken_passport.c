@@ -40,24 +40,24 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 		// Header
 
 		if (jwt_add_header(jwt, "ppt", "shaken") != 0) {
-			stir_shaken_set_error(ss, "Failed to add @ppt to PASSporT", STIR_SHAKEN_ERROR_CJSON);
+			stir_shaken_set_error(ss, "Failed to add @ppt to PASSporT", STIR_SHAKEN_ERROR_KSJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
 		if (jwt_add_header(jwt, "typ", "passport") != 0) {
-			stir_shaken_set_error(ss, "Failed to add @typ to PASSporT", STIR_SHAKEN_ERROR_CJSON);
+			stir_shaken_set_error(ss, "Failed to add @typ to PASSporT", STIR_SHAKEN_ERROR_KSJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
 		if (jwt_add_header(jwt, "x5u", x5u) != 0) {
-			stir_shaken_set_error(ss, "Failed to add @x5u to PASSporT", STIR_SHAKEN_ERROR_CJSON);
+			stir_shaken_set_error(ss, "Failed to add @x5u to PASSporT", STIR_SHAKEN_ERROR_KSJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
 		if (key && keylen) {		
 
 			if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
-				stir_shaken_set_error(ss, "Failed to add @alg to PASSporT", STIR_SHAKEN_ERROR_CJSON);
+				stir_shaken_set_error(ss, "Failed to add @alg to PASSporT", STIR_SHAKEN_ERROR_KSJSON);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
 		}
@@ -65,32 +65,32 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 		// Payload
 
 		if (jwt_add_grant_int(jwt, "iat", iat) != 0) {
-			stir_shaken_set_error(ss, "Failed to add @iat to PASSporT", STIR_SHAKEN_ERROR_CJSON);
+			stir_shaken_set_error(ss, "Failed to add @iat to PASSporT", STIR_SHAKEN_ERROR_KSJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
 		if (!attest) {
-			stir_shaken_set_error(ss, "Passport @attest is missing", STIR_SHAKEN_ERROR_CJSON);
+			stir_shaken_set_error(ss, "Passport @attest is missing", STIR_SHAKEN_ERROR_KSJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
 		if (*attest != 'A' && *attest != 'B' && *attest != 'C') {
-			stir_shaken_set_error(ss, "Passport @attest must be 'A', 'B' or 'C'", STIR_SHAKEN_ERROR_CJSON);
+			stir_shaken_set_error(ss, "Passport @attest must be 'A', 'B' or 'C'", STIR_SHAKEN_ERROR_KSJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
 		if (jwt_add_grant(jwt, "attest", attest) != 0) {
-			stir_shaken_set_error(ss, "Failed to add @attest to PASSporT", STIR_SHAKEN_ERROR_CJSON);
+			stir_shaken_set_error(ss, "Failed to add @attest to PASSporT", STIR_SHAKEN_ERROR_KSJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
 		if (!origid) {
-			stir_shaken_set_error(ss, "Passport @origid is missing", STIR_SHAKEN_ERROR_CJSON);
+			stir_shaken_set_error(ss, "Passport @origid is missing", STIR_SHAKEN_ERROR_KSJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
 		if (jwt_add_grant(jwt, "origid", origid) != 0) {
-			stir_shaken_set_error(ss, "Failed to add @origid to PASSporT", STIR_SHAKEN_ERROR_CJSON);
+			stir_shaken_set_error(ss, "Failed to add @origid to PASSporT", STIR_SHAKEN_ERROR_KSJSON);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 
@@ -100,46 +100,45 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 
 		} else {
 
-			cJSON *orig = NULL, *tn = NULL, *e = NULL;
+			ks_json_t *orig = NULL, *tn = NULL, *e = NULL;
 			char *jstr = NULL;
 
-			orig = cJSON_CreateObject();
+			orig = ks_json_create_object();
 			if (!orig) {
-				stir_shaken_set_error(ss, "Passport create json: Error in cjson, @orig", STIR_SHAKEN_ERROR_CJSON);
+				stir_shaken_set_error(ss, "Passport create json: Error in ks_json, @orig", STIR_SHAKEN_ERROR_KSJSON);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
 
 			if (!strcmp(origtn_key, "uri")) {
 			
-				tn = cJSON_CreateArray();
+				tn = ks_json_create_array();
 				if (!tn) {
-					stir_shaken_set_error(ss, "Passport create json: Error in cjson, @origtn [key]", STIR_SHAKEN_ERROR_CJSON);
-					cJSON_Delete(orig);
+					stir_shaken_set_error(ss, "Passport create json: Error in ks_json, @origtn [key]", STIR_SHAKEN_ERROR_KSJSON);
+					ks_json_delete(&orig);
 					return STIR_SHAKEN_STATUS_ERR;
 				}
-				cJSON_AddItemToObject(orig, origtn_key, tn);
+				ks_json_add_item_to_object(orig, origtn_key, tn);
 
-				e = cJSON_CreateString(origtn_val);
+				e = ks_json_create_string(origtn_val);
 				if (!e) {
-					stir_shaken_set_error(ss, "Passport create json: Error in cjson, @origtn [val]", STIR_SHAKEN_ERROR_CJSON);
-					cJSON_Delete(orig);
+					stir_shaken_set_error(ss, "Passport create json: Error in ks_json, @origtn [val]", STIR_SHAKEN_ERROR_KSJSON);
+					ks_json_delete(&orig);
 					return STIR_SHAKEN_STATUS_ERR;
 				}
-				cJSON_AddItemToArray(tn, e);
+				ks_json_add_item_to_array(tn, e);
 			
 			} else {
 			
-				cJSON_AddStringToObject(orig, "tn", origtn_val);
+				ks_json_add_string_to_object(orig, "tn", origtn_val);
 			}
 
-			jstr = cJSON_PrintUnformatted(orig);
+			jstr = ks_json_print_unformatted(orig);
 			if (!jstr || (jwt_add_grant(jwt, "orig", jstr) != 0)) {
-				cJSON_Delete(orig);
+				ks_json_delete(&orig);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
 
-			cJSON_Delete(orig);
-			free(jstr);
+			ks_json_delete(&orig);
 		}
 	
 		if (!desttn_key || !desttn_val) {
@@ -148,46 +147,45 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 
 		} else {
 
-			cJSON *dest = NULL, *tn = NULL, *e = NULL;
+			ks_json_t *dest = NULL, *tn = NULL, *e = NULL;
 			char *jstr = NULL;
 
-			dest = cJSON_CreateObject();
+			dest = ks_json_create_object();
 			if (!dest) {
-				stir_shaken_set_error(ss, "Passport create json: Error in cjson, @dest", STIR_SHAKEN_ERROR_CJSON);
+				stir_shaken_set_error(ss, "Passport create json: Error in ks_json, @dest", STIR_SHAKEN_ERROR_KSJSON);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
 
 			if (!strcmp(desttn_key, "uri")) {
 
-				tn = cJSON_CreateArray();
+				tn = ks_json_create_array();
 				if (!tn) {
-					stir_shaken_set_error(ss, "Passport create json: Error in cjson, @desttn [key]", STIR_SHAKEN_ERROR_CJSON);
-					cJSON_Delete(dest);
+					stir_shaken_set_error(ss, "Passport create json: Error in ks_json, @desttn [key]", STIR_SHAKEN_ERROR_KSJSON);
+					ks_json_delete(&dest);
 					return STIR_SHAKEN_STATUS_ERR;
 				}
-				cJSON_AddItemToObject(dest, desttn_key, tn);
+				ks_json_add_item_to_object(dest, desttn_key, tn);
 
-				e = cJSON_CreateString(desttn_val);
+				e = ks_json_create_string(desttn_val);
 				if (!e) {
-					stir_shaken_set_error(ss, "Passport create json: Error in cjson, @desttn [val]", STIR_SHAKEN_ERROR_CJSON);
-					cJSON_Delete(dest);
+					stir_shaken_set_error(ss, "Passport create json: Error in ks_json, @desttn [val]", STIR_SHAKEN_ERROR_KSJSON);
+					ks_json_delete(&dest);
 					return STIR_SHAKEN_STATUS_ERR;
 				}
-				cJSON_AddItemToArray(tn, e);
+				ks_json_add_item_to_array(tn, e);
 
 			} else {
 
-				cJSON_AddStringToObject(dest, "tn", desttn_val);
+				ks_json_add_string_to_object(dest, "tn", desttn_val);
 			}
 
-			jstr = cJSON_PrintUnformatted(dest);
+			jstr = ks_json_print_unformatted(dest);
 			if (!jstr || (jwt_add_grant(jwt, "dest", jstr) != 0)) {
-				cJSON_Delete(dest);
+				ks_json_delete(&dest);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
 
-			cJSON_Delete(dest);
-			free(jstr);
+			ks_json_delete(&dest);
 		}
 	}
 
@@ -492,55 +490,55 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 	orig = stir_shaken_passport_get_grant(passport, "orig");
 	if (orig) {
 
-		cJSON *origjson = cJSON_Parse(orig);
+		ks_json_t *origjson = ks_json_parse(orig);
 		if (!origjson) {
-			stir_shaken_set_error(ss, "Failed to convert 'orig'to JSON", STIR_SHAKEN_ERROR_CJSON);
+			stir_shaken_set_error(ss, "Failed to convert 'orig'to JSON", STIR_SHAKEN_ERROR_KSJSON);
 			return NULL;
 		}
 
-		if (origjson->type == cJSON_Array) {
+		if (ks_json_type_get(origjson) == KS_JSON_TYPE_ARRAY) {
 
 			// uri form
-			cJSON *uri = cJSON_GetArrayItem(origjson, 0);
+			ks_json_t *uri = ks_json_get_array_item(origjson, 0);
 
 			if (!uri) {
 				stir_shaken_set_error(ss, "No 'uri' in 'orig' but it's an array. Array should have 'uri' item", STIR_SHAKEN_ERROR_GENERAL);
-				cJSON_Delete(origjson);
+				ks_json_delete(&origjson);
 				return NULL;
 			}
 
-			if (uri->type != cJSON_String) {
+			if (ks_json_type_get(uri) != KS_JSON_TYPE_STRING) {
 				stir_shaken_set_error(ss, "'uri' in 'orig' array is not a string", STIR_SHAKEN_ERROR_GENERAL);
-				cJSON_Delete(origjson);
+				ks_json_delete(&origjson);
 				return NULL;
 			}
 
-			id = strdup(uri->valuestring);
+			id = strdup(ks_json_value_string(uri));
 			tn_form = 0;
 
 		} else {
 
 			// tn form
 
-			cJSON *tn = cJSON_GetObjectItem(origjson, "tn");
+			ks_json_t *tn = ks_json_get_object_item(origjson, "tn");
 			if (!tn) {
 				stir_shaken_set_error(ss, "No 'tn' in 'orig'", STIR_SHAKEN_ERROR_GENERAL);
-				cJSON_Delete(origjson);
+				ks_json_delete(&origjson);
 				return NULL;
 			}
 
-			if (tn->type != cJSON_String) {
+			if (ks_json_type_get(tn) != KS_JSON_TYPE_STRING) {
 				stir_shaken_set_error(ss, "'tn' in 'orig' is not a string", STIR_SHAKEN_ERROR_GENERAL);
-				cJSON_Delete(origjson);
+				ks_json_delete(&origjson);
 				return NULL;
 			}
 
-			id = strdup(tn->valuestring);
+			id = strdup(ks_json_value_string(tn));
 			tn_form = 1;
 		}
 
 		if (is_tn) *is_tn = tn_form;
-		cJSON_Delete(origjson);
+		ks_json_delete(&origjson);
 		return id;
 	}
 	return NULL;

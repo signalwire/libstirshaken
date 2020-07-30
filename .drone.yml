@@ -10,12 +10,12 @@ steps:
       image: signalwire/freeswitch-public-base
       pull: true
       commands:
-      - apt-get update && apt-get install -y clang-tools-7 libjansson-dev libcjson-dev libcurl-ocaml-dev libjwt-dev uuid-dev
+      - apt-get update && apt-get install -y clang-tools-7 libjansson-dev libcurl-ocaml-dev libjwt-dev libks
       - autoreconf -i
       - automake --add-missing
       - libtoolize
       - autoreconf
-      - ./configure
+      - ./configure --enable-address-sanitizer
       - mkdir -p scan-build
       - echo '#!/bin/bash\nscan-build-7 -o ./scan-build/ make -j`nproc --all` |& tee ./scan-build-result.txt\nexitstatus=$${PIPESTATUS[0]}\necho $$exitstatus > ./scan-build-status.txt\n' > scan.sh
       - chmod +x scan.sh
@@ -47,6 +47,6 @@ trigger:
   - push
 ---
 kind: signature
-hmac: 69c3119bb2c0cbd6bc280d66e595345518749cff85d15cc561a6a1e3bc20c77d
+hmac: 819345d4900a92433c08880af7dd12f668f502a6a8f84a0596130741c90b5d8d
 
 ...

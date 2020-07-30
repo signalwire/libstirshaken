@@ -229,7 +229,7 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 	struct http_message *m = (struct http_message*) hm;
 	struct mbuf *io = NULL;
 	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
-	uuid_t uuid = { 0 };
+	ks_uuid_t *uuid = NULL;
 	char nonce[STIR_SHAKEN_BUFLEN] = { 0 };
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST; 
 	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
@@ -261,13 +261,19 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 		case MG_EV_HTTP_REQUEST:
 
 			{
+				int i = 0;
+
 				if (http_method != STIR_SHAKEN_HTTP_REQ_TYPE_HEAD && http_method != STIR_SHAKEN_HTTP_REQ_TYPE_GET) {
 					stir_shaken_set_error(&ca->ss, "Bad request, only HEAD or GET supported for this API", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
 					goto fail;
 				}
 
-				uuid_generate_random(uuid);
-				uuid_unparse_upper(uuid, nonce);
+				ks_uuid(uuid);
+				snprintf(nonce, STIR_SHAKEN_BUFLEN, "%s", ks_uuid_thr_str(uuid));
+				while (i < STIR_SHAKEN_BUFLEN && nonce[i]) {
+					nonce[i] = toupper(nonce[i]);
+					i++;
+				}
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Sending nonce:\n%s\n", nonce);
 
@@ -325,7 +331,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 	struct http_message *m = (struct http_message*) hm;
 	struct mbuf *io = NULL;
 	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
-	cJSON *json = NULL;
+	ks_json_t *json = NULL;
 	jwt_t *jwt = NULL;
 	struct mg_str cert_api_url = mg_mk_str(STI_CA_ACME_CERT_REQ_URL);
 
@@ -566,7 +572,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 	}
 
 	if (json) {
-		cJSON_Delete(json);
+		ks_json_delete(&json);
 		json = NULL;
 	}
 
@@ -596,7 +602,7 @@ fail:
 	close_http_connection_with_error(nc, io, error_desc, NULL);
 
 	if (json) {
-		cJSON_Delete(json);
+		ks_json_delete(&json);
 		json = NULL;
 	}
 
@@ -1065,7 +1071,7 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 
 			{
 				char *check_result = "false", *json_str = NULL;
-				cJSON *json = NULL;
+				ks_json_t *json = NULL;
 
 				if (http_method != STIR_SHAKEN_HTTP_REQ_TYPE_GET) {
 					stir_shaken_set_error(&ca->ss, "Bad request, only GET supported for this API", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
@@ -1090,24 +1096,21 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 					check_result = "true";
 				}
 	
-				json = cJSON_CreateObject();
+				json = ks_json_create_object();
 				if (!json) {
 					stir_shaken_set_error(&ca->ss, "Cannot create JSON object", STIR_SHAKEN_ERROR_JSON);
 					goto fail;
 				}
 
-				cJSON_AddStringToObject(json, "authority", check_result);
-				json_str = cJSON_PrintUnformatted(json);
-				cJSON_Delete(json);
-				json = NULL;
+				ks_json_add_string_to_object(json, "authority", check_result);
+				json_str = ks_json_print_unformatted(json);
 
 				mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(json_str), json_str);
 
+				ks_json_delete(&json);
+				json = NULL;
+
 				close_http_connection(nc, io);
-				if (json_str) {
-					free(json_str);
-					json_str = NULL;
-				}
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
 
 				break;

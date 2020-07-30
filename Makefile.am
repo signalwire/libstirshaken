@@ -12,10 +12,10 @@ TESTS = $(check_PROGRAMS)
 
 bin_PROGRAMS = stirshaken
 stirshaken_SOURCES = util/src/stir_shaken_tool_command.c util/src/stir_shaken_tool.c util/src/stir_shaken_ca.c util/src/mongoose.c
-stirshaken_CFLAGS = -Iinclude -Iutil/include
-stirshaken_LDADD = libstirshaken.la
+stirshaken_CFLAGS = -Iinclude -Iutil/include $(KS_CFLAGS)
+stirshaken_LDADD = libstirshaken.la $(KS_LIBS)
 
-LIBS += -lcjson -lcurl -lcrypto -lssl -ljwt -luuid -pthread
+LIBS += -lcurl -lcrypto -lssl -ljwt -pthread $(KS_LIBS)
 
 stir_shaken_test_1_SOURCES = test/stir_shaken_test_1.c
 stir_shaken_test_1_CFLAGS = -Iinclude

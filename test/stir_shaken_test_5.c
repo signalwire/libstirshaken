@@ -34,7 +34,7 @@ stir_shaken_status_t stir_shaken_unit_test_call_authorization(void)
     //const char *signature_encoded_ref = "VLBCIVDCaeK6M4hLJb6SHQvacAQVvoiiEOWQ_iUkqk79UD81fHQ0E1b3_GluIkba7UWYRM47ZbNFdOJquE35cw";
 
 	jwt_t	*jwtpass = NULL;	// PASSporT as a JWT
-    cJSON	*jsonpass = NULL;	// PASSporT as a JSON
+	ks_json_t	*jsonpass = NULL;	// PASSporT as a JSON
 	char *s = NULL, *sih = NULL;
     
 	char private_key_name[300] = { 0 };
