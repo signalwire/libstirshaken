@@ -34,6 +34,17 @@ PKG_CHECK_MODULES([CURL], [libcurl >= 7.19], [have_curl=true], [have_curl=false]
 PKG_CHECK_MODULES([CJSON], [libcjson], [have_cjson=true], [have_cjson=false])
 PKG_CHECK_MODULES([JWT], [libjwt], [have_jwt=true], [have_jwt=false])
 
+#  Enable clang address sanitizer bit build
+AC_ARG_ENABLE(address_sanitizer,
+  [AC_HELP_STRING([--enable-address-sanitizer],[build with address sanitizer])],
+  [enable_address_sanitizer="$enable_address_sanitizer"],
+  [enable_address_sanitizer="no"])
+if test "${enable_address_sanitizer}" = "yes"; then
+  CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer -fstack-protector-strong"
+  CXXFLAGS="$CXXFLAGS -fsanitize=address -fno-omit-frame-pointer -fstack-protector-strong"
+  LDFLAGS="$LDFLAGS -fsanitize=address"
+fi
+
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
 
