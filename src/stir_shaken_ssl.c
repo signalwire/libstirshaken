@@ -1288,6 +1288,7 @@ static int stir_shaken_verify_callback(int ok, X509_STORE_CTX *ctx)
 		if (file) fprintf(file, "===[depth: %d] = Certificate under consideration:\n", depth);
 		if (file) stir_shaken_print_cert_fields(file, &cert);
 
+		stir_shaken_destroy_cert_fields(&cert);
     } else {
 
 		if (file) fprintf(file, "===[depth: %d] = No cert for this error:\n", depth);
