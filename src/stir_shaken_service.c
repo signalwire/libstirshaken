@@ -297,11 +297,11 @@ stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_conte
  * Validate the root of the digital signature in the STI certificate
  * by determining whether the STI-CA that issued the STI certificate is in the list of approved STI-CAs
  */
-stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, cJSON *array)
+stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, ks_json_t *array)
 {
 	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
 	int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
-	cJSON *iterator = NULL;
+	ks_json_t *iterator = NULL;
 
 	if (!cert || !array) return STIR_SHAKEN_STATUS_TERM;
 
@@ -311,14 +311,14 @@ stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	cJSON_ArrayForEach(iterator, array) {
+	KS_JSON_ARRAY_FOREACH(iterator, array) {
 
-		if (iterator->type == cJSON_String) {
-
+		if (ks_json_type_get(iterator) == KS_JSON_TYPE_STRING) {
+			const char *valuestring = ks_json_value_string(iterator);
 			// TODO remove
-			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "%s\n", iterator->valuestring);
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "%s\n", valuestring);
 
-			if (strcmp((const char*) key, iterator->valuestring)) {
+			if (strcmp(key, valuestring)) {
 				return STIR_SHAKEN_STATUS_OK;
 			}
 		} else {
@@ -335,7 +335,8 @@ stir_shaken_status_t stir_shaken_make_authority_over_number_check_req(stir_shake
 	stir_shaken_http_req_t http_req = { 0 };
 	char req_url[STIR_SHAKEN_BUFLEN] = { 0 };
 	stir_shaken_status_t result = STIR_SHAKEN_STATUS_FALSE;
-	cJSON *json = NULL, *authority_check_result = NULL;
+	ks_json_t *json = NULL, *authority_check_result = NULL;
+	char *valuestring = NULL;
 	
 	if (stir_shaken_zstr(url)) {
 		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
@@ -355,24 +356,24 @@ stir_shaken_status_t stir_shaken_make_authority_over_number_check_req(stir_shake
 		goto fail;
 	}
 
-	json = cJSON_Parse(http_req.response.mem.mem);
+	json = ks_json_parse(http_req.response.mem.mem);
 	if (!json) {
 		stir_shaken_set_error(ss, "Error parsing into JSON", STIR_SHAKEN_ERROR_JSON);
 		goto fail;
 	}
 
-	authority_check_result = cJSON_GetObjectItem(json, "authority");
+	authority_check_result = ks_json_get_object_item(json, "authority");
 	if (!authority_check_result) {
 		stir_shaken_set_error(ss, "Bad JSON, no 'authority' field", STIR_SHAKEN_ERROR_JSON);
 		goto fail;
 	}
 
-	if (authority_check_result->type != cJSON_String) {
+	if (ks_json_type_get(authority_check_result) != KS_JSON_TYPE_STRING) {
 		stir_shaken_set_error(ss, "Bad JSON, 'authority' field is not a string", STIR_SHAKEN_ERROR_JSON);
 		goto fail;
 	}
 
-	if (strcmp("true", authority_check_result->valuestring) == 0) {
+	if (strcmp("true", ks_json_value_string(authority_check_result)) == 0) {
 		result = STIR_SHAKEN_STATUS_OK;
 	} else {
 		result = STIR_SHAKEN_STATUS_FALSE;

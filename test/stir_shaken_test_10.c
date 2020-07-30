@@ -101,7 +101,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
     char *sih_spoofed = NULL;
 	int len = 0;
     const char *spoofed_origtn_val = "07643866222";
-    cJSON *jwt = NULL, *jPayload = NULL, *orig = NULL;
+    ks_json_t *jwt = NULL, *jPayload = NULL, *orig = NULL;
 
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
 	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;

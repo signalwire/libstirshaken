@@ -8,16 +8,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <cjson/cJSON.h>
+#include <libks/ks.h>
 
 // For cert downloading
 #include <curl/curl.h>
 
 // For JSON Web Token, used to implement PASSporT
 #include <jwt.h>
-
-// For nonce (CA)
-#include <uuid/uuid.h>
 
 #include <pthread.h>
 
@@ -231,7 +228,7 @@ typedef struct curl_slist curl_slist_t;
 // the verification service shall treat this as a 438 'Invalid Identity Header' error and proceed as defined above.
 typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_GENERAL,
-	STIR_SHAKEN_ERROR_CJSON,
+	STIR_SHAKEN_ERROR_KSJSON,
 	STIR_SHAKEN_ERROR_CURL,
 	STIR_SHAKEN_ERROR_STICA_NOT_APPROVED,
 	STIR_SHAKEN_ERROR_SSL,
@@ -634,7 +631,7 @@ stir_shaken_status_t stir_shaken_get_x509_raw(stir_shaken_context_t *ss, X509 *x
 stir_shaken_status_t stir_shaken_pubkey_to_raw(stir_shaken_context_t *ss, EVP_PKEY *evp_key, unsigned char *key, int *key_len);
 stir_shaken_status_t stir_shaken_privkey_to_raw(stir_shaken_context_t *ss, EVP_PKEY *evp_key, unsigned char *key, int *key_len);
 stir_shaken_status_t stir_shaken_get_pubkey_raw_from_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, unsigned char *key, int *key_len);
-stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *ec_key, const char *kid, cJSON **jwk);
+stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *ec_key, const char *kid, ks_json_t **jwk);
 void stir_shaken_print_cert_fields(FILE *file, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir);
 void stir_shaken_deinit_ssl(void);
@@ -643,7 +640,7 @@ stir_shaken_status_t stir_shaken_cert_to_authority_check_url(stir_shaken_context
 // Verification service
 
 stir_shaken_status_t stir_shaken_basic_cert_check(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
-stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, cJSON *array);
+stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, ks_json_t *array);
 stir_shaken_status_t stir_shaken_make_authority_over_number_check_req(stir_shaken_context_t *ss, const char *url, const char *origin_identity);
 int stir_shaken_verify_data(stir_shaken_context_t *ss, const char *data, const char *signature, size_t siglen, EVP_PKEY *pkey);
 int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_filename, const char *signature_filename, EVP_PKEY *public_key);
@@ -690,7 +687,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss,
 /**
  * Create JSON token from call @pparams.
  */
-cJSON* stir_shaken_passport_create_json(stir_shaken_context_t *ss, stir_shaken_passport_params_t *pparams);
+ks_json_t* stir_shaken_passport_create_json(stir_shaken_context_t *ss, stir_shaken_passport_params_t *pparams);
 void stir_shaken_passport_destroy(stir_shaken_passport_t *passport);
 
 /**

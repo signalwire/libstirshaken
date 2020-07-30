@@ -1,5 +1,5 @@
 tools="automake autoconf libtool"
-libs="libjansson-dev libcjson-dev libcurl-ocaml-dev libjwt-dev uuid-dev"
+libs="libjansson-dev libcurl-ocaml-dev libjwt-dev libks"
 
 sudo apt install --yes $tools
 sudo apt install --yes $libs

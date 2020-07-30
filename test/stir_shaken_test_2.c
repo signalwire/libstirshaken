@@ -97,7 +97,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create(void)
 	
 	free(out); out = NULL;
 
-    /* Need to free JSON object allocated by cJSON lib. */
+	/* Need to free JSON object. */
 	stir_shaken_passport_destroy(&passport);
 	
 	pthread_mutex_lock(&stir_shaken_globals.mutex);

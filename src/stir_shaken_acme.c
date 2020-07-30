@@ -18,7 +18,7 @@
 char* stir_shaken_acme_generate_auth_challenge(stir_shaken_context_t *ss, char *status, char *expires, char *csr, char *nb, char *na, char *authz_url)
 {
 	char *printed = NULL;
-	cJSON *json = NULL, *arr = NULL, *obj = NULL, *s = NULL;
+	ks_json_t *json = NULL, *arr = NULL, *obj = NULL, *s = NULL;
 	
 	if (stir_shaken_zstr(status)) {
 		stir_shaken_set_error(ss, "Cannot create JSON, 'status' is missing", STIR_SHAKEN_ERROR_ACME);
@@ -50,38 +50,38 @@ char* stir_shaken_acme_generate_auth_challenge(stir_shaken_context_t *ss, char *
 		return NULL;
 	}
 
-	s = cJSON_CreateString(authz_url);	
+	s = ks_json_create_string(authz_url);	
 	if (!s) {
 		stir_shaken_set_error(ss, "Cannot create JSON object for authorization URL", STIR_SHAKEN_ERROR_ACME);
 		return NULL;
 	}
 
-	arr = cJSON_CreateArray();
+	arr = ks_json_create_array();
 	if (!arr) {
-		cJSON_Delete(s);
+		ks_json_delete(&s);
 		stir_shaken_set_error(ss, "Cannot create JSON array for 'authorizations'", STIR_SHAKEN_ERROR_ACME);
 		return NULL;
 	}
 
-	json = cJSON_CreateObject();
+	json = ks_json_create_object();
 	if (!json) {
-		cJSON_Delete(arr);
-		cJSON_Delete(s);
+		ks_json_delete(&arr);
+		ks_json_delete(&s);
 		stir_shaken_set_error(ss, "Cannot create JSON object", STIR_SHAKEN_ERROR_ACME);
 		return NULL;
 	}
 
-	cJSON_AddStringToObject(json, "status", "pending");
-	cJSON_AddStringToObject(json, "expires", "2015-03-01T14:09:00Z");
-	cJSON_AddStringToObject(json, "csr", "jcRf4uXra7FGYW5ZMewvV...rhlnznwy8YbpMGqwidEXfE");
-	cJSON_AddStringToObject(json, "notBefore", "2016-01-01T00:00:00Z");
-	cJSON_AddStringToObject(json, "notAfter", "2016-01-08T00:00:00Z");
-	//cJSON_AddItemToObject(obj, s);
-	cJSON_AddItemToArray(arr, s); 
-	cJSON_AddItemToObject(json, "authorizations", arr);
+	ks_json_add_string_to_object(json, "status", "pending");
+	ks_json_add_string_to_object(json, "expires", "2015-03-01T14:09:00Z");
+	ks_json_add_string_to_object(json, "csr", "jcRf4uXra7FGYW5ZMewvV...rhlnznwy8YbpMGqwidEXfE");
+	ks_json_add_string_to_object(json, "notBefore", "2016-01-01T00:00:00Z");
+	ks_json_add_string_to_object(json, "notAfter", "2016-01-08T00:00:00Z");
+	//ks_json_add_item_to_object(obj, s);
+	ks_json_add_item_to_array(arr, s); 
+	ks_json_add_item_to_object(json, "authorizations", arr);
 
-	printed = cJSON_PrintUnformatted(json);
-	cJSON_Delete(json);
+	printed = strdup(ks_json_print_unformatted(json));
+	ks_json_delete(&json);
 	return printed;
 }
 
@@ -244,45 +244,44 @@ char* stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *s
 
 	if (contact_mail || contact_tel) {
 
-		cJSON *contact = NULL, *e = NULL;
+		ks_json_t *contact = NULL, *e = NULL;
 		char *jstr = NULL;
 
-		contact = cJSON_CreateArray();
+		contact = ks_json_create_array();
 		if (!contact) {
-			stir_shaken_set_error(ss, "Passport create json: Error in cjson, @contact", STIR_SHAKEN_ERROR_CJSON);
+			stir_shaken_set_error(ss, "Passport create json: Error in ks_json, @contact", STIR_SHAKEN_ERROR_KSJSON);
 			goto exit;
 		}
 
 		if (contact_mail) {
 
-			e = cJSON_CreateString(contact_mail);
+			e = ks_json_create_string(contact_mail);
 			if (!e) {
-				stir_shaken_set_error(ss, "Passport create json: Error in cjson, @contact_mail", STIR_SHAKEN_ERROR_CJSON);
-				cJSON_Delete(contact);
+				stir_shaken_set_error(ss, "Passport create json: Error in ks_json, @contact_mail", STIR_SHAKEN_ERROR_KSJSON);
+				ks_json_delete(&contact);
 				goto exit;
 			}
-			cJSON_AddItemToArray(contact, e);
+			ks_json_add_item_to_array(contact, e);
 		}
 
 		if (contact_tel) {
 
-			e = cJSON_CreateString(contact_tel);
+			e = ks_json_create_string(contact_tel);
 			if (!e) {
-				stir_shaken_set_error(ss, "Passport create json: Error in cjson, @contact_tel", STIR_SHAKEN_ERROR_CJSON);
-				cJSON_Delete(contact);
+				stir_shaken_set_error(ss, "Passport create json: Error in ks_json, @contact_tel", STIR_SHAKEN_ERROR_KSJSON);
+				ks_json_delete(&contact);
 				goto exit;
 			}
-			cJSON_AddItemToArray(contact, e);
+			ks_json_add_item_to_array(contact, e);
 		}
 
-		jstr = cJSON_PrintUnformatted(contact);
+		jstr = ks_json_print_unformatted(contact);
 		if (!jstr || (jwt_add_grant(jwt, "contact", jstr) != 0)) {
-			cJSON_Delete(contact);
+			ks_json_delete(&contact);
 			goto exit;
 		}
 
-		cJSON_Delete(contact);
-		free(jstr);
+		ks_json_delete(&contact);
 	}
 
 	if (json) {
@@ -343,23 +342,23 @@ stir_shaken_status_t stir_shaken_acme_nonce_req(stir_shaken_context_t *ss, stir_
 static char* mock_auth_challenge_details(void)
 {
 	char *printed = NULL;
-	cJSON *json = cJSON_CreateObject(), *arr = cJSON_CreateArray(), *o1 = cJSON_CreateObject(), *o2 = cJSON_CreateObject();
+	ks_json_t *json = ks_json_create_object(), *arr = ks_json_create_array(), *o1 = ks_json_create_object(), *o2 = ks_json_create_object();
 	if (!json || !arr || !o1 || !o2) {
 		return NULL;
 	}
 
-	cJSON_AddStringToObject(json, "status", "pending");
-	cJSON_AddStringToObject(o1, "type", "TNAuthList");
-	cJSON_AddStringToObject(o1, "value", "1234");
-	cJSON_AddStringToObject(o2, "type", "spc-token");
-	cJSON_AddStringToObject(o2, "url", "https://sti-ca.com/authz/1234/0");
-	cJSON_AddStringToObject(o2, "token", "DGyRejmCefe7v4NfDGDKfA");
-	cJSON_AddItemToArray(arr, o2); 
-	cJSON_AddItemToObject(json, "identifier", o1);
-	cJSON_AddItemToObject(json, "challenges", arr);
+	ks_json_add_string_to_object(json, "status", "pending");
+	ks_json_add_string_to_object(o1, "type", "TNAuthList");
+	ks_json_add_string_to_object(o1, "value", "1234");
+	ks_json_add_string_to_object(o2, "type", "spc-token");
+	ks_json_add_string_to_object(o2, "url", "https://sti-ca.com/authz/1234/0");
+	ks_json_add_string_to_object(o2, "token", "DGyRejmCefe7v4NfDGDKfA");
+	ks_json_add_item_to_array(arr, o2); 
+	ks_json_add_item_to_object(json, "identifier", o1);
+	ks_json_add_item_to_object(json, "challenges", arr);
 
-	printed = cJSON_PrintUnformatted(json);
-	cJSON_Delete(json);
+	printed = strdup(ks_json_print_unformatted(json));
+	ks_json_delete(&json);
 	return printed;
 }
 #endif
@@ -367,7 +366,7 @@ static char* mock_auth_challenge_details(void)
 char* stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss, char *status, const char *spc, const char *token, const char *authz_url)
 {
 	char *printed = NULL;
-	cJSON *json = cJSON_CreateObject(), *arr = cJSON_CreateArray(), *o1 = cJSON_CreateObject(), *o2 = cJSON_CreateObject();
+	ks_json_t *json = ks_json_create_object(), *arr = ks_json_create_array(), *o1 = ks_json_create_object(), *o2 = ks_json_create_object();
 	if (!json || !arr || !o1 || !o2) {
 		stir_shaken_set_error(ss, "Cannot create auth challenge details JSON object", STIR_SHAKEN_ERROR_ACME);
 		goto fail;
@@ -391,32 +390,32 @@ char* stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss
 		goto fail;
 	}
 
-	cJSON_AddStringToObject(json, "status", status);
-	cJSON_AddStringToObject(o1, "type", "TNAuthList");
-	cJSON_AddStringToObject(o1, "value", spc);
-	cJSON_AddStringToObject(o2, "type", "spc-token");
-	cJSON_AddStringToObject(o2, "url", authz_url);
-	cJSON_AddStringToObject(o2, "token", token);
-	cJSON_AddItemToArray(arr, o2); 
-	cJSON_AddItemToObject(json, "identifier", o1);
-	cJSON_AddItemToObject(json, "challenges", arr);
+	ks_json_add_string_to_object(json, "status", status);
+	ks_json_add_string_to_object(o1, "type", "TNAuthList");
+	ks_json_add_string_to_object(o1, "value", spc);
+	ks_json_add_string_to_object(o2, "type", "spc-token");
+	ks_json_add_string_to_object(o2, "url", authz_url);
+	ks_json_add_string_to_object(o2, "token", token);
+	ks_json_add_item_to_array(arr, o2); 
+	ks_json_add_item_to_object(json, "identifier", o1);
+	ks_json_add_item_to_object(json, "challenges", arr);
 
-	printed = cJSON_PrintUnformatted(json);
-	cJSON_Delete(json);
+	printed = strdup(ks_json_print_unformatted(json));
+	ks_json_delete(&json);
 	return printed;
 
 fail:
 	if (json) {
-		cJSON_Delete(json);
+		ks_json_delete(&json);
 	} else {
 		if (arr) {
-			cJSON_Delete(arr);
+			ks_json_delete(&arr);
 		}
 		if (o1) {
-			cJSON_Delete(o1);
+			ks_json_delete(&o1);
 		}
 		if (o2) {
-			cJSON_Delete(o2);
+			ks_json_delete(&o2);
 		}
 	}
 	return NULL;
@@ -425,7 +424,7 @@ fail:
 char* stir_shaken_acme_generate_auth_polling_status(stir_shaken_context_t *ss, char *status, char *expires, char *validated, const char *spc, const char *token, const char *authz_url)
 {
 	char *printed = NULL;
-	cJSON *json = cJSON_CreateObject(), *arr = cJSON_CreateArray(), *o1 = cJSON_CreateObject(), *o2 = cJSON_CreateObject();
+	ks_json_t *json = ks_json_create_object(), *arr = ks_json_create_array(), *o1 = ks_json_create_object(), *o2 = ks_json_create_object();
 	if (!json || !arr || !o1 || !o2) {
 		stir_shaken_set_error(ss, "Cannot create auth challenge details JSON object", STIR_SHAKEN_ERROR_ACME);
 		goto fail;
@@ -459,35 +458,35 @@ char* stir_shaken_acme_generate_auth_polling_status(stir_shaken_context_t *ss, c
 		goto fail;
 	}
 
-	cJSON_AddStringToObject(json, "status", status);
-	cJSON_AddStringToObject(json, "expires", expires);
-	cJSON_AddStringToObject(o1, "type", "TNAuthList");
-	cJSON_AddStringToObject(o1, "value", spc);
-	cJSON_AddStringToObject(o2, "type", "spc-token");
-	cJSON_AddStringToObject(o2, "url", authz_url);
-	cJSON_AddStringToObject(o2, "status", status);
-	cJSON_AddStringToObject(o2, "validated", validated);
-	cJSON_AddStringToObject(o2, "token", token);
-	cJSON_AddItemToArray(arr, o2); 
-	cJSON_AddItemToObject(json, "identifier", o1);
-	cJSON_AddItemToObject(json, "challenges", arr);
+	ks_json_add_string_to_object(json, "status", status);
+	ks_json_add_string_to_object(json, "expires", expires);
+	ks_json_add_string_to_object(o1, "type", "TNAuthList");
+	ks_json_add_string_to_object(o1, "value", spc);
+	ks_json_add_string_to_object(o2, "type", "spc-token");
+	ks_json_add_string_to_object(o2, "url", authz_url);
+	ks_json_add_string_to_object(o2, "status", status);
+	ks_json_add_string_to_object(o2, "validated", validated);
+	ks_json_add_string_to_object(o2, "token", token);
+	ks_json_add_item_to_array(arr, o2); 
+	ks_json_add_item_to_object(json, "identifier", o1);
+	ks_json_add_item_to_object(json, "challenges", arr);
 
-	printed = cJSON_PrintUnformatted(json);
-	cJSON_Delete(json);
+	printed = strdup(ks_json_print_unformatted(json));
+	ks_json_delete(&json);
 	return printed;
 
 fail:
 	if (json) {
-		cJSON_Delete(json);
+		ks_json_delete(&json);
 	} else {
 		if (arr) {
-			cJSON_Delete(arr);
+			ks_json_delete(&arr);
 		}
 		if (o1) {
-			cJSON_Delete(o1);
+			ks_json_delete(&o1);
 		}
 		if (o2) {
-			cJSON_Delete(o2);
+			ks_json_delete(&o2);
 		}
 	}
 	return NULL;
@@ -517,15 +516,15 @@ fail:
 static char* mock_poll_response(char *status)
 {
 	char *printed = NULL;
-	cJSON *json = cJSON_CreateObject();
+	ks_json_t *json = ks_json_create_object();
 
 	if (!json || !status) {
 		return NULL;
 	}
 
-	cJSON_AddStringToObject(json, "status", status);
-	printed = cJSON_PrintUnformatted(json);
-	cJSON_Delete(json);
+	ks_json_add_string_to_object(json, "status", status);
+	printed = strdup(ks_json_print_unformatted(json));
+	ks_json_delete(&json);
 	return printed;
 }
 #endif
@@ -576,7 +575,7 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	const char				*error_description = NULL;
 	stir_shaken_error_t		error_code = 0;
-	cJSON *json = NULL, *auth_status = NULL, *challenges_arr = NULL;
+	ks_json_t *json = NULL, *auth_status = NULL, *challenges_arr = NULL;
 	stir_shaken_http_req_t http_req = { 0 };
 
 
@@ -600,38 +599,38 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	json = cJSON_Parse(data);
+	json = ks_json_parse(data);
 	if (!json) {
 		goto fail;
 	}
 
-	auth_status = cJSON_GetObjectItem(json, "status");
+	auth_status = ks_json_get_object_item(json, "status");
 	if (!auth_status) {
 		stir_shaken_set_error(ss, "ACME authorization challenge malformed, no 'status' field", STIR_SHAKEN_ERROR_ACME);
 		goto fail;
 	}
 
-	if (auth_status->type != cJSON_String) {
+	if (ks_json_type_get(auth_status) != KS_JSON_TYPE_STRING) {
 		stir_shaken_set_error(ss, "ACME authorization challenge malformed, 'status' field is not a string", STIR_SHAKEN_ERROR_ACME);
 		goto fail;
 	}
 
-	if (strcmp("valid", auth_status->valuestring) == 0) {
+	if (strcmp("valid", ks_json_value_string(auth_status)) == 0) {
 
 		// Authorization completed
 
 	} else {
 
-		cJSON	*challenge_item = NULL;
-		cJSON	*url_item = NULL;
-		char	*challenge_url = NULL;
+		ks_json_t	*challenge_item = NULL;
+		ks_json_t	*url_item = NULL;
+		const char	*challenge_url = NULL;
 		char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 		char *kid = NULL, *nonce = NULL, *url = NULL;
 		char *jwt_encoded = NULL, *jwt_decoded = NULL;
 
-		if (strcmp("pending", auth_status->valuestring) != 0) {
-			snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')", auth_status->valuestring);
+		if (strcmp("pending", ks_json_value_string(auth_status)) != 0) {
+			snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')", ks_json_value_string(auth_status));
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
@@ -639,40 +638,40 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 		// ACME authorization is still pending
 		// Retrieve authorization challenge response URL
 
-		challenges_arr = cJSON_GetObjectItem(json, "challenges");
+		challenges_arr = ks_json_get_object_item(json, "challenges");
 		if (!challenges_arr) {
 			stir_shaken_set_error(ss, "ACME authorization challenge details do not contain 'challenges' array", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
-		if (challenges_arr->type != cJSON_Array) {
+		if (ks_json_type_get(challenges_arr) != KS_JSON_TYPE_ARRAY) {
 			stir_shaken_set_error(ss, "ACME authorization challenge details contain 'challenges' which is not an array", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
-		challenge_item = cJSON_GetArrayItem(challenges_arr, 0);
+		challenge_item = ks_json_get_array_item(challenges_arr, 0);
 		if (!challenge_item) {
 			stir_shaken_set_error(ss, "ACME authorization challenge details 'challenges' array is empty", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
-		if (challenge_item->type != cJSON_Object) {
+		if (ks_json_type_get(challenge_item) != KS_JSON_TYPE_OBJECT) {
 			stir_shaken_set_error(ss, "ACME authorization challenge item is not a JSON object, expecting compound object", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
-		url_item = cJSON_GetObjectItem(challenge_item, "url");
+		url_item = ks_json_get_object_item(challenge_item, "url");
 		if (!url_item) {
 			stir_shaken_set_error(ss, "ACME authorization challenge details malformed, no 'url' field in 'challenges' array", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
-		if (url_item->type != cJSON_String) {
+		if (ks_json_type_get(url_item) != KS_JSON_TYPE_STRING) {
 			stir_shaken_set_error(ss, "ACME authorization challenge details malformed, 'url' field in 'challenges' array is not a string", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
-		challenge_url = url_item->valuestring;
+		challenge_url = ks_json_value_string(url_item);
 		if (polling_url) {
 			*polling_url = strdup(challenge_url);
 		}
@@ -686,7 +685,7 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 		kid = "https://sti-ca.com/acme/acct/1";			// TODO map to auth challenge details
 		nonce = "Q_s3MWoqT05TrdkM2MTDcw";				// TODO map to auth challenge details
 
-		jwt_encoded = stir_shaken_acme_generate_auth_challenge_response(ss, kid, nonce, challenge_url, spc_token, key, keylen, NULL);
+		jwt_encoded = stir_shaken_acme_generate_auth_challenge_response(ss, kid, nonce, (char*)challenge_url, spc_token, key, keylen, NULL);
 		if (!jwt_encoded) {
 			stir_shaken_set_error(ss, "Failed to generate JWT with SP Code token as a response to auth challenge", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
@@ -712,11 +711,11 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 		stir_shaken_destroy_http_request(&http_req);
 	}
 
-	cJSON_Delete(json);
+	ks_json_delete(&json);
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
-	if (json) cJSON_Delete(json);
+	if (json) ks_json_delete(&json);
 	stir_shaken_destroy_http_request(&http_req);
 	return STIR_SHAKEN_STATUS_FALSE;
 }
@@ -726,7 +725,7 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
 	uint8_t					status_is_valid = 0;
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_OK;
 	stir_shaken_http_req_t	http_req = { 0 };
-	cJSON					*json = NULL, *auth_status = NULL;
+	ks_json_t					*json = NULL, *auth_status = NULL;
 	int						t = 0;
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
@@ -768,25 +767,25 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
 		}
 
 		// Process response
-		json = cJSON_Parse(http_req.response.mem.mem);
+		json = ks_json_parse(http_req.response.mem.mem);
 		if (!json) {
 			goto fail;
 		}
 
-		auth_status = cJSON_GetObjectItem(json, "status");
+		auth_status = ks_json_get_object_item(json, "status");
 		if (!auth_status) {
 			stir_shaken_set_error(ss, "ACME auth status malformed, no 'status' field", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
-		if (auth_status->type != cJSON_String) {
+		if (ks_json_type_get(auth_status) != KS_JSON_TYPE_STRING) {
 			stir_shaken_set_error(ss, "ACME auth status malformed, 'status' field is not a string", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
 		// Check authorization status
 		// If status is "valid" authorization is completed and can proceed to cert acquisition
-		if (strcmp("valid", auth_status->valuestring) == 0) {
+		if (strcmp("valid", ks_json_value_string(auth_status)) == 0) {
 
 			// Authorization completed
 			status_is_valid = 1;
@@ -794,18 +793,18 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
 
 		} else {
 
-			if (strcmp("pending", auth_status->valuestring) != 0) {
+			if (strcmp("pending", ks_json_value_string(auth_status)) != 0) {
 				
-				if (0 == strcmp("failed", auth_status->valuestring)) {
+				if (0 == strcmp("failed", ks_json_value_string(auth_status))) {
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got 'failed' polling status");
-					snprintf(err_buf, STIR_SHAKEN_BUFLEN, "\t-> Got 'failed' polling status (%s): ACME authorization unsuccessful\n", auth_status->valuestring);
+					snprintf(err_buf, STIR_SHAKEN_BUFLEN, "\t-> Got 'failed' polling status (%s): ACME authorization unsuccessful\n", ks_json_value_string(auth_status));
 					stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME_AUTHZ_UNSUCCESSFUL);
 					goto fail;
 				}
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got malformed polling status\n");
 
-				snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME auth status malformed, 'status' field is neither 'valid' nor 'pending' nor 'failed' (status is: '%s')\n", auth_status->valuestring);
+				snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME auth status malformed, 'status' field is neither 'valid' nor 'pending' nor 'failed' (status is: '%s')\n", ks_json_value_string(auth_status));
 				stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME);
 				goto fail;
 			}
@@ -819,7 +818,7 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
 		}
 
 		if (json) {
-			cJSON_Delete(json);
+			ks_json_delete(&json);
 			json = NULL;
 		}
 	}
@@ -827,7 +826,7 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
 	return status_is_valid ? STIR_SHAKEN_STATUS_OK : STIR_SHAKEN_STATUS_FALSE;
 
 fail:
-	if (json) cJSON_Delete(json);
+	if (json) ks_json_delete(&json);
 	return STIR_SHAKEN_STATUS_TERM;
 }
 
@@ -848,7 +847,7 @@ fail:
  */
 stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, uint16_t remote_port)
 {
-	cJSON *json = NULL, *auth_status = NULL, *auth_arr = NULL;
+	ks_json_t *json = NULL, *auth_status = NULL, *auth_arr = NULL;
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 
@@ -872,18 +871,18 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	json = cJSON_Parse(data);
+	json = ks_json_parse(data);
 	if (!json) {
 		goto fail;
 	}
 
-	auth_status = cJSON_GetObjectItem(json, "status");
+	auth_status = ks_json_get_object_item(json, "status");
 	if (!auth_status) {
 		stir_shaken_set_error(ss, "ACME authorization challenge malformed, no 'status' field", STIR_SHAKEN_ERROR_ACME);
 		goto fail;
 	}
 
-	if (auth_status->type != cJSON_String) {
+	if (ks_json_type_get(auth_status) != KS_JSON_TYPE_STRING) {
 		stir_shaken_set_error(ss, "ACME authorization challenge malformed, 'status' field is not a string", STIR_SHAKEN_ERROR_ACME);
 		goto fail;
 	}
@@ -891,19 +890,19 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Processing authorization challenge...\n");
 
 	// If status is "valid" authorization is completed and can proceed to cert acquisition
-	if (strcmp("valid", auth_status->valuestring) == 0) {
+	if (strcmp("valid", ks_json_value_string(auth_status)) == 0) {
 
 		// Authorization completed
 		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Authorization completed\n");
 
 	} else {
 
-		cJSON	*auth_item = NULL;
-		char	*auth_url = NULL;
+		ks_json_t	*auth_item = NULL;
+		const char	*auth_url = NULL;
 		stir_shaken_http_req_t http_req = { 0 };
 
-		if (strcmp("pending", auth_status->valuestring) != 0) {
-			snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')", auth_status->valuestring);
+		if (strcmp("pending", ks_json_value_string(auth_status)) != 0) {
+			snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')", ks_json_value_string(auth_status));
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
@@ -913,29 +912,29 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 
 		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Authorization is pending\n");
 
-		auth_arr = cJSON_GetObjectItem(json, "authorizations");
+		auth_arr = ks_json_get_object_item(json, "authorizations");
 		if (!auth_arr) {
 			stir_shaken_set_error(ss, "ACME authorization challenge does not contain 'authorizations' array", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
-		if (auth_arr->type != cJSON_Array) {
+		if (ks_json_type_get(auth_arr) != KS_JSON_TYPE_ARRAY) {
 			stir_shaken_set_error(ss, "ACME authorization challenge contains 'authorizations' which is not an array", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
-		auth_item = cJSON_GetArrayItem(auth_arr, 0);
+		auth_item = ks_json_get_array_item(auth_arr, 0);
 		if (!auth_item) {
 			stir_shaken_set_error(ss, "ACME authorization challenge 'authorizations' array is empty", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
-		if (auth_item->type != cJSON_String) {
+		if (ks_json_type_get(auth_item) != KS_JSON_TYPE_STRING) {
 			stir_shaken_set_error(ss, "ACME 'authorizations' array at item 0  is not a string, expecting string value", STIR_SHAKEN_ERROR_ACME);
 			goto fail;
 		}
 
-		auth_url = auth_item->valuestring;
+		auth_url = ks_json_value_string(auth_item);
 
 		/*
 		 * Performing Step 4 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080].
@@ -989,11 +988,11 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 		}
 	}
 
-	cJSON_Delete(json);
+	ks_json_delete(&json);
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
-	if (json) cJSON_Delete(json);
+	if (json) ks_json_delete(&json);
 	stir_shaken_set_error_if_clear(ss, "ACME request failed. Cannot obtain STI certificate.", STIR_SHAKEN_ERROR_ACME);
 	return STIR_SHAKEN_STATUS_FALSE;
 }
