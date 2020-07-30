@@ -23,6 +23,11 @@ FOLDERS
 COMPILATION
 ============
 
+NOTE: the latest libjwt is required.
+  debian packages: https://files.freeswitch.org/repo/deb/debian-unstable/pool/main/libj/libjwt/
+  RPM: https://files.freeswitch.org/repo/yum/centos-dev/7/x86_64/libjwt-devel-1.12.0-0.sdl7.x86_64.rpm
+  source: https://github.com/benmcollins/libjwt
+
 If you just want to get on with it, then please run
 ./do_install.sh
 This will install dependencies as well as tools needed to make build, and will build and install it.
