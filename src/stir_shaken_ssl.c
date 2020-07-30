@@ -2406,11 +2406,10 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 	}
 
 	i = EVP_DigestSignFinal(mdctx, tmpsig, &tmpsig_len);
-	if (i == 0 || (tmpsig_len >= PBUF_LEN - 1)) {
+	if (i != 1 || (tmpsig_len >= PBUF_LEN - 1)) {
 		stir_shaken_set_error(ss, "Do sign data with digest: Error in EVP_DigestSignFinal", STIR_SHAKEN_ERROR_SSL);
 		goto err;
 	}
-	tmpsig[tmpsig_len] = '\0';
 	EVP_MD_CTX_destroy(mdctx);
 	mdctx = NULL;
 
