@@ -182,7 +182,6 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 
 	// SP cleanup	
 	stir_shaken_sp_destroy(&sp);
-	stir_shaken_destroy_keys_ex(&sp.keys.ec_key, &sp.keys.private_key, &sp.keys.public_key);
 
 	EVP_PKEY_free(pkey);
 

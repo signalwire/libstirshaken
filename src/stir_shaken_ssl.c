@@ -1019,6 +1019,7 @@ X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *
 	x = stir_shaken_generate_x509_cert(ss, public_key, issuer_c, issuer_cn, NULL, NULL, serial, expiry_days);
 	if (!x) {
 		stir_shaken_set_error_if_clear(ss, "Failed to generate initial X509 certificate", STIR_SHAKEN_ERROR_GENERAL);
+		EVP_PKEY_free(public_key);
 		return NULL;
 	}
 
@@ -1040,10 +1041,13 @@ X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *
 		stir_shaken_set_error_if_clear(ss, "Failed to sign X509 end entity certificate", STIR_SHAKEN_ERROR_GENERAL);
 		goto fail;
 	}
+
+	EVP_PKEY_free(public_key);
 	
 	return x;
 
 fail:
+	if (public_key) EVP_PKEY_free(public_key);
 	if (x) X509_free(x);
 	stir_shaken_set_error_if_clear(ss, "Failed to generate X509 end entity certificate", STIR_SHAKEN_ERROR_GENERAL);
 	return NULL;
@@ -1209,6 +1213,7 @@ stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, sti
 	cert->serialHex = serialHex;
 
 	serialDec = BN_bn2dec(bnser);
+	BN_free(bnser);
 	cert->serialDec = serialDec;
 
 	X509_NAME_oneline(X509_get_issuer_name(x), cert->issuer, sizeof(cert->issuer));
