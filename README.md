@@ -1,6 +1,6 @@
 ## Overview
 
-STIR-Shaken is a technology for making secure calls by use of SSL certificates and Jason Web Tokens.
+STIR-Shaken is a technology for making secure calls by use of SSL certificates and JSON Web Tokens.
 For a general overview of the framwork please search web for: ATIS, "Signature-based Handling of Asserted Information using Tokens (SHAKEN). Governance Model and Certificate Management",
 (no link provided because spec is actively worked on and updated frequently).
 This library provides building blocks for implementing STIR-Shaken authentication and verification services, (STI-SP/AS, STI-SP/VS),
