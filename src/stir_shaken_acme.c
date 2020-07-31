@@ -1,5 +1,5 @@
 #include "stir_shaken.h"
-
+#include <curl/curl.h>
 
 /**
  * JSON:
