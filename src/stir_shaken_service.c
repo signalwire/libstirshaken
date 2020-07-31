@@ -318,7 +318,7 @@ stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir
 			// TODO remove
 			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "%s\n", valuestring);
 
-			if (strcmp(key, valuestring)) {
+			if (strcmp((const char *)key, valuestring)) {
 				return STIR_SHAKEN_STATUS_OK;
 			}
 		} else {
