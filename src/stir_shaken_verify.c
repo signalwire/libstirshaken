@@ -1,4 +1,5 @@
 #include "stir_shaken.h"
+#include <curl/curl.h>
 
 #undef BUFSIZE
 #define BUFSIZE 1024*8

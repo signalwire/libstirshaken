@@ -10,9 +10,6 @@
 
 #include <libks/ks.h>
 
-// For cert downloading
-#include <curl/curl.h>
-
 // For JSON Web Token, used to implement PASSporT
 #include <jwt.h>
 

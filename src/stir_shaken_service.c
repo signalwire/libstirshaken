@@ -1,5 +1,5 @@
 #include "stir_shaken.h"
-
+#include <curl/curl.h>
 
 static size_t stir_shaken_curl_write_callback(void *contents, size_t size, size_t nmemb, void *p)
 {

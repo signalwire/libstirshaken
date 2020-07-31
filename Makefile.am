@@ -1,7 +1,8 @@
 dist_doc_DATA = README.txt
 
 ACLOCAL_AMFLAGS = -I build/m4
-AM_CFLAGS    = -I./src -Iinclude -I$(srcdir)/include
+AM_CFLAGS    = -I./src -Iinclude -I$(srcdir)/include $(KS_CFLAGS) $(CURL_CFLAGS) $(JWT_CFLAGS) $(openssl_CFLAGS)
+
 lib_LTLIBRARIES = libstirshaken.la
 libstirshaken_la_SOURCES = src/stir_shaken.c src/stir_shaken_service.c src/stir_shaken_passport.c src/stir_shaken_verify.c src/stir_shaken_ssl.c src/stir_shaken_acme.c src/stir_shaken_sp.c
 include_HEADERS = include/stir_shaken.h
@@ -12,10 +13,10 @@ TESTS = $(check_PROGRAMS)
 
 bin_PROGRAMS = stirshaken
 stirshaken_SOURCES = util/src/stir_shaken_tool_command.c util/src/stir_shaken_tool.c util/src/stir_shaken_ca.c util/src/mongoose.c
-stirshaken_CFLAGS = -Iinclude -Iutil/include $(KS_CFLAGS)
+stirshaken_CFLAGS = -Iinclude -Iutil/include
 stirshaken_LDADD = libstirshaken.la $(KS_LIBS)
 
-LIBS += -lcurl -lcrypto -lssl -ljwt -pthread $(KS_LIBS)
+LIBS += $(KS_LIBS) $(CURL_LIBS) $(JWT_LIBS) -pthread
 
 stir_shaken_test_1_SOURCES = test/stir_shaken_test_1.c
 stir_shaken_test_1_CFLAGS = -Iinclude
@@ -60,19 +61,15 @@ stir_shaken_test_10_LDADD = libstirshaken.la
 stir_shaken_test_11_SOURCES = test/stir_shaken_test_11.c
 stir_shaken_test_11_CFLAGS = -Iinclude
 stir_shaken_test_11_LDADD = libstirshaken.la
-stir_shaken_test_11_LDFLAGS = -lcurl
 
 stir_shaken_test_12_SOURCES = test/stir_shaken_test_12.c
 stir_shaken_test_12_CFLAGS = -Iinclude
 stir_shaken_test_12_LDADD = libstirshaken.la
-stir_shaken_test_12_LDFLAGS = -lcurl
 
 stir_shaken_test_13_SOURCES = test/stir_shaken_test_13.c
 stir_shaken_test_13_CFLAGS = -Iinclude
 stir_shaken_test_13_LDADD = libstirshaken.la
-stir_shaken_test_13_LDFLAGS = -lcurl
 
 stir_shaken_test_14_SOURCES = test/stir_shaken_test_14.c
 stir_shaken_test_14_CFLAGS = -Iinclude
 stir_shaken_test_14_LDADD = libstirshaken.la
-stir_shaken_test_14_LDFLAGS = -lcurl
