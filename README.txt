@@ -13,7 +13,6 @@ FOLDERS
 ======
 / - main folder
 	README.txt	- this file
-	.do_install.sh	- installation script
 	src/		- library sources
 	include/	- library headers
 	util/		- helper programs (stirshaken tool for running multiple commands, see below)
@@ -23,33 +22,32 @@ FOLDERS
 COMPILATION
 ============
 
-NOTE: the latest libjwt is required.
-  debian packages: https://files.freeswitch.org/repo/deb/debian-unstable/pool/main/libj/libjwt/
-  RPM: https://files.freeswitch.org/repo/yum/centos-dev/7/x86_64/libjwt-devel-1.12.0-0.sdl7.x86_64.rpm
-  source: https://github.com/benmcollins/libjwt
+Dependencies:
+
+CURL: https://github.com/curl/curl
+OpenSSL: https://github.com/openssl/openssl version 1.1 or later
+LibJWT: https://github.com/benmcollins/libjwt version 1.12 or later
+LibKS: https://github.com/signalwire/libks
+
+packages for latest libks and libjwt which are required are available in the freeswitch package repositories:
+
+Debian 10:
+       apt-get update && apt-get install -y gnupg2 wget lsb-release
+       wget -O - https://files.freeswitch.org/repo/deb/debian-release/fsstretch-archive-keyring.asc | apt-key add -
+       echo "deb http://files.freeswitch.org/repo/deb/debian-release/ `lsb_release -sc` main" > /etc/apt/sources.list.d/freeswitch.list
+       echo "deb-src http://files.freeswitch.org/repo/deb/debian-release/ `lsb_release -sc` main" >> /etc/apt/sources.list.d/freeswitch.list
+       apt-get update && apt-get install -y automake autoconf libtool libcurl4-openssl-dev libjwt-dev libks
 
 If you just want to get on with it, then please run
 ./do_install.sh
-This will install dependencies as well as tools needed to make build, and will build and install it.
+This will install dependencies as well as tools needed to make build, and will build and install it on debian buster
 If there are problems with dependencies, then install them manually and rerun ./do_install.sh.
 This will build all Shaken targets if packages are installed.
 
-Dependencies:
+Please run ./do_install.sh (debian specific) or perform these manual steps:
 
-LIBS += -lcurl -lcrypto -lssl -ljwt -pthread -lks
-CURL: https://github.com/curl/curl
-OpenSSL: https://github.com/openssl/openssl
-LibJWT: https://github.com/benmcollins/libjwt
-LibKS: https://github.com/signalwire/libks
-
-
-Please run ./install.sh or perform these manual steps:
-
-autoreconf -i
-automake --add-missing
-libtoolize
-autoreconf
-configure
+./bootstrap.sh
+./configure
 make
 sudo make install
 
