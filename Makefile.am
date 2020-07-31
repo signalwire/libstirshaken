@@ -1,5 +1,3 @@
-dist_doc_DATA = README.txt
-
 ACLOCAL_AMFLAGS = -I build/m4
 AM_CFLAGS    = -I./src -Iinclude -I$(srcdir)/include $(KS_CFLAGS) $(CURL_CFLAGS) $(JWT_CFLAGS) $(openssl_CFLAGS)
 
