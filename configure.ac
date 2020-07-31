@@ -45,7 +45,12 @@ if test "${enable_address_sanitizer}" = "yes"; then
   LDFLAGS="$LDFLAGS -fsanitize=address"
 fi
 
-AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile])
+pkgconfigdir="$libdir/pkgconfig"
+AC_SUBST([pkgconfigdir])
+
+AC_CONFIG_FILES([
+		Makefile
+		build/stirshaken.pc
+		])
 
 AC_OUTPUT
