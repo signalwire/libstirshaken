@@ -229,7 +229,7 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 	struct http_message *m = (struct http_message*) hm;
 	struct mbuf *io = NULL;
 	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
-	ks_uuid_t *uuid = NULL;
+	ks_uuid_t uuid = { 0 };
 	char nonce[STIR_SHAKEN_BUFLEN] = { 0 };
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST; 
 	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
@@ -268,8 +268,8 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 					goto fail;
 				}
 
-				ks_uuid(uuid);
-				snprintf(nonce, STIR_SHAKEN_BUFLEN, "%s", ks_uuid_thr_str(uuid));
+				ks_uuid(&uuid);
+				snprintf(nonce, STIR_SHAKEN_BUFLEN, "%s", ks_uuid_thr_str(&uuid));
 				while (i < STIR_SHAKEN_BUFLEN && nonce[i]) {
 					nonce[i] = toupper(nonce[i]);
 					i++;
