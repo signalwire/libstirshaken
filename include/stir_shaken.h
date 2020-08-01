@@ -678,6 +678,12 @@ stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *s
  */
 stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const char *token);
 
+/**
+ * Verify JWT token by a public key from certificate referenced in x5u header of this JWT. Involves HTTP GET call for a certificate.
+ * Also perform X509 cert path verification on downloaded cert. Optionally get cert out of the method.
+ */
+stir_shaken_status_t stir_shaken_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out);
+
 /* PASSporT verification.
  *
  * @passport - (in/out) should point to memory prepared for new PASSporT,
