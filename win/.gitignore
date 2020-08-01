@@ -1,0 +1,11 @@
+.vs/
+Win32/
+x64/
+openssl-*/
+openssl-*.zip
+libjwt-*/
+libjwt-*.zip
+libks-*/
+libks-*.zip
+7za1701.exe
+libstirshaken.*.vcxproj.user

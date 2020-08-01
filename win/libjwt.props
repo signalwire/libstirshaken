@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets">
+    <Import Project="libjwt-version.props" Condition=" '$(libjwtVersionImported)' == ''"/>
+    <Import Project="downloadpackage.task" Condition=" '$(downloadpackagetask_Imported)' == '' " />
+  </ImportGroup>
+  <PropertyGroup>
+    <libjwtPropsImported>true</libjwtPropsImported>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <LibraryConfiguration Condition="$(Configuration.ToLower().Contains('debug'))">Debug</LibraryConfiguration>
+    <LibraryConfiguration Condition="$(Configuration.ToLower().Contains('release'))">Release</LibraryConfiguration>
+  </PropertyGroup>
+
+  <!-- 
+       Download Target.
+       Name must be unique. 
+       By design, targets are executed only once per project.
+       
+       Usage:
+       
+       package: URI
+
+       expectfileordirectory: Skips the download and extraction if exists
+
+       outputfolder: Folder to store a downloaded file. 
+                     By default "$(BaseDir)libs", if empty
+
+       outputfilename: If not empty, overrides filename from URI.
+                       .exe files don't get extracted
+
+       extractto: Folder to extract an archive to
+   -->
+
+  <Target Name="libjwtbinariesTarget" BeforeTargets="CustomBuild" DependsOnTargets="7za">  
+      <DownloadPackageTask 
+           package="http://files.freeswitch.org/windows/packages/libjwt/$(libjwtVersion)/libjwt-$(libjwtVersion)-binaries-$(Platform.ToLower())-$(LibraryConfiguration.ToLower()).zip"
+           expectfileordirectory="$(libjwtLibDir)\binaries\$(Platform)\$(LibraryConfiguration)\jwt.lib"
+           outputfolder=""
+           outputfilename="" 
+           extractto="$(BaseDir)libs"
+      />
+  </Target> 
+
+  <Target Name="libjwtheadersTarget" BeforeTargets="CustomBuild" DependsOnTargets="libjwtbinariesTarget">  
+      <DownloadPackageTask 
+           package="http://files.freeswitch.org/windows/packages/libjwt/$(libjwtVersion)/libjwt-$(libjwtVersion)-headers.zip"
+           expectfileordirectory="$(libjwtLibDir)\include\jwt.h" 
+           outputfolder=""
+           outputfilename="" 
+           extractto="$(BaseDir)libs"
+      />
+  </Target> 
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(libjwtLibDir)\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(libjwtLibDir)\binaries\$(Platform)\$(LibraryConfiguration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>jwt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+</Project>

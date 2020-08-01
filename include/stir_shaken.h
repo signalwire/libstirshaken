@@ -6,7 +6,6 @@
 #include <inttypes.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <libks/ks.h>
 
@@ -30,7 +29,6 @@
 #include <openssl/err.h>
 #include <openssl/bio.h>
 #include <openssl/conf_api.h>
-#include <libgen.h>
 
 #define stir_shaken_min(x, y) ((x) < (y)? (x) : (y))
 
