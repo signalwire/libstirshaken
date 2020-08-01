@@ -86,6 +86,13 @@ typedef enum stir_shaken_status {
 	STIR_SHAKEN_STATUS_TERM
 } stir_shaken_status_t;
 
+typedef enum stir_shaken_http_response_status {
+	STIR_SHAKEN_HTTP_RESPONSE_STATUS_COULDNT_RESOLVE_PROXY = 5,
+	STIR_SHAKEN_HTTP_RESPONSE_STATUS_COULDNT_RESOLVE_HOST = 6,
+	STIR_SHAKEN_HTTP_RESPONSE_STATUS_COULDNT_CONNECT = 7,
+	STIR_SHAKEN_HTTP_RESPONSE_STATUS_REMOTE_ACCESS_DENIED = 9
+} stir_shaken_http_response_status_t;
+
 typedef struct stir_shaken_csr_s {
 	X509_REQ    *req;
 	char		*pem;
