@@ -1,0 +1,11 @@
+libstirshaken (1.0.0-1) unstable; urgency=medium
+
+  * Packaged for FreeSWITCH
+
+ -- FreeSWITCH Solutions <packages@freeswitch.com>  Mon, 03 Aug 2020 12:50:37 +0200
+
+libstirshaken (1.0.0-0) unstable; urgency=low
+
+  * Stub Release.
+
+ -- FreeSWITCH Solutions <packages@freeswitch.com>  Mon, 03 Aug 2020 10:50:37 +0200
