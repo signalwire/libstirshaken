@@ -60,3 +60,4 @@ build/m4/lt~obsolete.m4
 util/src/.deps/
 util/src/.dirstamp
 build/stirshaken.pc
+sp_1_*.pem
