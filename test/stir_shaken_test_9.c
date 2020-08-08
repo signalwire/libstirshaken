@@ -125,7 +125,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
     printf("Verifying SIP Identity Header's signature with Cert... (against good data)\n\n");
-    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport);
+    status = stir_shaken_sih_verify_with_cert(&ss, sih, &cert, &passport);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -138,7 +138,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 	
 	printf("Verifying SIP Identity Header's signature with Cert...\n\n");
-    status = stir_shaken_jwt_verify_with_cert(&ss, sih, &cert, &passport);
+    status = stir_shaken_sih_verify_with_cert(&ss, sih, &cert, &passport);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -183,7 +183,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
     
     printf("Verifying SIP Identity Header's signature with Cert... (against spoofed SIP Identity Header)\n\n");
-    status = stir_shaken_jwt_verify_with_cert(&ss, spoofed_sih, &cert, &passport);
+    status = stir_shaken_sih_verify_with_cert(&ss, spoofed_sih, &cert, &passport);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -200,11 +200,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
 
 	stir_shaken_passport_destroy(&passport);
 	
-	X509_REQ_free(csr.req);
-	csr.req = NULL;
-		
-	X509_free(cert.x);
-	cert.x = NULL;
+	stir_shaken_destroy_csr(&csr);
+	stir_shaken_destroy_cert(&cert);
 
 	free(sih);
 	sih = NULL;

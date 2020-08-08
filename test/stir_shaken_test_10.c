@@ -106,8 +106,6 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
 	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
 
-	stir_shaken_cert_t *res_cert = NULL;
-	
 	
 	memset(&ss, 0, sizeof(ss));
 
@@ -181,24 +179,9 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
     stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
-	// Test 1: Test case: Cannot download referenced certificate
-    printf("=== Testing case [1]: Cannot download referenced certificate\n");
-    status = stir_shaken_verify(&ss, sih, "Bad url", &passport, &res_cert, 3600);
-    if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
-		printf("Error description is: '%s'\n", error_description);
-		printf("Error code is: '%d'\n", error_code);
-	}
-    stir_shaken_assert(status != STIR_SHAKEN_STATUS_OK, "Err, should return error");
-    stir_shaken_assert(stir_shaken_is_error_set(&ss) == 1, "Err, error condition not set (but should be set)");
-	error_description = stir_shaken_get_error(&ss, &error_code);
-    stir_shaken_assert(error_description != NULL, "Err, error description not set");
-	printf("Error description is: '%s'\n", error_description);
 	
-	stir_shaken_passport_destroy(&passport);
-	
-	// Test 2: Test case: malformed SIP Identity header (missing dot separating fields)
-    printf("=== Testing case [2]: Malformed SIP Identity header (missing dot separating fields)\n");
+	// Test 1: Test case: malformed SIP Identity header (missing dot separating fields)
+    printf("=== Testing case [1]: Malformed SIP Identity header (missing dot separating fields)\n");
 	
 	// Prepare malformed SIP Identity header
 	len = strlen(sih);
@@ -211,7 +194,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	*p = 'X';  // (Screw it) Hah, everything you would expect but not this!
 
 	stir_shaken_clear_error(&ss);
-	status = stir_shaken_jwt_verify_with_cert(&ss, sih_malformed, &cert, &passport);
+	status = stir_shaken_sih_verify_with_cert(&ss, sih_malformed, &cert, &passport);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Err, should return STATUS_FALSE");
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 1, "Err, error condition not set (but should be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
@@ -221,8 +204,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	
 	stir_shaken_passport_destroy(&passport);
 
-	// Test 3: Test case: malformed SIP Identity header (wrong signature)
-    printf("=== Testing case [3]: Malformed SIP Identity header (wrong signature)\n");
+	// Test 2: Test case: malformed SIP Identity header (wrong signature)
+    printf("=== Testing case [2]: Malformed SIP Identity header (wrong signature)\n");
 	
 	// Prepare malformed SIP Identity header
 	len = strlen(sih);
@@ -239,7 +222,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 		sih_spoofed[0] = 'a';
 	}
 
-    status = stir_shaken_jwt_verify_with_cert(&ss, sih_spoofed, &cert, &passport);
+    status = stir_shaken_sih_verify_with_cert(&ss, sih_spoofed, &cert, &passport);
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Err, should return STATUS_FALSE");
     stir_shaken_assert(stir_shaken_is_error_set(&ss) == 1, "Err, error condition not set (but should be set)");
 	error_description = stir_shaken_get_error(&ss, &error_code);
@@ -250,9 +233,6 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	X509_REQ_free(csr.req);
 	csr.req = NULL;
 
-	stir_shaken_destroy_cert(res_cert);
-	free(res_cert);
-	res_cert = NULL;
 	stir_shaken_destroy_cert(&cert);
 
 	free(sih);
