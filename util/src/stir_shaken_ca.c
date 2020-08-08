@@ -917,7 +917,8 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
                         goto authorization_result;
                     }
 
-					if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(&ca->ss, spc_token)) {
+                    // TODO Get cert and PASSporT out of verification function here
+					if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(&ca->ss, spc_token, NULL, NULL)) {
 						stir_shaken_set_error(&ca->ss, "SPC token did not pass verification", STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID);
 						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [-] SP failed authorization\n");
 					} else {

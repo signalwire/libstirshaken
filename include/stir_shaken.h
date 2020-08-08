@@ -242,6 +242,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_CERT_VERSION,
 	STIR_SHAKEN_ERROR_CERT_NOT_VALID_YET,
 	STIR_SHAKEN_ERROR_CERT_EXPIRED,
+	STIR_SHAKEN_ERROR_CERT_DOWNLOAD,
 	STIR_SHAKEN_ERROR_SIP_403_STALE_DATE,
 	STIR_SHAKEN_ERROR_SIP_428_USE_IDENTITY_HEADER,
 	STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO,
@@ -652,44 +653,38 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
 
 stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
 
-/**
- * Verify (check/authenticate) call identity.
- *
- * @sdp - (in) SDP call description
- */
-stir_shaken_status_t stir_shaken_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert);
-
 stir_shaken_status_t stir_shaken_check_authority_over_number(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport);
+stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport);
 
 /**
- * Perform STIR-Shaken verification of the @identity_header.
+ * Verify JWT token by a public key from certificate referenced in x5u header of this JWT. Involves HTTP GET call for a certificate.
+ * This will then attempt to obtain certificate referenced by x5u header, and if successful then will verify JWT's signature against public key from cert.
+ * Optionally get cert and/or JWT out of the method.
+ */
+stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out);
+
+/**
+ * This will call stir_shaken_jwt_verify and will also perform X509 cert path verification on downloaded cert.
+ * Optionally get cert and/or JWT out of the method.
+ */
+stir_shaken_status_t stir_shaken_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out);
+
+/**
+ * Perform STIR-Shaken verification of the SIP @identity_header.
  *
  * This will first process @identity_header into JWT token and parameters including cert URL.
- * This will then attempt to obtain certificate referenced by SIP @identity_header
- * and if successful then will verify JWT against public key from cert.
+ * This will then call stir_shaken_jwt_verify_and_check_x509_cert_path().
  * If successful retrieved PASSporT is returned via @passport and STI cert via @cert.
+ * Optionally get cert out of the method.
  *
  * NOTE: @passport should point to allocated memory big enough to create PASSporT, @cert may be NULL (will be malloced then and it is caller's responsibility to free it).
  */
-stir_shaken_status_t stir_shaken_verify(stir_shaken_context_t *ss, const char *sih, const char *cert_url, stir_shaken_passport_t *passport, stir_shaken_cert_t **cert_out, time_t iat_freshness);
+stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_passport_t *passport, stir_shaken_cert_t **cert_out, time_t iat_freshness);
 
 /**
- * Verify JWT token by a public key from certificate referenced in x5u header of this JWT. Involves HTTP GET call for a certificate.
+ * Check PASSporT is technically correct and validate it's expiry.
  */
-stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const char *token);
-
-/**
- * Verify JWT token by a public key from certificate referenced in x5u header of this JWT. Involves HTTP GET call for a certificate.
- * Also perform X509 cert path verification on downloaded cert. Optionally get cert out of the method.
- */
-stir_shaken_status_t stir_shaken_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out);
-
-/* PASSporT verification.
- *
- * @passport - (in/out) should point to memory prepared for new PASSporT,
- *				on exit retrieved and verified PASSporT JWT is moved into that @passport
- */ 
-stir_shaken_status_t stir_shaken_jwt_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport);
+stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, time_t iat_freshness);
 
 
 // Authorization service
