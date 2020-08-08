@@ -965,11 +965,11 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Verifying SPC from token against session...\n");
 
-						if (STIR_SHAKEN_STATUS_OK != ca_verify_spc(&ca->ss, spc_token_verified_jwt, session->spc)) {
-							snprintf(err_buf, STIR_SHAKEN_BUFLEN, "SPC from SPC token (%llu) does not match this session SPC (%zu) (was cert request initiated for different SPC?)", sp_code, session->spc);
-							stir_shaken_set_error(&ca->ss, err_buf, STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
-							goto authorization_result; 
-						}
+                    // TODO Get cert and PASSporT out of verification function here
+					if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(&ca->ss, spc_token, NULL, NULL)) {
+						stir_shaken_set_error(&ca->ss, "SPC token did not pass verification", STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID);
+						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [-] SP failed authorization\n");
+					} else {
 						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [+] SP authorized\n");
 						session->authorized = 1;
 					}
