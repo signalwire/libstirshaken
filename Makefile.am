@@ -76,5 +76,5 @@ stir_shaken_test_14_CFLAGS = -Iinclude
 stir_shaken_test_14_LDADD = libstirshaken.la
 
 stir_shaken_test_15_SOURCES = test/stir_shaken_test_15.c util/src/stir_shaken_ca.c util/src/mongoose.c
-stir_shaken_test_15_CFLAGS = -Iinclude -Iutil/include -DMG_ENABLE_SSL
+stir_shaken_test_15_CFLAGS = -Iinclude -Iutil/include
 stir_shaken_test_15_LDADD = libstirshaken.la

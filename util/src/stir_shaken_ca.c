@@ -414,7 +414,7 @@ stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, s
 	}
 
 	// TODO queue challenge task/job
-	session = stir_shaken_ca_session_create(sp_code, gen_authz_challenge, csr, 0);
+	session = stir_shaken_ca_session_create(sp_code, gen_authz_challenge, csr);
 	if (!session) {
 		stir_shaken_set_error(ss, "Cannot create authorization session", STIR_SHAKEN_ERROR_ACME_SESSION_CREATE);
 		goto fail;
