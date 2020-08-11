@@ -1,9 +1,7 @@
 #include <stir_shaken.h>
 
-
 const char *path = "./test/run";
 
-stir_shaken_sp_t sp;
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
     if (stir_shaken_is_error_set(&ss)) { \
@@ -12,7 +10,7 @@ stir_shaken_sp_t sp;
         printf("Error code is: '%d'\n", error_code); \
     }
 
-stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
+stir_shaken_status_t stir_shaken_unit_test_hash(void)
 {
     EVP_PKEY *pkey = NULL;
     stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
@@ -117,7 +115,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
     return STIR_SHAKEN_STATUS_OK;
 }
 
-int main(void)
+int main(int argc, char ** argv)
 {
     stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, NULL, NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
 

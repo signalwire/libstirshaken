@@ -12,45 +12,47 @@ static void stir_shaken_init(void)
 
 stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir, int loglevel)
 {
-    stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
+	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
 
-    ks_init();
+	ks_init();
 
-    if (stir_shaken_globals.initialised) {
-        stir_shaken_set_error(ss, "Already initialised", STIR_SHAKEN_ERROR_GENERAL);
-        status = STIR_SHAKEN_STATUS_NOOP;
-        goto err;
-    }
+	if (stir_shaken_globals.initialised) {
+		stir_shaken_set_error(ss, "Already initialised", STIR_SHAKEN_ERROR_GENERAL);
+		status = STIR_SHAKEN_STATUS_NOOP;
+		goto err;
+	}
 
-    stir_shaken_globals.loglevel = loglevel;
+	stir_shaken_globals.loglevel = loglevel;
+	
+	if (pthread_mutexattr_init(&stir_shaken_globals.attr) != 0) {
+		
+		stir_shaken_set_error(ss, "Init mutex attr failed", STIR_SHAKEN_ERROR_GENERAL);
+		status = STIR_SHAKEN_STATUS_FALSE;
+		goto err;
+	}
 
-    if (pthread_mutexattr_init(&stir_shaken_globals.attr) != 0) {
+	pthread_mutexattr_settype(&stir_shaken_globals.attr, PTHREAD_MUTEX_RECURSIVE);
+	
+	if (pthread_mutex_init(&stir_shaken_globals.mutex, &stir_shaken_globals.attr) != 0) {
+		
+		stir_shaken_set_error(ss, "Init mutex failed", STIR_SHAKEN_ERROR_GENERAL);
+		status = STIR_SHAKEN_STATUS_FALSE;
+		goto err;
+	}
 
-        stir_shaken_set_error(ss, "Init mutex attr failed", STIR_SHAKEN_ERROR_GENERAL);
-        status = STIR_SHAKEN_STATUS_FALSE;
-        goto err;
-    }
+	// TODO CA list and CRL will be passed here
+	status = stir_shaken_init_ssl(ss, ca_dir, crl_dir);
+	if (status != STIR_SHAKEN_STATUS_OK && status != STIR_SHAKEN_STATUS_NOOP) {
+	
+		stir_shaken_set_error_if_clear(ss, "Init SSL failed\n", STIR_SHAKEN_ERROR_GENERAL);
+		status = STIR_SHAKEN_STATUS_FALSE;
+		goto err;
+	}
 
-    pthread_mutexattr_settype(&stir_shaken_globals.attr, PTHREAD_MUTEX_RECURSIVE);
+    stir_shaken_make_http_req = stir_shaken_make_http_req_real;
 
-    if (pthread_mutex_init(&stir_shaken_globals.mutex, &stir_shaken_globals.attr) != 0) {
-
-        stir_shaken_set_error(ss, "Init mutex failed", STIR_SHAKEN_ERROR_GENERAL);
-        status = STIR_SHAKEN_STATUS_FALSE;
-        goto err;
-    }
-
-    // TODO CA list and CRL will be passed here
-    status = stir_shaken_init_ssl(ss, ca_dir, crl_dir);
-    if (status != STIR_SHAKEN_STATUS_OK && status != STIR_SHAKEN_STATUS_NOOP) {
-
-        stir_shaken_set_error_if_clear(ss, "Init SSL failed\n", STIR_SHAKEN_ERROR_GENERAL);
-        status = STIR_SHAKEN_STATUS_FALSE;
-        goto err;
-    }
-
-    stir_shaken_globals.initialised = 1;
-    return STIR_SHAKEN_STATUS_OK;
+	stir_shaken_globals.initialised = 1;
+	return STIR_SHAKEN_STATUS_OK;
 
 err:
     ks_shutdown();

@@ -128,7 +128,7 @@ static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
     return realsize;
 }
 
-stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
+stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport)
 {
     stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
 
@@ -519,16 +519,16 @@ stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const cha
     stir_shaken_clear_error(ss);
     memset(&http_req, 0, sizeof(http_req));
 
-
-    if (!sih) {
-        stir_shaken_set_error(ss, "SIP Identity Header not set", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
-        goto end;
-    }
-
-    if (!passport) {
-        stir_shaken_set_error(ss, "PASSporT not set", STIR_SHAKEN_ERROR_GENERAL);
-        goto end;
-    }
+	
+	if (!sih) {
+		stir_shaken_set_error(ss, "SIP Identity Header not set", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		goto end;
+	}
+	
+	if (!passport) {
+		stir_shaken_set_error(ss, "PASSporT not set", STIR_SHAKEN_ERROR_GENERAL);
+		goto end;
+	}
 
     ss_status = stir_shaken_jwt_sih_to_jwt_encoded(ss, sih, &jwt_encoded[0], STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN);
     if (ss_status != STIR_SHAKEN_STATUS_OK) {
