@@ -68,37 +68,37 @@
 #define STIR_SHAKEN_HTTPS_SKIP_HOSTNAME_VERIFICATION 0
 
 typedef struct stir_shaken_acme_nonce_s {
-    size_t	timestamp;
-    char	*response;
+	size_t	timestamp;
+	char	*response;
 } stir_shaken_acme_nonce_t;
 
 
 typedef enum stir_shaken_cert_type {
-    STIR_SHAKEN_CERT_TYPE_ROOT,
-    STIR_SHAKEN_CERT_TYPE_CA,
-    STIR_SHAKEN_CERT_TYPE_SELF_SIGNED,
+	STIR_SHAKEN_CERT_TYPE_ROOT,
+	STIR_SHAKEN_CERT_TYPE_CA,
+	STIR_SHAKEN_CERT_TYPE_SELF_SIGNED,
 } stir_shaken_cert_type_t;
 
 
 typedef enum stir_shaken_status {
-    STIR_SHAKEN_STATUS_OK,
-    STIR_SHAKEN_STATUS_FALSE,
-    STIR_SHAKEN_STATUS_ERR,
-    STIR_SHAKEN_STATUS_RESTART,
-    STIR_SHAKEN_STATUS_NOOP,
-    STIR_SHAKEN_STATUS_TERM
+	STIR_SHAKEN_STATUS_OK,
+	STIR_SHAKEN_STATUS_FALSE,
+	STIR_SHAKEN_STATUS_ERR,
+	STIR_SHAKEN_STATUS_RESTART,
+	STIR_SHAKEN_STATUS_NOOP,
+	STIR_SHAKEN_STATUS_TERM
 } stir_shaken_status_t;
 
 typedef enum stir_shaken_http_response_status {
-    STIR_SHAKEN_HTTP_RESPONSE_STATUS_COULDNT_RESOLVE_PROXY = 5,
-    STIR_SHAKEN_HTTP_RESPONSE_STATUS_COULDNT_RESOLVE_HOST = 6,
-    STIR_SHAKEN_HTTP_RESPONSE_STATUS_COULDNT_CONNECT = 7,
-    STIR_SHAKEN_HTTP_RESPONSE_STATUS_REMOTE_ACCESS_DENIED = 9
+	STIR_SHAKEN_HTTP_RESPONSE_STATUS_COULDNT_RESOLVE_PROXY = 5,
+	STIR_SHAKEN_HTTP_RESPONSE_STATUS_COULDNT_RESOLVE_HOST = 6,
+	STIR_SHAKEN_HTTP_RESPONSE_STATUS_COULDNT_CONNECT = 7,
+	STIR_SHAKEN_HTTP_RESPONSE_STATUS_REMOTE_ACCESS_DENIED = 9
 } stir_shaken_http_response_status_t;
 
 typedef struct stir_shaken_csr_s {
-    X509_REQ    *req;
-    char		*pem;
+	X509_REQ    *req;
+	char		*pem;
 } stir_shaken_csr_t;
 
 // Note:
@@ -108,44 +108,44 @@ typedef struct stir_shaken_csr_s {
 //
 // serialDec and serialHex must be freed with OPENSSL_free
 typedef struct stir_shaken_cert_s {
-    X509			*x;						// X509 end-entity Certificate
-    STACK_OF(X509)	*xchain;				// Certificate chain
-    X509_STORE_CTX	*verify_ctx;			// Verification SSL context using @store to validate cert chain against CA list and CRL
-    char        *body;
-    size_t		len;
-    uint8_t     is_fresh;
-    char		install_dir[STIR_SHAKEN_BUFLEN];			// folder, where cert must be put to be accessible with @public_url for other SPs
-    char		install_url[STIR_SHAKEN_BUFLEN];			// directory part of the publicly accessible URL
-    char		public_url[STIR_SHAKEN_BUFLEN];				// publicly accessible URL which can be used to download the certificate, this is concatenated from @install_url and cert's @name and is put into PASSporT as @x5u and @params.info
-    EC_KEY              *ec_key;
-    EVP_PKEY            *private_key;
+	X509			*x;						// X509 end-entity Certificate
+	STACK_OF(X509)	*xchain;				// Certificate chain
+	X509_STORE_CTX	*verify_ctx;			// Verification SSL context using @store to validate cert chain against CA list and CRL
+	char        *body;
+	size_t		len;
+	uint8_t     is_fresh;
+	char		install_dir[STIR_SHAKEN_BUFLEN];			// folder, where cert must be put to be accessible with @public_url for other SPs
+	char		install_url[STIR_SHAKEN_BUFLEN];			// directory part of the publicly accessible URL
+	char		public_url[STIR_SHAKEN_BUFLEN];				// publicly accessible URL which can be used to download the certificate, this is concatenated from @install_url and cert's @name and is put into PASSporT as @x5u and @params.info
+	EC_KEY              *ec_key;
+	EVP_PKEY            *private_key;
 
-    unsigned long	hash;							// hash of cert name
-    char			hashstr[STIR_SHAKEN_BUFLEN];	// hashed name as string
-    char			cert_name_hashed[STIR_SHAKEN_BUFLEN];	// hashed name with .0 appended - ready to save in CA dir for usage with X509 cert path validation check
+	unsigned long	hash;							// hash of cert name
+	char			hashstr[STIR_SHAKEN_BUFLEN];	// hashed name as string
+	char			cert_name_hashed[STIR_SHAKEN_BUFLEN];	// hashed name with .0 appended - ready to save in CA dir for usage with X509 cert path validation check
 
-    // Cert info retrieved with stir_shaken_read_cert
-    char *serialHex;
-    char *serialDec;
-    ASN1_TIME *notBefore_ASN1;
-    ASN1_TIME *notAfter_ASN1;
-    char notBefore[ASN1_DATE_LEN];
-    char notAfter[ASN1_DATE_LEN];
-    char issuer[STIR_SHAKEN_SSL_BUF_LEN];
-    char subject[STIR_SHAKEN_SSL_BUF_LEN];
-    int version;
+	// Cert info retrieved with stir_shaken_read_cert
+	char *serialHex;
+	char *serialDec;
+	ASN1_TIME *notBefore_ASN1;
+	ASN1_TIME *notAfter_ASN1;
+	char notBefore[ASN1_DATE_LEN];
+	char notAfter[ASN1_DATE_LEN];
+	char issuer[STIR_SHAKEN_SSL_BUF_LEN];
+	char subject[STIR_SHAKEN_SSL_BUF_LEN];
+	int version;
 
 } stir_shaken_cert_t;
 
 // ACME credentials
 typedef struct stir_shaken_ssl_keys {
-    EC_KEY		*ec_key;
-    EVP_PKEY	*private_key;
-    EVP_PKEY	*public_key;
-    unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
-    uint32_t		priv_raw_len;
-    unsigned char	pub_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
-    uint32_t		pub_raw_len;
+	EC_KEY		*ec_key;
+	EVP_PKEY	*private_key;
+	EVP_PKEY	*public_key;
+	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
+	uint32_t		priv_raw_len;
+	unsigned char	pub_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
+	uint32_t		pub_raw_len;
 } stir_shaken_ssl_keys_t;
 
 typedef struct curl_slist curl_slist_t;
@@ -308,40 +308,40 @@ typedef enum stir_shaken_error {
 #define STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND "404"
 
 typedef enum stir_shaken_http_req_type {
-    STIR_SHAKEN_HTTP_REQ_TYPE_GET,
-    STIR_SHAKEN_HTTP_REQ_TYPE_POST,
-    STIR_SHAKEN_HTTP_REQ_TYPE_PUT,
-    STIR_SHAKEN_HTTP_REQ_TYPE_HEAD
+	STIR_SHAKEN_HTTP_REQ_TYPE_GET,
+	STIR_SHAKEN_HTTP_REQ_TYPE_POST,
+	STIR_SHAKEN_HTTP_REQ_TYPE_PUT,
+	STIR_SHAKEN_HTTP_REQ_TYPE_HEAD
 } stir_shaken_http_req_type_t;
 
 typedef struct stir_shaken_context_s {
-    char err_buf0[STIR_SHAKEN_ERROR_BUF_LEN];
-    char err_buf1[STIR_SHAKEN_ERROR_BUF_LEN];
-    char err_buf2[STIR_SHAKEN_ERROR_BUF_LEN];
-    char err_buf3[STIR_SHAKEN_ERROR_BUF_LEN];
-    char err[4*STIR_SHAKEN_ERROR_BUF_LEN];
-    stir_shaken_error_t error;
-    uint8_t got_error;
+	char err_buf0[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf1[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf2[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf3[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err[4*STIR_SHAKEN_ERROR_BUF_LEN];
+	stir_shaken_error_t error;
+	uint8_t got_error;
 } stir_shaken_context_t;
 
 typedef struct mem_chunk_s {
-    char    *mem;
-    size_t  size;
-    stir_shaken_context_t	*ss;
+	char    *mem;
+	size_t  size;
+	stir_shaken_context_t	*ss;
 } mem_chunk_t;
 
 // HTTP
 
 typedef enum stir_shaken_http_req_content_type {
-    STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON,
-    STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED
+	STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON,
+	STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED
 } stir_shaken_http_req_content_type_t;
 
 typedef struct stir_shaken_http_response_s {
-    long			code;
-    char			error[STIR_SHAKEN_BUFLEN];
-    mem_chunk_t		mem;
-    curl_slist_t	*headers;
+	long			code;
+	char			error[STIR_SHAKEN_BUFLEN];
+	mem_chunk_t		mem;
+	curl_slist_t	*headers;
 } stir_shaken_http_response_t;
 
 #define STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT 80u
@@ -356,13 +356,14 @@ typedef enum stir_shaken_action_type {
 } stir_shaken_action_type_t;
 
 typedef struct stir_shaken_http_req_s {
-    const char					*url;
-    uint16_t                    remote_port;
-    stir_shaken_http_req_type_t	type;
-    const char					*data;
-    curl_slist_t				*tx_headers;
-    stir_shaken_http_req_content_type_t content_type;
-    stir_shaken_http_response_t	response;
+	const char					*url;
+	uint16_t                    remote_port;
+	stir_shaken_http_req_type_t	type;
+	const char					*data;
+	curl_slist_t				*tx_headers;
+	stir_shaken_http_req_content_type_t content_type;
+	stir_shaken_http_response_t	response;
+	stir_shaken_action_type_t   action;
 } stir_shaken_http_req_t;
 
 
@@ -392,15 +393,15 @@ typedef struct stir_shaken_http_req_s {
  * @ppt_ignore - true if ppt field should not be included
  */ 
 typedef struct stir_shaken_passport_params_s {
-    const char  *x5u;
-    const char  *attest;
-    const char  *desttn_key;
-    const char  *desttn_val;
-    int         iat;
-    const char  *origtn_key;
-    const char  *origtn_val;
-    const char  *origid;
-    uint8_t     ppt_ignore;     // Should skip ppt field?
+	const char  *x5u;
+	const char  *attest;
+	const char  *desttn_key;
+	const char  *desttn_val;
+	int         iat;
+	const char  *origtn_key;
+	const char  *origtn_val;
+	const char  *origid;
+	uint8_t     ppt_ignore;     // Should skip ppt field?
 } stir_shaken_passport_params_t;
 
 /**
@@ -438,7 +439,7 @@ typedef struct stir_shaken_passport_params_s {
  * }
  */
 typedef struct stir_shaken_passport {
-    jwt_t *jwt;			// PASSport JSON Web Token
+	jwt_t *jwt;			// PASSport JSON Web Token
 } stir_shaken_passport_t;
 
 stir_shaken_status_t		stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
@@ -534,19 +535,19 @@ void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_passport_t *passpo
 /* Global Values */
 typedef struct stir_shaken_globals_s {
 
-    pthread_mutexattr_t		attr;	
-    pthread_mutex_t			mutex;	
-    uint8_t					initialised;
+	pthread_mutexattr_t		attr;	
+	pthread_mutex_t			mutex;	
+	uint8_t					initialised;
 
-    /** SSL */
-    const SSL_METHOD    *ssl_method;
-    SSL_CTX             *ssl_ctx;
-    SSL                 *ssl;
-    int                 curve_nid;                  // id of the curve in OpenSSL
-    int					tn_authlist_nid;			// OID for ext-tnAuthList
-    //ASN1_OBJECT				*tn_authlist_obj;
-    X509_STORE			*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
-    int					loglevel;
+	/** SSL */
+	const SSL_METHOD    *ssl_method;
+	SSL_CTX             *ssl_ctx;
+	SSL                 *ssl;
+	int                 curve_nid;                  // id of the curve in OpenSSL
+	int					tn_authlist_nid;			// OID for ext-tnAuthList
+	//ASN1_OBJECT				*tn_authlist_obj;
+	X509_STORE			*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
+	int					loglevel;
 } stir_shaken_globals_t;
 
 extern stir_shaken_globals_t stir_shaken_globals;
@@ -853,9 +854,9 @@ const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t
 #define stir_shaken_set_error_if_clear(ss, description, error) stir_shaken_do_set_error_if_clear(ss, description, error, __FILE__, __LINE__)
 
 #define fprintif(level, fmt, ...)		\
-    if (stir_shaken_globals.loglevel >= level) {							\
-        fprintf(stderr, (fmt), ##__VA_ARGS__);	\
-    }
+	if (stir_shaken_globals.loglevel >= level) {							\
+		fprintf(stderr, (fmt), ##__VA_ARGS__);	\
+	}
 
 #define STIR_SHAKEN_HASH_TYPE_SHALLOW			0
 #define STIR_SHAKEN_HASH_TYPE_DEEP				1
@@ -864,10 +865,10 @@ const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t
 typedef void (*stir_shaken_hash_entry_destructor)(void*);
 
 typedef struct stir_shaken_hash_entry_s {
-    size_t key;
-    void *data;
-    stir_shaken_hash_entry_destructor dctor;
-    struct stir_shaken_hash_entry_s *next;
+	size_t key;
+	void *data;
+	stir_shaken_hash_entry_destructor dctor;
+	struct stir_shaken_hash_entry_s *next;
 } stir_shaken_hash_entry_t;
 
 size_t stir_shaken_hash_hash(size_t hashsize, size_t key);
@@ -895,43 +896,44 @@ time_t stir_shaken_time_elapsed_s(time_t ts, time_t now);
 #define STI_CA_HTTP_POST	1
 
 typedef struct stir_shaken_sp_s {
-    char subject_c[STIR_SHAKEN_BUFLEN];
-    char subject_cn[STIR_SHAKEN_BUFLEN];
-    uint32_t code;
-    char *kid;
-    char *nonce;
-    stir_shaken_csr_t csr;
-    stir_shaken_cert_t cert;
-    char *nb;
-    char *na;
-    stir_shaken_ssl_keys_t keys;
-    char private_key_name[STIR_SHAKEN_BUFLEN];
-    char public_key_name[STIR_SHAKEN_BUFLEN];
-    char csr_name[STIR_SHAKEN_BUFLEN];
-    char cert_name[STIR_SHAKEN_BUFLEN];
-    char spc_token[STIR_SHAKEN_BUFLEN];
-    uint16_t port;
+	char subject_c[STIR_SHAKEN_BUFLEN];
+	char subject_cn[STIR_SHAKEN_BUFLEN];
+	uint32_t code;
+	char *kid;
+	char *nonce;
+	stir_shaken_csr_t csr;
+	stir_shaken_cert_t cert;
+	char *nb;
+	char *na;
+	stir_shaken_ssl_keys_t keys;
+	char private_key_name[STIR_SHAKEN_BUFLEN];
+	char public_key_name[STIR_SHAKEN_BUFLEN];
+	char csr_name[STIR_SHAKEN_BUFLEN];
+	char cert_name[STIR_SHAKEN_BUFLEN];
+	char spc_token[STIR_SHAKEN_BUFLEN];
+	uint16_t port;
 } stir_shaken_sp_t;
 
 typedef struct stir_shaken_ca_session_s {
-    int state;
-    size_t spc;
-    unsigned long long authz_secret;
-    char *nonce;
-    char *authz_url;
-    char *authz_token;
-    char *authz_challenge;
-    char *authz_challenge_details;
-    char *authz_polling_status;
-    int	authorized;
-    stir_shaken_sp_t sp;
-    size_t ts;
+	int state;
+	size_t spc;
+	unsigned long long authz_secret;
+	char *nonce;
+	char *authz_url;
+	char *authz_token;
+	char *authz_challenge;
+	char *authz_challenge_details;
+	char *authz_polling_status;
+	int	authorized;
+	stir_shaken_sp_t sp;
+	size_t ts;
+	uint8_t use_ssl;
 } stir_shaken_ca_session_t;
 
 typedef struct stir_shaken_ca_s {
-    stir_shaken_context_t ss;
-    stir_shaken_ssl_keys_t keys;
-    stir_shaken_cert_t cert;
+	stir_shaken_context_t ss;
+	stir_shaken_ssl_keys_t keys;
+	stir_shaken_cert_t cert;
 	char private_key_name[STIR_SHAKEN_BUFLEN];
 	char public_key_name[STIR_SHAKEN_BUFLEN];
 	char cert_name[STIR_SHAKEN_BUFLEN];
@@ -951,10 +953,10 @@ typedef struct stir_shaken_ca_s {
 } stir_shaken_ca_t;
 
 typedef struct stir_shaken_pa_s {
-    stir_shaken_ssl_keys_t keys;
-    char private_key_name[STIR_SHAKEN_BUFLEN];
-    char public_key_name[STIR_SHAKEN_BUFLEN];
-    uint16_t port;
+	stir_shaken_ssl_keys_t keys;
+	char private_key_name[STIR_SHAKEN_BUFLEN];
+	char public_key_name[STIR_SHAKEN_BUFLEN];
+	uint16_t port;
 } stir_shaken_pa_t;
 
 stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, stir_shaken_ca_t *ca, char *msg, char *authz_challenge, char *authz_url, stir_shaken_ca_session_t **session_out);

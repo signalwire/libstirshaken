@@ -414,7 +414,7 @@ stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, s
 	}
 
 	// TODO queue challenge task/job
-	session = stir_shaken_ca_session_create(sp_code, gen_authz_challenge, csr, 0);
+	session = stir_shaken_ca_session_create(sp_code, gen_authz_challenge, csr);
 	if (!session) {
 		stir_shaken_set_error(ss, "Cannot create authorization session", STIR_SHAKEN_ERROR_ACME_SESSION_CREATE);
 		goto fail;
@@ -965,11 +965,11 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Verifying SPC from token against session...\n");
 
-                    // TODO Get cert and PASSporT out of verification function here
-					if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(&ca->ss, spc_token, NULL, NULL)) {
-						stir_shaken_set_error(&ca->ss, "SPC token did not pass verification", STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID);
-						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [-] SP failed authorization\n");
-					} else {
+						if (STIR_SHAKEN_STATUS_OK != ca_verify_spc(&ca->ss, spc_token_verified_jwt, session->spc)) {
+							snprintf(err_buf, STIR_SHAKEN_BUFLEN, "SPC from SPC token (%llu) does not match this session SPC (%zu) (was cert request initiated for different SPC?)", sp_code, session->spc);
+							stir_shaken_set_error(&ca->ss, err_buf, STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
+							goto authorization_result; 
+						}
 						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [+] SP authorized\n");
 						session->authorized = 1;
 					}
