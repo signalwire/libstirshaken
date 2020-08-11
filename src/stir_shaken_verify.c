@@ -128,7 +128,7 @@ static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
     return realsize;
 }
 
-stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
+stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport)
 {
     stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
 
