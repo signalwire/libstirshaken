@@ -346,6 +346,15 @@ typedef struct stir_shaken_http_response_s {
 
 #define STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT 80u
 
+typedef enum stir_shaken_action_type {
+    STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_INIT,
+    STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_CA_REPLY_CHALLENGE,
+    STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_REQ_AUTHZ_DETAILS,
+    STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_REQ_AUTHZ,
+    STIR_SHAKEN_ACTION_TYPE_SP_CERT_DOWNLOAD
+    // etc.
+} stir_shaken_action_type_t;
+
 typedef struct stir_shaken_http_req_s {
 	const char					*url;
     uint16_t                    remote_port;
@@ -354,6 +363,7 @@ typedef struct stir_shaken_http_req_s {
 	curl_slist_t				*tx_headers;
 	stir_shaken_http_req_content_type_t content_type;
 	stir_shaken_http_response_t	response;
+    stir_shaken_action_type_t   action;
 } stir_shaken_http_req_t;
 
 
@@ -778,7 +788,7 @@ char*					stir_shaken_acme_generate_auth_challenge_response(stir_shaken_context_
 char*					stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss, char *status, const char *spc, const char *token, const char *authz_url);
 char*					stir_shaken_acme_generate_auth_polling_status(stir_shaken_context_t *ss, char *status, char *expires, char *validated, const char *spc, const char *token, const char *authz_url);
 char*					stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
-stir_shaken_status_t	stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *buf, int buflen, int *uri_has_secret, unsigned long long *secret);
+stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *buf, int buflen, unsigned long long int *sp_code, int *uri_has_secret, unsigned long long *secret);
 stir_shaken_status_t	stir_shaken_acme_api_uri_parse(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *arg1, int arg1_len, char *arg2, int arg2_len, int *args_n);
 char*					stir_shaken_acme_generate_spc_token(stir_shaken_context_t *ss, char *issuer, char *url, char *nb, char *na, char *spc, unsigned char *key, uint32_t keylen, char **json);
 
@@ -788,7 +798,9 @@ stir_shaken_status_t	stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 stir_shaken_status_t	stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data, const char *url, uint16_t remote_port);
 stir_shaken_status_t	stir_shaken_acme_perform_authorization(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, uint16_t remote_port);
 
-stir_shaken_status_t	stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+stir_shaken_status_t	(*stir_shaken_make_http_req)(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+stir_shaken_status_t    stir_shaken_make_http_req_real(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+extern stir_shaken_status_t    stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
 void					stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req);
 
 /**
@@ -915,6 +927,7 @@ typedef struct stir_shaken_ca_session_s {
 	int	authorized;
 	stir_shaken_sp_t sp;
 	size_t ts;
+    uint8_t use_ssl;
 } stir_shaken_ca_session_t;
 
 typedef struct stir_shaken_ca_s {
@@ -946,6 +959,11 @@ typedef struct stir_shaken_pa_s {
 	uint16_t port;
 } stir_shaken_pa_t;
 
+stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, stir_shaken_ca_t *ca, char *msg, char *authz_challenge, char *authz_url, stir_shaken_ca_session_t **session_out);
+stir_shaken_status_t ca_create_session_challenge_details(stir_shaken_context_t *ss, char *status, const char *spc, char *authz_url, stir_shaken_ca_session_t *session);
+stir_shaken_status_t ca_session_prepare_polling(stir_shaken_context_t *ss, const char *msg, char *spc, char *expires, char *validated, stir_shaken_ca_session_t *session);
+stir_shaken_status_t ca_extract_spc_token_from_authz_response(stir_shaken_context_t *ss, const char *msg, const char **spc_token, jwt_t **spc_token_jwt);
+stir_shaken_status_t ca_verify_spc(stir_shaken_context_t *ss, jwt_t *spc_jwt, unsigned long long int spc);
 void stir_shaken_ca_destroy(stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_shaken_pa_t *pa);
