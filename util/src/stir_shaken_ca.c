@@ -308,6 +308,140 @@ fail:
 	return;
 }
 
+// If you want authz challenge and/or authz_url out of this, then authz_challenge and authz_url must be buffers of STIR_SHAKEN_BUFLEN length
+stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, stir_shaken_ca_t *ca, char *msg, char *authz_challenge, char *authz_url, stir_shaken_ca_session_t **session_out)
+{
+	jwt_t *jwt = NULL;
+	const char *spc = NULL;
+	char *pCh = NULL;
+	unsigned long long  int sp_code = 0;
+	const char *csr_b64 = NULL;
+	char csr[STIR_SHAKEN_BUFLEN] = { 0 };
+	X509_REQ *req = NULL;
+	stir_shaken_hash_entry_t *e = NULL;
+	stir_shaken_ca_session_t *session = NULL;
+	char *expires = "2029-03-01T14:09:00Z";
+	char *nb = "2019-01-01T00:00:00Z";
+	char *na = "2029-01-01T00:00:00Z";
+    char *gen_authz_challenge = NULL;
+	char gen_authz_url[STIR_SHAKEN_BUFLEN] = { 0 };
+
+
+    if (!ca || !msg) {
+        stir_shaken_set_error(ss, "Bad params, missing JWT and/or ca", STIR_SHAKEN_ERROR_ACME);
+        goto fail;
+    }
+
+    if ((EINVAL == jwt_decode(&jwt, msg, NULL, 0)) || !jwt) {
+        stir_shaken_set_error(ss, "Cannot parse message body into JWT", STIR_SHAKEN_ERROR_ACME);
+        goto fail;
+    }
+
+    csr_b64 = jwt_get_grant(jwt, "csr");
+    if (stir_shaken_zstr(csr_b64)) {
+        stir_shaken_set_error(ss, "JWT posted by SP is missing CSR", STIR_SHAKEN_ERROR_ACME);
+        goto fail;
+    }
+
+    // Read SPC from JWT (ATIS standard doesn't reqire SPC to be set on JWT)
+    spc = jwt_get_grant(jwt, "spc");
+    if (stir_shaken_zstr(spc)) {
+        stir_shaken_set_error(ss, "Cert request SPC (TNAuthList extension missing?)", STIR_SHAKEN_ERROR_ACME);
+        goto fail;
+    }
+
+    sp_code = strtoul(spc, &pCh, 10); 
+    if (sp_code > 0x10000 - 1) { 
+        stir_shaken_set_error(ss, "SPC number too big", STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG);
+        goto fail; 
+    }
+
+    if (*pCh != '\0') { 
+        stir_shaken_set_error(ss, "SPC invalid", STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
+        goto fail; 
+    }
+
+    if (stir_shaken_b64_decode(csr_b64, csr, sizeof(csr)) < 1 || stir_shaken_zstr(csr)) {
+        stir_shaken_set_error(&ca->ss, "Cannot decode CSR from base 64", STIR_SHAKEN_ERROR_ACME);
+        goto fail;
+    }
+
+    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> CSR is:\n%s\n", csr);
+    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from cert request jwt) is: %s\n", spc);
+
+    req = stir_shaken_load_x509_req_from_pem(ss, csr);
+    if (!req) {
+        stir_shaken_set_error(&ca->ss, "Cannot load CSR into SSL", STIR_SHAKEN_ERROR_ACME);
+        goto fail;
+    }
+
+    // This check probably should be disabled, as it opens possibility of DoS attack
+    e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
+    if (e) {
+
+        session = e->data;
+        if (!session) {
+            stir_shaken_set_error(ss, "Oops, session not set", STIR_SHAKEN_ERROR_ACME_SESSION_NOT_SET);
+            goto fail;
+        }
+
+        if (STIR_SHAKEN_STATUS_OK != ca_session_expired(session)) {
+            fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Authorization already in progress...\n");
+            stir_shaken_set_error(ss, "Bad request, authorization already in progress", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
+            goto fail;
+        }
+
+        // expired, remove
+        stir_shaken_hash_entry_remove(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
+    }
+
+    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Requesting authorization...\n");
+
+    // TODO generate 'expires'
+    // TODO generate 'nb'
+    // TODO generate 'na'
+    // TODO generate Replay-Nonce
+    snprintf(gen_authz_url, STIR_SHAKEN_BUFLEN, "http://%s%s/%s", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc);
+    gen_authz_challenge = stir_shaken_acme_generate_auth_challenge(ss, "pending", expires, csr, nb, na, gen_authz_url);
+    if (stir_shaken_zstr(gen_authz_challenge)) {
+        stir_shaken_set_error(ss, "Failed to create authorization challenge", STIR_SHAKEN_ERROR_ACME);
+        goto fail;
+    }
+
+    if (authz_url) {
+        strncpy(authz_url, gen_authz_url, STIR_SHAKEN_BUFLEN);
+    }
+
+    if (authz_challenge) {
+        strncpy(authz_challenge, gen_authz_challenge, STIR_SHAKEN_BUFLEN);
+    }
+
+    // TODO queue challenge task/job
+    session = stir_shaken_ca_session_create(sp_code, gen_authz_challenge, csr);
+    if (!session) {
+        stir_shaken_set_error(ss, "Cannot create authorization session", STIR_SHAKEN_ERROR_ACME_SESSION_CREATE);
+        goto fail;
+    }
+
+    e = stir_shaken_hash_entry_add(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, session, sizeof(*session), stir_shaken_ca_session_dctor, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
+    if (!e) {
+        stir_shaken_set_error(ss, "Oops. Failed to queue new session", STIR_SHAKEN_ERROR_ACME_SESSION_ENQUEUE);
+        goto fail;
+    }
+
+    *session_out = session;
+    free(gen_authz_challenge);
+
+    return STIR_SHAKEN_STATUS_OK;
+
+fail:
+    *session_out = NULL;
+    if (gen_authz_challenge) {
+        free(gen_authz_challenge);
+    }
+    return STIR_SHAKEN_STATUS_FALSE;
+}
+
 /*
  * Data posted by SP should be JWT of the form:
  *
@@ -346,7 +480,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 	char *expires = "2029-03-01T14:09:00Z";
 	char *nb = "2019-01-01T00:00:00Z";
 	char *na = "2029-01-01T00:00:00Z";
-	char *authz_challenge = NULL;
+	char authz_challenge[STIR_SHAKEN_BUFLEN] = { 0 };
 
 	char *nonce = "MYAuvOpaoIiywTezizk5vw";
 	X509_REQ *req = NULL;
@@ -385,94 +519,10 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
                         goto fail;
                     }
 
-                    if ((EINVAL == jwt_decode(&jwt, m->body.p, NULL, 0)) || !jwt) {
-						stir_shaken_set_error(&ca->ss, "Cannot parse message body into JWT", STIR_SHAKEN_ERROR_ACME);
+                    if (STIR_SHAKEN_STATUS_OK != ca_sp_cert_req_reply_challenge(&ca->ss, ca, (char *) m->body.p, authz_challenge, authz_url, &session)) {
+						stir_shaken_set_error(&ca->ss, "Oops. Failed to process new SP cert req", STIR_SHAKEN_ERROR_ACME);
 						goto fail;
-					}
-
-					csr_b64 = jwt_get_grant(jwt, "csr");
-					if (stir_shaken_zstr(csr_b64)) {
-						stir_shaken_set_error(&ca->ss, "JWT posted by SP is missing CSR", STIR_SHAKEN_ERROR_ACME);
-						goto fail;
-					}
-
-					// Read SPC from JWT (ATIS standard doesn't reqire SPC to be set on JWT)
-					spc = jwt_get_grant(jwt, "spc");
-					if (stir_shaken_zstr(spc)) {
-						stir_shaken_set_error(&ca->ss, "Cert request SPC (TNAuthList extension missing?)", STIR_SHAKEN_ERROR_ACME);
-						goto fail;
-					}
-
-					sp_code = strtoul(spc, &pCh, 10); 
-					if (sp_code > 0x10000 - 1) { 
-						stir_shaken_set_error(&ca->ss, "SPC number too big", STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG);
-						goto fail; 
-					}
-
-					if (*pCh != '\0') { 
-						stir_shaken_set_error(&ca->ss, "SPC invalid", STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
-						goto fail; 
-					}
-
-					if (stir_shaken_b64_decode(csr_b64, csr, sizeof(csr)) < 1 || stir_shaken_zstr(csr)) {
-						stir_shaken_set_error(&ca->ss, "Cannot decode CSR from base 64", STIR_SHAKEN_ERROR_ACME);
-						goto fail;
-					}
-
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> CSR is:\n%s\n", csr);
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from cert request jwt) is: %s\n", spc);
-
-					req = stir_shaken_load_x509_req_from_pem(&ca->ss, csr);
-					if (!req) {
-						stir_shaken_set_error(&ca->ss, "Cannot load CSR into SSL", STIR_SHAKEN_ERROR_ACME);
-						goto fail;
-					}
-
-					// This check probably should be disabled, as it opens possibility of DoS attack
-					e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
-					if (e) {
-
-						session = e->data;
-						if (!session) {
-							stir_shaken_set_error(&ca->ss, "Oops, session not set", STIR_SHAKEN_ERROR_ACME_SESSION_NOT_SET);
-							goto fail;
-						}
-
-						if (STIR_SHAKEN_STATUS_OK != ca_session_expired(session)) {
-							fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Authorization already in progress...\n");
-							stir_shaken_set_error(&ca->ss, "Bad request, authorization already in progress", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
-							goto fail;
-						}
-
-						// expired, remove
-						stir_shaken_hash_entry_remove(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
-					}
-
-					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Requesting authorization...\n");
-
-					// TODO generate 'expires'
-					// TODO generate 'nb'
-					// TODO generate 'na'
-					// TODO generate Replay-Nonce
-					snprintf(authz_url, STIR_SHAKEN_BUFLEN, "http://%s%s/%s", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc);
-					authz_challenge = stir_shaken_acme_generate_auth_challenge(&ca->ss, "pending", expires, csr, nb, na, authz_url);
-					if (stir_shaken_zstr(authz_challenge)) {
-						stir_shaken_set_error(&ca->ss, "Failed to create authorization challenge", STIR_SHAKEN_ERROR_ACME);
-						goto fail;
-					}
-
-					// TODO queue challenge task/job
-					session = stir_shaken_ca_session_create(sp_code, authz_challenge, csr);
-					if (!session) {
-						stir_shaken_set_error(&ca->ss, "Cannot create authorization session", STIR_SHAKEN_ERROR_ACME_SESSION_CREATE);
-						goto fail;
-					}
-
-					e = stir_shaken_hash_entry_add(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, session, sizeof(*session), stir_shaken_ca_session_dctor, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
-					if (!e) {
-						stir_shaken_set_error(&ca->ss, "Oops. Failed to queue new session", STIR_SHAKEN_ERROR_ACME_SESSION_ENQUEUE);
-						goto fail;
-					}
+                    }
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Added authorization session to queue\n");
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Sending authorization challenge:\n%s\n", authz_challenge);
@@ -581,11 +631,6 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 		jwt = NULL;
 	}
 
-	if (authz_challenge) {
-		free(authz_challenge);
-		authz_challenge = NULL;
-	}
-
 	if (req) {
 		X509_REQ_free(req);
 		req = NULL;
@@ -606,11 +651,6 @@ fail:
 		json = NULL;
 	}
 
-	if (authz_challenge) {
-		free(authz_challenge);
-		authz_challenge = NULL;
-	}
-	
 	if (req) {
 		X509_REQ_free(req);
 		req = NULL;

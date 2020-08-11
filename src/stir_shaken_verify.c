@@ -227,10 +227,6 @@ stir_shaken_status_t stir_shaken_jwt_download_cert(stir_shaken_context_t *ss, co
         jwt = NULL;
     }
 
-    stir_shaken_destroy_cert(cert);
-    free(cert);
-    cert = NULL;
-
     stir_shaken_destroy_http_request(&http_req);
 
 	return STIR_SHAKEN_STATUS_OK;
@@ -321,7 +317,7 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
         cert = NULL;
     }
 
-	if (*jwt_out) {
+	if (jwt_out) {
         *jwt_out = jwt;
     } else {
         jwt_free(jwt);
