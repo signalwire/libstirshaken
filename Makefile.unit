@@ -1,0 +1,19 @@
+SHELL = /bin/sh
+CC = gcc
+FLAGS = # -std=gnu99 -Iinclude
+CFLAGS = -fPIC -g -ggdb -O0 -Iinclude -Iutil/include #-pedantic -Wall -Wextra -ggdb3
+LDFLAGS = -shared
+LDLIBS = -lssl -lcrypto -lks -lcurl -ljwt -lpthread
+
+TARGET = test13
+all: $(TARGET)
+
+mock13:
+	gcc $(CFLAGS) util/src/stir_shaken_ca.c test/mock_stir_shaken_service.c -o mock13.so -fPIC -shared -ldl -D_GNU_SOURCE
+
+$(TARGET): mock13 test/stir_shaken_test_13.o
+	gcc -o test13 $(LDLIBS) -lstirshaken test/stir_shaken_test_13.o
+	LD_PRELOAD="/root/projects/libstirshaken/mock13.so" ./test13
+
+clean:
+	rm -f mock13.so test13 test/stir_shaken_test_13.o

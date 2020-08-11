@@ -346,6 +346,12 @@ typedef struct stir_shaken_http_response_s {
 
 #define STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT 80u
 
+typedef enum stir_shaken_action_type {
+    STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_INIT,
+    STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_CA_REPLY_CHALLENGE
+    // etc.
+} stir_shaken_action_type_t;
+
 typedef struct stir_shaken_http_req_s {
 	const char					*url;
     uint16_t                    remote_port;
@@ -354,6 +360,7 @@ typedef struct stir_shaken_http_req_s {
 	curl_slist_t				*tx_headers;
 	stir_shaken_http_req_content_type_t content_type;
 	stir_shaken_http_response_t	response;
+    stir_shaken_action_type_t   action;
 } stir_shaken_http_req_t;
 
 
@@ -788,7 +795,7 @@ stir_shaken_status_t	stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 stir_shaken_status_t	stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data, const char *url, uint16_t remote_port);
 stir_shaken_status_t	stir_shaken_acme_perform_authorization(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, uint16_t remote_port);
 
-stir_shaken_status_t	stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+stir_shaken_status_t	__attribute__((weak)) stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
 void					stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req);
 
 /**
@@ -946,6 +953,7 @@ typedef struct stir_shaken_pa_s {
 	uint16_t port;
 } stir_shaken_pa_t;
 
+stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, stir_shaken_ca_t *ca, char *msg, char *authz_challenge, char *authz_url, stir_shaken_ca_session_t **session_out);
 void stir_shaken_ca_destroy(stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_shaken_pa_t *pa);
