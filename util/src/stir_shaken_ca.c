@@ -139,7 +139,7 @@ static void close_http_connection(struct mg_connection *nc, struct mbuf *io)
 	if (nc) nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
-static stir_shaken_ca_session_t* stir_shaken_ca_session_create(size_t sp_code, char *authz_challenge, void *csr_pem)
+static stir_shaken_ca_session_t* stir_shaken_ca_session_create(size_t sp_code, char *authz_challenge, void *csr_pem, uint8_t use_ssl)
 {
 	stir_shaken_ca_session_t *session = malloc(sizeof(stir_shaken_ca_session_t));
 
@@ -152,6 +152,7 @@ static stir_shaken_ca_session_t* stir_shaken_ca_session_create(size_t sp_code, c
 	session->state = STI_CA_SESSION_STATE_INIT;
 	session->sp.csr.pem = strdup(csr_pem);
 	session->ts = time(NULL);
+    session->use_ssl = use_ssl;
 	return session;
 }
 
@@ -417,7 +418,7 @@ stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, s
     }
 
     // TODO queue challenge task/job
-    session = stir_shaken_ca_session_create(sp_code, gen_authz_challenge, csr);
+    session = stir_shaken_ca_session_create(sp_code, gen_authz_challenge, csr, ca->use_ssl);
     if (!session) {
         stir_shaken_set_error(ss, "Cannot create authorization session", STIR_SHAKEN_ERROR_ACME_SESSION_CREATE);
         goto fail;
@@ -558,7 +559,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					}
 
 					// TODO queue challenge task/job
-					session = stir_shaken_ca_session_create(sp_code, authz_challenge, csr);
+					session = stir_shaken_ca_session_create(sp_code, authz_challenge, csr, ca->use_ssl);
 					if (!session) {
 						stir_shaken_set_error(&ca->ss, "Cannot create authorization session", STIR_SHAKEN_ERROR_ACME_SESSION_CREATE);
 						goto fail;
@@ -589,20 +590,9 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 
 					// Handle certificate download request
 
-					if ((STIR_SHAKEN_STATUS_OK != stir_shaken_acme_api_uri_to_spc(&ca->ss, m->uri.p, cert_api_url.p, spcbuf, STIR_SHAKEN_BUFLEN, &uri_has_secret, &secret)) || stir_shaken_zstr(spcbuf)) {
+					if ((STIR_SHAKEN_STATUS_OK != stir_shaken_acme_api_uri_to_spc(&ca->ss, m->uri.p, cert_api_url.p, spcbuf, STIR_SHAKEN_BUFLEN, &sp_code, &uri_has_secret, &secret)) || stir_shaken_zstr(spcbuf)) {
 						stir_shaken_set_error(&ca->ss, "Bad cert request, SPC is missing", STIR_SHAKEN_ERROR_ACME_CERT);
 						goto fail;
-					}
-
-					sp_code = strtoul(spcbuf, &pCh, 10); 
-					if (sp_code > 0x10000 - 1) { 
-						stir_shaken_set_error(&ca->ss, "SPC number too big", STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG);
-						goto fail; 
-					}
-
-					if (*pCh != '\0') { 
-						stir_shaken_set_error(&ca->ss, "SPC invalid", STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
-						goto fail; 
 					}
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC is: %s\n", spcbuf);
@@ -707,6 +697,33 @@ fail:
 	return;
 }
 
+stir_shaken_status_t ca_create_session_challenge_details(stir_shaken_context_t *ss, char *status, const char *spc, char *authz_url, stir_shaken_ca_session_t *session)
+{
+    // TODO generate random token
+    char *token = "DGyRejmCefe7v4NfDGDKfA", *authz_challenge_details = NULL;
+    uint32_t secret = rand() % (1 << 16);
+
+
+    if (!spc || !authz_url || !session) {
+        stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_ACME_AUTHZ_DETAILS);
+        return STIR_SHAKEN_STATUS_TERM;
+    }
+	snprintf(authz_url, STIR_SHAKEN_BUFLEN, "%s://%s%s/%s/%d", session->use_ssl ? "https" : "http", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc, secret);
+
+    authz_challenge_details = stir_shaken_acme_generate_auth_challenge_details(ss, status, spc, token, authz_url);
+    if (stir_shaken_zstr(authz_challenge_details)) {
+        stir_shaken_set_error(ss, "AUTHZ request failed, could not produce challenge details", STIR_SHAKEN_ERROR_ACME_AUTHZ_DETAILS);
+        return STIR_SHAKEN_STATUS_TERM;
+    }
+
+    session->authz_challenge_details = strdup(authz_challenge_details);
+    session->authz_secret = secret;
+    session->authz_url = strdup(authz_url);
+    session->authz_token = strdup(token);
+
+    return STIR_SHAKEN_STATUS_OK;
+}
+
 static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, void *d)
 {
 	struct http_message *m = (struct http_message*) hm;
@@ -724,7 +741,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
 	int uri_has_secret = 0;
 	unsigned long long secret = 0;
-	int authz_secret = 0;
+	uint32_t authz_secret = 0;
 	int args_n = 0;
 	
 	stir_shaken_hash_entry_t *e = NULL;
@@ -754,20 +771,9 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 		case MG_EV_HTTP_REQUEST:
 
 			{
-				if ((STIR_SHAKEN_STATUS_OK != stir_shaken_acme_api_uri_to_spc(&ca->ss, m->uri.p, authz_api_url.p, spc, STIR_SHAKEN_BUFLEN, &uri_has_secret, &secret)) || stir_shaken_zstr(spc)) {
-					stir_shaken_set_error(&ca->ss, "Bad AUTHZ request, SPC is missing", STIR_SHAKEN_ERROR_ACME_AUTHZ_SPC);
+				if ((STIR_SHAKEN_STATUS_OK != stir_shaken_acme_api_uri_to_spc(&ca->ss, m->uri.p, authz_api_url.p, spc, STIR_SHAKEN_BUFLEN, &sp_code, &uri_has_secret, &secret)) || stir_shaken_zstr(spc)) {
+					stir_shaken_set_error(&ca->ss, "Bad AUTHZ request, SPC missing or invalid", STIR_SHAKEN_ERROR_ACME_AUTHZ_SPC);
 					goto fail;
-				}
-
-				sp_code = strtoul(spc, &pCh, 10); 
-				if (sp_code > 0x10000 - 1) { 
-					stir_shaken_set_error(&ca->ss, "SPC number too big", STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG);
-					goto fail; 
-				}
-
-				if (*pCh != '\0') { 
-					stir_shaken_set_error(&ca->ss, "SPC invalid", STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
-					goto fail; 
 				}
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from URI) is: %s\n", spc);
@@ -807,6 +813,8 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 					} else {
 
+                        // STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_REQ_AUTHZ_DETAILS
+
 						if (uri_has_secret > 0) {
 							stir_shaken_set_error(&ca->ss, "Bad request, Secret is set", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
 							goto fail;
@@ -820,41 +828,16 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 							goto fail;
 						}
 
-						e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
-						if (!e) {
-							stir_shaken_set_error(&ca->ss, "Authorization session for this SPC does not exist", STIR_SHAKEN_ERROR_ACME_SESSION_NOTFOUND);
-							goto fail;
-						}
-
-						session = e->data;
-						if (!session) {
-							stir_shaken_set_error(&ca->ss, "Oops. Authorization session not set", STIR_SHAKEN_ERROR_ACME_SESSION_NOT_SET);
-							goto fail;
-						}
-
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Authorization session challenge was:\n%s\n", session->authz_challenge);
 
-						// TODO generate random token
-						token = "DGyRejmCefe7v4NfDGDKfA";
-
-
-						// TODO process authz secrets
-						authz_secret = rand() % (1 << 16);
-						snprintf(authz_url, STIR_SHAKEN_BUFLEN, "%s://%s%s/%s/%d", ca->use_ssl ? "https" : "http", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc, authz_secret);
-
-						authz_challenge_details = stir_shaken_acme_generate_auth_challenge_details(&ca->ss, "pending", spc, token, authz_url);
-						if (stir_shaken_zstr(authz_challenge_details)) {
-							stir_shaken_set_error(&ca->ss, "AUTHZ request failed, could not produce challenge details", STIR_SHAKEN_ERROR_ACME_AUTHZ_DETAILS);
+                        if (STIR_SHAKEN_STATUS_OK != ca_create_session_challenge_details(&ca->ss, "pending", spc, authz_url, session)) {
+							stir_shaken_set_error(&ca->ss, "AUTHZ Failed to produce challenge details", STIR_SHAKEN_ERROR_ACME_AUTHZ_DETAILS);
 							goto fail;
-						}
-						session->authz_challenge_details = strdup(authz_challenge_details);
-						session->authz_secret = authz_secret;
-						session->authz_url = strdup(authz_url);
-						session->authz_token = strdup(token);
+                        }
 
-						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Sending challenge details:\n%s\n", authz_challenge_details);
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Sending challenge details:\n%s\n", session->authz_challenge_details);
 
-						mg_printf(nc, "HTTP/1.1 200 You are more than welcome. Here is your challenge:\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(authz_challenge_details), authz_challenge_details);
+						mg_printf(nc, "HTTP/1.1 200 You are more than welcome. Here is your challenge:\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(session->authz_challenge_details), session->authz_challenge_details);
 
 						session->state = STI_CA_SESSION_STATE_AUTHZ_DETAILS_SENT;
 					}

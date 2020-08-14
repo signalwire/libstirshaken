@@ -939,7 +939,8 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 		/*
 		 * Performing Step 4 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080].
 		 */
-	
+
+        http_req.action = STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_REQ_AUTHZ_DETAILS;
 		http_req.url = strdup(auth_url);
 		http_req.remote_port = remote_port;
 
@@ -1123,11 +1124,12 @@ exit:
 	return out;
 }
 
-stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *buf, int buflen, int *uri_has_secret, unsigned long long *secret)
+stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *buf, int buflen, unsigned long long int *sp_code, int *uri_has_secret, unsigned long long *secret)
 {
-	char *p = NULL, *spc = NULL;
+	char *p = NULL, *spc = NULL, *pCh = NULL;
 	char request[STIR_SHAKEN_BUFLEN] = { 0 };
 	int len = 0;
+    unsigned long long int sp_code_val = 0;
 
 	if (stir_shaken_zstr(uri_request)) {
 		stir_shaken_set_error(ss, "Bad AUTHZ request URI", STIR_SHAKEN_ERROR_ACME_URI);
@@ -1136,6 +1138,11 @@ stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, 
 
 	if (stir_shaken_zstr(api_url)) {
 		stir_shaken_set_error(ss, "Bad params, API URI missing", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+    if (!sp_code) {
+		stir_shaken_set_error(ss, "Bad params, 'sp_code' output pointer not set", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
@@ -1178,7 +1185,6 @@ stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, 
 
 	if ((p = strchr(p, '/'))) {
 
-		char *pCh = NULL;
 		unsigned long long  val;
 
 		// maybe authz details URI, or cert URI
@@ -1214,9 +1220,23 @@ stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, 
 		}
 
 		strncpy(buf, spc, buflen);
-	}
+    }
 
-	return STIR_SHAKEN_STATUS_OK;
+    pCh = NULL;
+    sp_code_val = strtoul(spc, &pCh, 10); 
+    if (sp_code_val > 0x10000 - 1) { 
+        stir_shaken_set_error(ss, "SPC number too big", STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
+
+    if (*pCh != '\0') { 
+        stir_shaken_set_error(ss, "SPC invalid", STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
+
+    *sp_code = sp_code_val;
+
+    return STIR_SHAKEN_STATUS_OK;
 }
 
 stir_shaken_status_t stir_shaken_acme_api_uri_parse(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *arg1, int arg1_len, char *arg2, int arg2_len, int *args_n)
