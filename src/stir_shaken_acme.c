@@ -536,11 +536,6 @@ stir_shaken_status_t stir_shaken_acme_retrieve_auth_challenge_details(stir_shake
     if (!http_req)
         return STIR_SHAKEN_STATUS_TERM;
 
-    if (http_req->response.mem.mem) {
-        free(http_req->response.mem.mem);
-        http_req->response.mem.mem = NULL;
-        http_req->response.mem.size = 0;
-    }
     ss_status = stir_shaken_make_http_get_req(ss, http_req);
 
 #if STIR_SHAKEN_MOCK_ACME_AUTH_CHALLENGE_DETAILS_REQ
@@ -698,7 +693,6 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 
         http_req.url = strdup(challenge_url);
         http_req.remote_port = remote_port;
-        http_req.action = STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_REQ_AUTHZ;
 
         if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_post_req(ss, &http_req, jwt_encoded, 1)) {
             // Mock response
@@ -706,21 +700,15 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
             //ss_status = STIR_SHAKEN_STATUS_OK;
             //http_req.response.code = 200;
             // Content is left unspecified in Step 5 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080]
-            free(jwt_encoded);
-            jwt_encoded = NULL;
             goto fail;
         }
 
         if (http_req.response.code != 200 && http_req.response.code != 201) {
             stir_shaken_set_error(ss, http_req.response.error, STIR_SHAKEN_ERROR_ACME);
-            free(jwt_encoded);
-            jwt_encoded = NULL;
             return STIR_SHAKEN_STATUS_FALSE;
         }
 
         stir_shaken_destroy_http_request(&http_req);
-        free(jwt_encoded);
-        jwt_encoded = NULL;
     }
 
     ks_json_delete(&json);
@@ -834,19 +822,12 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
             ks_json_delete(&json);
             json = NULL;
         }
-
-        free(http_req.response.mem.mem);
-        http_req.response.mem.mem = NULL;
-        http_req.response.mem.size = 0;
     }
-
-    stir_shaken_destroy_http_request(&http_req);
 
     return status_is_valid ? STIR_SHAKEN_STATUS_OK : STIR_SHAKEN_STATUS_FALSE;
 
 fail:
     if (json) ks_json_delete(&json);
-    stir_shaken_destroy_http_request(&http_req);
     return STIR_SHAKEN_STATUS_TERM;
 }
 
@@ -960,17 +941,10 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
          * Performing Step 4 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080].
          */
 
-        http_req.action = STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_REQ_AUTHZ_DETAILS;
         http_req.url = strdup(auth_url);
         http_req.remote_port = remote_port;
 
         fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Requesting authorization challenge details...\n");
-
-        if (http_req.response.mem.mem) {
-            free(http_req.response.mem.mem);
-            http_req.response.mem.mem = NULL;
-            http_req.response.mem.size = 0;
-        }
 
         if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_retrieve_auth_challenge_details(ss, &http_req)) {
             stir_shaken_set_error(ss, "Request for ACME authorization challenge details failed. STI-SP cert cannot be downloaded.", STIR_SHAKEN_ERROR_ACME);
@@ -1012,7 +986,6 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 
             free(polling_url);
             fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Polling finished...\n");
-            stir_shaken_destroy_http_request(&http_req);
         }
     }
 
@@ -1153,10 +1126,9 @@ exit:
 
 stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *buf, int buflen, unsigned long long int *sp_code, int *uri_has_secret, unsigned long long *secret)
 {
-    char *p = NULL, *spc = NULL, *pCh = NULL;
+    char *p = NULL, *spc = NULL;
     char request[STIR_SHAKEN_BUFLEN] = { 0 };
     int len = 0;
-    unsigned long long int sp_code_val = 0;
 
     if (stir_shaken_zstr(uri_request)) {
         stir_shaken_set_error(ss, "Bad AUTHZ request URI", STIR_SHAKEN_ERROR_ACME_URI);
@@ -1165,11 +1137,6 @@ stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, 
 
     if (stir_shaken_zstr(api_url)) {
         stir_shaken_set_error(ss, "Bad params, API URI missing", STIR_SHAKEN_ERROR_GENERAL);
-        return STIR_SHAKEN_STATUS_TERM;
-    }
-
-    if (!sp_code) {
-        stir_shaken_set_error(ss, "Bad params, 'sp_code' output pointer not set", STIR_SHAKEN_ERROR_GENERAL);
         return STIR_SHAKEN_STATUS_TERM;
     }
 
@@ -1212,6 +1179,7 @@ stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, 
 
     if ((p = strchr(p, '/'))) {
 
+        char *pCh = NULL;
         unsigned long long  val;
 
         // maybe authz details URI, or cert URI
@@ -1248,20 +1216,6 @@ stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, 
 
         strncpy(buf, spc, buflen);
     }
-
-    pCh = NULL;
-    sp_code_val = strtoul(spc, &pCh, 10); 
-    if (sp_code_val > 0x10000 - 1) { 
-        stir_shaken_set_error(ss, "SPC number too big", STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG);
-        return STIR_SHAKEN_STATUS_FALSE;
-    }
-
-    if (*pCh != '\0') { 
-        stir_shaken_set_error(ss, "SPC invalid", STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
-        return STIR_SHAKEN_STATUS_FALSE;
-    }
-
-    *sp_code = sp_code_val;
 
     return STIR_SHAKEN_STATUS_OK;
 }
