@@ -49,13 +49,9 @@ stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_sha
 	 * Make cert req.
 	 * Performing Step 1 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080].
 	 */
-	ss_status = stir_shaken_make_http_post_req(ss, http_req, jwt, 0);
 
-#if STIR_SHAKEN_MOCK_ACME_CERT_REQ
-	// Mock response
-	ss_status = STIR_SHAKEN_STATUS_OK;
-	stir_shaken_as_acme_mock_cert_req_response(as, &http_req);
-#endif
+    http_req->action = STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_INIT;
+	ss_status = stir_shaken_make_http_post_req(ss, http_req, jwt, 0);
 
 	if (ss_status != STIR_SHAKEN_STATUS_OK) {
 		goto exit;
