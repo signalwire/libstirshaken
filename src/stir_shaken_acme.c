@@ -693,6 +693,7 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 
 		http_req.url = strdup(challenge_url);
         http_req.remote_port = remote_port;
+        http_req.action = STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_REQ_AUTHZ;
 
 		if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_post_req(ss, &http_req, jwt_encoded, 1)) {
 			// Mock response

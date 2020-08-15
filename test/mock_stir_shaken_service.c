@@ -2,7 +2,6 @@
 
 
 stir_shaken_ca_t ca;
-stir_shaken_ca_session_t *session;
 
 /*
  * Mock HTTP transfers in this test.
@@ -24,6 +23,8 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
             {
                 char authz_url[STIR_SHAKEN_BUFLEN] = { 0 };
                 char authz_challenge[STIR_SHAKEN_BUFLEN] = { 0 };
+                stir_shaken_ca_session_t *session = NULL;
+
 
                 printf("\n\nSTIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_INIT\n\n");
 
@@ -58,7 +59,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 
                 stir_shaken_hash_entry_t *e = NULL;
                 stir_shaken_ca_session_t *session = NULL;
-                int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
+
 
                 printf("\n\nSTIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_REQ_AUTHZ_DETAILS\n\n");
 
@@ -95,9 +96,66 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
         case STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_REQ_AUTHZ:
 
             {
+                char spc[STIR_SHAKEN_BUFLEN] = { 0 };
+                char *expires = "never", *validated = "just right now";
+                unsigned long long int sp_code = 0;
+                int uri_has_secret = 0;
+                unsigned long long secret = 0;
+                int authz_secret = 0;
+
+                stir_shaken_hash_entry_t *e = NULL;
+                stir_shaken_ca_session_t *session = NULL;
+                
+
                 printf("\n\nSTIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_REQ_AUTHZ\n\n");
 
-                //session->state = STI_CA_SESSION_STATE_AUTHZ_SENT;
+                stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_acme_api_uri_to_spc(ss, http_req->url, STI_CA_ACME_AUTHZ_URL, spc, STIR_SHAKEN_BUFLEN, &sp_code, &uri_has_secret, &secret), "ACME uri to SPC failed");
+                stir_shaken_assert(!stir_shaken_zstr(spc), "SPC missing or invalid");
+
+                fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) -> SPC (from URI) is: %s\n", spc);
+
+                stir_shaken_assert(e = stir_shaken_hash_entry_find(ca.sessions, STI_CA_SESSIONS_MAX, sp_code), "Session not found");
+                stir_shaken_assert(session = e->data, "CA session corrupted");
+
+                fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) -> Authorization session in progress\n");
+
+                if (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_GET) {
+
+                    if ( session->state = STI_CA_SESSION_STATE_POLLING) {
+
+                        // TODO handle polling state...
+                        stir_shaken_assert(0, "Not implemented");
+
+                    } else {
+                        
+                        // TODO handle polling state...
+                        stir_shaken_assert(0, "Also not implemented");
+
+                    }
+
+                } else {
+
+                    // handle STI_CA_SESSION_STATE_AUTHZ_DETAILS_SENT state
+
+                    stir_shaken_assert(http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_POST, "Wrong HTTP req type");
+                    stir_shaken_assert(uri_has_secret, "Secret missing");
+
+                    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) -> Handling response to authz challenge-details challenge\n");
+                    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) -> SPC is: %s\n", spc);
+                    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) -> Secret: %llu\n", secret);
+
+                    stir_shaken_assert(STI_CA_SESSION_STATE_AUTHZ_DETAILS_SENT == session->state, "Wrong authorization state");
+                    stir_shaken_assert(secret == session->authz_secret, "Bad secret for this authorization session");
+                    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) -> Secret: OK\n");
+
+                    stir_shaken_assert(http_req->data && strlen(http_req->data), "Bad params, empty HTTP body");
+
+                    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == ca_session_prepare_polling(ss, http_req->data, spc, expires, validated, session), "AUTHZ request failed, could not produce polling status");
+
+                    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) -> Entering polling state...\n");
+                    session->state = STI_CA_SESSION_STATE_POLLING;
+                }
+
             }
             break;
 
