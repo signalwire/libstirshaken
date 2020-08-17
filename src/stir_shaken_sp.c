@@ -84,6 +84,8 @@ stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_sha
 
 	http_req->url = strdup(cert_download_url);
     http_req->remote_port = remote_port;
+    http_req->action = STIR_SHAKEN_ACTION_TYPE_SP_CERT_DOWNLOAD;
+
 	ss_status = stir_shaken_download_cert(ss, http_req);
 	if (ss_status != STIR_SHAKEN_STATUS_OK) {
 		stir_shaken_set_error(ss, "ACME failed to download certificate", STIR_SHAKEN_ERROR_ACME);

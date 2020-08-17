@@ -736,6 +736,7 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
 
 	http_req.url = strdup(url);
     http_req.remote_port = remote_port;
+    http_req.action = STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_REQ_AUTHZ;
 
 	// Poll until either status is 'valid' or more than 30s passed
 	while (!status_is_valid && t < 30) {

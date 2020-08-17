@@ -166,8 +166,6 @@ stir_shaken_status_t stir_shaken_jwt_download_cert(stir_shaken_context_t *ss, co
 	stir_shaken_cert_t		*cert = NULL;
 	const char				*cert_url = NULL;
 	jwt_t					*jwt = NULL;
-	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-	int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
 	
 	stir_shaken_clear_error(ss);
 	memset(&http_req, 0, sizeof(http_req));
@@ -344,8 +342,6 @@ stir_shaken_status_t stir_shaken_jwt_verify_and_check_x509_cert_path(stir_shaken
 	stir_shaken_cert_t		*cert = NULL;
 	const char				*cert_url = NULL;
 	jwt_t					*jwt = NULL;
-	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-	int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
 	
 	stir_shaken_clear_error(ss);
 	memset(&http_req, 0, sizeof(http_req));

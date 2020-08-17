@@ -1,144 +1,193 @@
 #include <stir_shaken.h>
 
-
 const char *path = "./test/run";
 
-stir_shaken_sp_t sp;
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
-	if (stir_shaken_is_error_set(&ss)) { \
-		error_description = stir_shaken_get_error(&ss, &error_code); \
-		printf("Error description is: '%s'\n", error_description); \
-		printf("Error code is: '%d'\n", error_code); \
-	}
+    if (stir_shaken_is_error_set(&ss)) { \
+        error_description = stir_shaken_get_error(&ss, &error_code); \
+        printf("Error description is: '%s'\n", error_description); \
+        printf("Error code is: '%d'\n", error_code); \
+    }
 
-stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
+void funny_and_useless(void *o)
 {
-	EVP_PKEY *pkey = NULL;
-	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
-	stir_shaken_context_t ss = { 0 };
-	const char *error_description = NULL;
-	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
+    fprintf(stderr, "Funny and useless destructor ;~)\n");
+}
 
-	stir_shaken_http_req_t http_req = { 0 };
-	const char *kid = NULL, *nonce = NULL, *nb = NULL, *na = NULL;
-	char spc[STIR_SHAKEN_BUFLEN] = { 0 };
-	char url[STIR_SHAKEN_BUFLEN] = { 0 };
-	char *json = NULL;
-	char *spc_token = NULL;
+stir_shaken_status_t stir_shaken_unit_test_hash(void)
+{
+    stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
+    stir_shaken_context_t ss = { 0 };
+    const char *error_description = NULL;
+    stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
+    stir_shaken_hash_entry_t* sessions[STI_CA_SESSIONS_MAX] = { 0 }, *e = NULL;
+    size_t spc = 0;
 
+    spc = 0;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e == NULL, "Err, entry should not be found...");
 
-	sprintf(sp.private_key_name, "%s%c%s", path, '/', "13_sp_private_key.pem");
-	sprintf(sp.public_key_name, "%s%c%s", path, '/', "13_sp_public_key.pem");
-	sprintf(sp.csr_name, "%s%c%s", path, '/', "13_sp_csr.pem");
-	sprintf(sp.cert_name, "%s%c%s", path, '/', "13_sp_cert.crt");
+    spc = 1;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e == NULL, "Err, entry should not be found...");
 
+    spc = 12;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e == NULL, "Err, entry should not be found...");
 
-	// 1
-	// SP obtains SPC and SPC token from PA and can now construct CSR
+    spc = 133;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e == NULL, "Err, entry should not be found...");
 
-	printf("SP: Generate SP keys\n");
+    spc = 500;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e == NULL, "Err, entry should not be found...");
 
-	// Generate SP keys
-	sp.keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
-	status = stir_shaken_generate_keys(&ss, &sp.keys.ec_key, &sp.keys.private_key, &sp.keys.public_key, sp.private_key_name, sp.public_key_name, sp.keys.priv_raw, &sp.keys.priv_raw_len);
-	PRINT_SHAKEN_ERROR_IF_SET
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
-	stir_shaken_assert(sp.keys.ec_key != NULL, "Err, failed to generate EC key\n\n");
-	stir_shaken_assert(sp.keys.private_key != NULL, "Err, failed to generate private key");
-	stir_shaken_assert(sp.keys.public_key != NULL, "Err, failed to generate public key");
+    spc = 1234;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e == NULL, "Err, entry should not be found...");
 
-	printf("SP: Create CSR\n");
-	sp.code = 1;
-	sprintf(spc, "%d", sp.code);
-	snprintf(sp.subject_c, STIR_SHAKEN_BUFLEN, "US");
-	snprintf(sp.subject_cn, STIR_SHAKEN_BUFLEN, "NewSTI-SP Number 1");
+    spc = 7777;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e == NULL, "Err, entry should not be found...");
 
-	status = stir_shaken_generate_csr(&ss, sp.code, &sp.csr.req, sp.keys.private_key, sp.keys.public_key, sp.subject_c, sp.subject_cn);
-	PRINT_SHAKEN_ERROR_IF_SET
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
+    spc = 10000;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e == NULL, "Err, entry should not be found...");
 
-	// Reqeust STI cetificate
+    spc = 0;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 
-	kid = NULL;
-	nonce = NULL;
-	sprintf(url, "http://%s%s", STI_CA_ACME_ADDR, STI_CA_ACME_CERT_REQ_URL);
-	nb = "01 Apr 2020";
-	na = "01 Apr 2021";
+    spc = 1;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 
-	// Set SPC token to this:
-	//
-	// SPC token encoded:
-	//
-	// eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoicGEuc2hha2VuLnNpZ25hbHdpcmUuY29tL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.i4h-yFR3Xofu35mzkq85o45iXMBfzBCuII4Se0g6n40KRJqKD8L1Wnzqf0xwbW7yN2nY8-LbGBmouq-uBhx09Q
+    spc = 12;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 
-	// SPC token decoded:
-	//
-	//
-	//	{
-	//		"alg": "ES256",
-    //		"issuer": "SignalWire STI-PA",
-    //		"typ": "JWT",
-    //		"x5u": "pa.shaken.signalwire.com/pa.pem"
-	//	}
-	//	.
-	//	{
-    //		"notAfter": "1 year from now",
-	//	    "notBefore": "today",
-    //		"spc": "1",
-    //		"type": "spc-token"
-	//	}
+    spc = 133;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 
+    spc = 500;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 
-	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoicGEuc2hha2VuLnNpZ25hbHdpcmUuY29tL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.i4h-yFR3Xofu35mzkq85o45iXMBfzBCuII4Se0g6n40KRJqKD8L1Wnzqf0xwbW7yN2nY8-LbGBmouq-uBhx09Q";
-    http_req.url = strdup(url);
-    http_req.remote_port = 8082;
+    spc = 1234;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req_ex(&ss, &http_req, kid, nonce, sp.csr.req, nb, na, spc, sp.keys.priv_raw, sp.keys.priv_raw_len, NULL, spc_token)) {
-		printf("STIR-Shaken: Failed to execute cert request\n");
-		PRINT_SHAKEN_ERROR_IF_SET
+    spc = 7777;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 
-		if (error_code == 2) {
-			printf("STIR-Shaken: Server is not available, skipping this test... If you want to see the results, you can run this test only with: ./stir_shaken_test_13\n");
-			return STIR_SHAKEN_STATUS_OK;
-		}
+    spc = 10000;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should not be removed...");
 
-		return STIR_SHAKEN_STATUS_TERM;
-	}
+    spc = 0;
+    stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
 
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_load_x509_from_mem(&ss, &sp.cert.x, NULL, http_req.response.mem.mem), "Failed to load X509 from memory");
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_x509_to_disk(&ss, sp.cert.x, "test/run/13_sp.pem"), "Failed to save the certificate");
+    spc = 1;
+    stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
 
+    spc = 12;
+    stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
 
-	// SP cleanup	
-	stir_shaken_sp_destroy(&sp);
-	stir_shaken_destroy_http_request(&http_req);
+    spc = 133;
+    stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
 
-	return STIR_SHAKEN_STATUS_OK;
+    spc = 500;
+    stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
+
+    spc = 1234;
+    stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
+
+    spc = 7777;
+    stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
+
+    spc = 10000;
+    stir_shaken_assert(NULL != stir_shaken_hash_entry_add(sessions, STI_CA_SESSIONS_MAX, spc, calloc(1, 10), 10, funny_and_useless, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry not added...");
+
+    spc = 0;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e != NULL, "Err, entry should be found...");
+
+    spc = 1;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e != NULL, "Err, entry should be found...");
+
+    spc = 12;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e != NULL, "Err, entry should be found...");
+
+    spc = 133;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e != NULL, "Err, entry should be found...");
+
+    spc = 500;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e != NULL, "Err, entry should be found...");
+
+    spc = 1234;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e != NULL, "Err, entry should be found...");
+
+    spc = 7777;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e != NULL, "Err, entry should be found...");
+
+    spc = 10000;
+    e = stir_shaken_hash_entry_find(sessions, STI_CA_SESSIONS_MAX, spc);
+    stir_shaken_assert(e != NULL, "Err, entry should be found...");
+
+    spc = 0;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
+
+    spc = 1;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
+
+    spc = 12;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
+
+    spc = 133;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
+
+    spc = 500;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
+
+    spc = 1234;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
+
+    spc = 7777;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
+
+    spc = 10000;
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_hash_entry_remove(sessions, STI_CA_SESSIONS_MAX, spc, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE), "Err, entry should be removed...");
+
+    // cleanup
+    stir_shaken_hash_destroy(sessions, STI_CA_SESSIONS_MAX, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);	
+
+    return STIR_SHAKEN_STATUS_OK;
 }
 
 int main(void)
 {
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, NULL, NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
-    
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, NULL, NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
 
-	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
+    if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 
-		if (stir_shaken_dir_create_recursive(path) != STIR_SHAKEN_STATUS_OK) {
+        if (stir_shaken_dir_create_recursive(path) != STIR_SHAKEN_STATUS_OK) {
 
-			printf("ERR: Cannot create test dir\n");
-			return -1;
-		}
-	}
+            printf("ERR: Cannot create test dir\n");
+            return -1;
+        }
+    }
 
-	if (stir_shaken_unit_test_sp_cert_req() != STIR_SHAKEN_STATUS_OK) {
+    if (stir_shaken_unit_test_hash() != STIR_SHAKEN_STATUS_OK) {
 
-		return -2;
-	}
+        printf("Fail\n");
+        return -2;
+    }
 
-	stir_shaken_do_deinit();
+    stir_shaken_do_deinit();
 
-	printf("OK\n");
+    printf("OK\n");
 
-	return 0;
+    return 0;
 }

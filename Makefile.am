@@ -4,12 +4,12 @@ AM_CFLAGS    = -I./src -Iinclude -I$(srcdir)/include $(KS_CFLAGS) $(CURL_CFLAGS)
 lib_LTLIBRARIES = libstirshaken.la
 libstirshaken_la_SOURCES = src/stir_shaken.c src/stir_shaken_service.c src/stir_shaken_passport.c src/stir_shaken_verify.c src/stir_shaken_ssl.c src/stir_shaken_acme.c src/stir_shaken_sp.c
 include_HEADERS = include/stir_shaken.h
-libstirshaken_la_LDFLAGS = -version-info 1:0:0 -Wl,--wrap=stir_shaken_make_http_req
+libstirshaken_la_LDFLAGS = -version-info 1:0:0
 
 pkgconfigdir   = @pkgconfigdir@
 pkgconfig_DATA = build/stirshaken.pc
 
-check_PROGRAMS = stir_shaken_test_1 stir_shaken_test_2 stir_shaken_test_3 stir_shaken_test_4 stir_shaken_test_5 stir_shaken_test_6 stir_shaken_test_7 stir_shaken_test_8 stir_shaken_test_9 stir_shaken_test_10 stir_shaken_test_11 stir_shaken_test_12 stir_shaken_test_14
+check_PROGRAMS = stir_shaken_test_1 stir_shaken_test_2 stir_shaken_test_3 stir_shaken_test_4 stir_shaken_test_5 stir_shaken_test_6 stir_shaken_test_7 stir_shaken_test_8 stir_shaken_test_9 stir_shaken_test_10 stir_shaken_test_11 stir_shaken_test_12 stir_shaken_test_13
 TESTS = $(check_PROGRAMS)
 
 bin_PROGRAMS = stirshaken
@@ -67,6 +67,6 @@ stir_shaken_test_12_SOURCES = test/stir_shaken_test_12.c
 stir_shaken_test_12_CFLAGS = -Iinclude
 stir_shaken_test_12_LDADD = libstirshaken.la
 
-stir_shaken_test_14_SOURCES = test/stir_shaken_test_14.c
-stir_shaken_test_14_CFLAGS = -Iinclude
-stir_shaken_test_14_LDADD = libstirshaken.la
+stir_shaken_test_13_SOURCES = test/stir_shaken_test_13.c
+stir_shaken_test_13_CFLAGS = -Iinclude
+stir_shaken_test_13_LDADD = libstirshaken.la
