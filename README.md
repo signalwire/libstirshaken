@@ -65,6 +65,7 @@ sudo make install
 
 ```
 make check
+make -f Makefile.unit (this will execute comprehensive test that tests it all)
 ```
 
 ## stirshaken Tool
