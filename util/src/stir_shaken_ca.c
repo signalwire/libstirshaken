@@ -176,6 +176,10 @@ static void stir_shaken_ca_session_dctor(void *o)
         free(session->authz_challenge);
         session->authz_challenge = NULL;
     }
+    if (session->authz_polling_status) {
+        free(session->authz_polling_status);
+        session->authz_polling_status = NULL;
+    }
 
     stir_shaken_sp_destroy(&session->sp);
 
@@ -318,7 +322,6 @@ stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, s
     unsigned long long  int sp_code = 0;
     const char *csr_b64 = NULL;
     char csr[STIR_SHAKEN_BUFLEN] = { 0 };
-    X509_REQ *req = NULL;
     stir_shaken_hash_entry_t *e = NULL;
     stir_shaken_ca_session_t *session = NULL;
     char *expires = "2029-03-01T14:09:00Z";
@@ -369,12 +372,6 @@ stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, s
 
     fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> CSR is:\n%s\n", csr);
     fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from cert request jwt) is: %s\n", spc);
-
-    req = stir_shaken_load_x509_req_from_pem(ss, csr);
-    if (!req) {
-        stir_shaken_set_error(&ca->ss, "Cannot load CSR into SSL", STIR_SHAKEN_ERROR_ACME);
-        goto fail;
-    }
 
     // This check probably should be disabled, as it opens possibility of DoS attack
     e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
@@ -432,6 +429,8 @@ stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, s
 
     *session_out = session;
     free(gen_authz_challenge);
+    jwt_free(jwt);
+    jwt = NULL;
 
     return STIR_SHAKEN_STATUS_OK;
 
@@ -439,6 +438,10 @@ fail:
     *session_out = NULL;
     if (gen_authz_challenge) {
         free(gen_authz_challenge);
+    }
+    if (jwt) {
+        jwt_free(jwt);
+        jwt = NULL;
     }
     return STIR_SHAKEN_STATUS_FALSE;
 }
@@ -669,7 +672,7 @@ stir_shaken_status_t ca_create_session_challenge_details(stir_shaken_context_t *
         return STIR_SHAKEN_STATUS_TERM;
     }
 
-    session->authz_challenge_details = strdup(authz_challenge_details);
+    session->authz_challenge_details = authz_challenge_details;
     session->authz_secret = secret;
     session->authz_url = strdup(authz_url);
     session->authz_token = strdup(token);
@@ -705,11 +708,6 @@ stir_shaken_status_t ca_extract_spc_token_from_authz_response(stir_shaken_contex
 
     if (stir_shaken_zstr(msg) || !spc_token || !spc_token_jwt) {
         stir_shaken_set_error(ss, "Bad params, authz response token and/or SPC missing", STIR_SHAKEN_ERROR_ACME);
-        return STIR_SHAKEN_STATUS_TERM;
-    }
-
-    if (jwt_new(&jwt) != 0) {
-        stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
         return STIR_SHAKEN_STATUS_TERM;
     }
 

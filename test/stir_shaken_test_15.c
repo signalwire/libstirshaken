@@ -42,6 +42,12 @@ stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, s
     printf("MOCK HTTP response code to 200 OK\n");
     http_req->response.code = 200;
 
+    if (http_req->response.mem.mem) {
+        free(http_req->response.mem.mem);
+        http_req->response.mem.mem = NULL;
+        http_req->response.mem.size = 0;
+    }
+
     if (ca_verifying_spc_token) {
 
         int certlen = 0;
@@ -232,8 +238,16 @@ stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, s
 
                         // Extract SPC token from response token
                         stir_shaken_assert(STIR_SHAKEN_STATUS_OK == ca_extract_spc_token_from_authz_response(&ca.ss, http_req->data, &spc_token, &spc_token_jwt), "AUTHZ request failed, authz response has invalid SPC token");
+                        stir_shaken_assert(spc_token, "Failed to get SPC token");
+                        stir_shaken_assert(spc_token_jwt, "Failed to get SPC token JWT");
 
                         stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_jwt_verify(&ca.ss, spc_token, &cert, &spc_token_verified_jwt), "SPC token did not pass verification");
+                        stir_shaken_assert(cert, "Could not get PA cert");
+                        stir_shaken_destroy_cert(cert);
+                        free(cert);
+                        cert = NULL;
+                        jwt_free(spc_token_jwt);
+                        spc_token_jwt = NULL;
 
                         stir_shaken_assert(spc_jwt_str = jwt_dump_str(spc_token_verified_jwt, 0), "Cannot dump SPC token JWT");
 
@@ -248,6 +262,8 @@ stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, s
                         stir_shaken_assert(STIR_SHAKEN_STATUS_OK == ca_verify_spc(&ca.ss, spc_token_verified_jwt, session->spc), "SPC from SPC token does not match session SPC");
                         fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "(MOCK) -> [+] SP authorized\n");
                         session->authorized = 1;
+                        jwt_free(spc_token_verified_jwt);
+                        spc_token_verified_jwt = NULL;
 
 authorization_result:
 
@@ -514,6 +530,7 @@ int main(int argc, char ** argv)
     }
 
     stir_shaken_do_deinit();
+    stir_shaken_ca_destroy(&ca);
 
     printf("OK\n");
 

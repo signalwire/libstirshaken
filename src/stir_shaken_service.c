@@ -3,47 +3,47 @@
 
 static size_t stir_shaken_curl_write_callback(void *contents, size_t size, size_t nmemb, void *p)
 {
-	char *m = NULL;
-	size_t realsize = size * nmemb;
-	stir_shaken_http_req_t *http_req = (stir_shaken_http_req_t *) p;
-	mem_chunk_t *mem = &http_req->response.mem;
-	
-	stir_shaken_clear_error(mem->ss);
+    char *m = NULL;
+    size_t realsize = size * nmemb;
+    stir_shaken_http_req_t *http_req = (stir_shaken_http_req_t *) p;
+    mem_chunk_t *mem = &http_req->response.mem;
 
-	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, realsize + mem->size);
+    stir_shaken_clear_error(mem->ss);
 
-	m = realloc(mem->mem, mem->size + realsize + 1);
-	if(!m) {
-		stir_shaken_set_error(mem->ss, "realloc returned NULL", STIR_SHAKEN_ERROR_GENERAL);
-		return 0;
-	}
+    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, realsize + mem->size);
 
-	mem->mem = m;
-	memcpy(&(mem->mem[mem->size]), contents, realsize);
-	mem->size += realsize;
-	mem->mem[mem->size] = 0;
+    m = realloc(mem->mem, mem->size + realsize + 1);
+    if(!m) {
+        stir_shaken_set_error(mem->ss, "realloc returned NULL", STIR_SHAKEN_ERROR_GENERAL);
+        return 0;
+    }
 
-	return realsize;
+    mem->mem = m;
+    memcpy(&(mem->mem[mem->size]), contents, realsize);
+    mem->size += realsize;
+    mem->mem[mem->size] = 0;
+
+    return realsize;
 }
 
 static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nmemb, void *data)
 {
-	register unsigned int realsize = (unsigned int) (size * nmemb);
-	stir_shaken_http_req_t *http_req = data;
-	char *header = NULL;
+    register unsigned int realsize = (unsigned int) (size * nmemb);
+    stir_shaken_http_req_t *http_req = data;
+    char *header = NULL;
 
-	header = malloc(realsize + 1);
-	if (!header) {
-		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: CURL: Received empty header... skipping\n");
-		return 0;
-	}
-	memcpy(header, ptr, realsize);
-	header[realsize] = '\0';
+    header = malloc(realsize + 1);
+    if (!header) {
+        fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: CURL: Received empty header... skipping\n");
+        return 0;
+    }
+    memcpy(header, ptr, realsize);
+    header[realsize] = '\0';
 
-	http_req->response.headers = curl_slist_append(http_req->response.headers, header);
-	free(header);
+    http_req->response.headers = curl_slist_append(http_req->response.headers, header);
+    free(header);
 
-	return realsize;
+    return realsize;
 }
 
 /*
@@ -113,22 +113,21 @@ static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nm
  */
 stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
-	CURLcode		res = 0;
-	CURL			*curl_handle = NULL;
-	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-	char			user_agent[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+    CURLcode		res = 0;
+    CURL			*curl_handle = NULL;
+    char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+    char			user_agent[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
-	if (!http_req || !http_req->url) return STIR_SHAKEN_STATUS_RESTART;
+    if (!http_req || !http_req->url) return STIR_SHAKEN_STATUS_RESTART;
 
-	if (ss) stir_shaken_clear_error(ss);
+    if (ss) stir_shaken_clear_error(ss);
 
-	curl_global_init(CURL_GLOBAL_ALL);
-	curl_handle = curl_easy_init();
-	if (!curl_handle) return STIR_SHAKEN_STATUS_TERM;
+    curl_global_init(CURL_GLOBAL_ALL);
+    curl_handle = curl_easy_init();
+    if (!curl_handle) return STIR_SHAKEN_STATUS_TERM;
 
-	curl_easy_setopt(curl_handle, CURLOPT_URL, http_req->url);
+    curl_easy_setopt(curl_handle, CURLOPT_URL, http_req->url);
 
- 
 #if STIR_SHAKEN_HTTPS_SKIP_PEER_VERIFICATION
     /*
      * If you want to connect to a site who isn't using a certificate that is
@@ -160,131 +159,137 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 	curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, (void *) http_req);
 
     if (http_req->remote_port == 0) {
-		http_req->remote_port = STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT;
-		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to DEFAULT %u cause port not set\n", http_req->remote_port);
+        http_req->remote_port = STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT;
+        fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to DEFAULT %u cause port not set\n", http_req->remote_port);
     }
 
-	curl_easy_setopt(curl_handle, CURLOPT_PORT, http_req->remote_port);
+    if (http_req->response.mem.mem) {
+        free(http_req->response.mem.mem);
+        http_req->response.mem.mem = NULL;
+        http_req->response.mem.size = 0;
+    }
 
-	// Some pple say, some servers don't like requests that are made without a user-agent field, so we provide one.
-	snprintf(user_agent, STIR_SHAKEN_ERROR_BUF_LEN, "freeswitch-stir-shaken/%s", STIR_SHAKEN_VERSION);
-	curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, user_agent);
+    curl_easy_setopt(curl_handle, CURLOPT_PORT, http_req->remote_port);
 
-	switch (http_req->type) {
+    // Some pple say, some servers don't like requests that are made without a user-agent field, so we provide one.
+    snprintf(user_agent, STIR_SHAKEN_ERROR_BUF_LEN, "freeswitch-stir-shaken/%s", STIR_SHAKEN_VERSION);
+    curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, user_agent);
 
-		case STIR_SHAKEN_HTTP_REQ_TYPE_GET:	
+    switch (http_req->type) {
 
-			curl_easy_setopt(curl_handle, CURLOPT_HTTPGET, 1);
-			break;
+        case STIR_SHAKEN_HTTP_REQ_TYPE_GET:	
 
-		case STIR_SHAKEN_HTTP_REQ_TYPE_POST:
+            curl_easy_setopt(curl_handle, CURLOPT_HTTPGET, 1);
+            break;
 
-			if (http_req->data) {
-				curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDSIZE, strlen(http_req->data));
-				curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDS, (void *) http_req->data);
-			}
+        case STIR_SHAKEN_HTTP_REQ_TYPE_POST:
 
-			// Curl will send form urlencoded by default, so for json the Content-Type header must be explicitly set
-			switch (http_req->content_type) {
+            if (http_req->data) {
+                curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDSIZE, strlen(http_req->data));
+                curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDS, (void *) http_req->data);
+            }
 
-				case STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON:
-					
-					http_req->tx_headers = curl_slist_append(http_req->tx_headers, "Content-Type: application/json");
-					break;
+            // Curl will send form urlencoded by default, so for json the Content-Type header must be explicitly set
+            switch (http_req->content_type) {
 
-				case STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED:
-				default:
-					break;
-			}
+                case STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON:
 
-			break;
+                    http_req->tx_headers = curl_slist_append(http_req->tx_headers, "Content-Type: application/json");
+                    break;
 
-		case STIR_SHAKEN_HTTP_REQ_TYPE_PUT:
-			break;
+                case STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED:
+                default:
+                    break;
+            }
 
-		case STIR_SHAKEN_HTTP_REQ_TYPE_HEAD:	
+            break;
 
-			// TODO check if this is necessary to make HEAD req
-			//curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, "HEAD");
+        case STIR_SHAKEN_HTTP_REQ_TYPE_PUT:
+            break;
 
-			// Get the resource without a body
-			curl_easy_setopt(curl_handle, CURLOPT_NOBODY, 1L);
+        case STIR_SHAKEN_HTTP_REQ_TYPE_HEAD:	
 
-			break;
+            // TODO check if this is necessary to make HEAD req
+            //curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, "HEAD");
 
-		default:
-			stir_shaken_set_error(ss, "Unknown HTTP type Request", STIR_SHAKEN_ERROR_HTTP_GENERAL);
-			return STIR_SHAKEN_STATUS_FALSE;
-	}
+            // Get the resource without a body
+            curl_easy_setopt(curl_handle, CURLOPT_NOBODY, 1L);
 
-	if (http_req->tx_headers) {
-		curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, http_req->tx_headers);
-	}
+            break;
 
-	// TODO remove
-	if (http_req->data) {
-		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%s) call:\nurl:\t%s\nport:\t%u\ndata:\t%s\n", http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_GET ? "GET" : (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_POST ? "POST" : (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_PUT ? "PUT" : (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_HEAD ? "HEAD" : "BAD REQUEST"))), http_req->url, http_req->remote_port, http_req->data);
-	} else {
-		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%s) call:\nurl:\t%s\nport:\t%u\n", http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_GET ? "GET" : http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_POST ? "POST" : http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_PUT ? "PUT" : http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_HEAD ? "HEAD" : "BAD REQUEST", http_req->url, http_req->remote_port);
-	}
+        default:
+            stir_shaken_set_error(ss, "Unknown HTTP type Request", STIR_SHAKEN_ERROR_HTTP_GENERAL);
+            return STIR_SHAKEN_STATUS_FALSE;
+    }
 
-	res = curl_easy_perform(curl_handle);
-	http_req->response.code = res;
+    if (http_req->tx_headers) {
+        curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, http_req->tx_headers);
+    }
 
-	if (res != CURLE_OK) {
+    // TODO remove
+    if (http_req->data) {
+        fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%s) call:\nurl:\t%s\nport:\t%u\ndata:\t%s\n", http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_GET ? "GET" : (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_POST ? "POST" : (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_PUT ? "PUT" : (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_HEAD ? "HEAD" : "BAD REQUEST"))), http_req->url, http_req->remote_port, http_req->data);
+    } else {
+        fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%s) call:\nurl:\t%s\nport:\t%u\n", http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_GET ? "GET" : http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_POST ? "POST" : http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_PUT ? "PUT" : http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_HEAD ? "HEAD" : "BAD REQUEST", http_req->url, http_req->remote_port);
+    }
 
-		sprintf(err_buf, "Error in CURL: %s", curl_easy_strerror(res));
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CURL); 
+    res = curl_easy_perform(curl_handle);
+    http_req->response.code = res;
 
-		// Do not curl_global_cleanup in case of error, cause otherwise (if also curl_global_cleanup) SSL starts to mulfunction ???? (EVP_get_digestbyname("sha256") in stir_shaken_do_verify_data returns NULL)
-		curl_easy_cleanup(curl_handle);
-		curl_global_cleanup();
-		
+    if (res != CURLE_OK) {
+
+        sprintf(err_buf, "Error in CURL: %s", curl_easy_strerror(res));
+        stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CURL); 
+
+        // Do not curl_global_cleanup in case of error, cause otherwise (if also curl_global_cleanup) SSL starts to mulfunction ???? (EVP_get_digestbyname("sha256") in stir_shaken_do_verify_data returns NULL)
+        curl_easy_cleanup(curl_handle);
+        curl_global_cleanup();
+
         return STIR_SHAKEN_STATUS_FALSE;
-	}
+    }
 
-	curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &http_req->response.code);
-	if (http_req->response.code != 200 && http_req->response.code != 201) {
-		sprintf(http_req->response.error, "HTTP response code: %ld (%s%s), HTTP response phrase: %s", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " [Bad URL or API call not handled?]" : "", http_req->response.headers && http_req->response.headers->data ? http_req->response.headers->data : "");
-	}
-	curl_easy_cleanup(curl_handle);
-	curl_global_cleanup();
+    curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &http_req->response.code);
+    if (http_req->response.code != 200 && http_req->response.code != 201) {
+        sprintf(http_req->response.error, "HTTP response code: %ld (%s%s), HTTP response phrase: %s", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " [Bad URL or API call not handled?]" : "", http_req->response.headers && http_req->response.headers->data ? http_req->response.headers->data : "");
+    }
+    curl_easy_cleanup(curl_handle);
+    curl_global_cleanup();
 
-	// fprintf(stdout, "\n//////////////// HTTP GOT:\n%s\n///////////////////////\n", http_req->response.mem.mem);	
+    // fprintf(stdout, "\n//////////////// HTTP GOT:\n%s\n///////////////////////\n", http_req->response.mem.mem);	
 
-	// On success, http_req->response.code is HTTP response code (200, 403, 404, etc...)
-	return STIR_SHAKEN_STATUS_OK;
+    // On success, http_req->response.code is HTTP response code (200, 403, 404, etc...)
+    return STIR_SHAKEN_STATUS_OK;
 }
 
 void stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req)
 {
-	if (!http_req) return;
+    if (!http_req) return;
 
-	if (http_req->url) {
-		free((char *) http_req->url);
-		http_req->url = NULL;
-	}
+    if (http_req->url) {
+        free((char *) http_req->url);
+        http_req->url = NULL;
+    }
 
-	if (http_req->data) {
-		free((char *) http_req->data);
-		http_req->data = NULL;
-	}
+    if (http_req->data) {
+        free((char *) http_req->data);
+        http_req->data = NULL;
+    }
 
-	if (http_req->response.mem.mem) {
-		free(http_req->response.mem.mem);
-		http_req->response.mem.mem = NULL;
-	}
+    if (http_req->response.mem.mem) {
+        free(http_req->response.mem.mem);
+        http_req->response.mem.mem = NULL;
+    }
 
-	if (http_req->tx_headers) {
-		curl_slist_free_all(http_req->tx_headers);
-		http_req->tx_headers = NULL;
-	}
+    if (http_req->tx_headers) {
+        curl_slist_free_all(http_req->tx_headers);
+        http_req->tx_headers = NULL;
+    }
 
-	if (http_req->response.headers) {
-		curl_slist_free_all(http_req->response.headers);
-		http_req->response.headers = NULL;
-	}
-	memset(http_req, 0, sizeof(*http_req));
+    if (http_req->response.headers) {
+        curl_slist_free_all(http_req->response.headers);
+        http_req->response.headers = NULL;
+    }
+    memset(http_req, 0, sizeof(*http_req));
 }
 
 /**
@@ -294,26 +299,26 @@ void stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req)
  */
 stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url, const char *fingerprint)
 {
-	if (!http_req) {
-		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-	
-	if (stir_shaken_zstr(http_req->url)) {
-		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
+    if (!http_req) {
+        stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
 
-	if (stir_shaken_zstr(fingerprint)) {
-		stir_shaken_set_error(ss, "Fingerprint missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
+    if (stir_shaken_zstr(http_req->url)) {
+        stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
 
-	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
-	http_req->data = strdup(fingerprint); // TODO change to JSON if it is not JSON already
-	http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
+    if (stir_shaken_zstr(fingerprint)) {
+        stir_shaken_set_error(ss, "Fingerprint missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
 
-	return stir_shaken_make_http_req(ss, http_req);
+    http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
+    http_req->data = strdup(fingerprint); // TODO change to JSON if it is not JSON already
+    http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
+
+    return stir_shaken_make_http_req(ss, http_req);
 }
 
 /**
@@ -324,169 +329,174 @@ stir_shaken_status_t stir_shaken_stisp_make_code_token_request(stir_shaken_conte
  */
 stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, ks_json_t *array)
 {
-	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-	int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
-	ks_json_t *iterator = NULL;
+    unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+    int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
+    ks_json_t *iterator = NULL;
 
-	if (!cert || !array) return STIR_SHAKEN_STATUS_TERM;
+    if (!cert || !array) return STIR_SHAKEN_STATUS_TERM;
 
-	if (stir_shaken_get_pubkey_raw_from_cert(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
+    if (stir_shaken_get_pubkey_raw_from_cert(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
 
-		stir_shaken_set_error(ss, "Cannot get public key from cert", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
+        stir_shaken_set_error(ss, "Cannot get public key from cert", STIR_SHAKEN_ERROR_GENERAL);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
 
-	KS_JSON_ARRAY_FOREACH(iterator, array) {
+    KS_JSON_ARRAY_FOREACH(iterator, array) {
 
-		if (ks_json_type_get(iterator) == KS_JSON_TYPE_STRING) {
-			const char *valuestring = ks_json_value_string(iterator);
-			// TODO remove
-			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "%s\n", valuestring);
+        if (ks_json_type_get(iterator) == KS_JSON_TYPE_STRING) {
+            const char *valuestring = ks_json_value_string(iterator);
+            // TODO remove
+            fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "%s\n", valuestring);
 
-			if (strcmp((const char *)key, valuestring)) {
-				return STIR_SHAKEN_STATUS_OK;
-			}
-		} else {
+            if (strcmp((const char *)key, valuestring)) {
+                return STIR_SHAKEN_STATUS_OK;
+            }
+        } else {
 
-			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "invalid\n");
-		}
-	}
+            fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "invalid\n");
+        }
+    }
 
-	return STIR_SHAKEN_STATUS_FALSE;
+    return STIR_SHAKEN_STATUS_FALSE;
 }
 
 stir_shaken_status_t stir_shaken_make_authority_over_number_check_req(stir_shaken_context_t *ss, const char *url, const char *origin_identity)
 {
-	stir_shaken_http_req_t http_req = { 0 };
-	char req_url[STIR_SHAKEN_BUFLEN] = { 0 };
-	stir_shaken_status_t result = STIR_SHAKEN_STATUS_FALSE;
-	ks_json_t *json = NULL, *authority_check_result = NULL;
-	char *valuestring = NULL;
-	
-	if (stir_shaken_zstr(url)) {
-		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
-	
-	if (stir_shaken_zstr(origin_identity)) {
-		stir_shaken_set_error(ss, "Origin identity missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
+    stir_shaken_http_req_t http_req = { 0 };
+    char req_url[STIR_SHAKEN_BUFLEN] = { 0 };
+    stir_shaken_status_t result = STIR_SHAKEN_STATUS_FALSE;
+    ks_json_t *json = NULL, *authority_check_result = NULL;
+    char *valuestring = NULL;
 
-	snprintf(req_url, STIR_SHAKEN_BUFLEN, "%s/%s", url, origin_identity); 
-	http_req.url = strdup(req_url);
+    if (stir_shaken_zstr(url)) {
+        stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+        return STIR_SHAKEN_STATUS_TERM;
+    }
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_get_req(ss, &http_req)) {
-		stir_shaken_set_error(ss, "HTTP request for authority over number check failed", STIR_SHAKEN_ERROR_HTTP_GENERAL);
-		goto fail;
-	}
+    if (stir_shaken_zstr(origin_identity)) {
+        stir_shaken_set_error(ss, "Origin identity missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+        return STIR_SHAKEN_STATUS_TERM;
+    }
 
-	json = ks_json_parse(http_req.response.mem.mem);
-	if (!json) {
-		stir_shaken_set_error(ss, "Error parsing into JSON", STIR_SHAKEN_ERROR_JSON);
-		goto fail;
-	}
+    snprintf(req_url, STIR_SHAKEN_BUFLEN, "%s/%s", url, origin_identity); 
+    http_req.url = strdup(req_url);
 
-	authority_check_result = ks_json_get_object_item(json, "authority");
-	if (!authority_check_result) {
-		stir_shaken_set_error(ss, "Bad JSON, no 'authority' field", STIR_SHAKEN_ERROR_JSON);
-		goto fail;
-	}
+    if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_get_req(ss, &http_req)) {
+        stir_shaken_set_error(ss, "HTTP request for authority over number check failed", STIR_SHAKEN_ERROR_HTTP_GENERAL);
+        goto fail;
+    }
 
-	if (ks_json_type_get(authority_check_result) != KS_JSON_TYPE_STRING) {
-		stir_shaken_set_error(ss, "Bad JSON, 'authority' field is not a string", STIR_SHAKEN_ERROR_JSON);
-		goto fail;
-	}
+    json = ks_json_parse(http_req.response.mem.mem);
+    if (!json) {
+        stir_shaken_set_error(ss, "Error parsing into JSON", STIR_SHAKEN_ERROR_JSON);
+        goto fail;
+    }
 
-	if (strcmp("true", ks_json_value_string(authority_check_result)) == 0) {
-		result = STIR_SHAKEN_STATUS_OK;
-	} else {
-		result = STIR_SHAKEN_STATUS_FALSE;
-	}
+    authority_check_result = ks_json_get_object_item(json, "authority");
+    if (!authority_check_result) {
+        stir_shaken_set_error(ss, "Bad JSON, no 'authority' field", STIR_SHAKEN_ERROR_JSON);
+        goto fail;
+    }
 
-	stir_shaken_destroy_http_request(&http_req);
-	return result;
+    if (ks_json_type_get(authority_check_result) != KS_JSON_TYPE_STRING) {
+        stir_shaken_set_error(ss, "Bad JSON, 'authority' field is not a string", STIR_SHAKEN_ERROR_JSON);
+        goto fail;
+    }
+
+    if (strcmp("true", ks_json_value_string(authority_check_result)) == 0) {
+        result = STIR_SHAKEN_STATUS_OK;
+    } else {
+        result = STIR_SHAKEN_STATUS_FALSE;
+    }
+
+    stir_shaken_destroy_http_request(&http_req);
+    return result;
 
 fail:
-	stir_shaken_destroy_http_request(&http_req);
-	return STIR_SHAKEN_STATUS_FALSE;
+    stir_shaken_destroy_http_request(&http_req);
+    return STIR_SHAKEN_STATUS_FALSE;
 }
 
 stir_shaken_status_t stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
-	if (!http_req) {
-		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-	
-	if (stir_shaken_zstr(http_req->url)) {
-		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
+    if (!http_req) {
+        stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
 
-	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_GET;
+    if (stir_shaken_zstr(http_req->url)) {
+        stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
 
-	return stir_shaken_make_http_req(ss, http_req);
+    http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_GET;
+
+    return stir_shaken_make_http_req(ss, http_req);
 }
 
 stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *data, uint8_t is_json)
 {
-	if (!http_req) {
-		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-	
-	if (stir_shaken_zstr(http_req->url)) {
-		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
+    if (!http_req) {
+        stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
 
-	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
-	if (data) {
-		http_req->data = strdup(data);
-	}
+    if (stir_shaken_zstr(http_req->url)) {
+        stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
 
-	if (is_json) {
-		http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
-	} else {
-		http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
-	}
+    http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
+    if (data) {
+        if (http_req->response.mem.mem) {
+            free(http_req->response.mem.mem);
+            http_req->response.mem.mem = NULL;
+            http_req->response.mem.size = 0;
+        }
+        http_req->data = strdup(data);
+    }
 
-	return stir_shaken_make_http_req(ss, http_req);
+    if (is_json) {
+        http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
+    } else {
+        http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
+    }
+
+    return stir_shaken_make_http_req(ss, http_req);
 }
 
 stir_shaken_status_t stir_shaken_make_http_head_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *data, uint8_t is_json)
 {
-	if (!http_req) {
-		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-	
-	if (stir_shaken_zstr(http_req->url)) {
-		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
+    if (!http_req) {
+        stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
 
-	http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_HEAD;
-	if (data) {
-		http_req->data = strdup(data);
-	}
+    if (stir_shaken_zstr(http_req->url)) {
+        stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
 
-	if (is_json) {
-		http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
-	} else {
-		http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
-	}
+    http_req->type = STIR_SHAKEN_HTTP_REQ_TYPE_HEAD;
+    if (data) {
+        http_req->data = strdup(data);
+    }
 
-	return stir_shaken_make_http_req(ss, http_req);
+    if (is_json) {
+        http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_JSON;
+    } else {
+        http_req->content_type = STIR_SHAKEN_HTTP_REQ_CONTENT_TYPE_URLENCODED;
+    }
+
+    return stir_shaken_make_http_req(ss, http_req);
 }
 
 void stir_shaken_http_add_header(stir_shaken_http_req_t *http_req, const char *h)
 {
-	if (!http_req || !h) return;
+    if (!http_req || !h) return;
 
-	/* Add a custom header */
-	http_req->tx_headers = curl_slist_append(http_req->tx_headers, h);
+    /* Add a custom header */
+    http_req->tx_headers = curl_slist_append(http_req->tx_headers, h);
 }
 
 /**
@@ -495,81 +505,81 @@ void stir_shaken_http_add_header(stir_shaken_http_req_t *http_req, const char *h
  */ 
 char* stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name)
 {
-	char *data = NULL, *found = NULL;
-	curl_slist_t *header = NULL;
-	int sanity = 10000;
+    char *data = NULL, *found = NULL;
+    curl_slist_t *header = NULL;
+    int sanity = 10000;
 
-	if (!http_req || !name) return NULL;
+    if (!http_req || !name) return NULL;
 
-	header = http_req->response.headers;
+    header = http_req->response.headers;
 
-	// Parse header data
-	while (header && sanity--) {
-		
-		// Remove trailing \r
-		if ((data =  strrchr(header->data, '\r'))) {
-			*data = '\0';
-		}
+    // Parse header data
+    while (header && sanity--) {
 
-		if (!header->data || *header->data == '\0') {
-			header = header->next;
-			continue;
-		}
+        // Remove trailing \r
+        if ((data =  strrchr(header->data, '\r'))) {
+            *data = '\0';
+        }
 
-		if ((data = strchr(header->data, ':'))) {
+        if (!header->data || *header->data == '\0') {
+            header = header->next;
+            continue;
+        }
 
-			*data = '\0';
-			data++;
-			while (*data == ' ' && *data != '\0') {
-				data++;
-			}
+        if ((data = strchr(header->data, ':'))) {
 
-			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "key:\t\t%s\n", header->data);
-			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "value:\t\t%s\n\n", data);
+            *data = '\0';
+            data++;
+            while (*data == ' ' && *data != '\0') {
+                data++;
+            }
 
-			if (!strcmp(header->data, name)) {
+            fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "key:\t\t%s\n", header->data);
+            fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "value:\t\t%s\n\n", data);
 
-				// found
-				found = data;
-			}
+            if (!strcmp(header->data, name)) {
 
-		} else {
+                // found
+                found = data;
+            }
 
-			if (!strncmp("HTTP", header->data, 4)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "Starts with HTTP: %s\n", header->data);
-			} else {
-				fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "Unparsable header: %s\n", header->data);
-			}
-		}
-		header = header->next;
-	}
+        } else {
 
-	return found;
+            if (!strncmp("HTTP", header->data, 4)) {
+                fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "Starts with HTTP: %s\n", header->data);
+            } else {
+                fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "Unparsable header: %s\n", header->data);
+            }
+        }
+        header = header->next;
+    }
+
+    return found;
 }
 
 void stir_shaken_error_desc_to_http_error_phrase(const char *error_desc, char *error_phrase, int buflen)
 {
-	char *p = NULL, *d = NULL;
+    char *p = NULL, *d = NULL;
 
-	if (stir_shaken_zstr(error_desc) || !error_phrase || buflen < 1) {
-		return;
-	}
+    if (stir_shaken_zstr(error_desc) || !error_phrase || buflen < 1) {
+        return;
+    }
 
-	strncpy(error_phrase, error_desc, buflen);
-	p = error_phrase;
-	while (p && (*p != '\0')) {
+    strncpy(error_phrase, error_desc, buflen);
+    p = error_phrase;
+    while (p && (*p != '\0')) {
 
-		d = p;
-		if ((p = strstr(d, "\r\n"))) {
-			*p = ';';
-			p++;
-			*p = ' ';
-		} else {
-		  if ((p = strstr(d, "\n"))) {
-				*p = ';';
-			} else {
-				return;
-			}
-		}
-	}
+        d = p;
+        if ((p = strstr(d, "\r\n"))) {
+            *p = ';';
+            p++;
+            *p = ' ';
+        } else {
+            if ((p = strstr(d, "\n"))) {
+                *p = ';';
+            } else {
+                return;
+            }
+        }
+    }
 }
