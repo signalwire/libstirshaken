@@ -793,7 +793,9 @@ stir_shaken_status_t	stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 stir_shaken_status_t	stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data, const char *url, uint16_t remote_port);
 stir_shaken_status_t	stir_shaken_acme_perform_authorization(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, uint16_t remote_port);
 
-stir_shaken_status_t	stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+stir_shaken_status_t	(*stir_shaken_make_http_req)(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+stir_shaken_status_t    stir_shaken_make_http_req_real(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+extern stir_shaken_status_t    stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
 void					stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req);
 
 /**

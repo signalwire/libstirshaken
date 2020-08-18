@@ -111,7 +111,7 @@ static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nm
  * and valgrind deals with this situation by differentiating between actual leaks (memory to which no pointers are left) and memory which is still reachable at process termination
  * (so that it could have been used again if the process had not terminated)."
  */
-stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
+stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
 	CURLcode		res = 0;
 	CURL			*curl_handle = NULL;

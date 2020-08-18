@@ -21,7 +21,7 @@ const char *pa_pem = "-----BEGIN CERTIFICATE-----\n"
 /*
  * Mock HTTP transfers in this test.
  */
-stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
+stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
     (void) ss;
 
