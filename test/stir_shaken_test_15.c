@@ -1,6 +1,8 @@
 #include <stir_shaken.h>
 
 
+const char *path = "./test/run";
+
 stir_shaken_ca_t ca = { .cert_name = "test/ref/ca/ca.pem", .private_key_name = "test/ref/ca/ca.priv", .issuer_c = "US", .issuer_cn = "TEST CA", .serial = 1, .expiry_days = 9999, .tn_auth_list_uri = "https://test-ca.com/auth-list-check" };
 int polling;
 int ca_verifying_spc_token;
@@ -18,10 +20,19 @@ const char *pa_pem = "-----BEGIN CERTIFICATE-----\n"
 "hz/OkvF1o6XD3UWw5nOY63rPMDM0iB/GbpbIz+Jw\n"
 "-----END CERTIFICATE-----\n";
 
+stir_shaken_sp_t sp;
+
+#define PRINT_SHAKEN_ERROR_IF_SET \
+    if (stir_shaken_is_error_set(&ss)) { \
+        error_description = stir_shaken_get_error(&ss, &error_code); \
+        printf("Error description is: '%s'\n", error_description); \
+        printf("Error code is: '%d'\n", error_code); \
+    }
+
 /*
  * Mock HTTP transfers in this test.
  */
-stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
+stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
     (void) ss;
 
@@ -33,12 +44,15 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
 
     if (ca_verifying_spc_token) {
 
+        int certlen = 0;
+
         printf("\n\nSTIR_SHAKEN_ACTION_TYPE_CA_CERT_REQ_PA\n\n");
 
         free(http_req->response.mem.mem);
-        http_req->response.mem.mem = malloc(strlen(pa_pem) + 1);
-        memset(http_req->response.mem.mem, 0, strlen(pa_pem) + 1);
-        strncpy(http_req->response.mem.mem, pa_pem, strlen(pa_pem));
+        certlen = strlen(pa_pem);
+        stir_shaken_assert(http_req->response.mem.mem = malloc(certlen + 1), "Malloc failed");
+        memset(http_req->response.mem.mem, 0, certlen + 1);
+        strncpy(http_req->response.mem.mem, pa_pem, certlen);
         ca_verifying_spc_token = 0;
         return STIR_SHAKEN_STATUS_OK;
     }
@@ -51,6 +65,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
                 char authz_url[STIR_SHAKEN_BUFLEN] = { 0 };
                 char authz_challenge[STIR_SHAKEN_BUFLEN] = { 0 };
                 stir_shaken_ca_session_t *session = NULL;
+                int authzlen = 0;
 
 
                 printf("\n\nSTIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_INIT\n\n");
@@ -64,9 +79,10 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
                 fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> (MOCK) Sending authorization challenge:\n%s\n", authz_challenge);
 
                 free(http_req->response.mem.mem);
-                http_req->response.mem.mem = malloc(strlen(authz_challenge) + 1);
-                memset(http_req->response.mem.mem, 0, strlen(authz_challenge) + 1);
-                strncpy(http_req->response.mem.mem, authz_challenge, strlen(authz_challenge));
+                authzlen = strlen(session->authz_challenge);
+                stir_shaken_assert(http_req->response.mem.mem = malloc(authzlen + 1), "Malloc failed");
+                memset(http_req->response.mem.mem, 0, authzlen + 1);
+                strncpy(http_req->response.mem.mem, authz_challenge, authzlen);
                 fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) HTTP/1.1 201 Created\r\nLocation: %s\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", authz_url, strlen(authz_challenge), authz_challenge);
 
                 session->state = STI_CA_SESSION_STATE_AUTHZ_SENT;
@@ -83,6 +99,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
                 int uri_has_secret = 0;
                 unsigned long long secret = 0;
                 int authz_secret = 0;
+                int authzlen = 0;
 
                 stir_shaken_hash_entry_t *e = NULL;
                 stir_shaken_ca_session_t *session = NULL;
@@ -110,9 +127,10 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
                 fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK)-> Sending challenge details:\n%s\n", session->authz_challenge_details);
 
                 free(http_req->response.mem.mem);
-                http_req->response.mem.mem = malloc(strlen(session->authz_challenge_details) + 1);
-                memset(http_req->response.mem.mem, 0, strlen(session->authz_challenge_details) + 1);
-                strncpy(http_req->response.mem.mem, session->authz_challenge_details, strlen(session->authz_challenge_details));
+                authzlen = strlen(session->authz_challenge_details);
+                stir_shaken_assert(http_req->response.mem.mem = malloc(authzlen + 1), "Malloc failed");
+                memset(http_req->response.mem.mem, 0, authzlen + 1);
+                strncpy(http_req->response.mem.mem, session->authz_challenge_details, authzlen);
                 fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) HTTP/1.1 200 You are more than welcome. Here is your challenge:\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(session->authz_challenge_details), session->authz_challenge_details);
 
                 session->state = STI_CA_SESSION_STATE_AUTHZ_DETAILS_SENT;
@@ -137,6 +155,7 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
                 const char *spc_token = NULL;
                 stir_shaken_cert_t *cert = NULL;
                 const char *cert_url = NULL;
+                int authzlen = 0;
 
                 stir_shaken_hash_entry_t *e = NULL;
                 stir_shaken_ca_session_t *session = NULL;
@@ -168,9 +187,10 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
                         fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) -> Sending polling status...\n");
 
                         free(http_req->response.mem.mem);
-                        http_req->response.mem.mem = malloc(strlen(session->authz_polling_status) + 1);
-                        memset(http_req->response.mem.mem, 0, strlen(session->authz_polling_status) + 1);
-                        strncpy(http_req->response.mem.mem, session->authz_polling_status, strlen(session->authz_polling_status));
+                        authzlen = strlen(session->authz_polling_status);
+                        stir_shaken_assert(http_req->response.mem.mem = malloc(authzlen + 1), "Malloc failed");
+                        memset(http_req->response.mem.mem, 0, authzlen + 1);
+                        strncpy(http_req->response.mem.mem, session->authz_polling_status, authzlen);
                         fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) HTTP/1.1 200 OK\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(session->authz_polling_status), session->authz_polling_status);
 
                         // continue
@@ -178,8 +198,8 @@ stir_shaken_status_t stir_shaken_make_http_req(stir_shaken_context_t *ss, stir_s
                     } else {
 
                         stir_shaken_assert(0, "Not implemented");
-
                     }
+
                 } else {
 
                     if (polling == 1) {
@@ -238,11 +258,11 @@ authorization_result:
                         }
 
                         stir_shaken_assert(session->authz_polling_status = stir_shaken_acme_generate_auth_polling_status(&ca.ss, "valid", expires, validated, spc, session->authz_token, session->authz_url), "Failed to set polling status to 'valid'");
-                        
+
                         if (!ca.keys.private_key) {
-			
+
                             fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "(MOCK) Loading keys...\n");
-			                stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_load_keys(ss, &ca.keys.private_key, NULL, ca.private_key_name, NULL, NULL, NULL), "Can't load CA private key");
+                            stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_load_keys(ss, &ca.keys.private_key, NULL, ca.private_key_name, NULL, NULL, NULL), "Can't load CA private key");
                         }
 
                         if (!ca.cert.x) {
@@ -335,9 +355,10 @@ authorization_result:
                 fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) HTTP/1.1 200 OK\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen((const char *)cert), cert);
 
                 free(http_req->response.mem.mem);
-                http_req->response.mem.mem = malloc(strlen(cert) + 1);
-                memset(http_req->response.mem.mem, 0, strlen(cert) + 1);
-                strncpy(http_req->response.mem.mem, cert, strlen(cert));
+                certlen = strlen(cert);
+                stir_shaken_assert(http_req->response.mem.mem = malloc(certlen + 1), "Malloc failed");
+                memset(http_req->response.mem.mem, 0, certlen + 1);
+                strncpy(http_req->response.mem.mem, cert, certlen);
 
                 session->state = STI_CA_SESSION_STATE_DONE;
 
@@ -345,7 +366,7 @@ authorization_result:
             }
             break;
 
-        // etc.
+            // etc.
 
         default:
             printf("\n\nSTIR_SHAKEN_ACTION_TYPE unknown\n\n");
@@ -354,4 +375,147 @@ authorization_result:
     }
 
     return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
+{
+    EVP_PKEY *pkey = NULL;
+    stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
+    stir_shaken_context_t ss = { 0 };
+    const char *error_description = NULL;
+    stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
+
+    stir_shaken_http_req_t http_req = { 0 };
+    const char *kid = NULL, *nonce = NULL, *nb = NULL, *na = NULL;
+    char spc[STIR_SHAKEN_BUFLEN] = { 0 };
+    char url[STIR_SHAKEN_BUFLEN] = { 0 };
+    char *json = NULL;
+    char *spc_token = NULL;
+
+
+    sprintf(sp.private_key_name, "%s%c%s", path, '/', "all_sp_private_key.pem");
+    sprintf(sp.public_key_name, "%s%c%s", path, '/', "all_sp_public_key.pem");
+    sprintf(sp.csr_name, "%s%c%s", path, '/', "all_sp_csr.pem");
+    sprintf(sp.cert_name, "%s%c%s", path, '/', "all_sp_cert.crt");
+
+
+    // 1
+    // SP obtains SPC and SPC token from PA and can now construct CSR
+
+    printf("SP: Generate SP keys\n");
+
+    // Generate SP keys
+    sp.keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
+    status = stir_shaken_generate_keys(&ss, &sp.keys.ec_key, &sp.keys.private_key, &sp.keys.public_key, sp.private_key_name, sp.public_key_name, sp.keys.priv_raw, &sp.keys.priv_raw_len);
+    PRINT_SHAKEN_ERROR_IF_SET
+        stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
+    stir_shaken_assert(sp.keys.ec_key != NULL, "Err, failed to generate EC key\n\n");
+    stir_shaken_assert(sp.keys.private_key != NULL, "Err, failed to generate private key");
+    stir_shaken_assert(sp.keys.public_key != NULL, "Err, failed to generate public key");
+
+    printf("SP: Create CSR\n");
+    sp.code = 1;
+    sprintf(spc, "%d", sp.code);
+    snprintf(sp.subject_c, STIR_SHAKEN_BUFLEN, "US");
+    snprintf(sp.subject_cn, STIR_SHAKEN_BUFLEN, "NewSTI-SP Number 1");
+
+    status = stir_shaken_generate_csr(&ss, sp.code, &sp.csr.req, sp.keys.private_key, sp.keys.public_key, sp.subject_c, sp.subject_cn);
+    PRINT_SHAKEN_ERROR_IF_SET
+        stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
+
+    // Reqeust STI cetificate
+
+    kid = NULL;
+    nonce = NULL;
+    sprintf(url, "http://%s%s", STI_CA_ACME_ADDR, STI_CA_ACME_CERT_REQ_URL);
+    nb = "01 Apr 2020";
+    na = "01 Apr 2021";
+
+    // Set SPC token to this:
+    //
+    // SPC token encoded:
+    //
+    // eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoicGEuc2hha2VuLnNpZ25hbHdpcmUuY29tL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.i4h-yFR3Xofu35mzkq85o45iXMBfzBCuII4Se0g6n40KRJqKD8L1Wnzqf0xwbW7yN2nY8-LbGBmouq-uBhx09Q
+
+    // SPC token decoded:
+    //
+    //
+    //	{
+    //		"alg": "ES256",
+    //		"issuer": "SignalWire STI-PA",
+    //		"typ": "JWT",
+    //		"x5u": "pa.shaken.signalwire.com/pa.pem"
+    //	}
+    //	.
+    //	{
+    //		"notAfter": "1 year from now",
+    //	    "notBefore": "today",
+    //		"spc": "1",
+    //		"type": "spc-token"
+    //	}
+
+
+    spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoicGEuc2hha2VuLnNpZ25hbHdpcmUuY29tL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.i4h-yFR3Xofu35mzkq85o45iXMBfzBCuII4Se0g6n40KRJqKD8L1Wnzqf0xwbW7yN2nY8-LbGBmouq-uBhx09Q";
+    http_req.url = strdup(url);
+    http_req.remote_port = 8082;
+
+    if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req_ex(&ss, &http_req, kid, nonce, sp.csr.req, nb, na, spc, sp.keys.priv_raw, sp.keys.priv_raw_len, NULL, spc_token)) {
+        printf("STIR-Shaken: Failed to execute cert request\n");
+        PRINT_SHAKEN_ERROR_IF_SET
+
+            if (error_code == 2) {
+                printf("STIR-Shaken: Server is not available, skipping this test... If you want to see the results, you can run this test only with: ./stir_shaken_test_all\n");
+                return STIR_SHAKEN_STATUS_OK;
+            }
+
+        return STIR_SHAKEN_STATUS_TERM;
+    }
+
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_load_x509_from_mem(&ss, &sp.cert.x, NULL, http_req.response.mem.mem), "Failed to load X509 from memory");
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_x509_to_disk(&ss, sp.cert.x, "test/run/all_sp.pem"), "Failed to save the certificate");
+
+
+    // SP cleanup	
+    stir_shaken_sp_destroy(&sp);
+    stir_shaken_destroy_http_request(&http_req);
+
+    return STIR_SHAKEN_STATUS_OK;
+}
+
+int main(int argc, char ** argv)
+{
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, NULL, NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
+
+    if (argc == 1) {
+
+        // MOCK http transfers by default
+        stir_shaken_make_http_req = stir_shaken_make_http_req_mock;
+
+    } else if (argc > 1 && !stir_shaken_zstr(argv[1]) && !strcmp(argv[1], "nomock")) {
+
+        // do not MOCK
+    } else {
+        printf("ERR: this program takes no argument or one argument which must be 'nomock'\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
+
+        if (stir_shaken_dir_create_recursive(path) != STIR_SHAKEN_STATUS_OK) {
+
+            printf("ERR: Cannot create test dir\n");
+            return -1;
+        }
+    }
+
+    if (stir_shaken_unit_test_sp_cert_req() != STIR_SHAKEN_STATUS_OK) {
+
+        return -2;
+    }
+
+    stir_shaken_do_deinit();
+
+    printf("OK\n");
+
+    return 0;
 }

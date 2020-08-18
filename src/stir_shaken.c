@@ -49,6 +49,8 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *
 		goto err;
 	}
 
+    stir_shaken_make_http_req = stir_shaken_make_http_req_real;
+
 	stir_shaken_globals.initialised = 1;
 	return STIR_SHAKEN_STATUS_OK;
 
