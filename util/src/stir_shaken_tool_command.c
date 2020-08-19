@@ -72,9 +72,6 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		ca->ca.port = options->port;
 		strncpy(ca->ca.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
 		strncpy(ca->ca.cert_name, options->ca_cert, STIR_SHAKEN_BUFLEN);
-		ca->ca.use_ssl = options->use_ssl;
-		strncpy(ca->ca.ssl_cert_name, options->ssl_cert_name, STIR_SHAKEN_BUFLEN);
-		strncpy(ca->ca.ssl_key_name, options->ssl_key_name, STIR_SHAKEN_BUFLEN);
 		strncpy(ca->ca.issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
 		strncpy(ca->ca.issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
 		strncpy(ca->ca.tn_auth_list_uri, options->tn_auth_list_uri, STIR_SHAKEN_BUFLEN);
@@ -103,6 +100,9 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		strncpy(sp->sp.csr_name, options->csr_name, STIR_SHAKEN_BUFLEN);
 		strncpy(sp->sp.cert_name, options->file, STIR_SHAKEN_BUFLEN);
 		return COMMAND_SP_CERT_REQ;
+
+	} else if (!strcmp(command_name, COMMAND_NAME_JWT_KEY_CHECK)) {
+		return COMMAND_JWT_KEY_CHECK;
 
 	} else if (!strcmp(command_name, COMMAND_NAME_JWT_CHECK)) {
 		return COMMAND_JWT_CHECK;
@@ -210,14 +210,6 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 			if (stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri) || ca->ca.serial == 0) {
 				goto fail;
 			}
-			if (ca->ca.use_ssl && stir_shaken_zstr(ca->ca.ssl_cert_name)) {
-				fprintf(stderr, "ERROR: SSL cannot be started because cert is missing (please specify ssl certificate with --%s argument)\n\n", OPTION_NAME_SSL_CERT);
-				goto fail;
-			}
-			if (ca->ca.use_ssl && stir_shaken_zstr(ca->ca.ssl_key_name)) {
-				fprintf(stderr, "ERROR: SSL cannot be started because key is missing (please specify ssl key with --%s argument)\n\n", OPTION_NAME_SSL_KEY);
-				goto fail;
-			}
 			break;
 
 		case COMMAND_PA:
@@ -240,9 +232,16 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 				sp->sp.code = helper;
 			break;
 
-		case COMMAND_JWT_CHECK:
+		case COMMAND_JWT_KEY_CHECK:
 
 			if (stir_shaken_zstr(options->public_key_name) || stir_shaken_zstr(options->jwt)) {
+				goto fail;
+			}
+			break;
+
+		case COMMAND_JWT_CHECK:
+
+			if (stir_shaken_zstr(options->jwt)) {
 				goto fail;
 			}
 			break;
@@ -294,6 +293,9 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 	char			token[STIR_SHAKEN_BUFLEN] = { 0 };
 	jwt_t			*jwt = NULL;
 	char            *jwt_decoded = NULL;
+	stir_shaken_cert_t *cert = NULL;
+	char *p1 = NULL, *p2 = NULL, *sih = NULL;
+	stir_shaken_passport_t passport = {0};
 
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_init(ss, options->ca_dir, options->crl_dir, options->loglevel)) {
@@ -439,7 +441,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				goto fail;
 			}
 
-			free(spc_token_encoded); spc_token_encoded = NULL
+			free(spc_token_encoded); spc_token_encoded = NULL;
 			free(spc_token_decoded); spc_token_decoded = NULL;
 			break;
 
@@ -532,15 +534,15 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Starting PA service...\n");
 			break;
 
-		case COMMAND_JWT_CHECK:
+		case COMMAND_JWT_KEY_CHECK:
 
-			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading keys...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading key...\n");
 			options->keys.pub_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, options->public_key_name, options->keys.pub_raw, &options->keys.pub_raw_len)) {
 				goto fail;
 			}
 
-			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT against the key...\n");
 			if (jwt_decode(&jwt, options->jwt, options->keys.pub_raw, options->keys.pub_raw_len)) {
 				stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT and public key don't match\n");
@@ -550,14 +552,35 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verified. JWT and public key match\n");
 
 			jwt_free(jwt);
+			jwt = NULL;
+			break;
+
+		case COMMAND_JWT_CHECK:
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT...\n");
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(ss, options->jwt, &cert, &jwt)) {
+				stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT failed verification against referenced certificate\n");
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_read_cert_fields(ss, cert)) {
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Cannot parse referenced certificate\n");
+				goto fail;
+			}
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Referenced certificate is:\n\n");
+			stir_shaken_print_cert_fields(stderr, cert);
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nVerified. JWT matches the referenced certificate\n");
+
+			jwt_free(jwt);
+			jwt = NULL;
+			stir_shaken_destroy_cert(cert);
+			free(cert);
+			cert = NULL;
 			break;
 
 		case COMMAND_JWT_DUMP:
-
-			if (jwt_new(&jwt) != 0) {
-				stir_shaken_set_error(ss, "Cannot create JWT for the token", STIR_SHAKEN_ERROR_JWT);
-				goto fail;
-			}
 
 			if (0 != jwt_decode(&jwt, options->jwt, NULL, 0)) {
 				stir_shaken_set_error(ss, "Token is not JWT", STIR_SHAKEN_ERROR_JWT);
@@ -577,9 +600,6 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 		case COMMAND_PASSPORT_CREATE:
 
 			{
-				char *p1 = NULL, *p2 = NULL, *sih = NULL;
-				stir_shaken_passport_t passport = {0};
-
 				stir_shaken_passport_params_t params = {
 					.x5u = strdup(options->url),
 					.attest = "A",
@@ -590,7 +610,6 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 					.origtn_val = "01256789999",
 					.origid = "ref"
 				};
-				char *filebuf = NULL;
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading key...\n");
 				options->keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
@@ -672,12 +691,47 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			goto fail;
 	}
 
+	if (spc_token_encoded) {
+		stir_shaken_free_jwt_str(spc_token_encoded);
+		spc_token_encoded = NULL;
+	}
+	if (spc_token_decoded) {
+		stir_shaken_free_jwt_str(spc_token_decoded);
+		spc_token_decoded = NULL;
+	}
+	if (jwt) {
+		jwt_free(jwt);
+		jwt = NULL;
+	}
+
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
 
-	if (spc_token_encoded) free(spc_token_encoded);
-	if (spc_token_decoded) free(spc_token_decoded);
-	if (jwt) jwt_free(jwt);
+	if (spc_token_encoded) {
+		stir_shaken_free_jwt_str(spc_token_encoded);
+		spc_token_encoded = NULL;
+	}
+	if (spc_token_decoded) {
+		stir_shaken_free_jwt_str(spc_token_decoded);
+		spc_token_decoded = NULL;
+	}
+	if (jwt) {
+		jwt_free(jwt);
+		jwt = NULL;
+	}
+	if (p1) {
+		stir_shaken_free_jwt_str(p1);
+		p1 = NULL;
+	}
+	if (p2) {
+		stir_shaken_free_jwt_str(p2);
+		p2 = NULL;
+	}
+	if (sih) {
+		free(sih);
+		sih = NULL;
+	}
+	stir_shaken_passport_destroy(&passport);
 	return STIR_SHAKEN_STATUS_FALSE;
 }
