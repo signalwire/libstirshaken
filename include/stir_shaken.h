@@ -64,6 +64,9 @@
 #define STIR_SHAKEN_LOGLEVEL_MEDIUM 2
 #define STIR_SHAKEN_LOGLEVEL_HIGH 3
 
+#define STIR_SHAKEN_HTTPS_SKIP_PEER_VERIFICATION 0
+#define STIR_SHAKEN_HTTPS_SKIP_HOSTNAME_VERIFICATION 0
+
 typedef struct stir_shaken_acme_nonce_s {
 	size_t	timestamp;
 	char	*response;
