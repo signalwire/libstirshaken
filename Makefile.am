@@ -14,7 +14,7 @@ TESTS = $(check_PROGRAMS)
 
 bin_PROGRAMS = stirshaken
 stirshaken_SOURCES = util/src/stir_shaken_tool_command.c util/src/stir_shaken_tool.c util/src/stir_shaken_ca.c util/src/mongoose.c
-stirshaken_CFLAGS = -Iinclude -Iutil/include
+stirshaken_CFLAGS = -Iinclude -Iutil/include -DMG_ENABLE_SSL
 stirshaken_LDADD = libstirshaken.la $(KS_LIBS)
 
 LIBS += $(KS_LIBS) $(CURL_LIBS) $(JWT_LIBS) -pthread
