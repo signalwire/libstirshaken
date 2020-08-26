@@ -85,6 +85,9 @@ int main(int argc, char *argv[])
 		{ OPTION_NAME_PORT, required_argument, 0, OPTION_PORT },
 		{ OPTION_NAME_URL, required_argument, 0, OPTION_URL },
 		{ OPTION_NAME_JWT, required_argument, 0, OPTION_JWT },
+		{ OPTION_NAME_SSL, no_argument, 0, OPTION_SSL },
+		{ OPTION_NAME_SSL_CERT, required_argument, 0, OPTION_SSL_CERT },
+		{ OPTION_NAME_SSL_KEY, required_argument, 0, OPTION_SSL_KEY },
 		{ OPTION_NAME_V, no_argument, 0, OPTION_V },
 		{ OPTION_NAME_VV, no_argument, 0, OPTION_VV },
 		{ OPTION_NAME_VVV, no_argument, 0, OPTION_VVV },
@@ -102,9 +105,11 @@ int main(int argc, char *argv[])
 	while ((c = getopt_long(argc, argv, "f:", long_options, &option_index)) != -1) {
 
 		if (c < OPTION_MAX) {
-			fprintf(stderr, "\n+ Processing OPTION %d (%s)\n", c, long_options[option_index].name);
+			fprintf(stderr, "+ Processing OPTION %d (%s)\n", c, long_options[option_index].name);
 		} else {
-			fprintf(stderr, "\n+ Processing OPTION %d ('%c')\n", c, c);
+            if (c != '?') {
+			    fprintf(stderr, "+ Processing OPTION %d ('%c')\n", c, c);
+            }
 		}
 
 		switch (c) {
@@ -112,58 +117,60 @@ int main(int argc, char *argv[])
 			case OPTION_PUBKEY:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.public_key_name, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "Public key name is: %s\n", options.public_key_name);
+				fprintf(stderr, "Public key name is: %s\n\n", options.public_key_name);
 				break;
 
 			case OPTION_PRIVKEY:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.private_key_name, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "Private key name is: %s\n", options.private_key_name);
+				fprintf(stderr, "Private key name is: %s\n\n", options.private_key_name);
 				break;
 
 			case OPTION_ISSUER_C:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.issuer_c, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "Issuer C is: %s\n", options.issuer_c);
+				fprintf(stderr, "Issuer C is: %s\n\n", options.issuer_c);
 				break;
 			
 			case OPTION_ISSUER_CN:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.issuer_cn, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "Issuer CN is: %s\n", options.issuer_cn);
+				fprintf(stderr, "Issuer CN is: %s\n\n", options.issuer_cn);
 				break;
 			
 			case OPTION_SERIAL:
 				helper = strtoul(optarg, &pCh, 10);
 				STIR_SHAKEN_CHECK_CONVERSION
 				options.serial = helper;
+				fprintf(stderr, "Serial is: %d\n\n", options.serial);
 				break;
 			
 			case OPTION_EXPIRY:
 				helper = strtoul(optarg, &pCh, 10);
 				STIR_SHAKEN_CHECK_CONVERSION
 				options.expiry_days = helper;
+				fprintf(stderr, "Expiry is: %d\n\n", options.expiry_days);
 				break;
 
 			case OPTION_TYPE:
 				if (!strcmp(optarg, OPTION_NAME_TYPE_CA)) {
 					
 					options.command_cert_type = COMMAND_CERT_CA;
-					fprintf(stderr, "Certificate type is: CA\n");
+					fprintf(stderr, "Certificate type is: CA\n\n");
 				
 				} else if (!strcmp(optarg, OPTION_NAME_TYPE_PA)) {
 					
 					options.command_cert_type = COMMAND_CERT_CA;
-					fprintf(stderr, "Certificate type is: PA\n");
+					fprintf(stderr, "Certificate type is: PA\n\n");
 					// but as can be seen above, we're doing same as for CA
 
 				} else if (!strcmp(optarg, OPTION_NAME_TYPE_SP)) {
 
 					options.command_cert_type = COMMAND_CERT_SP;
-					fprintf(stderr, "Certificate type is: SP\n");
+					fprintf(stderr, "Certificate type is: SP\n\n");
 
 				} else {
-					fprintf(stderr, "Invalid option %s for --type\n", optarg);
+					fprintf(stderr, "Invalid option %s for --type\n\n", optarg);
 					goto fail;
 				}
 
@@ -177,95 +184,113 @@ int main(int argc, char *argv[])
 			case 'f':
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.file, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "Output file is: %s\n", options.file);
+				fprintf(stderr, "Output file is: %s\n\n", options.file);
 				break;
 
 			case OPTION_SUBJECT_C:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.subject_c, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "Subject C is: %s\n", options.subject_c);
+				fprintf(stderr, "Subject C is: %s\n\n", options.subject_c);
 				break;
 			
 			case OPTION_SUBJECT_CN:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.subject_cn, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "Subject CN is: %s\n", options.subject_cn);
+				fprintf(stderr, "Subject CN is: %s\n\n", options.subject_cn);
 				break;
 			
 			case OPTION_SPC:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.spc, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "SPC is: %s\n", options.spc);
+				fprintf(stderr, "SPC is: %s\n\n", options.spc);
 				break;
 			
 			case OPTION_SPC_TOKEN:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.spc_token, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "SPC token is: %s\n", options.spc_token);
+				fprintf(stderr, "SPC token is: %s\n\n", options.spc_token);
 				break;
 			
 			case OPTION_CA_CERT:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.ca_cert, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "CA certificate is: %s\n", options.ca_cert);
+				fprintf(stderr, "CA certificate is: %s\n\n", options.ca_cert);
 				break;
 			
 			case OPTION_CSR:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.csr_name, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "CSR is: %s\n", options.csr_name);
+				fprintf(stderr, "CSR is: %s\n\n", options.csr_name);
 				break;
 			
 			case OPTION_TN_AUTH_LIST_URI:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.tn_auth_list_uri, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "TNAuthList URI is: %s\n", options.tn_auth_list_uri);
+				fprintf(stderr, "TNAuthList URI is: %s\n\n", options.tn_auth_list_uri);
 				break;
 
 			case OPTION_PORT:
 				helper = strtoul(optarg, &pCh, 10);
 				STIR_SHAKEN_CHECK_CONVERSION
 				options.port = helper;
-				fprintf(stderr, "Port is: %u\n", options.port);
+				fprintf(stderr, "Port is: %u\n\n", options.port);
 				break;
 
 			case OPTION_URL:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.url, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "URL is: %s\n", options.url);
+				fprintf(stderr, "URL is: %s\n\n", options.url);
 				break;
 			
             case OPTION_JWT:
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.jwt, optarg, STIR_SHAKEN_BUFLEN);
-				fprintf(stderr, "JWT is: %s\n", options.jwt);
+				fprintf(stderr, "JWT is: %s\n\n", options.jwt);
 				break;
 
-			case OPTION_V:
+			case OPTION_SSL:
+				options.use_ssl = 1;
+				fprintf(stderr, "Using SSL (HTTPS)\n\n");
+				break;
+
+            case OPTION_SSL_CERT:
+				strncpy(options.ssl_cert_name, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "SSL cert is: %s\n\n", options.ssl_cert_name);
+				break;
+
+            case OPTION_SSL_KEY:
+				strncpy(options.ssl_key_name, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "SSL key is: %s\n\n", options.ssl_key_name);
+				break;
+
+            case OPTION_V:
 				options.loglevel = STIR_SHAKEN_LOGLEVEL_BASIC;
+				fprintf(stderr, "Loglevel is: %d\n\n", options.loglevel);
 				break;
 			
 			case OPTION_VV:
 				options.loglevel = STIR_SHAKEN_LOGLEVEL_MEDIUM;
+				fprintf(stderr, "Loglevel is: %d\n\n", options.loglevel);
 				break;
 
 			case OPTION_VVV:
 				options.loglevel = STIR_SHAKEN_LOGLEVEL_HIGH;
+				fprintf(stderr, "Loglevel is: %d\n\n", options.loglevel);
 				break;
 
 			case '?':
 				if (optopt == 'f') {
-					fprintf(stderr, "\nOption -%c requires an argument.\n", optopt);
+					fprintf(stderr, "\nOption -%c requires an argument.\n\n", optopt);
 				} else if (isprint(optopt))
-					fprintf(stderr,"Unknown option '-%c'.\n", optopt);
+					fprintf(stderr,"Unknown option '-%c'.\n\n", optopt);
 				else {
-					fprintf(stderr, "Are there any long options? Please check that you have typed them correctly.\n");
+					fprintf(stderr, "Are there any long options? Please check that you have typed them correctly.\n\n");
 				}
 				stirshaken_usage(argv[0]);
 				exit(EXIT_FAILURE);
 
 			default:
-				fprintf(stderr, "Error. Missing options?");
+				fprintf(stderr, "Error. Missing options?\n\n");
 				help_hint(argv[0]);
 				exit(EXIT_FAILURE);
 		}

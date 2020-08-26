@@ -55,10 +55,13 @@
 #define OPTION_PORT			16
 #define OPTION_URL			17
 #define OPTION_JWT          18
-#define OPTION_V			19
-#define OPTION_VV			20
-#define OPTION_VVV			21
-#define OPTION_MAX			22
+#define OPTION_SSL          19
+#define OPTION_SSL_CERT     20
+#define OPTION_SSL_KEY      21
+#define OPTION_V			22
+#define OPTION_VV			23
+#define OPTION_VVV			24
+#define OPTION_MAX			25
 
 #define OPTION_NAME_PUBKEY		"pubkey"
 #define OPTION_NAME_PRIVKEY		"privkey"
@@ -81,6 +84,9 @@
 #define OPTION_NAME_PORT		"port"
 #define OPTION_NAME_URL			"url"
 #define OPTION_NAME_JWT			"jwt"
+#define OPTION_NAME_SSL		    "ssl"
+#define OPTION_NAME_SSL_CERT	"ssl_cert"
+#define OPTION_NAME_SSL_KEY	    "ssl_key"
 #define OPTION_NAME_V			"v"
 #define OPTION_NAME_VV			"vv"
 #define OPTION_NAME_VVV			"vvv"
@@ -190,6 +196,9 @@ struct options {
 	char url[STIR_SHAKEN_BUFLEN];
 	char jwt[STIR_SHAKEN_BUFLEN];
 	int loglevel;
+    uint8_t use_ssl;
+	char ssl_cert_name[STIR_SHAKEN_BUFLEN];
+	char ssl_key_name[STIR_SHAKEN_BUFLEN];
 } options;
 
 void stirshaken_range_error(char arg, unsigned long val);
