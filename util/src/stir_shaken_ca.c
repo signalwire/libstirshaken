@@ -454,7 +454,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					// TODO generate 'nb'
 					// TODO generate 'na'
 					// TODO generate Replay-Nonce
-					snprintf(authz_url, STIR_SHAKEN_BUFLEN, "http://%s%s/%s", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc);
+					snprintf(authz_url, STIR_SHAKEN_BUFLEN, "%s://%s%s/%s", ca->use_ssl ? "https" : "http", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc);
 					authz_challenge = stir_shaken_acme_generate_auth_challenge(&ca->ss, "pending", expires, csr, nb, na, authz_url);
 					if (stir_shaken_zstr(authz_challenge)) {
 						stir_shaken_set_error(&ca->ss, "Failed to create authorization challenge", STIR_SHAKEN_ERROR_ACME);
@@ -754,7 +754,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 						// TODO process authz secrets
 						authz_secret = rand() % (1 << 16);
-						snprintf(authz_url, STIR_SHAKEN_BUFLEN, "http://%s%s/%s/%d", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc, authz_secret);
+						snprintf(authz_url, STIR_SHAKEN_BUFLEN, "%s://%s%s/%s/%d", ca->use_ssl ? "https" : "http", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc, authz_secret);
 
 						authz_challenge_details = stir_shaken_acme_generate_auth_challenge_details(&ca->ss, "pending", spc, token, authz_url);
 						if (stir_shaken_zstr(authz_challenge_details)) {
