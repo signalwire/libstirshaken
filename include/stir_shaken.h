@@ -939,9 +939,9 @@ typedef struct stir_shaken_ca_s {
 	int expiry_days;
 	uint16_t port;
 	stir_shaken_hash_entry_t* sessions[STI_CA_SESSIONS_MAX];
-    uint8_t use_https;
-	char ssl_cert[STIR_SHAKEN_BUFLEN];
-	char ssl_key[STIR_SHAKEN_BUFLEN];
+    uint8_t use_ssl;
+	char ssl_cert_name[STIR_SHAKEN_BUFLEN];
+	char ssl_key_name[STIR_SHAKEN_BUFLEN];
 } stir_shaken_ca_t;
 
 typedef struct stir_shaken_pa_s {

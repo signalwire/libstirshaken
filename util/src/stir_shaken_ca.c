@@ -1250,19 +1250,19 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 	opts.user_data = ca;
 	bopts.user_data = ca;
 
-    if (ca->use_https) {
+    if (ca->use_ssl) {
 
-        if (stir_shaken_zstr(ca->ssl_cert)) {
+        if (stir_shaken_zstr(ca->ssl_cert_name)) {
             stir_shaken_set_error(ss, "HTTPS requested, but no cert specified", STIR_SHAKEN_ERROR_HTTPS_CERT);
             return STIR_SHAKEN_STATUS_FALSE;
         }
-        bopts.ssl_cert = ca->ssl_cert;
+        bopts.ssl_cert = ca->ssl_cert_name;
 
-        if (stir_shaken_zstr(ca->ssl_key)) {
+        if (stir_shaken_zstr(ca->ssl_key_name)) {
             stir_shaken_set_error(ss, "HTTPS requested, but no key specified", STIR_SHAKEN_ERROR_HTTPS_KEY);
             return STIR_SHAKEN_STATUS_FALSE;
         }
-        bopts.ssl_key = ca->ssl_key;
+        bopts.ssl_key = ca->ssl_key_name;
 
         fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Using HTTPS with cert (%s) and key (%s)...\n", bopts.ssl_cert, bopts.ssl_key);
     }
