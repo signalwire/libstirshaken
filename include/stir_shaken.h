@@ -257,6 +257,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_HTTP_404_NOT_FOUND,
 	STIR_SHAKEN_ERROR_HTTP_GENERAL,
 	STIR_SHAKEN_ERROR_HTTP_PARAMS,
+	STIR_SHAKEN_ERROR_HTTPS_CERT,
+	STIR_SHAKEN_ERROR_HTTPS_KEY,
 	STIR_SHAKEN_ERROR_JWT,
 	STIR_SHAKEN_ERROR_JSON,
 	STIR_SHAKEN_ERROR_ACME,
@@ -937,6 +939,9 @@ typedef struct stir_shaken_ca_s {
 	int expiry_days;
 	uint16_t port;
 	stir_shaken_hash_entry_t* sessions[STI_CA_SESSIONS_MAX];
+    uint8_t use_https;
+	char ssl_cert[STIR_SHAKEN_BUFLEN];
+	char ssl_key[STIR_SHAKEN_BUFLEN];
 } stir_shaken_ca_t;
 
 typedef struct stir_shaken_pa_s {
