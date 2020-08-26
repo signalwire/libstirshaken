@@ -24,7 +24,9 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t Each command accepts setting print/logging verbosity level:\n");
 	fprintf(stderr, "\t\t --v\t\tbasic logging\n");
 	fprintf(stderr, "\t\t --vv\t\tmedium logging\n");
-	fprintf(stderr, "\t\t --vvv\t\thigh logging\n");
+	fprintf(stderr, "\t\t --vvv\t\thigh logging\n\n");
+	fprintf(stderr, "\t\t CA can be configured with HTTPS by setting up SSL cert and key with:\n");
+	fprintf(stderr, "\t\t\t --%s --%s cert.pem --%s key.pem\n\n", OPTION_NAME_SSL, OPTION_NAME_SSL_CERT, OPTION_NAME_SSL_KEY);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "\t\t %s			: generate key pair\n", COMMAND_NAME_KEYS);
 	fprintf(stderr, "\t\t %s			: generate X509 certificate request for SP identified by SP Code given to --spc\n", COMMAND_NAME_CSR);
@@ -33,7 +35,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s		: generate SPC token for SP identified by SP Code given to --spc (set token's PA issuer to name given as --%s, and token's x5u URL of the PA certificate to URL given as --%s)\n", COMMAND_NAME_SPC_TOKEN, OPTION_NAME_ISSUER_CN, OPTION_NAME_URL);
 	fprintf(stderr, "\t\t %s			: decode JWT and verify signature using public key given to --%s\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_PUBKEY);
 	fprintf(stderr, "\t\t %s			: decode JWT and print it (do not verify signature)\n", COMMAND_NAME_JWT_DUMP);
-	fprintf(stderr, "\t\t %s			: run CA service on port given to --%s\n", COMMAND_NAME_CA, OPTION_NAME_PORT);
+	fprintf(stderr, "\t\t %s			: run CA service on port given to --%s (add \"--%s --%s cert.pem --%s key.pem\" for HTTPS)\n", COMMAND_NAME_CA, OPTION_NAME_PORT, OPTION_NAME_SSL, OPTION_NAME_SSL_CERT, OPTION_NAME_SSL_KEY);
 	fprintf(stderr, "\t\t %s			: run PA service on port given to --%s\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s		: request SP Code token from PA at url given to --%s\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
 	fprintf(stderr, "\t\t %s		: request SP certificate for Service Provider identified by number given to --%s from CA at url given to --%s on port given to --%s\n\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_SPC, OPTION_NAME_URL, OPTION_NAME_PORT);
