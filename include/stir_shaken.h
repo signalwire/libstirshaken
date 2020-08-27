@@ -959,7 +959,7 @@ typedef struct stir_shaken_pa_s {
 	uint16_t port;
 } stir_shaken_pa_t;
 
-stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, stir_shaken_ca_t *ca, char *msg, char *authz_challenge, char *authz_url, stir_shaken_ca_session_t **session_out);
+stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, stir_shaken_ca_t *ca, char *msg, char *authz_challenge, char *authz_url, stir_shaken_ca_session_t **session_out, uint8_t use_ssl);
 stir_shaken_status_t ca_create_session_challenge_details(stir_shaken_context_t *ss, char *status, const char *spc, char *authz_url, stir_shaken_ca_session_t *session);
 stir_shaken_status_t ca_session_prepare_polling(stir_shaken_context_t *ss, const char *msg, char *spc, char *expires, char *validated, stir_shaken_ca_session_t *session);
 stir_shaken_status_t ca_extract_spc_token_from_authz_response(stir_shaken_context_t *ss, const char *msg, const char **spc_token, jwt_t **spc_token_jwt);
