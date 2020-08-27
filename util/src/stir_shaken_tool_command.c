@@ -3,106 +3,106 @@
 
 int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_name, struct ca *ca, struct pa *pa, struct sp *sp, struct options *options)
 {
-    if (!command_name || !options) {
-        return COMMAND_UNKNOWN;
-    }
+	if (!command_name || !options) {
+		return COMMAND_UNKNOWN;
+	}
 
-    if (!strcmp(command_name, COMMAND_NAME_KEYS)) {
+	if (!strcmp(command_name, COMMAND_NAME_KEYS)) {
 
-        return COMMAND_KEYS;
+		return COMMAND_KEYS;
 
-    } else if (!strcmp(command_name, COMMAND_NAME_CSR)) {
+	} else if (!strcmp(command_name, COMMAND_NAME_CSR)) {
 
-        strncpy(sp->spc, options->spc, STIR_SHAKEN_BUFLEN);
-        strncpy(sp->sp.csr_name, options->file, STIR_SHAKEN_BUFLEN);
-        strncpy(sp->sp.public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
-        strncpy(sp->sp.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
-        strncpy(sp->subject_c, options->subject_c, STIR_SHAKEN_BUFLEN);
-        strncpy(sp->subject_cn, options->subject_cn, STIR_SHAKEN_BUFLEN);
-        return COMMAND_CSR;
+		strncpy(sp->spc, options->spc, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->sp.csr_name, options->file, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->sp.public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->sp.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->subject_c, options->subject_c, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->subject_cn, options->subject_cn, STIR_SHAKEN_BUFLEN);
+		return COMMAND_CSR;
 
-    } else if (!strcmp(command_name, COMMAND_NAME_CERT)) {
+	} else if (!strcmp(command_name, COMMAND_NAME_CERT)) {
 
-        if (COMMAND_CERT_CA == options->command_cert_type) {
+		if (COMMAND_CERT_CA == options->command_cert_type) {
 
-            strncpy(ca->ca.cert_name, options->file, STIR_SHAKEN_BUFLEN);
-            strncpy(ca->ca.issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
-            strncpy(ca->ca.issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
-            strncpy(ca->ca.public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
-            strncpy(ca->ca.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
-            ca->ca.expiry_days = options->expiry_days;
-            ca->ca.serial = options->serial;
-            return COMMAND_CERT_CA;
+			strncpy(ca->ca.cert_name, options->file, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
+			ca->ca.expiry_days = options->expiry_days;
+			ca->ca.serial = options->serial;
+			return COMMAND_CERT_CA;
 
-        } else if (COMMAND_CERT_SP == options->command_cert_type) {
+		} else if (COMMAND_CERT_SP == options->command_cert_type) {
 
-            strncpy(ca->ca.public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
-            strncpy(ca->ca.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
-            strncpy(sp->sp.csr_name, options->csr_name, STIR_SHAKEN_BUFLEN);
-            strncpy(ca->ca.cert_name, options->ca_cert, STIR_SHAKEN_BUFLEN);
-            strncpy(sp->sp.cert_name, options->file, STIR_SHAKEN_BUFLEN);
-            strncpy(ca->ca.issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
-            strncpy(ca->ca.issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
-            strncpy(ca->ca.tn_auth_list_uri, options->tn_auth_list_uri, STIR_SHAKEN_BUFLEN);
-            ca->ca.expiry_days = options->expiry_days;
-            ca->ca.serial = options->serial;
-            return COMMAND_CERT_SP;
+			strncpy(ca->ca.public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
+			strncpy(sp->sp.csr_name, options->csr_name, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.cert_name, options->ca_cert, STIR_SHAKEN_BUFLEN);
+			strncpy(sp->sp.cert_name, options->file, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
+			strncpy(ca->ca.tn_auth_list_uri, options->tn_auth_list_uri, STIR_SHAKEN_BUFLEN);
+			ca->ca.expiry_days = options->expiry_days;
+			ca->ca.serial = options->serial;
+			return COMMAND_CERT_SP;
 
-        } else {
-            stir_shaken_set_error(ss, "Bad --type", STIR_SHAKEN_ERROR_GENERAL);
-            return COMMAND_UNKNOWN;
-        }
+		} else {
+			stir_shaken_set_error(ss, "Bad --type", STIR_SHAKEN_ERROR_GENERAL);
+			return COMMAND_UNKNOWN;
+		}
 
-    } else if (!strcmp(command_name, COMMAND_NAME_HASH_CERT)) {
+	} else if (!strcmp(command_name, COMMAND_NAME_HASH_CERT)) {
 
-        strncpy(ca->ca.cert_name, options->file, STIR_SHAKEN_BUFLEN);
-        return COMMAND_HASH_CERT;
+		strncpy(ca->ca.cert_name, options->file, STIR_SHAKEN_BUFLEN);
+		return COMMAND_HASH_CERT;
 
-    } else if (!strcmp(command_name, COMMAND_NAME_SPC_TOKEN)) {
+	} else if (!strcmp(command_name, COMMAND_NAME_SPC_TOKEN)) {
 
-        strncpy(pa->spc, options->spc, STIR_SHAKEN_BUFLEN);
-        strncpy(pa->pa.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
-        strncpy(pa->issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
-        strncpy(pa->url, options->url, STIR_SHAKEN_BUFLEN);
-        strncpy(pa->file_name, options->file, STIR_SHAKEN_BUFLEN);
-        return COMMAND_SPC_TOKEN;
+		strncpy(pa->spc, options->spc, STIR_SHAKEN_BUFLEN);
+		strncpy(pa->pa.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
+		strncpy(pa->issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
+		strncpy(pa->url, options->url, STIR_SHAKEN_BUFLEN);
+		strncpy(pa->file_name, options->file, STIR_SHAKEN_BUFLEN);
+		return COMMAND_SPC_TOKEN;
 
-    } else if (!strcmp(command_name, COMMAND_NAME_CA)) {
+	} else if (!strcmp(command_name, COMMAND_NAME_CA)) {
 
-        ca->ca.port = options->port;
-        strncpy(ca->ca.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
-        strncpy(ca->ca.cert_name, options->ca_cert, STIR_SHAKEN_BUFLEN);
-        strncpy(ca->ca.issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
-        strncpy(ca->ca.issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
-        strncpy(ca->ca.tn_auth_list_uri, options->tn_auth_list_uri, STIR_SHAKEN_BUFLEN);
-        ca->ca.expiry_days = options->expiry_days;
-        ca->ca.serial = options->serial;
-        return COMMAND_CA;
+		ca->ca.port = options->port;
+		strncpy(ca->ca.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
+		strncpy(ca->ca.cert_name, options->ca_cert, STIR_SHAKEN_BUFLEN);
+        ca->ca.use_ssl = options->use_ssl;
+		strncpy(ca->ca.ssl_cert_name, options->ssl_cert_name, STIR_SHAKEN_BUFLEN);
+		strncpy(ca->ca.ssl_key_name, options->ssl_key_name, STIR_SHAKEN_BUFLEN);
+		strncpy(ca->ca.issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
+		strncpy(ca->ca.issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
+		strncpy(ca->ca.tn_auth_list_uri, options->tn_auth_list_uri, STIR_SHAKEN_BUFLEN);
+		ca->ca.expiry_days = options->expiry_days;
+		ca->ca.serial = options->serial;
+		return COMMAND_CA;
 
-    } else if (!strcmp(command_name, COMMAND_NAME_PA)) {
+	} else if (!strcmp(command_name, COMMAND_NAME_PA)) {
 
-        pa->pa.port = options->port;
-        return COMMAND_PA;
+		pa->pa.port = options->port;
+		return COMMAND_PA;
 
-    } else if (!strcmp(command_name, COMMAND_NAME_SP_SPC_REQ)) {
+	} else if (!strcmp(command_name, COMMAND_NAME_SP_SPC_REQ)) {
 
-        strncpy(sp->url, options->url, STIR_SHAKEN_BUFLEN);
-        return COMMAND_SP_SPC_REQ;
+		strncpy(sp->url, options->url, STIR_SHAKEN_BUFLEN);
+		return COMMAND_SP_SPC_REQ;
 
-    } else if (!strcmp(command_name, COMMAND_NAME_SP_CERT_REQ)) {
+	} else if (!strcmp(command_name, COMMAND_NAME_SP_CERT_REQ)) {
 
-        sp->sp.port = options->port;
-        strncpy(sp->spc, options->spc, STIR_SHAKEN_BUFLEN);
-        strncpy(sp->sp.spc_token, options->spc_token, STIR_SHAKEN_BUFLEN);
-        strncpy(sp->url, options->url, STIR_SHAKEN_BUFLEN);
-        strncpy(sp->sp.public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
-        strncpy(sp->sp.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
-        strncpy(sp->sp.csr_name, options->csr_name, STIR_SHAKEN_BUFLEN);
-        strncpy(sp->sp.cert_name, options->file, STIR_SHAKEN_BUFLEN);
-        return COMMAND_SP_CERT_REQ;
-
-    } else if (!strcmp(command_name, COMMAND_NAME_JWT_KEY_CHECK)) {
-        return COMMAND_JWT_KEY_CHECK;
+		sp->sp.port = options->port;
+		strncpy(sp->spc, options->spc, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->sp.spc_token, options->spc_token, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->url, options->url, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->sp.public_key_name, options->public_key_name, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->sp.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->sp.csr_name, options->csr_name, STIR_SHAKEN_BUFLEN);
+		strncpy(sp->sp.cert_name, options->file, STIR_SHAKEN_BUFLEN);
+		return COMMAND_SP_CERT_REQ;
 
     } else if (!strcmp(command_name, COMMAND_NAME_JWT_CHECK)) {
         return COMMAND_JWT_CHECK;
@@ -119,125 +119,126 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 
 stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int command, struct ca *ca, struct pa *pa, struct sp *sp, struct options *options)
 {
-    unsigned long long helper = 0;
-    char *pCh = NULL;
+	unsigned long long helper = 0;
+	char *pCh = NULL;
 
-    switch (command) {
+	switch (command) {
 
-        case COMMAND_KEYS:
+		case COMMAND_KEYS:
 
-            if (stir_shaken_zstr(options->private_key_name) && stir_shaken_zstr(options->public_key_name)) {
-                goto fail;
+			if (stir_shaken_zstr(options->private_key_name) && stir_shaken_zstr(options->public_key_name)) {
+				goto fail;
+			}
+			break;
+
+		case COMMAND_CSR:
+
+			if (stir_shaken_zstr(sp->sp.private_key_name) || stir_shaken_zstr(sp->sp.public_key_name)
+					|| stir_shaken_zstr(sp->subject_c) || stir_shaken_zstr(sp->subject_cn)
+					|| stir_shaken_zstr(sp->spc) || stir_shaken_zstr(sp->sp.csr_name)) {
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(sp->sp.csr_name)) {
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", sp->sp.csr_name);
+				goto fail;
+			}
+
+			STIR_SHAKEN_CHECK_CONVERSION_EXT
+			sp->sp.code = helper;
+
+			break;
+
+		case COMMAND_CERT_CA:
+
+			if (stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.public_key_name)
+					|| stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || ca->ca.expiry_days == 0 || ca->ca.serial == 0) {
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(ca->ca.cert_name)) {
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", ca->ca.cert_name);
+				goto fail;
+			}
+			break;
+		
+		case COMMAND_CERT_SP:
+
+			if (stir_shaken_zstr(sp->sp.cert_name) || stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.public_key_name)
+					|| stir_shaken_zstr(sp->sp.csr_name) || stir_shaken_zstr(ca->ca.cert_name)
+					|| stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri) || ca->ca.expiry_days == 0 || ca->ca.serial == 0) {
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(sp->sp.cert_name)) {
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", sp->sp.cert_name);
+				goto fail;
+			}
+			break;
+
+		case COMMAND_HASH_CERT:
+			if (stir_shaken_zstr(ca->ca.cert_name)) {
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(ca->ca.cert_name)) {
+				fprintf(stderr, "ERROR: File %s does not exist.\n\n", ca->ca.cert_name);
+				goto fail;
+			}
+			break;
+		
+		case COMMAND_SPC_TOKEN:
+
+			if (stir_shaken_zstr(pa->pa.private_key_name) || stir_shaken_zstr(pa->issuer_cn) || stir_shaken_zstr(pa->spc) || stir_shaken_zstr(pa->url)) {
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(pa->file_name)) {
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", pa->file_name);
+				goto fail;
+			}
+
+			STIR_SHAKEN_CHECK_CONVERSION_EXT
+			pa->sp_code = helper;
+			break;
+
+		case COMMAND_CA:
+			if (stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri) || ca->ca.serial == 0) {
+				goto fail;
             }
-            break;
+            if (ca->ca.use_ssl && stir_shaken_zstr(ca->ca.ssl_cert_name)) {
+                fprintf(stderr, "ERROR: SSL cannot be started because cert is missing (please specify ssl certificate with --%s argument)\n\n", OPTION_NAME_SSL_CERT);
+				goto fail;
+			}
+            if (ca->ca.use_ssl && stir_shaken_zstr(ca->ca.ssl_key_name)) {
+                fprintf(stderr, "ERROR: SSL cannot be started because key is missing (please specify ssl key with --%s argument)\n\n", OPTION_NAME_SSL_KEY);
+				goto fail;
+			}
+			break;
 
-        case COMMAND_CSR:
+		case COMMAND_PA:
+			break;
 
-            if (stir_shaken_zstr(sp->sp.private_key_name) || stir_shaken_zstr(sp->sp.public_key_name)
-                    || stir_shaken_zstr(sp->subject_c) || stir_shaken_zstr(sp->subject_cn)
-                    || stir_shaken_zstr(sp->spc) || stir_shaken_zstr(sp->sp.csr_name)) {
-                goto fail;
-            }
+		case COMMAND_SP_SPC_REQ:
 
-            if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(sp->sp.csr_name)) {
-                fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", sp->sp.csr_name);
-                goto fail;
-            }
+			if (stir_shaken_zstr(sp->url)) {
+				goto fail;
+			}
+			break;
 
-            STIR_SHAKEN_CHECK_CONVERSION_EXT
-                sp->sp.code = helper;
+		case COMMAND_SP_CERT_REQ:
 
-            break;
-
-        case COMMAND_CERT_CA:
-
-            if (stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.public_key_name)
-                    || stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || ca->ca.expiry_days == 0 || ca->ca.serial == 0) {
-                goto fail;
-            }
-
-            if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(ca->ca.cert_name)) {
-                fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", ca->ca.cert_name);
-                goto fail;
-            }
-            break;
-
-        case COMMAND_CERT_SP:
-
-            if (stir_shaken_zstr(sp->sp.cert_name) || stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.public_key_name)
-                    || stir_shaken_zstr(sp->sp.csr_name) || stir_shaken_zstr(ca->ca.cert_name)
-                    || stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri) || ca->ca.expiry_days == 0 || ca->ca.serial == 0) {
-                goto fail;
-            }
-
-            if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(sp->sp.cert_name)) {
-                fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", sp->sp.cert_name);
-                goto fail;
-            }
-            break;
-
-        case COMMAND_HASH_CERT:
-            if (stir_shaken_zstr(ca->ca.cert_name)) {
-                goto fail;
-            }
-
-            if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(ca->ca.cert_name)) {
-                fprintf(stderr, "ERROR: File %s does not exist.\n\n", ca->ca.cert_name);
-                goto fail;
-            }
-            break;
-
-        case COMMAND_SPC_TOKEN:
-
-            if (stir_shaken_zstr(pa->pa.private_key_name) || stir_shaken_zstr(pa->issuer_cn) || stir_shaken_zstr(pa->spc) || stir_shaken_zstr(pa->url)) {
-                goto fail;
-            }
-
-            if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(pa->file_name)) {
-                fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", pa->file_name);
-                goto fail;
-            }
-
-            STIR_SHAKEN_CHECK_CONVERSION_EXT
-                pa->sp_code = helper;
-            break;
-
-        case COMMAND_CA:
-            if (stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri) || ca->ca.serial == 0) {
-                goto fail;
-            }
-            break;
-
-        case COMMAND_PA:
-            break;
-
-        case COMMAND_SP_SPC_REQ:
-
-            if (stir_shaken_zstr(sp->url)) {
-                goto fail;
-            }
-            break;
-
-        case COMMAND_SP_CERT_REQ:
-
-            if (stir_shaken_zstr(sp->sp.cert_name) || stir_shaken_zstr(sp->url) || stir_shaken_zstr(sp->sp.private_key_name) || stir_shaken_zstr(sp->sp.public_key_name)
-                    || stir_shaken_zstr(sp->spc) || stir_shaken_zstr(sp->sp.spc_token) || stir_shaken_zstr(sp->sp.csr_name)) {
-                goto fail;
-            }
-            STIR_SHAKEN_CHECK_CONVERSION_EXT
-                sp->sp.code = helper;
-            break;
-
-        case COMMAND_JWT_KEY_CHECK:
-
-            if (stir_shaken_zstr(options->public_key_name) || stir_shaken_zstr(options->jwt)) {
-                goto fail;
-            }
-            break;
-
+			if (stir_shaken_zstr(sp->sp.cert_name) || stir_shaken_zstr(sp->url) || stir_shaken_zstr(sp->sp.private_key_name) || stir_shaken_zstr(sp->sp.public_key_name)
+					|| stir_shaken_zstr(sp->spc) || stir_shaken_zstr(sp->sp.spc_token) || stir_shaken_zstr(sp->sp.csr_name)) {
+				goto fail;
+			}
+			STIR_SHAKEN_CHECK_CONVERSION_EXT
+			sp->sp.code = helper;
+			break;
+		
         case COMMAND_JWT_CHECK:
 
-            if (stir_shaken_zstr(options->jwt)) {
+            if (stir_shaken_zstr(options->public_key_name) || stir_shaken_zstr(options->jwt)) {
                 goto fail;
             }
             break;
@@ -272,7 +273,6 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
     char			token[STIR_SHAKEN_BUFLEN] = { 0 };
     jwt_t			*jwt = NULL;
     char            *jwt_decoded = NULL;
-    stir_shaken_cert_t *cert = NULL;
 
 
     if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_init(ss, options->ca_dir, options->crl_dir, options->loglevel)) {
@@ -511,15 +511,15 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
             fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Starting PA service...\n");
             break;
 
-        case COMMAND_JWT_KEY_CHECK:
+        case COMMAND_JWT_CHECK:
 
-            fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading key...\n");
+            fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading keys...\n");
             options->keys.pub_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
             if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, options->public_key_name, options->keys.pub_raw, &options->keys.pub_raw_len)) {
                 goto fail;
             }
 
-            fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT against the key...\n");
+            fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT...\n");
             if (jwt_decode(&jwt, options->jwt, options->keys.pub_raw, options->keys.pub_raw_len)) {
                 stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
                 fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT and public key don't match\n");
@@ -529,29 +529,6 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
             fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verified. JWT and public key match\n");
 
             jwt_free(jwt);
-            break;
-
-        case COMMAND_JWT_CHECK:
-
-            fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT...\n");
-            if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(ss, options->jwt, &cert, &jwt)) {
-                stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
-                fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT failed verification against referenced certificate\n");
-                goto fail;
-            }
-
-            if (STIR_SHAKEN_STATUS_OK != stir_shaken_read_cert_fields(ss, cert)) {
-                fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Cannot parse referenced certificate\n");
-                goto fail;
-            }
-
-            fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Referenced certificate is:\n\n");
-            stir_shaken_print_cert_fields(stderr, cert);
-            fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nVerified. JWT matches the referenced certificate\n");
-
-            jwt_free(jwt);
-            stir_shaken_destroy_cert(cert);
-            free(cert);
             break;
 
         case COMMAND_JWT_DUMP:
@@ -588,9 +565,5 @@ fail:
     if (spc_token_encoded) free(spc_token_encoded);
     if (spc_token_decoded) free(spc_token_decoded);
     if (jwt) jwt_free(jwt);
-    if (cert) {
-        stir_shaken_destroy_cert(cert);
-        free(cert);
-    }
     return STIR_SHAKEN_STATUS_FALSE;
 }

@@ -152,6 +152,7 @@ static stir_shaken_ca_session_t* stir_shaken_ca_session_create(size_t sp_code, c
 	session->state = STI_CA_SESSION_STATE_INIT;
 	session->sp.csr.pem = strdup(csr_pem);
 	session->ts = time(NULL);
+	session->use_ssl = use_ssl;
 	return session;
 }
 
@@ -313,7 +314,7 @@ fail:
 }
 
 // If you want authz challenge and/or authz_url out of this, then authz_challenge and authz_url must be buffers of STIR_SHAKEN_BUFLEN length
-stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, stir_shaken_ca_t *ca, char *msg, char *authz_challenge, char *authz_url, stir_shaken_ca_session_t **session_out)
+stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, stir_shaken_ca_t *ca, char *msg, char *authz_challenge, char *authz_url, stir_shaken_ca_session_t **session_out, uint8_t use_ssl)
 {
 	jwt_t *jwt = NULL;
 	const char *spc = NULL;
@@ -398,7 +399,7 @@ stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, s
 	// TODO generate 'nb'
 	// TODO generate 'na'
 	// TODO generate Replay-Nonce
-	snprintf(gen_authz_url, STIR_SHAKEN_BUFLEN, "http://%s%s/%s", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc);
+	snprintf(gen_authz_url, STIR_SHAKEN_BUFLEN, "%s://%s%s/%s", use_ssl ? "https" : "http", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc);
 	gen_authz_challenge = stir_shaken_acme_generate_auth_challenge(ss, "pending", expires, csr, nb, na, gen_authz_url);
 	if (stir_shaken_zstr(gen_authz_challenge)) {
 		stir_shaken_set_error(ss, "Failed to create authorization challenge", STIR_SHAKEN_ERROR_ACME);
@@ -414,7 +415,7 @@ stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, s
 	}
 
 	// TODO queue challenge task/job
-	session = stir_shaken_ca_session_create(sp_code, gen_authz_challenge, csr, 0);
+	session = stir_shaken_ca_session_create(sp_code, gen_authz_challenge, csr, ca->use_ssl);
 	if (!session) {
 		stir_shaken_set_error(ss, "Cannot create authorization session", STIR_SHAKEN_ERROR_ACME_SESSION_CREATE);
 		goto fail;
@@ -521,7 +522,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 						goto fail;
 					}
 
-					if (STIR_SHAKEN_STATUS_OK != ca_sp_cert_req_reply_challenge(&ca->ss, ca, (char *) m->body.p, authz_challenge, authz_url, &session)) {
+					if (STIR_SHAKEN_STATUS_OK != ca_sp_cert_req_reply_challenge(&ca->ss, ca, (char *) m->body.p, authz_challenge, authz_url, &session, ca->use_ssl)) {
 						stir_shaken_set_error(&ca->ss, "Oops. Failed to process new SP cert req", STIR_SHAKEN_ERROR_ACME);
 						goto fail;
 					}
@@ -663,7 +664,7 @@ stir_shaken_status_t ca_create_session_challenge_details(stir_shaken_context_t *
 		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_ACME_AUTHZ_DETAILS);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
-	snprintf(authz_url, STIR_SHAKEN_BUFLEN, "http://%s%s/%s/%u", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc, secret);
+	snprintf(authz_url, STIR_SHAKEN_BUFLEN, "%s://%s%s/%s/%u", session->use_ssl ? "https" : "http", STI_CA_ACME_ADDR, STI_CA_ACME_AUTHZ_URL, spc, secret);
 
 	authz_challenge_details = stir_shaken_acme_generate_auth_challenge_details(ss, status, spc, token, authz_url);
 	if (stir_shaken_zstr(authz_challenge_details)) {
