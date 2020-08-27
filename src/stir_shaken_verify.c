@@ -128,7 +128,7 @@ static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
     return realsize;
 }
 
-stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport)
+stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
     stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
 
@@ -234,12 +234,7 @@ stir_shaken_status_t stir_shaken_jwt_download_cert(stir_shaken_context_t *ss, co
 
     return STIR_SHAKEN_STATUS_OK;
 
-stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport)
-{
-    unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-    unsigned char jwt_encoded[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-    int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
-    jwt_t *jwt = NULL;
+fail:
 
     stir_shaken_set_error_if_clear(ss, "Unknown error while verifying JWT", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 
@@ -605,10 +600,7 @@ stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, st
 
     return STIR_SHAKEN_STATUS_OK;
 
-    if (!passport) {
-        stir_shaken_set_error(ss, "PASSporT not set", STIR_SHAKEN_ERROR_GENERAL);
-        goto end;
-    }
+end:
 
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
         stir_shaken_set_error_if_clear(ss, "Unknown error while verifying PASSporT", STIR_SHAKEN_ERROR_GENERAL);
