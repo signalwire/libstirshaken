@@ -180,11 +180,6 @@ stir_shaken_status_t stir_shaken_jwt_download_cert(stir_shaken_context_t *ss, co
         goto fail;
     }
 
-    if (jwt_new(&jwt) != 0) {
-        stir_shaken_set_error(ss, "Cannot create JWT for the token", STIR_SHAKEN_ERROR_JWT);
-        goto fail;
-    }
-
     if (0 != jwt_decode(&jwt, token, NULL, 0)) {
         stir_shaken_set_error(ss, "Token is not JWT", STIR_SHAKEN_ERROR_JWT);
         goto fail;
@@ -519,16 +514,16 @@ stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const cha
     stir_shaken_clear_error(ss);
     memset(&http_req, 0, sizeof(http_req));
 
-
-    if (!sih) {
-        stir_shaken_set_error(ss, "SIP Identity Header not set", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
-        goto end;
-    }
-
-    if (!passport) {
-        stir_shaken_set_error(ss, "PASSporT not set", STIR_SHAKEN_ERROR_GENERAL);
-        goto end;
-    }
+	
+	if (!sih) {
+		stir_shaken_set_error(ss, "SIP Identity Header not set", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+		goto end;
+	}
+	
+	if (!passport) {
+		stir_shaken_set_error(ss, "PASSporT not set", STIR_SHAKEN_ERROR_GENERAL);
+		goto end;
+	}
 
     ss_status = stir_shaken_jwt_sih_to_jwt_encoded(ss, sih, &jwt_encoded[0], STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN);
     if (ss_status != STIR_SHAKEN_STATUS_OK) {

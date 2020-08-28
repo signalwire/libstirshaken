@@ -44,33 +44,35 @@ apt-get update && apt-get install -y automake autoconf libtool libcurl4-openssl-
 
 ### Build
 
-If you just want to get on with it, then please run
 ```
-./do_install.sh
-```
-This will install dependencies as well as tools needed to make build, and will build and install it on debian buster.
-If there are problems with dependencies, then install them manually and rerun `./do_install.sh`.
-This will build all Shaken targets if packages are installed.
-
-Please run `./do_install.sh` (debian specific) or perform these manual steps:
-
-```
-./bootstrap.sh
-./configure
 make
+```
+
+
+### Install
+
+```
 sudo make install
 ```
 
+In case of troubles with build see Troubleshooting.
+
+
 ### Test
+
+Test suite can be executed with
 
 ```
 make check
 ```
 
-## stirshaken Tool
+command in main folder. There is one special test (15) which tests it all,
+it runs the complete process of SP obtaining STI cert from CA. By default this test will mock CA process and HTTP transfers,
+but it can also be tested with real CA running and HTTP transfers executed, for this run test with 'nomock' argument.
+It will download STI cert from CA, given you run it somewhere with reference data, e.g:
+	./stirshaken ca --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA Test" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "ca.shaken.signalwire.com/sti-ca/acme/TNAuthList" --vvv --port 8082
 
-```
-make stirshaken
+
 
 openssl req -in csr.pem -text -noout
 openssl x509 -in sp.pem -text -noout
@@ -137,3 +139,13 @@ draft-barnes-acme-service-provider, ACME Identifiers and Challenges for VoIP Ser
 * draft-ietf-stir-oob
 * draft-ietf-acme-authority-token-tnauthlist
 
+
+### Troubleshooting
+
+If build goes terribly wrong then as a last resort please have a look at 
+
+```
+./do_install.sh
+```
+
+This script contains list of steps performed initially for original build on debian 10 buster, so you can get the idea of what deps you need, etc.
