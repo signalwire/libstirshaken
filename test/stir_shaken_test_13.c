@@ -10,7 +10,9 @@ const char *path = "./test/run";
         printf("Error code is: '%d'\n", error_code); \
     }
 
-stir_shaken_status_t stir_shaken_unit_test_hash(void)
+stir_shaken_sp_t sp;
+
+stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 {
     EVP_PKEY *pkey = NULL;
     stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
