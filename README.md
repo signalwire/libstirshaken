@@ -66,7 +66,7 @@ Test suite can be executed with
 make check
 ```
 
-command in main folder. There is one special test (15) which tests it all,
+command in main folder. There is one special test (13) which tests it all,
 
 it runs the complete process of SP obtaining STI cert from CA. By default this test will mock CA process and HTTP transfers,
 
