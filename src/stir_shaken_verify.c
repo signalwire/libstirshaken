@@ -531,7 +531,7 @@ stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const cha
         goto end;
     }
 
-    ss_status = stir_shaken_jwt_verify_and_check_x509_cert_path(ss, jwt_encoded, &cert, &jwt);
+    ss_status = stir_shaken_jwt_verify_and_check_x509_cert_path(ss, (char *) jwt_encoded, &cert, &jwt);
     if (ss_status != STIR_SHAKEN_STATUS_OK) {
         stir_shaken_set_error(ss, "JWT verification with X509 cert path check unsuccessful", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
         goto end;
