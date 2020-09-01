@@ -758,7 +758,7 @@ stir_shaken_status_t ca_verify_spc(stir_shaken_context_t *ss, jwt_t *spc_jwt, un
 	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from session) is: %llu\n", spc);
 
 	if (sp_code != spc) {
-		snprintf(err_buf, STIR_SHAKEN_BUFLEN, "SPC from SPC token (%llu) does not match this session SPC (%zu) (was cert request initiated for different SPC?)", sp_code, spc);
+		snprintf(err_buf, STIR_SHAKEN_BUFLEN, "SPC from SPC token (%llu) does not match this session SPC (%llu) (was cert request initiated for different SPC?)", sp_code, spc);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
 	}
 

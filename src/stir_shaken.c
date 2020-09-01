@@ -2,7 +2,7 @@
 
 
 stir_shaken_globals_t stir_shaken_globals;
-
+stir_shaken_status_t	(*stir_shaken_make_http_req)(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req) = stir_shaken_make_http_req_real;
 
 static void stir_shaken_init(void)
 {

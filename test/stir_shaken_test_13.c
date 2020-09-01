@@ -182,7 +182,7 @@ stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, s
 
                 if (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_GET) {
 
-                    if (session->state = STI_CA_SESSION_STATE_POLLING) {
+                    if (session->state == STI_CA_SESSION_STATE_POLLING) {
 
                         polling++;
 
@@ -372,10 +372,10 @@ authorization_result:
                 fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(MOCK) HTTP/1.1 200 OK\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen((const char *)cert), cert);
 
                 free(http_req->response.mem.mem);
-                certlen = strlen(cert);
+                certlen = strlen((char *)cert);
                 stir_shaken_assert(http_req->response.mem.mem = malloc(certlen + 1), "Malloc failed");
                 memset(http_req->response.mem.mem, 0, certlen + 1);
-                strncpy(http_req->response.mem.mem, cert, certlen);
+                strncpy(http_req->response.mem.mem, (char *) cert, certlen);
 
                 session->state = STI_CA_SESSION_STATE_DONE;
 
