@@ -2037,7 +2037,7 @@ stir_shaken_status_t stir_shaken_load_key_raw(stir_shaken_context_t *ss, const c
     rewind(fp);
 
     if (*key_raw_len <= sz) {
-        sprintf(err_buf, "Buffer for key from file %s too short", file);
+        sprintf(err_buf, "Buffer for key from file %s too short (%u <= %u)", file, *key_raw_len, sz);
         stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
         goto err;
     }
@@ -2257,7 +2257,7 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
     pk = stir_shaken_load_privkey_from_file(ss, private_key_full_name);
     if (!pk) {
         sprintf(err_buf, "Failed to read private key from file %s", private_key_full_name);
-        stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+        stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
         goto fail;
     }
     *priv = pk;
@@ -2272,7 +2272,7 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
     if (priv_raw) {
         if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, private_key_full_name, priv_raw, priv_raw_len)) {
             sprintf(err_buf, "Generate keys: Error reading raw private key from file %s", private_key_full_name);
-            stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
+            stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_GENERAL);
             goto fail;
         }
     }
@@ -2280,7 +2280,7 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
     pk = stir_shaken_load_pubkey_from_file(ss, public_key_full_name);
     if (!pk) {
         sprintf(err_buf, "Failed to read public key from file %s", public_key_full_name);
-        stir_shaken_set_error_if_clear(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
+        stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL);
         goto fail;
     }
     *pub = pk;

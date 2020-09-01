@@ -17,6 +17,7 @@ You can find a list of specs relevant to Shaken at the bottom of this document.
 	include/	- library headers
 	util/		- helper programs (stirshaken tool for running multiple commands, see below)
 	test/		- unit tests
+	examples/	- examples
 ```
 
 ## Compilation
