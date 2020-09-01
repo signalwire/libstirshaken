@@ -476,17 +476,12 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
     http_req.url = strdup(url);
     http_req.remote_port = 8082;
 
-    if (STIR_SHAKEN_STATUS_OK != stir_shaken_sp_cert_req_ex(&ss, &http_req, kid, nonce, sp.csr.req, nb, na, spc, sp.keys.priv_raw, sp.keys.priv_raw_len, NULL, spc_token)) {
+    status = stir_shaken_sp_cert_req_ex(&ss, &http_req, kid, nonce, sp.csr.req, nb, na, spc, sp.keys.priv_raw, sp.keys.priv_raw_len, NULL, spc_token);
+    if (status != STIR_SHAKEN_STATUS_OK) {
         printf("STIR-Shaken: Failed to execute cert request\n");
         PRINT_SHAKEN_ERROR_IF_SET
-
-            if (error_code == 2) {
-                printf("STIR-Shaken: Server is not available, skipping this test... If you want to see the results, you can run this test only with: ./stir_shaken_test_all\n");
-                return STIR_SHAKEN_STATUS_OK;
-            }
-
-        return STIR_SHAKEN_STATUS_TERM;
     }
+    stir_shaken_assert(STIR_SHAKEN_STATUS_OK == status, "Test-it-all cert request failed\n");
 
     stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_load_x509_from_mem(&ss, &sp.cert.x, NULL, http_req.response.mem.mem), "Failed to load X509 from memory");
     stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_x509_to_disk(&ss, sp.cert.x, "test/run/all_sp.pem"), "Failed to save the certificate");
