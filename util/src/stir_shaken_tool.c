@@ -20,6 +20,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s --%s URL --%s port\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s --%s URL --%s port --%s key --%s key --%s csr.pem --%s CODE --%s SPC_TOKEN -f CERT_NAME\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL, OPTION_NAME_PORT, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_CSR, OPTION_NAME_SPC, OPTION_NAME_SPC_TOKEN);
+	fprintf(stderr, "\t\t %s --%s key --%s x5u_URL -f passport_file_name\n", COMMAND_NAME_PASSPORT_CREATE, OPTION_NAME_PRIVKEY, OPTION_NAME_URL);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "\t\t Each command accepts setting print/logging verbosity level:\n");
 	fprintf(stderr, "\t\t --v\t\tbasic logging\n");
@@ -31,14 +32,15 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s			: generate key pair\n", COMMAND_NAME_KEYS);
 	fprintf(stderr, "\t\t %s			: generate X509 certificate request for SP identified by SP Code given to --spc\n", COMMAND_NAME_CSR);
 	fprintf(stderr, "\t\t %s			: generate X509 certificate (end entity for --type %s and self-signed for --type %s)\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE_SP, OPTION_NAME_TYPE_CA);
-	fprintf(stderr, "\t\t %s		: save CA certificate under hashed name (in this form it can be put into CA dir)\n", COMMAND_NAME_HASH_CERT);
+	fprintf(stderr, "\t\t %s			: save CA certificate under hashed name (in this form it can be put into CA dir)\n", COMMAND_NAME_HASH_CERT);
 	fprintf(stderr, "\t\t %s		: generate SPC token for SP identified by SP Code given to --spc (set token's PA issuer to name given as --%s, and token's x5u URL of the PA certificate to URL given as --%s)\n", COMMAND_NAME_SPC_TOKEN, OPTION_NAME_ISSUER_CN, OPTION_NAME_URL);
-	fprintf(stderr, "\t\t %s			: decode JWT and verify signature using public key given to --%s\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_PUBKEY);
-	fprintf(stderr, "\t\t %s			: decode JWT and print it (do not verify signature)\n", COMMAND_NAME_JWT_DUMP);
+	fprintf(stderr, "\t\t %s		: decode JWT and verify signature using public key given to --%s\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_PUBKEY);
+	fprintf(stderr, "\t\t %s		: decode JWT and print it (do not verify signature)\n", COMMAND_NAME_JWT_DUMP);
 	fprintf(stderr, "\t\t %s			: run CA service on port given to --%s (add \"--%s --%s cert.pem --%s key.pem\" for HTTPS)\n", COMMAND_NAME_CA, OPTION_NAME_PORT, OPTION_NAME_SSL, OPTION_NAME_SSL_CERT, OPTION_NAME_SSL_KEY);
 	fprintf(stderr, "\t\t %s			: run PA service on port given to --%s\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s		: request SP Code token from PA at url given to --%s\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
-	fprintf(stderr, "\t\t %s		: request SP certificate for Service Provider identified by number given to --%s from CA at url given to --%s on port given to --%s\n\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_SPC, OPTION_NAME_URL, OPTION_NAME_PORT);
+	fprintf(stderr, "\t\t %s		: request SP certificate for Service Provider identified by number given to --%s from CA at url given to --%s on port given to --%s\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_SPC, OPTION_NAME_URL, OPTION_NAME_PORT);
+	fprintf(stderr, "\t\t %s	: generate PASSporT with x5u pointing to given URL and sign it using specified private key\n\n", COMMAND_NAME_PASSPORT_CREATE);
 	fprintf(stderr, "\n");
 }
 
@@ -307,7 +309,7 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "\n=== PARSING COMMAND\n\n");
 	command = stirshaken_command_configure(&ss, argv[optind], &ca, &pa, &sp, &options);
 	if (COMMAND_UNKNOWN == command) {
-		fprintf(stderr, "\nError. Invalid command. Type %s --help for usage instructions\n", argv[0]);
+		fprintf(stderr, "\nError. Command failed parsing. Type %s --help for usage instructions\n", argv[0]);
 		PRINT_SHAKEN_ERROR_IF_SET
 		goto fail;
 	}
@@ -315,14 +317,14 @@ int main(int argc, char *argv[])
 
 	fprintf(stderr, "\n=== VALIDATING COMMAND\n\n");
 	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_validate(&ss, command, &ca, &pa, &sp, &options)) {
-		fprintf(stderr, "\nError. Invalid parameters. Type %s --help for usage instructions\n", argv[0]);
+		fprintf(stderr, "\nError. Command did not pass validation. Type %s --help for usage instructions\n", argv[0]);
 		PRINT_SHAKEN_ERROR_IF_SET
 		goto fail;
 	}
 
 	fprintf(stderr, "\n=== PROCESSING COMMAND\n\n");
 	if (STIR_SHAKEN_STATUS_OK != stirshaken_command_execute(&ss, command, &ca, &pa, &sp, &options)) {
-		fprintf(stderr, "\nError. Command failed.\n");
+		fprintf(stderr, "\nError. Command execution failed.\n");
 		PRINT_SHAKEN_ERROR_IF_SET
 		goto fail;
 	}
