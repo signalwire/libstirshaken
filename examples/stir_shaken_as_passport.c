@@ -8,6 +8,7 @@
  * 2. Create PASSporT stir_shaken_passport_params_t params = { .x5u = "https://sp.com/sp.pem", (...) }
  * 3. OPTIONALLY Get plain form of PASSporT (decoded, i.e. without signature) with stir_shaken_passport_dump_str
  * 4. Get signed PASSporT with stir_shaken_passport_sign
+ * 5. For Shaken over SIP: Get PASSporT wrapped into SIP Identity Header
  *  
  **/
 
@@ -20,7 +21,7 @@ int main(void)
 	stir_shaken_passport_t passport = {0};
 	stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
 
-	char *s = NULL;
+	char *s = NULL, *sih = NULL;
 	EC_KEY *ec_key = NULL;
 	EVP_PKEY *private_key = NULL;
 	EVP_PKEY *public_key = NULL;
@@ -141,9 +142,28 @@ int main(void)
 		ret = -6;
 		goto fail;
 	}
-	printf("PASSporT encoded (signed) is:\n%s\n", s);
+	printf("\nPASSporT encoded (signed) is:\n%s\n", s);
 	stir_shaken_free_jwt_str(s);
 	s = NULL;
+
+	// Get PASSporT wrapped into SIP Identity Header
+	priv_raw_len = sizeof(priv_raw);
+	sih = stir_shaken_jwt_sip_identity_create(&ss, &passport, priv_raw, priv_raw_len);
+	if (!sih) {
+
+		printf("Failed to create SIP Identity Header from JWT PASSporT");
+		if (stir_shaken_is_error_set(&ss)) {
+			error_description = stir_shaken_get_error(&ss, &error_code);
+			printf("Error description is: '%s'\n", error_description);
+			printf("Error code is: '%d'\n", error_code);
+		}
+
+		ret = -7;
+		goto fail;
+	}
+	printf("\nSIP Identity Header is:\n%s\n\n", sih);
+
+	free(sih); sih = NULL;
 
 	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
 	stir_shaken_file_remove("sp.priv");
