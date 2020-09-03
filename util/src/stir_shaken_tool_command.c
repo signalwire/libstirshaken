@@ -72,6 +72,9 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		ca->ca.port = options->port;
 		strncpy(ca->ca.private_key_name, options->private_key_name, STIR_SHAKEN_BUFLEN);
 		strncpy(ca->ca.cert_name, options->ca_cert, STIR_SHAKEN_BUFLEN);
+		ca->ca.use_ssl = options->use_ssl;
+		strncpy(ca->ca.ssl_cert_name, options->ssl_cert_name, STIR_SHAKEN_BUFLEN);
+		strncpy(ca->ca.ssl_key_name, options->ssl_key_name, STIR_SHAKEN_BUFLEN);
 		strncpy(ca->ca.issuer_c, options->issuer_c, STIR_SHAKEN_BUFLEN);
 		strncpy(ca->ca.issuer_cn, options->issuer_cn, STIR_SHAKEN_BUFLEN);
 		strncpy(ca->ca.tn_auth_list_uri, options->tn_auth_list_uri, STIR_SHAKEN_BUFLEN);
@@ -111,7 +114,6 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		return COMMAND_JWT_DUMP;
 
 	} else if (!strcmp(command_name, COMMAND_NAME_PASSPORT_CREATE)) {
-
 		return COMMAND_PASSPORT_CREATE;
 
 	} else {
@@ -210,6 +212,14 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 			if (stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri) || ca->ca.serial == 0) {
 				goto fail;
 			}
+			if (ca->ca.use_ssl && stir_shaken_zstr(ca->ca.ssl_cert_name)) {
+				fprintf(stderr, "ERROR: SSL cannot be started because cert is missing (please specify ssl certificate with --%s argument)\n\n", OPTION_NAME_SSL_CERT);
+				goto fail;
+			}
+			if (ca->ca.use_ssl && stir_shaken_zstr(ca->ca.ssl_key_name)) {
+				fprintf(stderr, "ERROR: SSL cannot be started because key is missing (please specify ssl key with --%s argument)\n\n", OPTION_NAME_SSL_KEY);
+				goto fail;
+			}
 			break;
 
 		case COMMAND_PA:
@@ -231,6 +241,7 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 			STIR_SHAKEN_CHECK_CONVERSION_EXT
 				sp->sp.code = helper;
 			break;
+
 
 		case COMMAND_JWT_KEY_CHECK:
 
@@ -594,14 +605,17 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			}
 
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT is:\n\n%s\n", jwt_decoded);
-			free(jwt_decoded);
+
+			stir_shaken_free_jwt_str(jwt_decoded);
+			jwt_decoded = NULL;
+
 			break;
 
 		case COMMAND_PASSPORT_CREATE:
 
 			{
 				stir_shaken_passport_params_t params = {
-					.x5u = strdup(options->url),
+					.x5u = options->url,
 					.attest = "A",
 					.desttn_key = "tn",
 					.desttn_val = "01256500600",
@@ -683,6 +697,8 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 				free(sih);
 				sih = NULL;
+
+				stir_shaken_passport_destroy(&passport);
 			}
 			break;
 
