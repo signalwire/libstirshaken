@@ -20,6 +20,7 @@
 #define COMMAND_PA				10
 #define COMMAND_SP_SPC_REQ		11
 #define COMMAND_SP_CERT_REQ		12
+#define COMMAND_PASSPORT_CREATE	13
 #define COMMAND_UNKNOWN			100
 
 #define COMMAND_NAME_KEYS			"keys"
@@ -35,6 +36,7 @@
 #define COMMAND_NAME_PA				"pa"
 #define COMMAND_NAME_SP_SPC_REQ		"sp-spc-req"
 #define COMMAND_NAME_SP_CERT_REQ	"sp-cert-req"
+#define COMMAND_NAME_PASSPORT_CREATE	"passport-create"
 #define COMMAND_NAME_UNKNOWN		"unknown"
 
 #define OPTION_PUBKEY		1
