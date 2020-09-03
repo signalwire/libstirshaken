@@ -209,6 +209,33 @@ stir_shaken_status_t stir_shaken_save_to_file(stir_shaken_context_t *ss, const c
     return STIR_SHAKEN_STATUS_OK;
 }
 
+stir_shaken_status_t stir_shaken_append_to_file(stir_shaken_context_t *ss, const char *data, const char *name)
+{
+    FILE			*fp = NULL;
+    size_t			datalen = 0;
+
+    if (!data || stir_shaken_zstr(name)) {
+        return STIR_SHAKEN_STATUS_TERM;
+    }
+
+    datalen = strlen(data);
+
+    fp = fopen(name, "a");
+    if (!fp) {
+        stir_shaken_set_error(ss, "Can't open file for writing", STIR_SHAKEN_ERROR_FILE_OPEN);
+        return STIR_SHAKEN_STATUS_RESTART;
+    }
+
+    if (datalen != fwrite(data, 1, datalen, fp)) {
+        fclose(fp);
+        stir_shaken_set_error(ss, "Error writing to file", STIR_SHAKEN_ERROR_FILE_WRITE);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
+
+    fclose(fp);
+    return STIR_SHAKEN_STATUS_OK;
+}
+
 static const char stir_shaken_b64_table[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 #define B64BUFFLEN 1024
 
