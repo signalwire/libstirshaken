@@ -467,11 +467,11 @@ static const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
     if (stir_shaken_is_error_set(ss)) {
 
         if (!stir_shaken_zstr(ss->err_buf3)) {
-            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2, ss->err_buf3);
+            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2, ss->err_buf3);
         } else if (!stir_shaken_zstr(ss->err_buf2)) {
-            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2);
+            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2);
         } else if (!stir_shaken_zstr(ss->err_buf1)) {
-            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom):\n[ERR 0] %s\n[ERR 1] %s\n", ss->err_buf0, ss->err_buf1);
+            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom), outermost first - deepest last:\n[ERR 0] %s\n[ERR 1] %s\n", ss->err_buf0, ss->err_buf1);
         } else {
             snprintf(ss->err, sizeof(ss->err), "[ERR 0] %s\n", ss->err_buf0);
         }
