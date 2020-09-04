@@ -104,6 +104,9 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		strncpy(sp->sp.cert_name, options->file, STIR_SHAKEN_BUFLEN);
 		return COMMAND_SP_CERT_REQ;
 
+	} else if (!strcmp(command_name, COMMAND_NAME_JWT_KEY_CHECK)) {
+		return COMMAND_JWT_KEY_CHECK;
+
 	} else if (!strcmp(command_name, COMMAND_NAME_JWT_CHECK)) {
 		return COMMAND_JWT_CHECK;
 
@@ -111,7 +114,6 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		return COMMAND_JWT_DUMP;
 
 	} else if (!strcmp(command_name, COMMAND_NAME_PASSPORT_CREATE)) {
-
 		return COMMAND_PASSPORT_CREATE;
 
 	} else {
@@ -240,9 +242,17 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 				sp->sp.code = helper;
 			break;
 
-		case COMMAND_JWT_CHECK:
+
+		case COMMAND_JWT_KEY_CHECK:
 
 			if (stir_shaken_zstr(options->public_key_name) || stir_shaken_zstr(options->jwt)) {
+				goto fail;
+			}
+			break;
+
+		case COMMAND_JWT_CHECK:
+
+			if (stir_shaken_zstr(options->jwt)) {
 				goto fail;
 			}
 			break;
@@ -294,6 +304,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 	char			token[STIR_SHAKEN_BUFLEN] = { 0 };
 	jwt_t			*jwt = NULL;
 	char            *jwt_decoded = NULL;
+	stir_shaken_cert_t *cert = NULL;
 	char *p1 = NULL, *p2 = NULL, *sih = NULL;
 	stir_shaken_passport_t passport = {0};
 
@@ -534,15 +545,15 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Starting PA service...\n");
 			break;
 
-		case COMMAND_JWT_CHECK:
+		case COMMAND_JWT_KEY_CHECK:
 
-			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading keys...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading key...\n");
 			options->keys.pub_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, options->public_key_name, options->keys.pub_raw, &options->keys.pub_raw_len)) {
 				goto fail;
 			}
 
-			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT...\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT against the key...\n");
 			if (jwt_decode(&jwt, options->jwt, options->keys.pub_raw, options->keys.pub_raw_len)) {
 				stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT and public key don't match\n");
@@ -553,6 +564,31 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 			jwt_free(jwt);
 			jwt = NULL;
+			break;
+
+		case COMMAND_JWT_CHECK:
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT...\n");
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(ss, options->jwt, &cert, &jwt)) {
+				stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT failed verification against referenced certificate\n");
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_read_cert_fields(ss, cert)) {
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Cannot parse referenced certificate\n");
+				goto fail;
+			}
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Referenced certificate is:\n\n");
+			stir_shaken_print_cert_fields(stderr, cert);
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nVerified. JWT matches the referenced certificate\n");
+
+			jwt_free(jwt);
+			jwt = NULL;
+			stir_shaken_destroy_cert(cert);
+			free(cert);
+			cert = NULL;
 			break;
 
 		case COMMAND_JWT_DUMP:
@@ -569,6 +605,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 			}
 
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT is:\n\n%s\n", jwt_decoded);
+
 			stir_shaken_free_jwt_str(jwt_decoded);
 			jwt_decoded = NULL;
 
@@ -587,7 +624,6 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 					.origtn_val = "01256789999",
 					.origid = "ref"
 				};
-				char *filebuf = NULL;
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading key...\n");
 				options->keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;

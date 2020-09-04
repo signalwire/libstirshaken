@@ -15,12 +15,13 @@
 #define COMMAND_HASH_CERT	    5
 #define COMMAND_SPC_TOKEN		6
 #define COMMAND_JWT_CHECK		7
-#define COMMAND_JWT_DUMP		8
-#define COMMAND_CA				9
-#define COMMAND_PA				10
-#define COMMAND_SP_SPC_REQ		11
-#define COMMAND_SP_CERT_REQ		12
-#define COMMAND_PASSPORT_CREATE	13
+#define COMMAND_JWT_KEY_CHECK	8
+#define COMMAND_JWT_DUMP		9
+#define COMMAND_CA				10
+#define COMMAND_PA				11
+#define COMMAND_SP_SPC_REQ		12
+#define COMMAND_SP_CERT_REQ		13
+#define COMMAND_PASSPORT_CREATE	14
 #define COMMAND_UNKNOWN			100
 
 #define COMMAND_NAME_KEYS			"keys"
@@ -31,6 +32,7 @@
 #define COMMAND_NAME_HASH_CERT	    "hash"
 #define COMMAND_NAME_SPC_TOKEN		"spc-token"
 #define COMMAND_NAME_JWT_CHECK		"jwt-check"
+#define COMMAND_NAME_JWT_KEY_CHECK	"jwt-key-check"
 #define COMMAND_NAME_JWT_DUMP		"jwt-dump"
 #define COMMAND_NAME_CA				"ca"
 #define COMMAND_NAME_PA				"pa"
@@ -94,48 +96,48 @@
 #define OPTION_NAME_VVV			"vvv"
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
-    if (stir_shaken_is_error_set(&ss)) { \
+	if (stir_shaken_is_error_set(&ss)) { \
 		error_description = stir_shaken_get_error(&ss, &error_code); \
 		printf("Error description is: %s\n", error_description); \
 		printf("Error code is: %d\n", error_code); \
 	}
 
 #define PRINT_SHAKEN_ERROR_IF_SET_PTR \
-    if (stir_shaken_is_error_set(ss)) { \
+	if (stir_shaken_is_error_set(ss)) { \
 		error_description = stir_shaken_get_error(ss, &error_code); \
 		printf("Error description is: '%s'\n", error_description); \
 		printf("Error code is: '%d'\n", error_code); \
 	}
 
 #define STIR_SHAKEN_CHECK_CONVERSION \
-				if (helper > 0x10000 - 1) { \
-					stirshaken_range_error(c, helper); \
-					goto fail; \
-				} \
-				if ((pCh == optarg) || (*pCh != '\0')) { \
-					fprintf(stderr, "Invalid argument\n"); \
-					fprintf(stderr, "Parameter conversion error, nonconvertible part is: [%s]\n", pCh); \
-					help_hint(argv[0]); \
-					goto fail; \
-				}
+	if (helper > 0x10000 - 1) { \
+		stirshaken_range_error(c, helper); \
+		goto fail; \
+	} \
+	if ((pCh == optarg) || (*pCh != '\0')) { \
+		fprintf(stderr, "Invalid argument\n"); \
+		fprintf(stderr, "Parameter conversion error, nonconvertible part is: [%s]\n", pCh); \
+		help_hint(argv[0]); \
+		goto fail; \
+	}
 
 #define STIR_SHAKEN_CHECK_CONVERSION_EXT \
-			helper = strtoul(sp->spc, &pCh, 10); \
-			if (helper > 0x10000 - 1) { \
-				fprintf(stderr, "\nERR, argument too big [%llu]\n\n", helper); \
-				goto fail; \
-			} \
-			if ((pCh == optarg) || (*pCh != '\0')) { \
-				fprintf(stderr, "Invalid argument\n"); \
-				fprintf(stderr, "Parameter conversion error, nonconvertible part is: [%s]\n", pCh); \
-				goto fail; \
-			}
+	helper = strtoul(sp->spc, &pCh, 10); \
+	if (helper > 0x10000 - 1) { \
+		fprintf(stderr, "\nERR, argument too big [%llu]\n\n", helper); \
+		goto fail; \
+	} \
+	if ((pCh == optarg) || (*pCh != '\0')) { \
+		fprintf(stderr, "Invalid argument\n"); \
+		fprintf(stderr, "Parameter conversion error, nonconvertible part is: [%s]\n", pCh); \
+		goto fail; \
+	}
 
 #define STIR_SHAKEN_CHECK_OPTARG \
-				if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) { \
-					fprintf(stderr, "Option value too long\n"); \
-					goto fail; \
-				}
+	if (strlen(optarg) > STIR_SHAKEN_BUFLEN - 1) { \
+		fprintf(stderr, "Option value too long\n"); \
+		goto fail; \
+	}
 
 #define CA_DIR	NULL
 #define CRL_DIR	NULL
@@ -198,7 +200,7 @@ struct options {
 	char url[STIR_SHAKEN_BUFLEN];
 	char jwt[STIR_SHAKEN_BUFLEN];
 	int loglevel;
-    uint8_t use_ssl;
+	uint8_t use_ssl;
 	char ssl_cert_name[STIR_SHAKEN_BUFLEN];
 	char ssl_key_name[STIR_SHAKEN_BUFLEN];
 } options;
