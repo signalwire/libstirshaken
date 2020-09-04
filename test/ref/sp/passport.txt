@@ -1,0 +1,22 @@
+PASSporT is:
+
+{
+    "alg": "ES256",
+    "ppt": "shaken",
+    "typ": "passport",
+    "x5u": "http://shaken.signalwire.com/sp.pem"
+}
+.
+{
+    "attest": "A",
+    "dest": "{\"tn\":\"01256500600\"}",
+    "iat": 1599258938,
+    "orig": "{\"tn\":\"01256789999\"}",
+    "origid": "ref"
+}
+
+PASSporT signed is:
+eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNvbS9zcC5wZW0ifQ.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTU5OTI1ODkzOCwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.p_lhqTk-zBBNcsZgv5gNmO63xrbvapMwZmqmN2NwfbiJB2VxBait5EeUxgDpFs30EC7r4cm8tQD8CV2gFkFEtw
+
+SIP Identity Header with PASSporT is:
+eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNvbS9zcC5wZW0ifQ.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTU5OTI1ODkzOCwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.URaXwA1TcXJtqfbGKT_FH14y8KgCGM4mrJW8ApdEb2bhstrErjDMSEY1llsAV_zxcWpyIf5hUIk_XI4WpkVACw;info=<http://shaken.signalwire.com/sp.pem>;alg=ES256;ppt=shaken
