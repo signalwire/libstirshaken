@@ -41,17 +41,10 @@ int main(void)
 	};
 
 
-	status = stir_shaken_do_init(NULL, NULL, NULL, STIR_SHAKEN_LOGLEVEL_HIGH);
+	status = stir_shaken_do_init(&ss, NULL, NULL, STIR_SHAKEN_LOGLEVEL_HIGH);
 	if (STIR_SHAKEN_STATUS_OK != status) {
-
 		printf("Cannot init lib\n");
-		if (stir_shaken_is_error_set(&ss)) {
-			error_description = stir_shaken_get_error(&ss, &error_code);
-			printf("Error description is: '%s'\n", error_description);
-			printf("Error code is: '%d'\n", error_code);
-		}
-
-		return -1;
+		goto fail;
 	}
 
 	// If you do have your private SSL key already, load it
@@ -63,45 +56,24 @@ int main(void)
 		// status = stir_shaken_load_keys(&ss, &ec_key, &private_key, &public_key, "sp.priv", "sp.pub", priv_raw, &priv_raw_len);
 
 		if (STIR_SHAKEN_STATUS_OK != status) {
-
 			printf("Cannot load SSL key\n");
-			if (stir_shaken_is_error_set(&ss)) {
-				error_description = stir_shaken_get_error(&ss, &error_code);
-				printf("Error description is: '%s'\n", error_description);
-				printf("Error code is: '%d'\n", error_code);
-			}
-
-			return -2;
+			goto fail;
 		}
 	} else {
 
 		// If you do not have SSL keys yet, generate them
 		status = stir_shaken_generate_keys(&ss, &ec_key, &private_key, &public_key, "sp.priv", "sp.pub", priv_raw, &priv_raw_len);
 		if (STIR_SHAKEN_STATUS_OK != status) {
-
 			printf("Cannot generate SSL keys\n");
-			if (stir_shaken_is_error_set(&ss)) {
-				error_description = stir_shaken_get_error(&ss, &error_code);
-				printf("Error description is: '%s'\n", error_description);
-				printf("Error code is: '%d'\n", error_code);
-			}
-
-			return -3;
+			goto fail;
 		}
 	}
 
 	// Assign parameters to PASSporT
 	status = stir_shaken_passport_init(&ss, &passport, &params, priv_raw, priv_raw_len);
 	if (STIR_SHAKEN_STATUS_OK != status) {
-
 		printf("Cannot generate PASSporT\n");
-		if (stir_shaken_is_error_set(&ss)) {
-			error_description = stir_shaken_get_error(&ss, &error_code);
-			printf("Error description is: '%s'\n", error_description);
-			printf("Error code is: '%d'\n", error_code);
-		}
-
-		return -4;
+		goto fail;
 	}
 
 	// Get plain version of PASSporT (decoded, not signed, with no signature)
@@ -113,15 +85,7 @@ int main(void)
 	// Encode (sign) using default key (key given to stir_shaken_passport_init)
 	status = stir_shaken_passport_sign(&ss, &passport, NULL, 0, &s);
 	if (STIR_SHAKEN_STATUS_OK != status) {
-
 		printf("Cannot sign PASSporT\n");
-		if (stir_shaken_is_error_set(&ss)) {
-			error_description = stir_shaken_get_error(&ss, &error_code);
-			printf("Error description is: '%s'\n", error_description);
-			printf("Error code is: '%d'\n", error_code);
-		}
-
-		ret = -5;
 		goto fail;
 	}
 	printf("PASSporT encoded (signed) is:\n%s\n", s);
@@ -131,15 +95,7 @@ int main(void)
 	// Encode (sign) using specific key
 	status = stir_shaken_passport_sign(&ss, &passport, priv_raw, priv_raw_len, &s);
 	if (STIR_SHAKEN_STATUS_OK != status) {
-
 		printf("Cannot sign PASSporT\n");
-		if (stir_shaken_is_error_set(&ss)) {
-			error_description = stir_shaken_get_error(&ss, &error_code);
-			printf("Error description is: '%s'\n", error_description);
-			printf("Error code is: '%d'\n", error_code);
-		}
-
-		ret = -6;
 		goto fail;
 	}
 	printf("\nPASSporT encoded (signed) is:\n%s\n", s);
@@ -150,15 +106,7 @@ int main(void)
 	priv_raw_len = sizeof(priv_raw);
 	sih = stir_shaken_jwt_sip_identity_create(&ss, &passport, priv_raw, priv_raw_len);
 	if (!sih) {
-
 		printf("Failed to create SIP Identity Header from JWT PASSporT");
-		if (stir_shaken_is_error_set(&ss)) {
-			error_description = stir_shaken_get_error(&ss, &error_code);
-			printf("Error description is: '%s'\n", error_description);
-			printf("Error code is: '%d'\n", error_code);
-		}
-
-		ret = -7;
 		goto fail;
 	}
 	printf("\nSIP Identity Header is:\n%s\n\n", sih);
@@ -174,11 +122,17 @@ int main(void)
 	return 0;
 
 fail:
+
+	if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is:\n%s\n", error_description);
+		printf("Error code is: %d\n", error_code);
+	}
 	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
 	stir_shaken_file_remove("sp.priv");
 	stir_shaken_file_remove("sp.pub");
 	stir_shaken_passport_destroy(&passport);
 	stir_shaken_do_deinit();
 
-	return ret;
+	return -1;
 }
