@@ -352,6 +352,7 @@ typedef struct stir_shaken_http_response_s {
 } stir_shaken_http_response_t;
 
 #define STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT 80u
+#define STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT_HTTPS 443u
 
 typedef enum stir_shaken_action_type {
 	STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_INIT,

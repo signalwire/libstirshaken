@@ -83,10 +83,10 @@ but it can also be tested with real CA running and HTTP transfers executed, for 
 
 It will download STI cert from CA, given you run it somewhere with reference data, e.g:
 
-	./stirshaken ca --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA Test" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "ca.shaken.signalwire.com/sti-ca/acme/TNAuthList" --vvv --port 8082
+	./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA Test" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "https://ca.shaken.signalwire.com/sti-ca/acme/TNAuthList" --pa_cert test/ref/pa/pa.pem --vvv
 
 	CA can be configured with SSL:
-		./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA Test" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "TNAuthList(URI)" --ssl --ssl_cert fullchain.cer --ssl_key key.pem --vvv
+		./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "TNAuthList(URI)" --pa_cert test/ref/pa/pa.pem --ssl --ssl_cert fullchain.cer --ssl_key key.pem --vvv
 
 
 ### Helpful commands from SSL
@@ -116,6 +116,8 @@ sudo ./stirshaken ca --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "Si
 
 ./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "TNAuthList(URI)" --ssl -ssl_cert cert.pem --ssl_key key.pem --vvv
 
+./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "TNAuthList(URI)" --pa_cert test/ref/pa/pa.pem --ssl --ssl_cert fullchain.cer --ssl_key key.pem --vvv
+
 ./stirshaken passport-create --privkey test/ref/pa/pa.priv --url https://pa.shaken.signalwire.com/pa.pem -f passport_ssl.txt
 
 nohup sudo ./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 10000 --ca_cert test/ref/ca/ca.pem --uri https://190.102.98.199/sti-ca/authority-over-the-number-check/1 --vvv 2> /var/log/ca.err > /var/log/ca.log &
@@ -140,8 +142,7 @@ nohup sudo ./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c 
 
 ./stirshaken sp-cert-req --url https://localhost/sti-ca/acme/cert --privkey priv.key --pubkey pub.key --csr csr.pem --spc 12 --spc_token SPCT --v
 
-./stirshaken sp-cert-req --url 190.102.98.199/sti-ca/acme/cert --privkey priv.pem --pubkey pub.pem  --csr csr.pem --spc 1 -f sp.pem --vvv --port 8082 --spc_token eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoiaHR0cDovLzMuMTcuMTc3LjE3NC9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.SXvxvFWE68aSQgo9BVrw4bH_GVAtIjPyd8llvHGMzfQctwKi7k2mM0Lb2fzHNL-Z_CldLq-iiBhcgNHiZnv-1A
-
+./stirshaken sp-cert-req --url https://ca.shaken.signalwire.com/sti-ca/acme/cert --port 8082 --privkey test/ref/sp/sp.priv --pubkey test/ref/sp/sp.pub --csr test/ref/sp/csr.pem --spc 1 --spc_token eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIFRlc3QiLCJ0eXAiOiJKV1QiLCJ4NXUiOiJodHRwczovL3BhLnNoYWtlbi5zaWduYWx3aXJlLmNvbS9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.Q2_oc3Ssd_Nz1Ex_B2nm8C8iiN9OzgxBRsljuEqkFdiEh5wkAHhqnQd54bITs2k4M6p9ePfRV5-8qtsXVkUp-Q -f sptest.pem --vvv
 
 
 ## Specs

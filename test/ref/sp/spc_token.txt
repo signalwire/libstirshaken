@@ -1,6 +1,6 @@
 SPC token encoded:
 
-eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIFRlc3QiLCJ0eXAiOiJKV1QiLCJ4NXUiOiJwYS5zaGFrZW4uc2lnbmFsd2lyZS5jb20vcGEucGVtIn0.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.7uhtVYGVf1roCDmtVxCqkSroJSy40-Qi2pkB2PQizCVjuY180-9aciOw7JCq8JQvJzIICIvl0h41SL36ToSIYg
+eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIFRlc3QiLCJ0eXAiOiJKV1QiLCJ4NXUiOiJodHRwczovL3BhLnNoYWtlbi5zaWduYWx3aXJlLmNvbS9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.Q2_oc3Ssd_Nz1Ex_B2nm8C8iiN9OzgxBRsljuEqkFdiEh5wkAHhqnQd54bITs2k4M6p9ePfRV5-8qtsXVkUp-Q
 
 SPC token decoded:
 
@@ -9,7 +9,7 @@ SPC token decoded:
     "alg": "ES256",
     "issuer": "SignalWire STI-PA Test",
     "typ": "JWT",
-    "x5u": "pa.shaken.signalwire.com/pa.pem"
+    "x5u": "https://pa.shaken.signalwire.com/pa.pem"
 }
 .
 {
