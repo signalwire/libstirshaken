@@ -2,6 +2,8 @@
 #include "mongoose.h"
 
 
+#define CA_SESSIONS_MAX 10
+
 pthread_mutex_t big_fat_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static stir_shaken_status_t ca_authority_over_a_number_check(char *sp, char *origin_identity) {
@@ -18,8 +20,9 @@ static stir_shaken_status_t ca_authority_over_a_number_check(char *sp, char *ori
 void stir_shaken_ca_destroy(stir_shaken_ca_t *ca)
 {
 	if (!ca) return;
-	stir_shaken_hash_destroy(ca->sessions, STI_CA_SESSIONS_MAX, STIR_SHAKEN_HASH_TYPE_SHALLOW);
+	stir_shaken_hash_destroy(ca->sessions, CA_SESSIONS_MAX, STIR_SHAKEN_HASH_TYPE_SHALLOW);
 	stir_shaken_destroy_keys(&ca->keys);
+	stir_shaken_hash_destroy(ca->trusted_pa_keys, STI_CA_TRUSTED_PA_KEYS_MAX, STIR_SHAKEN_HASH_TYPE_SHALLOW);
 }
 
 static int ca_http_method(struct http_message *m)
@@ -374,7 +377,7 @@ stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, s
 	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from cert request jwt) is: %s\n", spc);
 
 	// This check probably should be disabled, as it opens possibility of DoS attack
-	e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
+	e = stir_shaken_hash_entry_find(ca->sessions, CA_SESSIONS_MAX, sp_code);
 	if (e) {
 
 		session = e->data;
@@ -390,7 +393,7 @@ stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, s
 		}
 
 		// expired, remove
-		stir_shaken_hash_entry_remove(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
+		stir_shaken_hash_entry_remove(ca->sessions, CA_SESSIONS_MAX, sp_code, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
 	}
 
 	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Requesting authorization...\n");
@@ -421,7 +424,7 @@ stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, s
 		goto fail;
 	}
 
-	e = stir_shaken_hash_entry_add(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, session, sizeof(*session), stir_shaken_ca_session_dctor, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
+	e = stir_shaken_hash_entry_add(ca->sessions, CA_SESSIONS_MAX, sp_code, session, sizeof(*session), stir_shaken_ca_session_dctor, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
 	if (!e) {
 		stir_shaken_set_error(ss, "Oops. Failed to queue new session", STIR_SHAKEN_ERROR_ACME_SESSION_ENQUEUE);
 		goto fail;
@@ -553,7 +556,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC is: %s\n", spcbuf);
 
-					e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
+					e = stir_shaken_hash_entry_find(ca->sessions, CA_SESSIONS_MAX, sp_code);
 					if (!e) {
 						stir_shaken_set_error(&ca->ss, "Authorization session for this SPC does not exist", STIR_SHAKEN_ERROR_ACME_SESSION_NOTFOUND);
 						goto fail;
@@ -596,7 +599,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 
 					session->state = STI_CA_SESSION_STATE_DONE;
 
-					stir_shaken_hash_entry_remove(ca->sessions, STI_CA_SESSIONS_MAX, sp_code, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
+					stir_shaken_hash_entry_remove(ca->sessions, CA_SESSIONS_MAX, sp_code, STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE);
 
 				}
 
@@ -754,8 +757,8 @@ stir_shaken_status_t ca_verify_spc(stir_shaken_context_t *ss, jwt_t *spc_jwt, un
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from SPC token) is: %llu\n", sp_code);
-	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from session) is: %llu\n", spc);
+	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t -> SPC (from SPC token) is: %llu\n", sp_code);
+	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t -> SPC (from session) is: %llu\n", spc);
 
 	if (sp_code != spc) {
 		snprintf(err_buf, STIR_SHAKEN_BUFLEN, "SPC from SPC token (%llu) does not match this session SPC (%llu) (was cert request initiated for different SPC?)", sp_code, spc);
@@ -822,7 +825,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC (from URI) is: %s\n", spc);
 
-				e = stir_shaken_hash_entry_find(ca->sessions, STI_CA_SESSIONS_MAX, sp_code);
+				e = stir_shaken_hash_entry_find(ca->sessions, CA_SESSIONS_MAX, sp_code);
 				if (!e) {
 					stir_shaken_set_error(&ca->ss, "Authorization session for this SPC does not exist", STIR_SHAKEN_ERROR_ACME_SESSION_NOTFOUND);
 					goto fail;
@@ -949,7 +952,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 					if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(&ca->ss, spc_token, &cert, &spc_token_verified_jwt)) {
 						stir_shaken_set_error(&ca->ss, "SPC token did not pass verification", STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID);
-						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [-] SP failed authorization\n");
+						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\t -> [-] SP failed authorization\n");
 					} else {
 
 						spc_jwt_str = jwt_dump_str(spc_token_verified_jwt, 0);
@@ -958,19 +961,33 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 							goto authorization_result;
 						}
 
-						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> SPC token is:\n%s\n", spc_jwt_str);
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> SPC token is:\n%s\n", spc_jwt_str);
 						jwt_free_str(spc_jwt_str);
 						spc_jwt_str = NULL;
 
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Checking if SPC token has been issued by trusted PA\n");
+						// Check if SPC token is issued by trusted PA
+						if (STIR_SHAKEN_STATUS_OK != stir_shaken_is_cert_trusted(&ca->ss, cert, ca->trusted_pa_keys, STI_CA_TRUSTED_PA_KEYS_MAX)) {
+							stir_shaken_set_error(&ca->ss, "SPC token did not pass verification: signed by PA which is not trusted", STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID_PA);
+							fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\t\t -> SPC token did not pass verification: signed by PA which is not trusted\n");
+							fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [-] SP failed authorization\n");
+							goto authorization_result;
+						}
+
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t -> OK: PA is trusted\n");
+
 						// And just a last check...
 
-						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Verifying SPC from token against session...\n");
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Verifying SPC from token against session...\n");
 
 						if (STIR_SHAKEN_STATUS_OK != ca_verify_spc(&ca->ss, spc_token_verified_jwt, session->spc)) {
 							snprintf(err_buf, STIR_SHAKEN_BUFLEN, "SPC from SPC token does not match this session SPC (%llu) (was cert request initiated for different SPC?)", session->spc);
+							fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "SPC from SPC token does not match this session SPC (%llu) (was cert request initiated for different SPC?)", session->spc);
+							fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [-] SP failed authorization\n");
 							stir_shaken_set_error(&ca->ss, err_buf, STIR_SHAKEN_ERROR_ACME_SPC_INVALID);
 							goto authorization_result; 
 						}
+						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t -> OK\n");
 						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [+] SP authorized\n");
 						session->authorized = 1;
 					}
@@ -1351,6 +1368,11 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 	nc = mg_bind_opt(&mgr, port, ca_event_handler, ca, bopts);
 	if (!nc) {
 		stir_shaken_set_error(ss, "Cannnot bind to port", STIR_SHAKEN_ERROR_BIND);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_add_cert_trusted_from_file(ss, ca->trusted_pa_cert_name, ca->trusted_pa_keys, STI_CA_TRUSTED_PA_KEYS_MAX)) {
+		stir_shaken_set_error(ss, "Cannot add trusted PA certificate", STIR_SHAKEN_ERROR_PA_ADD);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 

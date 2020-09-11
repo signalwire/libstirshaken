@@ -80,6 +80,7 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		strncpy(ca->ca.tn_auth_list_uri, options->tn_auth_list_uri, STIR_SHAKEN_BUFLEN);
 		ca->ca.expiry_days = options->expiry_days;
 		ca->ca.serial = options->serial;
+		strncpy(ca->ca.trusted_pa_cert_name, options->pa_cert, STIR_SHAKEN_BUFLEN);
 		return COMMAND_CA;
 
 	} else if (!strcmp(command_name, COMMAND_NAME_PA)) {
@@ -209,7 +210,7 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 			break;
 
 		case COMMAND_CA:
-			if (stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri) || ca->ca.serial == 0) {
+			if (stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri) || ca->ca.serial == 0 || stir_shaken_zstr(ca->ca.trusted_pa_cert_name)) {
 				goto fail;
 			}
 			if (ca->ca.use_ssl && stir_shaken_zstr(ca->ca.ssl_cert_name)) {

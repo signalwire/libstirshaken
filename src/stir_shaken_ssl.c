@@ -1887,10 +1887,13 @@ X509* stir_shaken_load_x509_from_file(stir_shaken_context_t *ss, const char *nam
     X509			*x = NULL;
     FILE			*fp = NULL;
 
-    if (!name) return NULL;
 
-    stir_shaken_clear_error(ss);
+	stir_shaken_clear_error(ss);
 
+    if (stir_shaken_zstr(name)) {
+        stir_shaken_set_error(ss, "File name missing", STIR_SHAKEN_ERROR_GENERAL);
+		return NULL;
+	}
 
     fp = fopen(name, "r");
     if (!fp) {

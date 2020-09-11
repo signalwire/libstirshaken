@@ -267,6 +267,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_ACME_SPC_TOO_BIG,
 	STIR_SHAKEN_ERROR_ACME_SPC_INVALID,
 	STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID,
+	STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID_PA,
 	STIR_SHAKEN_ERROR_ACME_SECRET_TOO_BIG,
 	STIR_SHAKEN_ERROR_ACME_SECRET_INVALID,
 	STIR_SHAKEN_ERROR_ACME_SESSION_EXISTS,
@@ -296,12 +297,18 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_TNAUTHLIST,
 	STIR_SHAKEN_ERROR_LOAD_CA,
 	STIR_SHAKEN_ERROR_LOAD_CRL,
+	STIR_SHAKEN_ERROR_LOAD_X509,
+	STIR_SHAKEN_ERROR_X509_MISSING,
+	STIR_SHAKEN_ERROR_LOAD_EVP_PKEY,
+	STIR_SHAKEN_ERROR_PA_NOT_TRUSTED,
+	STIR_SHAKEN_ERROR_PA_ADD,
 	STIR_SHAKEN_ERROR_SET_DEFAULT_PATHS,
 	STIR_SHAKEN_ERROR_PASSPORT_EXPIRED,
 	STIR_SHAKEN_ERROR_BIND,
 	STIR_SHAKEN_ERROR_FILE_OPEN,
 	STIR_SHAKEN_ERROR_FILE_READ,
 	STIR_SHAKEN_ERROR_FILE_WRITE,
+	STIR_SHAKEN_ERROR_EVP_PKEY_TO_RAW,
 } stir_shaken_error_t;
 
 #define STIR_SHAKEN_HTTP_REQ_404_INVALID "404"
@@ -886,6 +893,7 @@ void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize, 
 time_t stir_shaken_time_elapsed_s(time_t ts, time_t now);
 
 #define STI_CA_SESSIONS_MAX 1000
+#define STI_CA_TRUSTED_PA_KEYS_MAX 100
 
 #define STI_CA_SESSION_STATE_INIT				0
 #define STI_CA_SESSION_STATE_AUTHZ_SENT			1
@@ -951,6 +959,8 @@ typedef struct stir_shaken_ca_s {
 	uint8_t use_ssl;
 	char ssl_cert_name[STIR_SHAKEN_BUFLEN];
 	char ssl_key_name[STIR_SHAKEN_BUFLEN];
+	char trusted_pa_cert_name[STIR_SHAKEN_BUFLEN];
+	stir_shaken_hash_entry_t* trusted_pa_keys[STI_CA_TRUSTED_PA_KEYS_MAX];
 } stir_shaken_ca_t;
 
 typedef struct stir_shaken_pa_s {
@@ -959,6 +969,12 @@ typedef struct stir_shaken_pa_s {
 	char public_key_name[STIR_SHAKEN_BUFLEN];
 	uint16_t port;
 } stir_shaken_pa_t;
+
+stir_shaken_status_t stir_shaken_is_key_trusted(stir_shaken_context_t *ss, EVP_PKEY *pkey, stir_shaken_hash_entry_t **trusted_pa_keys, size_t hashsize);
+stir_shaken_status_t stir_shaken_is_cert_trusted(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, stir_shaken_hash_entry_t **trusted_pa_keys, size_t hashsize);
+void stir_shaken_evp_pkey_hash_entry_dctor(void *o);
+stir_shaken_status_t stir_shaken_add_cert_trusted(stir_shaken_context_t *ss, X509 *x, stir_shaken_hash_entry_t **trusted_pa_keys, size_t hashsize);
+stir_shaken_status_t stir_shaken_add_cert_trusted_from_file(stir_shaken_context_t *ss, char *file_name, stir_shaken_hash_entry_t **trusted_pa_keys, size_t hashsize);
 
 stir_shaken_status_t ca_sp_cert_req_reply_challenge(stir_shaken_context_t *ss, stir_shaken_ca_t *ca, char *msg, char *authz_challenge, char *authz_url, stir_shaken_ca_session_t **session_out, uint8_t use_ssl);
 stir_shaken_status_t ca_create_session_challenge_details(stir_shaken_context_t *ss, char *status, const char *spc, char *authz_url, stir_shaken_ca_session_t *session);
