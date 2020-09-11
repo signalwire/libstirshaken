@@ -657,6 +657,172 @@ void stir_shaken_hash_destroy(stir_shaken_hash_entry_t **hash, size_t hashsize, 
     memset(hash, 0, sizeof(stir_shaken_hash_entry_t*) * hashsize);
 }
 
+size_t stir_shaken_key_hash(unsigned char *pub_raw, size_t pub_raw_len, size_t hashsize)
+{
+	size_t i = 0;
+	size_t hash = 0;
+
+	while (i < pub_raw_len) {
+
+		hash += pub_raw[i];
+		hash %= hashsize;
+		++i;
+	}
+
+	return hash;
+}
+
+stir_shaken_status_t stir_shaken_is_key_trusted(stir_shaken_context_t *ss, EVP_PKEY *pkey, stir_shaken_hash_entry_t **trusted_pa_keys, size_t hashsize)
+{
+    stir_shaken_hash_entry_t *e = NULL;
+	EVP_PKEY *pa_pkey = NULL;
+	size_t i = 0;
+	size_t hash = 0;
+	unsigned char	pa_pub_raw[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+	uint32_t		pa_pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
+	unsigned char	pub_raw[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+	uint32_t		pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
+
+
+    if (STIR_SHAKEN_STATUS_OK != stir_shaken_pubkey_to_raw(ss, pkey, pub_raw, &pub_raw_len)) {
+		stir_shaken_set_error(ss, "Can't get raw public key from EVP_PKEY", STIR_SHAKEN_ERROR_EVP_PKEY_TO_RAW);
+		return STIR_SHAKEN_STATUS_ERR;
+	}
+
+	hash = stir_shaken_key_hash(pub_raw, pub_raw_len, hashsize);
+
+	e = stir_shaken_hash_entry_find(trusted_pa_keys, hashsize, hash);
+	if (!e) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	pa_pkey = e->data;
+
+    if (STIR_SHAKEN_STATUS_OK != stir_shaken_pubkey_to_raw(ss, pa_pkey, pa_pub_raw, &pa_pub_raw_len)) {
+		stir_shaken_set_error(ss, "Can't get PA raw public key from EVP_PKEY", STIR_SHAKEN_ERROR_EVP_PKEY_TO_RAW);
+		return STIR_SHAKEN_STATUS_ERR;
+	}
+
+	// Raw memory check
+	if (pub_raw_len != pa_pub_raw_len || (0 != memcmp(pub_raw, pa_pub_raw, pub_raw_len))) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	// Let SSL confirm
+	if (!EVP_PKEY_cmp(pkey, pa_pkey)) {
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_is_cert_trusted(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, stir_shaken_hash_entry_t **trusted_pa_keys, size_t hashsize)
+{
+	X509		*x = NULL;
+	EVP_PKEY	*pkey = NULL;
+
+	if (!cert || !cert->x) {
+		stir_shaken_set_error(ss, "X509 missing", STIR_SHAKEN_ERROR_X509_MISSING);
+		return STIR_SHAKEN_STATUS_ERR;
+	}
+
+	pkey = X509_get_pubkey(cert->x);
+	if (!pkey) {
+		stir_shaken_set_error(ss, "Can't load EVP_PKEY from X509", STIR_SHAKEN_ERROR_LOAD_EVP_PKEY);
+		goto fail;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_is_key_trusted(ss, pkey, trusted_pa_keys, hashsize)) {
+		stir_shaken_set_error(ss, "Key not found in trusted PA keys", STIR_SHAKEN_ERROR_PA_NOT_TRUSTED);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	EVP_PKEY_free(pkey);
+
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+
+	if (pkey) {
+		EVP_PKEY_free(pkey);
+		pkey = NULL;
+	}
+
+	return STIR_SHAKEN_STATUS_ERR;
+}
+
+void stir_shaken_evp_pkey_hash_entry_dctor(void *o)
+{
+	EVP_PKEY *pkey = (EVP_PKEY *) o;
+	if (!pkey) return;
+	EVP_PKEY_free(pkey);
+}
+
+stir_shaken_status_t stir_shaken_add_cert_trusted(stir_shaken_context_t *ss, X509 *x, stir_shaken_hash_entry_t **trusted_pa_keys, size_t hashsize)
+{
+	EVP_PKEY	*pkey = NULL;
+	size_t hash = 0;
+	unsigned char	pub_raw[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+	uint32_t		pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
+
+
+	if (!x || !trusted_pa_keys) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_ERR;
+	}
+
+	pkey = X509_get_pubkey(x);
+	if (!pkey) {
+		stir_shaken_set_error(ss, "Can't load EVP_PKEY from X509", STIR_SHAKEN_ERROR_LOAD_EVP_PKEY);
+		goto fail;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_pubkey_to_raw(ss, pkey, pub_raw, &pub_raw_len)) {
+		stir_shaken_set_error(ss, "Can't get raw public key from EVP_PKEY", STIR_SHAKEN_ERROR_EVP_PKEY_TO_RAW);
+		goto fail;
+	}
+
+	hash = stir_shaken_key_hash(pub_raw, pub_raw_len, hashsize);
+
+	if (!stir_shaken_hash_entry_add(trusted_pa_keys, hashsize, hash, pkey, sizeof(pkey), stir_shaken_evp_pkey_hash_entry_dctor, STIR_SHAKEN_HASH_TYPE_SHALLOW)) {
+		stir_shaken_set_error(ss, "Failed to add trusted PA to trusted PA keys", STIR_SHAKEN_ERROR_PA_ADD);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+
+	if (pkey) {
+		EVP_PKEY_free(pkey);
+		pkey = NULL;
+	}
+
+	return STIR_SHAKEN_STATUS_ERR;
+}
+
+stir_shaken_status_t stir_shaken_add_cert_trusted_from_file(stir_shaken_context_t *ss, char *file_name, stir_shaken_hash_entry_t **trusted_pa_keys, size_t hashsize)
+{
+	X509		*x = NULL;
+
+
+	x = stir_shaken_load_x509_from_file(ss, file_name);
+	if (!x) {
+		stir_shaken_set_error(ss, "Can't load X509 from file", STIR_SHAKEN_ERROR_LOAD_X509);
+		return STIR_SHAKEN_STATUS_ERR;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_add_cert_trusted(ss, x, trusted_pa_keys, hashsize)) {
+		stir_shaken_set_error(ss, "Cannot add PA to trusted PA keys", STIR_SHAKEN_ERROR_PA_ADD);
+		X509_free(x);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	X509_free(x);
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 time_t stir_shaken_time_elapsed_s(time_t ts, time_t now)
 {
     if (ts >= now) return 0;

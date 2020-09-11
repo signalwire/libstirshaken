@@ -62,10 +62,11 @@
 #define OPTION_SSL          19
 #define OPTION_SSL_CERT     20
 #define OPTION_SSL_KEY      21
-#define OPTION_V			22
-#define OPTION_VV			23
-#define OPTION_VVV			24
-#define OPTION_MAX			25
+#define OPTION_PA_CERT		22
+#define OPTION_V			23
+#define OPTION_VV			24
+#define OPTION_VVV			25
+#define OPTION_MAX			26
 
 #define OPTION_NAME_PUBKEY		"pubkey"
 #define OPTION_NAME_PRIVKEY		"privkey"
@@ -91,6 +92,7 @@
 #define OPTION_NAME_SSL		    "ssl"
 #define OPTION_NAME_SSL_CERT	"ssl_cert"
 #define OPTION_NAME_SSL_KEY	    "ssl_key"
+#define OPTION_NAME_PA_CERT		"pa_cert"
 #define OPTION_NAME_V			"v"
 #define OPTION_NAME_VV			"vv"
 #define OPTION_NAME_VVV			"vvv"
@@ -203,6 +205,7 @@ struct options {
 	uint8_t use_ssl;
 	char ssl_cert_name[STIR_SHAKEN_BUFLEN];
 	char ssl_key_name[STIR_SHAKEN_BUFLEN];
+	char pa_cert[STIR_SHAKEN_BUFLEN];
 } options;
 
 void stirshaken_range_error(char arg, unsigned long val);
