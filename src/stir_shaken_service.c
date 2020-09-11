@@ -118,13 +118,24 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	char			user_agent[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
-	if (!http_req || !http_req->url) return STIR_SHAKEN_STATUS_RESTART;
+	if (!http_req) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	if (stir_shaken_zstr(http_req->url)) {
+		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
 
 	if (ss) stir_shaken_clear_error(ss);
 
 	curl_global_init(CURL_GLOBAL_ALL);
 	curl_handle = curl_easy_init();
-	if (!curl_handle) return STIR_SHAKEN_STATUS_TERM;
+	if (!curl_handle) {
+		stir_shaken_set_error(ss, "Curl init failed", STIR_SHAKEN_ERROR_CERT_INIT);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
 
 	curl_easy_setopt(curl_handle, CURLOPT_URL, http_req->url);
 
@@ -165,8 +176,13 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 	}
 
 	if (http_req->remote_port == 0) {
-		http_req->remote_port = STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT;
-		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to DEFAULT %u cause port not set\n", http_req->remote_port);
+		if (strlen(http_req->url) > 5 && !strncmp(http_req->url, "https", 5)) {
+			http_req->remote_port = STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT_HTTPS;
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to DEFAULT_HTTPS %u cause port not set\n", http_req->remote_port);
+		} else {
+			http_req->remote_port = STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT;
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to DEFAULT %u cause port not set\n", http_req->remote_port);
+		}
 	}
 
 	curl_easy_setopt(curl_handle, CURLOPT_PORT, http_req->remote_port);
