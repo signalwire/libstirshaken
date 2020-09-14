@@ -597,7 +597,7 @@ stir_shaken_status_t stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 
 stir_shaken_status_t stir_shaken_x509_add_standard_extensions(stir_shaken_context_t *ss, X509 *ca_x, X509 *x);
 stir_shaken_status_t stir_shaken_x509_add_ca_extensions(stir_shaken_context_t *ss, X509 *ca_x, X509 *x);
 stir_shaken_status_t stir_shaken_x509_add_signalwire_extensions(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, const char *number_start, const char *number_end);
-stir_shaken_status_t stir_shaken_x509_req_add_tnauthlist_extension_spc(stir_shaken_context_t *ss, X509_REQ *req, int spc);
+stir_shaken_status_t stir_shaken_x509_req_add_tnauthlist_extension_spc(stir_shaken_context_t *ss, X509_REQ *req, unsigned long long int spc);
 stir_shaken_status_t stir_shaken_x509_add_tnauthlist_extension_uri(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, char *uri);
 
 // Create CA cross-certificate, where issuer and subject are different entities. Cross certificates describe a trust relationship between CAs.
@@ -926,7 +926,7 @@ typedef struct stir_shaken_sp_s {
 
 typedef struct stir_shaken_ca_session_s {
 	int state;
-	size_t spc;
+	unsigned long long int spc;
 	unsigned long long authz_secret;
 	char *nonce;
 	char *authz_url;

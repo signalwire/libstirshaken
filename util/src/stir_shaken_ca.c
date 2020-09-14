@@ -191,7 +191,7 @@ static void stir_shaken_ca_session_dctor(void *o)
 		session->authz_challenge_details = NULL;
 	}
 
-	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "-> Session %zu/%llu deleted ;~\n", session->spc, session->authz_secret);
+	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "-> Session %lld/%llu deleted ;~\n", session->spc, session->authz_secret);
 
 	memset(session, 0, sizeof(*session));
 	return;
