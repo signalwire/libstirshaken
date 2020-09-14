@@ -679,9 +679,9 @@ stir_shaken_status_t stir_shaken_is_key_trusted(stir_shaken_context_t *ss, EVP_P
 	size_t i = 0;
 	size_t hash = 0;
 	unsigned char	pa_pub_raw[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-	uint32_t		pa_pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
+	int				pa_pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
 	unsigned char	pub_raw[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-	uint32_t		pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
+	int				pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
 
 
     if (STIR_SHAKEN_STATUS_OK != stir_shaken_pubkey_to_raw(ss, pkey, pub_raw, &pub_raw_len)) {
@@ -763,7 +763,7 @@ stir_shaken_status_t stir_shaken_add_cert_trusted(stir_shaken_context_t *ss, X50
 	EVP_PKEY	*pkey = NULL;
 	size_t hash = 0;
 	unsigned char	pub_raw[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-	uint32_t		pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
+	int				pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
 
 
 	if (!x || !trusted_pa_keys) {
