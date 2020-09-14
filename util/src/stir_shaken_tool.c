@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 				helper = strtoul(optarg, &pCh, 10);
 				STIR_SHAKEN_CHECK_CONVERSION
 				options.serial = (int64_t) helper;
-				fprintf(stderr, "Serial is: %ld\n", options.serial);
+				fprintf(stderr, "Serial is: %lld\n", options.serial);
 				break;
 
 			case OPTION_EXPIRY:
