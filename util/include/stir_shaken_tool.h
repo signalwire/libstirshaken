@@ -150,8 +150,8 @@ struct ca {
 	char issuer_cn[STIR_SHAKEN_BUFLEN];
 	char subject_c[STIR_SHAKEN_BUFLEN];
 	char subject_cn[STIR_SHAKEN_BUFLEN];
-	int serial;
-	int expiry_days;
+	int64_t serial;
+	long expiry_days;
 	char file[STIR_SHAKEN_BUFLEN];
 } ca;
 
@@ -172,8 +172,8 @@ struct sp {
 	char subject_cn[STIR_SHAKEN_BUFLEN];
 	char spc[STIR_SHAKEN_BUFLEN];
 	char spc_token[STIR_SHAKEN_BUFLEN];
-	int serial;
-	int expiry_days;
+	int64_t serial;
+	long expiry_days;
 	char file[STIR_SHAKEN_BUFLEN];
 	char url[STIR_SHAKEN_BUFLEN];
 } sp;
@@ -193,8 +193,8 @@ struct options {
 	char issuer_cn[STIR_SHAKEN_BUFLEN];
 	const char *ca_dir;
 	const char *crl_dir;
-	int serial;
-	int expiry_days;
+	int64_t serial;
+	long expiry_days;
 	char ca_cert[STIR_SHAKEN_BUFLEN];
 	char csr_name[STIR_SHAKEN_BUFLEN];
 	char tn_auth_list_uri[STIR_SHAKEN_BUFLEN];

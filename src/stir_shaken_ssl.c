@@ -566,13 +566,12 @@ const unsigned char* stir_shaken_x509_req_get_tn_authlist_extension_value(stir_s
     return ext->value.sequence->data;
 }
 
-X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, int expiry_days)
+X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, long expiry_days)
 {
     X509 *x = NULL;
     X509_NAME		*tmp = NULL;
     const EVP_MD    *digest = NULL;
     int             i = 0;
-    ASN1_INTEGER    *asn1_serial = NULL;
 
 
     stir_shaken_clear_error(ss);
@@ -864,7 +863,7 @@ stir_shaken_status_t stir_shaken_x509_add_tnauthlist_extension_uri(stir_shaken_c
 
 // Create CA cross-certificate, where issuer and subject are different entities.
 // Cross certificates describe a trust relationship between CAs.
-X509* stir_shaken_generate_x509_cross_ca_cert(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, int expiry_days)
+X509* stir_shaken_generate_x509_cross_ca_cert(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, long expiry_days)
 {
     X509 *x = NULL;
 
@@ -905,7 +904,7 @@ fail:
 
 // Create CA self-issued certificate, where issuer and the subject are same entity.
 // Self-issued certs describe a change in policy or operation.
-X509* stir_shaken_generate_x509_self_issued_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, int64_t serial, int expiry_days)
+X509* stir_shaken_generate_x509_self_issued_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, int64_t serial, long expiry_days)
 {
     X509 *x = NULL;
 
@@ -940,7 +939,7 @@ fail:
 
 // Create CA self-signed certificate, which is self-issued certificate
 // where the digital signature may be verified by the public key bound into the certificate.
-X509* stir_shaken_generate_x509_self_signed_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, int64_t serial, int expiry_days)
+X509* stir_shaken_generate_x509_self_signed_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, int64_t serial, long expiry_days)
 {
     X509 *x = NULL;
 
@@ -953,7 +952,7 @@ X509* stir_shaken_generate_x509_self_signed_ca_cert(stir_shaken_context_t *ss, E
 }
 
 // Create SP certificate.
-X509* stir_shaken_generate_x509_end_entity_cert(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, int expiry_days, char *tn_auth_list_uri)
+X509* stir_shaken_generate_x509_end_entity_cert(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, long expiry_days, char *tn_auth_list_uri)
 {
     X509 *x = NULL;
 
@@ -995,7 +994,7 @@ fail:
 }
 
 // Create SP certificate from CSR.
-X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int64_t serial, int expiry_days, char *tn_auth_list_uri)
+X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int64_t serial, long expiry_days, char *tn_auth_list_uri)
 {
     X509 *x = NULL;
     EVP_PKEY *public_key = NULL;
@@ -1053,7 +1052,7 @@ fail:
     return NULL;
 }
 
-X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int64_t serial, int expiry_days)
+X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int64_t serial, long expiry_days)
 {
     X509            *x = NULL;
     EVP_PKEY        *pkey = NULL;

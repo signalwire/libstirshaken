@@ -592,7 +592,7 @@ void*					stir_shaken_x509_req_get_tn_authlist_extension(stir_shaken_context_t *
 const unsigned char*	stir_shaken_x509_req_get_tn_authlist_extension_value(stir_shaken_context_t *ss, X509_REQ *req);
 
 // Functions used for cert construction
-X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, int expiry_days);
+X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, long expiry_days);
 stir_shaken_status_t stir_shaken_sign_x509_cert(stir_shaken_context_t *ss, X509 *x, EVP_PKEY *private_key);
 stir_shaken_status_t stir_shaken_x509_add_standard_extensions(stir_shaken_context_t *ss, X509 *ca_x, X509 *x);
 stir_shaken_status_t stir_shaken_x509_add_ca_extensions(stir_shaken_context_t *ss, X509 *ca_x, X509 *x);
@@ -601,17 +601,17 @@ stir_shaken_status_t stir_shaken_x509_req_add_tnauthlist_extension_spc(stir_shak
 stir_shaken_status_t stir_shaken_x509_add_tnauthlist_extension_uri(stir_shaken_context_t *ss, X509 *ca_x, X509 *x, char *uri);
 
 // Create CA cross-certificate, where issuer and subject are different entities. Cross certificates describe a trust relationship between CAs.
-X509* stir_shaken_generate_x509_cross_ca_cert(stir_shaken_context_t *ss, X509 *ca_x,  EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, int expiry_days);
+X509* stir_shaken_generate_x509_cross_ca_cert(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, long expiry_days);
 
 // Create CA self-issued certificate, where issuer and the subject are same entity. Self-issued certs describe a change in policy or operation.
-X509* stir_shaken_generate_x509_self_issued_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, int64_t serial, int expiry_days);
+X509* stir_shaken_generate_x509_self_issued_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, int64_t serial, long expiry_days);
 
 // Create CA self-signed certificate, which is self-issued certificate where the digital signature may be verified by the public key bound into the certificate.
-X509* stir_shaken_generate_x509_self_signed_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, int64_t serial, int expiry_days);
+X509* stir_shaken_generate_x509_self_signed_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, int64_t serial, long expiry_days);
 
 // Create SP certificate.
-X509* stir_shaken_generate_x509_end_entity_cert(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, int expiry_days, char *tn_auth_list_uri);
-X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int64_t serial, int expiry_days, char *tn_auth_list_uri);
+X509* stir_shaken_generate_x509_end_entity_cert(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, long expiry_days, char *tn_auth_list_uri);
+X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int64_t serial, long expiry_days, char *tn_auth_list_uri);
 
 /**
  * @buf - (out) will contain fingerprint, must be of size at least 3*EVP_MAX_MD_SIZE bytes
@@ -622,7 +622,7 @@ stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, 
 X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY *pkey);
 
 stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name);
-X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int64_t serial, int expiry_days);
+X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int64_t serial, long expiry_days);
 void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
@@ -954,7 +954,7 @@ typedef struct stir_shaken_ca_s {
 	char subject_c[STIR_SHAKEN_BUFLEN];
 	char subject_cn[STIR_SHAKEN_BUFLEN];
 	int64_t serial;
-	int expiry_days;
+	long expiry_days;
 	uint16_t port;
 	stir_shaken_hash_entry_t* sessions[STI_CA_SESSIONS_MAX];
 	uint8_t use_ssl;

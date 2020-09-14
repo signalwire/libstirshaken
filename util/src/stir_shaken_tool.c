@@ -145,13 +145,15 @@ int main(int argc, char *argv[])
 			case OPTION_SERIAL:
 				helper = strtoul(optarg, &pCh, 10);
 				STIR_SHAKEN_CHECK_CONVERSION
-				options.serial = helper;
+				options.serial = (int64_t) helper;
+				fprintf(stderr, "Serial is: %ld\n", options.serial);
 				break;
 
 			case OPTION_EXPIRY:
 				helper = strtoul(optarg, &pCh, 10);
 				STIR_SHAKEN_CHECK_CONVERSION
-				options.expiry_days = helper;
+				options.expiry_days = (long) helper;
+				fprintf(stderr, "Expiry is: %ld\n", options.expiry_days);
 				break;
 
 			case OPTION_TYPE:
