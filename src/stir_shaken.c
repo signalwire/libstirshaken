@@ -410,6 +410,8 @@ int stir_shaken_zstr(const char *str)
 
 static void shift_errors(stir_shaken_context_t *ss) {
     if (!ss) return;
+    strncpy(ss->err_buf5, ss->err_buf4, STIR_SHAKEN_ERROR_BUF_LEN);
+    strncpy(ss->err_buf4, ss->err_buf3, STIR_SHAKEN_ERROR_BUF_LEN);
     strncpy(ss->err_buf3, ss->err_buf2, STIR_SHAKEN_ERROR_BUF_LEN);
     strncpy(ss->err_buf2, ss->err_buf1, STIR_SHAKEN_ERROR_BUF_LEN);
     strncpy(ss->err_buf1, ss->err_buf0, STIR_SHAKEN_ERROR_BUF_LEN);
@@ -466,7 +468,11 @@ static const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
 
     if (stir_shaken_is_error_set(ss)) {
 
-        if (!stir_shaken_zstr(ss->err_buf3)) {
+        if (!stir_shaken_zstr(ss->err_buf5)) {
+            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2, ss->err_buf3, ss->err_buf4, ss->err_buf5);
+        } else if (!stir_shaken_zstr(ss->err_buf4)) {
+            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2, ss->err_buf3, ss->err_buf4);
+        } else if (!stir_shaken_zstr(ss->err_buf3)) {
             snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2, ss->err_buf3);
         } else if (!stir_shaken_zstr(ss->err_buf2)) {
             snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2);

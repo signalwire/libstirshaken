@@ -81,6 +81,7 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		ca->ca.expiry_days = options->expiry_days;
 		ca->ca.serial = options->serial;
 		strncpy(ca->ca.trusted_pa_cert_name, options->pa_cert, STIR_SHAKEN_BUFLEN);
+		ca->ca.use_trusted_pa_hash = stir_shaken_zstr(ca->ca.trusted_pa_cert_name) ? 0 : 1;
 		return COMMAND_CA;
 
 	} else if (!strcmp(command_name, COMMAND_NAME_PA)) {
