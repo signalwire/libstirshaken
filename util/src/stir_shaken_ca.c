@@ -965,13 +965,17 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 						jwt_free_str(spc_jwt_str);
 						spc_jwt_str = NULL;
 
-						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Checking if SPC token has been issued by trusted PA\n");
-						// Check if SPC token is issued by trusted PA
-						if (STIR_SHAKEN_STATUS_OK != stir_shaken_is_cert_trusted(&ca->ss, cert, ca->trusted_pa_keys, STI_CA_TRUSTED_PA_KEYS_MAX)) {
-							stir_shaken_set_error(&ca->ss, "SPC token did not pass verification: signed by PA which is not trusted", STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID_PA);
-							fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\t\t -> SPC token did not pass verification: signed by PA which is not trusted\n");
-							fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [-] SP failed authorization\n");
-							goto authorization_result;
+						if (ca->use_trusted_pa_hash) {
+
+							fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Checking if SPC token has been issued by trusted PA\n");
+
+							// Check if SPC token is issued by trusted PA
+							if (STIR_SHAKEN_STATUS_OK != stir_shaken_is_cert_trusted(&ca->ss, cert, ca->trusted_pa_keys, STI_CA_TRUSTED_PA_KEYS_MAX)) {
+								stir_shaken_set_error(&ca->ss, "SPC token did not pass verification: signed by PA which is not trusted", STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID_PA);
+								fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\t\t -> SPC token did not pass verification: signed by PA which is not trusted\n");
+								fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [-] SP failed authorization\n");
+								goto authorization_result;
+							}
 						}
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t -> OK: PA is trusted\n");
@@ -1371,9 +1375,14 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_add_cert_trusted_from_file(ss, ca->trusted_pa_cert_name, ca->trusted_pa_keys, STI_CA_TRUSTED_PA_KEYS_MAX)) {
-		stir_shaken_set_error(ss, "Cannot add trusted PA certificate", STIR_SHAKEN_ERROR_PA_ADD);
-		return STIR_SHAKEN_STATUS_FALSE;
+	if (ca->use_trusted_pa_hash) {
+
+		fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Adding trusted PA with certificate %s...\n", ca->trusted_pa_cert_name);
+
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_add_cert_trusted_from_file(ss, ca->trusted_pa_cert_name, ca->trusted_pa_keys, STI_CA_TRUSTED_PA_KEYS_MAX)) {
+			stir_shaken_set_error(ss, "Cannot add trusted PA certificate", STIR_SHAKEN_ERROR_PA_ADD);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
 	}
 
 	register_uri_handler(STI_CA_ACME_NEW_ACCOUNT_URL, ca_handle_api_account, 0);

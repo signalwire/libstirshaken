@@ -89,6 +89,10 @@ It will download STI cert from CA, given you run it somewhere with reference dat
 		./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "TNAuthList(URI)" --pa_cert test/ref/pa/pa.pem --ssl --ssl_cert fullchain.cer --ssl_key key.pem --vvv
 
 
+### Examples
+
+You can find very compressed and useful examples of library usages in 'examples' folder. If you would like to learn more, probably 'util' folder with 'stirshaken' program would be very helpful as most of this library's functionalities are exposed through it.
+
 ### Helpful commands from SSL
 
 ```
