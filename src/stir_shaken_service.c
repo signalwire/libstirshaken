@@ -46,6 +46,23 @@ static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nm
 	return realsize;
 }
 
+const char* stir_shaken_http_req_type_2_str(stir_shaken_http_req_type_t type)
+{
+	switch (type) {
+
+		case STIR_SHAKEN_HTTP_REQ_TYPE_GET:
+			return "GET";
+		case STIR_SHAKEN_HTTP_REQ_TYPE_POST:
+			return "POST";
+		case STIR_SHAKEN_HTTP_REQ_TYPE_PUT:
+			return "PUT";
+		case STIR_SHAKEN_HTTP_REQ_TYPE_HEAD:
+			return "HEAD";
+		default:
+			return "BAD REQUEST";
+	}
+}
+
 /*
  * Make HTTP request with CURL.
  *
@@ -113,6 +130,7 @@ static size_t stir_shaken_curl_header_callback(void *ptr, size_t size, size_t nm
  */
 stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
+	uint8_t			https = 0;
 	CURLcode		res = 0;
 	CURL			*curl_handle = NULL;
 	char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
@@ -177,6 +195,7 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 
 	if (http_req->remote_port == 0) {
 		if (strlen(http_req->url) > 5 && !strncmp(http_req->url, "https", 5)) {
+			https = 1;
 			http_req->remote_port = STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT_HTTPS;
 			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to DEFAULT_HTTPS %u cause port not set\n", http_req->remote_port);
 		} else {
@@ -234,7 +253,7 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 			break;
 
 		default:
-			stir_shaken_set_error(ss, "Unknown HTTP type Request", STIR_SHAKEN_ERROR_HTTP_GENERAL);
+			stir_shaken_set_error(ss, "Unknown request type", STIR_SHAKEN_ERROR_HTTP_GENERAL);
 			return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -244,9 +263,9 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 
 	// TODO remove
 	if (http_req->data) {
-		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%s) call:\nurl:\t%s\nport:\t%u\ndata:\t%s\n", http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_GET ? "GET" : (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_POST ? "POST" : (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_PUT ? "PUT" : (http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_HEAD ? "HEAD" : "BAD REQUEST"))), http_req->url, http_req->remote_port, http_req->data);
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making %s (%s) call:\nurl:\t%s\nport:\t%u\ndata:\t%s\n", https ? "HTTPS" : "HTTP", stir_shaken_http_req_type_2_str(http_req->type), http_req->url, http_req->remote_port, http_req->data);
 	} else {
-		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making HTTP (%s) call:\nurl:\t%s\nport:\t%u\n", http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_GET ? "GET" : http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_POST ? "POST" : http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_PUT ? "PUT" : http_req->type == STIR_SHAKEN_HTTP_REQ_TYPE_HEAD ? "HEAD" : "BAD REQUEST", http_req->url, http_req->remote_port);
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: making %s (%s) call:\nurl:\t%s\nport:\t%u\n", https ? "HTTPS" : "HTTP", stir_shaken_http_req_type_2_str(http_req->type), http_req->url, http_req->remote_port);
 	}
 
 	res = curl_easy_perform(curl_handle);
@@ -266,7 +285,7 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 
 	curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &http_req->response.code);
 	if (http_req->response.code != 200 && http_req->response.code != 201) {
-		sprintf(http_req->response.error, "HTTP response code: %ld (%s%s), HTTP response phrase: %s", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " [Bad URL or API call not handled?]" : "", http_req->response.headers && http_req->response.headers->data ? http_req->response.headers->data : "");
+		sprintf(http_req->response.error, "%s response code: %ld (%s%s), HTTP response phrase: %s", https ? "HTTPS" : "HTTP", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " [Bad URL or API call not handled?]" : "", http_req->response.headers && http_req->response.headers->data ? http_req->response.headers->data : "");
 	}
 	curl_easy_cleanup(curl_handle);
 	curl_global_cleanup();
