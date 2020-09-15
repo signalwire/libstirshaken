@@ -326,7 +326,9 @@ typedef struct stir_shaken_context_s {
 	char err_buf1[STIR_SHAKEN_ERROR_BUF_LEN];
 	char err_buf2[STIR_SHAKEN_ERROR_BUF_LEN];
 	char err_buf3[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err[4*STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf4[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf5[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err[6*STIR_SHAKEN_ERROR_BUF_LEN];
 	stir_shaken_error_t error;
 	uint8_t got_error;
 } stir_shaken_context_t;
@@ -963,6 +965,7 @@ typedef struct stir_shaken_ca_s {
 	char ssl_key_name[STIR_SHAKEN_BUFLEN];
 	char trusted_pa_cert_name[STIR_SHAKEN_BUFLEN];
 	stir_shaken_hash_entry_t* trusted_pa_keys[STI_CA_TRUSTED_PA_KEYS_MAX];
+	uint8_t use_trusted_pa_hash;
 } stir_shaken_ca_t;
 
 typedef struct stir_shaken_pa_s {
