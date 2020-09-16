@@ -779,32 +779,32 @@ stir_shaken_status_t ca_verify_pa_cert(stir_shaken_context_t *ss, stir_shaken_ca
 
 	if (ca->use_pa_dir) {
 
-		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Checking if PA cert is trusted by X509 cert path verification...\n");
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t -> Checking if PA cert is trusted by X509 cert path verification...\n");
 
 		status = stir_shaken_verify_cert(ss, cert);
 		if (STIR_SHAKEN_STATUS_OK != status) {
 			stir_shaken_set_error(&ca->ss, "PA certificate is not trusted by X509 cert path verification", STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID_PA);
-			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t -> NO\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t\t -> NO\n");
 			// continue checking...
 		} else {
 
-			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t -> YES\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t\t -> YES\n");
 			return STIR_SHAKEN_STATUS_OK;
 		}
 	}
 
 	if (ca->use_trusted_pa_hash) {
 
-		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Checking if PA cert is in trusted PA hash...\n");
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t -> Checking if PA cert is in trusted PA hash...\n");
 
 		// Check if SPC token is issued by trusted PA
 		if (STIR_SHAKEN_STATUS_OK != stir_shaken_is_cert_trusted(&ca->ss, cert, ca->trusted_pa_keys, STI_CA_TRUSTED_PA_KEYS_MAX)) {
 			stir_shaken_set_error(&ca->ss, "PA certificate is not in trusted PA hash", STIR_SHAKEN_ERROR_ACME_SPC_TOKEN_INVALID_PA);
-			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\t\t -> NO\n");
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\t\t\t -> NO\n");
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
 
-		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t -> YES\n");
+		fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t\t -> YES\n");
 		stir_shaken_clear_error(ss);
 		return STIR_SHAKEN_STATUS_OK;
 	}
@@ -1019,6 +1019,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 								fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> [-] SP failed authorization\n");
 								goto authorization_result;
 							}
+						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\t\t -> YES (PA is trusted)\n");
 
 						// And just a last check...
 

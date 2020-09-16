@@ -17,7 +17,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s --%s token --%s key\n", COMMAND_NAME_JWT_KEY_CHECK, OPTION_NAME_JWT, OPTION_NAME_PUBKEY);
 	fprintf(stderr, "\t\t %s --%s token\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_JWT);
 	fprintf(stderr, "\t\t %s --%s token\n", COMMAND_NAME_JWT_DUMP, OPTION_NAME_JWT);
-	fprintf(stderr, "\t\t %s --%s 80 --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY --%s ca.pem --%s TNAuthList(URI) --%s pa.pem\n", COMMAND_NAME_CA, OPTION_NAME_PORT, OPTION_NAME_PRIVKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY, OPTION_NAME_CA_CERT, OPTION_NAME_TN_AUTH_LIST_URI, OPTION_NAME_PA_CERT);
+	fprintf(stderr, "\t\t %s --%s 80 --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY --%s ca.pem --%s TNAuthList(URI) --%s pa.pem --%s padir\n", COMMAND_NAME_CA, OPTION_NAME_PORT, OPTION_NAME_PRIVKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY, OPTION_NAME_CA_CERT, OPTION_NAME_TN_AUTH_LIST_URI, OPTION_NAME_PA_CERT, OPTION_NAME_PA_DIR);
 	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s --%s URL --%s port\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s --%s URL --%s port --%s key --%s key --%s csr.pem --%s CODE --%s SPC_TOKEN -f CERT_NAME\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL, OPTION_NAME_PORT, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_CSR, OPTION_NAME_SPC, OPTION_NAME_SPC_TOKEN);
@@ -29,15 +29,17 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t --vvv\t\thigh logging\n\n");
 	fprintf(stderr, "\t\t CA can be configured with HTTPS by setting up SSL cert and key with:\n");
 	fprintf(stderr, "\t\t\t --%s --%s cert.pem --%s key.pem\n\n", OPTION_NAME_SSL, OPTION_NAME_SSL_CERT, OPTION_NAME_SSL_KEY);
+	fprintf(stderr, "\t\t SSL/HTTPS is supported, simply use 'https://' instead of 'http://' whenever you need encryption (default port for HTTPS is %u)\n", STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT_HTTPS);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "\t\t %s			: generate key pair\n", COMMAND_NAME_KEYS);
 	fprintf(stderr, "\t\t %s			: generate X509 certificate request for SP identified by SP Code given to --spc\n", COMMAND_NAME_CSR);
 	fprintf(stderr, "\t\t %s			: generate X509 certificate (end entity for --type %s and self-signed for --type %s)\n", COMMAND_NAME_CERT, OPTION_NAME_TYPE_SP, OPTION_NAME_TYPE_CA);
 	fprintf(stderr, "\t\t %s			: save CA certificate under hashed name (in this form it can be put into CA dir)\n", COMMAND_NAME_HASH_CERT);
 	fprintf(stderr, "\t\t %s		: generate SPC token for SP identified by SP Code given to --spc (set token's PA issuer to name given as --%s, and token's x5u URL of the PA certificate to URL given as --%s)\n", COMMAND_NAME_SPC_TOKEN, OPTION_NAME_ISSUER_CN, OPTION_NAME_URL);
-	fprintf(stderr, "\t\t %s		: decode JWT and verify signature using public key given to --%s\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_PUBKEY);
+	fprintf(stderr, "\t\t %s		: decode JWT and verify signature using public key given to --%s\n", COMMAND_NAME_JWT_KEY_CHECK, OPTION_NAME_PUBKEY);
+	fprintf(stderr, "\t\t %s		: decode JWT and verify signature using certificate referenced in 'x5u' header (involves HTTP(S) GET request)\n", COMMAND_NAME_JWT_CHECK);
 	fprintf(stderr, "\t\t %s		: decode JWT and print it (do not verify signature)\n", COMMAND_NAME_JWT_DUMP);
-	fprintf(stderr, "\t\t %s			: run CA service on port given to --%s and accepting tokens issued by trusted PA with public key embedded in cert given to --%s (add \"--%s --%s cert.pem --%s key.pem\" for HTTPS)\n", COMMAND_NAME_CA, OPTION_NAME_PORT, OPTION_NAME_PA_CERT, OPTION_NAME_SSL, OPTION_NAME_SSL_CERT, OPTION_NAME_SSL_KEY);
+	fprintf(stderr, "\t\t %s			: run CA service on port given to --%s and accepting tokens issued by trusted PAs (trusted PAs are ones that match public key embedded in cert given to --%s or those whose certificate can be linked to trusted PA roots by X509 cert path check procedure using certs from the folder given to --%s, options --%s and --%s are independent). Use \"--%s --%s cert.pem --%s key.pem\" for HTTPS\n", COMMAND_NAME_CA, OPTION_NAME_PORT, OPTION_NAME_PA_CERT, OPTION_NAME_PA_DIR, OPTION_NAME_PA_CERT, OPTION_NAME_PA_DIR, OPTION_NAME_SSL, OPTION_NAME_SSL_CERT, OPTION_NAME_SSL_KEY);
 	fprintf(stderr, "\t\t %s			: run PA service on port given to --%s\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s		: request SP Code token from PA at url given to --%s\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
 	fprintf(stderr, "\t\t %s		: request SP certificate for Service Provider identified by number given to --%s from CA at url given to --%s on port given to --%s\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_SPC, OPTION_NAME_URL, OPTION_NAME_PORT);

@@ -137,7 +137,7 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 		case COMMAND_KEYS:
 
 			if (stir_shaken_zstr(options->private_key_name) && stir_shaken_zstr(options->public_key_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: both keys are empty\n");
+				fprintf(stderr, "ERROR: both keys are empty\n");
 				goto fail;
 			}
 			break;
@@ -147,12 +147,12 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 			if (stir_shaken_zstr(sp->sp.private_key_name) || stir_shaken_zstr(sp->sp.public_key_name)
 					|| stir_shaken_zstr(sp->subject_c) || stir_shaken_zstr(sp->subject_cn)
 					|| stir_shaken_zstr(sp->spc) || stir_shaken_zstr(sp->sp.csr_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: CSR parameters missing\n");
+				fprintf(stderr, "ERROR: CSR parameters missing\n");
 				goto fail;
 			}
 
 			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(sp->sp.csr_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", sp->sp.csr_name);
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", sp->sp.csr_name);
 				goto fail;
 			}
 
@@ -165,12 +165,12 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 
 			if (stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.public_key_name)
 					|| stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || ca->ca.expiry_days == 0 || ca->ca.serial == 0) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: CA parameters missing\n");
+				fprintf(stderr, "ERROR: CA parameters missing\n");
 				goto fail;
 			}
 
 			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(ca->ca.cert_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", ca->ca.cert_name);
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", ca->ca.cert_name);
 				goto fail;
 			}
 			break;
@@ -180,12 +180,12 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 			if (stir_shaken_zstr(sp->sp.cert_name) || stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.public_key_name)
 					|| stir_shaken_zstr(sp->sp.csr_name) || stir_shaken_zstr(ca->ca.cert_name)
 					|| stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri) || ca->ca.expiry_days == 0 || ca->ca.serial == 0) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: SP parameters missing\n");
+				fprintf(stderr, "ERROR: SP parameters missing\n");
 				goto fail;
 			}
 
 			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(sp->sp.cert_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", sp->sp.cert_name);
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", sp->sp.cert_name);
 				goto fail;
 			}
 			break;
@@ -193,12 +193,12 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 		case COMMAND_HASH_CERT:
 
 			if (stir_shaken_zstr(ca->ca.cert_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: CA cert name missing\n");
+				fprintf(stderr, "ERROR: CA cert name missing\n");
 				goto fail;
 			}
 
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(ca->ca.cert_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: File %s does not exist.\n\n", ca->ca.cert_name);
+				fprintf(stderr, "ERROR: File %s does not exist.\n\n", ca->ca.cert_name);
 				goto fail;
 			}
 			break;
@@ -206,12 +206,12 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 		case COMMAND_SPC_TOKEN:
 
 			if (stir_shaken_zstr(pa->pa.private_key_name) || stir_shaken_zstr(pa->issuer_cn) || stir_shaken_zstr(pa->spc) || stir_shaken_zstr(pa->url)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: PA parameters missing\n");
+				fprintf(stderr, "ERROR: PA parameters missing\n");
 				goto fail;
 			}
 
 			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(pa->file_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", pa->file_name);
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", pa->file_name);
 				goto fail;
 			}
 
@@ -221,23 +221,33 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 
 		case COMMAND_CA:
 
-			if (stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri) || ca->ca.serial == 0 || stir_shaken_zstr(ca->ca.trusted_pa_cert_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: CA parameters missing\n");
+			if (stir_shaken_zstr(ca->ca.private_key_name) || stir_shaken_zstr(ca->ca.cert_name) || stir_shaken_zstr(ca->ca.issuer_c) || stir_shaken_zstr(ca->ca.issuer_cn) || stir_shaken_zstr(ca->ca.tn_auth_list_uri) || ca->ca.serial == 0) {
+				fprintf(stderr, "ERROR: CA parameters missing\n");
 				goto fail;
 			}
 
 			if (ca->ca.use_ssl && stir_shaken_zstr(ca->ca.ssl_cert_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: SSL cannot be started because cert is missing (please specify ssl certificate with --%s argument)\n\n", OPTION_NAME_SSL_CERT);
+				fprintf(stderr, "ERROR: SSL cannot be started because cert is missing (please specify ssl certificate with --%s argument)\n\n", OPTION_NAME_SSL_CERT);
 				goto fail;
 			}
 
 			if (ca->ca.use_ssl && stir_shaken_zstr(ca->ca.ssl_key_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: SSL cannot be started because key is missing (please specify ssl key with --%s argument)\n\n", OPTION_NAME_SSL_KEY);
+				fprintf(stderr, "ERROR: SSL cannot be started because key is missing (please specify ssl key with --%s argument)\n\n", OPTION_NAME_SSL_KEY);
 				goto fail;
 			}
 
 			if (!stir_shaken_zstr(options->ca_dir)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: CA dir set but this command takes only PA dir name\n");
+				fprintf(stderr, "ERROR: CA dir set but this command takes only PA dir name\n");
+				goto fail;
+			}
+
+			if (ca->ca.use_trusted_pa_hash ^ !stir_shaken_zstr(ca->ca.trusted_pa_cert_name)) {
+				fprintf(stderr, "ERROR: trusted PA certificate is missing\n");
+				goto fail;
+			}
+
+			if (ca->ca.use_pa_dir ^ !stir_shaken_zstr(ca->ca.pa_dir_name)) {
+				fprintf(stderr, "ERROR: trusted PA roots folder is missing\n");
 				goto fail;
 			}
 			break;
@@ -248,7 +258,7 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 		case COMMAND_SP_SPC_REQ:
 
 			if (stir_shaken_zstr(sp->url)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: URL missing\n");
+				fprintf(stderr, "ERROR: URL missing\n");
 				goto fail;
 			}
 			break;
@@ -257,7 +267,7 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 
 			if (stir_shaken_zstr(sp->sp.cert_name) || stir_shaken_zstr(sp->url) || stir_shaken_zstr(sp->sp.private_key_name) || stir_shaken_zstr(sp->sp.public_key_name)
 					|| stir_shaken_zstr(sp->spc) || stir_shaken_zstr(sp->sp.spc_token) || stir_shaken_zstr(sp->sp.csr_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: SP parameters missing\n");
+				fprintf(stderr, "ERROR: SP parameters missing\n");
 				goto fail;
 			}
 
@@ -269,12 +279,12 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 		case COMMAND_JWT_KEY_CHECK:
 
 			if (stir_shaken_zstr(options->public_key_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: public key name missing\n");
+				fprintf(stderr, "ERROR: public key name missing\n");
 				goto fail;
 			}
 
 			if (stir_shaken_zstr(options->jwt)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: JWT missing\n");
+				fprintf(stderr, "ERROR: JWT missing\n");
 				goto fail;
 			}
 			break;
@@ -289,7 +299,7 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 		case COMMAND_JWT_DUMP:
 
 			if (stir_shaken_zstr(options->jwt)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: JWT missing\n");
+				fprintf(stderr, "ERROR: JWT missing\n");
 				goto fail;
 			}
 			break;
@@ -297,27 +307,27 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 		case COMMAND_PASSPORT_CREATE:
 
 			if (stir_shaken_zstr(options->private_key_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: private key name missing\n");
+				fprintf(stderr, "ERROR: private key name missing\n");
 				goto fail;
 			}
 
 			if (stir_shaken_zstr(options->url)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: cert URL missing\n");
+				fprintf(stderr, "ERROR: cert URL missing\n");
 				goto fail;
 			}
 
 			if (stir_shaken_zstr(options->file)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: output file name missing\n");
+				fprintf(stderr, "ERROR: output file name missing\n");
 				goto fail;
 			}
 
 			if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(options->private_key_name)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: File %s does not exist.\n\n", options->private_key_name);
+				fprintf(stderr, "ERROR: File %s does not exist.\n\n", options->private_key_name);
 				goto fail;
 			}
 
 			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(options->file)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", options->file);
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", options->file);
 				goto fail;
 			}
 			break;

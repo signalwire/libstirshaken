@@ -1620,13 +1620,13 @@ stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_sha
     }
 
     if (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_tn_authlist_extension(ss, cert)) {
-        stir_shaken_set_error(ss, "Cert must have ext-tnAuthList extension (OID 1.3.6.1.5.5.7.1.26: http://oid-info.com/get/1.3.6.1.5.5.7.1.26) but it is missing", STIR_SHAKEN_ERROR_TNAUTHLIST);
+        stir_shaken_set_error(ss, "Cert did not pass tnAuthList verification check", STIR_SHAKEN_ERROR_TNAUTHLIST);
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
     if (!STIR_SHAKEN_MOCK_VERIFY_CERT_CHAIN 
             && (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_path(ss, cert))) {
-        stir_shaken_set_error_if_clear(ss, "Cert did not pass X509 path validation against CA list and CRL", STIR_SHAKEN_ERROR_CERT_INVALID);
+        stir_shaken_set_error_if_clear(ss, "Cert did not pass X509 path validation against trusted CA roots and CRL", STIR_SHAKEN_ERROR_CERT_INVALID);
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
