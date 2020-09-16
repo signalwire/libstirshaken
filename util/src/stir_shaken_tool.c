@@ -94,6 +94,7 @@ int main(int argc, char *argv[])
 		{ OPTION_NAME_SSL_CERT, required_argument, 0, OPTION_SSL_CERT },
 		{ OPTION_NAME_SSL_KEY, required_argument, 0, OPTION_SSL_KEY },
 		{ OPTION_NAME_PA_CERT, required_argument, 0, OPTION_PA_CERT },
+		{ OPTION_NAME_PA_DIR, required_argument, 0, OPTION_PA_DIR },
 		{ OPTION_NAME_V, no_argument, 0, OPTION_V },
 		{ OPTION_NAME_VV, no_argument, 0, OPTION_VV },
 		{ OPTION_NAME_VVV, no_argument, 0, OPTION_VVV },
@@ -271,6 +272,12 @@ int main(int argc, char *argv[])
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.pa_cert, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "PA certificate is: %s\n", options.pa_cert);
+				break;
+
+			case OPTION_PA_DIR:
+				STIR_SHAKEN_CHECK_OPTARG
+					strncpy(options.pa_dir_name, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "PA dir is: %s\n", options.pa_dir_name);
 				break;
 
 			case OPTION_V:
