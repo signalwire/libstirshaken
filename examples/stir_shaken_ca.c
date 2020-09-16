@@ -16,11 +16,17 @@ int main(void)
 	stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
 
 
+	// We may pass the folder name, where we store certificates necessary for X509 cert path check algorithm to establish a link between PA certificate and one of our trusted roots during SPC token verification
 	status = stir_shaken_do_init(&ss, "examples/pa", "NULL", STIR_SHAKEN_LOGLEVEL_HIGH);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("Cannot init lib\n");
 		goto exit;
 	}
+
+	// We may also supply a specific PA certificate that we trust
+	//strncpy(ca.trusted_pa_cert_name, "test/ref/pa/pa.pem", STIR_SHAKEN_BUFLEN);
+	//ca.use_trusted_pa_hash = 1;
+
 	printf("Loading keys...\n");
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_keys(&ss, &ca.keys.private_key, NULL, "test/ref/ca/ca.priv", NULL, NULL, NULL)) {
 		goto exit;

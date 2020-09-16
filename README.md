@@ -92,6 +92,57 @@ It will download STI cert from CA, given you run it somewhere with reference dat
 ### Examples
 
 You can find very compressed and useful examples of library usages in 'examples' folder. If you would like to learn more, probably 'util' folder with 'stirshaken' program would be very helpful as most of this library's functionalities are exposed through it.
+Simply run ./stirshaken to start:
+
+```
+root@piotr-deb9:~/projects/libstirshaken# ./stirshaken
+
+usage:	 /root/projects/libstirshaken/.libs/stirshaken command
+
+
+
+Where command is one of:
+
+		 keys --pubkey pub.pem --privkey priv.pem
+		 csr --privkey key --pubkey key --subject_c C --subject_cn CN --spc CODE -f csrName
+		 cert --type CA --privkey key --pubkey key --issuer_c C --issuer_cn CN --serial SERIAL --expiry EXPIRY -f certName
+		 cert --type SP --privkey key --pubkey key --issuer_c C --issuer_cn CN --serial SERIAL --expiry EXPIRY --ca_cert ca.pem --csr csr.pem --uri TNAuthList(URI) -f certName
+		 hash -f certName
+		 spc-token --privkey key --url x5u_URL --spc CODE --issuer_cn CN -f spc_token_file_name
+		 jwt-key-check --jwt token --pubkey key
+		 jwt-check --jwt token
+		 jwt-dump --jwt token
+		 ca --port 80 --privkey key --issuer_c C --issuer_cn CN --serial SERIAL --expiry EXPIRY --ca_cert ca.pem --uri TNAuthList(URI) --pa_cert pa.pem --pa_dir padir
+		 pa --port 80
+		 sp-spc-req --url URL --port port
+		 sp-cert-req --url URL --port port --privkey key --pubkey key --csr csr.pem --spc CODE --spc_token SPC_TOKEN -f CERT_NAME
+		 passport-create --privkey key --url x5u_URL -f passport_file_name
+
+		 Each command accepts setting print/logging verbosity level:
+		 --v		basic logging
+		 --vv		medium logging
+		 --vvv		high logging
+
+		 CA can be configured with HTTPS by setting up SSL cert and key with:
+			 --ssl --ssl_cert cert.pem --ssl_key key.pem
+
+		 SSL/HTTPS is supported, simply use 'https://' instead of 'http://' whenever you need encryption (default port for HTTPS is 443)
+
+		 keys			: generate key pair
+		 csr			: generate X509 certificate request for SP identified by SP Code given to --spc
+		 cert			: generate X509 certificate (end entity for --type SP and self-signed for --type CA)
+		 hash			: save CA certificate under hashed name (in this form it can be put into CA dir)
+		 spc-token		: generate SPC token for SP identified by SP Code given to --spc (set token's PA issuer to name given as --issuer_cn, and token's x5u URL of the PA certificate to URL given as --url)
+		 jwt-key-check		: decode JWT and verify signature using public key given to --pubkey
+		 jwt-check		: decode JWT and verify signature using certificate referenced in 'x5u' header (involves HTTP(S) GET request)
+		 jwt-dump		: decode JWT and print it (do not verify signature)
+		 ca			: run CA service on port given to --port and accepting tokens issued by trusted PAs (trusted PAs are ones that match public key embedded in cert given to --pa_cert or those whose certificate can be linked to trusted PA roots by X509 cert path check procedure using certs from the folder given to --pa_dir, options --pa_cert and --pa_dir are independent). Use "--ssl --ssl_cert cert.pem --ssl_key key.pem" for HTTPS
+		 pa			: run PA service on port given to --port
+		 sp-spc-req		: request SP Code token from PA at url given to --url
+		 sp-cert-req		: request SP certificate for Service Provider identified by number given to --spc from CA at url given to --url on port given to --port
+		 passport-create	: generate PASSporT with x5u pointing to given URL and sign it using specified private key
+
+```
 
 ### Helpful commands from SSL
 
@@ -116,11 +167,11 @@ sudo ./stirshaken ca --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "Si
 
 ./stirshaken ca --port 8756 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 1000 --ca_cert test/ref/ca/ca.pem --uri https://ca.shaken.signalwire.com/api --v
 
-./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "TNAuthList(URI)" --vvv
+./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "TNAuthList(URI)" --pa_cert test/ref/pa/pa.pem --vvv
 
-./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "TNAuthList(URI)" --ssl -ssl_cert cert.pem --ssl_key key.pem --vvv
+./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "TNAuthList(URI)" --pa_cert test/ref/pa/pa.pem --ssl -ssl_cert cert.pem --ssl_key key.pem --vvv
 
-./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "TNAuthList(URI)" --pa_cert test/ref/pa/pa.pem --ssl --ssl_cert fullchain.cer --ssl_key key.pem --vvv
+./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "TNAuthList(URI)" --pa_cert test/ref/pa/pa.pem --pa_dir rootpax509 --ssl --ssl_cert fullchain.cer --ssl_key key.pem --vvv
 
 ./stirshaken passport-create --privkey test/ref/pa/pa.priv --url https://pa.shaken.signalwire.com/pa.pem -f passport_ssl.txt
 
