@@ -235,6 +235,7 @@ typedef struct curl_slist curl_slist_t;
 // the verification service shall treat this as a 438 'Invalid Identity Header' error and proceed as defined above.
 typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_GENERAL,
+	STIR_SHAKEN_ERROR_BAD_PARAMS,
 	STIR_SHAKEN_ERROR_KSJSON,
 	STIR_SHAKEN_ERROR_CURL,
 	STIR_SHAKEN_ERROR_STICA_NOT_APPROVED,
@@ -966,6 +967,8 @@ typedef struct stir_shaken_ca_s {
 	char trusted_pa_cert_name[STIR_SHAKEN_BUFLEN];
 	stir_shaken_hash_entry_t* trusted_pa_keys[STI_CA_TRUSTED_PA_KEYS_MAX];
 	uint8_t use_trusted_pa_hash;
+	char pa_dir_name[STIR_SHAKEN_BUFLEN];
+	uint8_t use_pa_dir;
 } stir_shaken_ca_t;
 
 typedef struct stir_shaken_pa_s {
@@ -986,6 +989,7 @@ stir_shaken_status_t ca_create_session_challenge_details(stir_shaken_context_t *
 stir_shaken_status_t ca_session_prepare_polling(stir_shaken_context_t *ss, const char *msg, char *spc, char *expires, char *validated, stir_shaken_ca_session_t *session);
 stir_shaken_status_t ca_extract_spc_token_from_authz_response(stir_shaken_context_t *ss, const char *msg, const char **spc_token, jwt_t **spc_token_jwt);
 stir_shaken_status_t ca_verify_spc(stir_shaken_context_t *ss, jwt_t *spc_jwt, unsigned long long int spc);
+stir_shaken_status_t ca_verify_pa_cert(stir_shaken_context_t *ss, stir_shaken_ca_t *ca, stir_shaken_cert_t *cert);
 void stir_shaken_ca_destroy(stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_shaken_ca_t *ca);
 stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_shaken_pa_t *pa);
