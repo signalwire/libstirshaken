@@ -24,8 +24,8 @@ int main(void)
 	}
 
 	// We may also supply a specific PA certificate that we trust
-	//strncpy(ca.trusted_pa_cert_name, "test/ref/pa/pa.pem", STIR_SHAKEN_BUFLEN);
-	//ca.use_trusted_pa_hash = 1;
+	strncpy(ca.trusted_pa_cert_name, "test/ref/pa/pa.pem", STIR_SHAKEN_BUFLEN);
+	ca.use_trusted_pa_hash = 1;
 
 	printf("Loading keys...\n");
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_keys(&ss, &ca.keys.private_key, NULL, "test/ref/ca/ca.priv", NULL, NULL, NULL)) {
