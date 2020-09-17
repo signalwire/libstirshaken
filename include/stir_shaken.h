@@ -86,7 +86,9 @@ typedef enum stir_shaken_status {
 	STIR_SHAKEN_STATUS_ERR,
 	STIR_SHAKEN_STATUS_RESTART,
 	STIR_SHAKEN_STATUS_NOOP,
-	STIR_SHAKEN_STATUS_TERM
+	STIR_SHAKEN_STATUS_TERM,
+	STIR_SHAKEN_STATUS_HANDLED,
+	STIR_SHAKEN_STATUS_NOT_HANDLED,
 } stir_shaken_status_t;
 
 typedef enum stir_shaken_http_response_status {
@@ -247,6 +249,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_CERT_NOT_VALID_YET,
 	STIR_SHAKEN_ERROR_CERT_EXPIRED,
 	STIR_SHAKEN_ERROR_CERT_DOWNLOAD,
+	STIR_SHAKEN_ERROR_CERT_FETCH_OR_DOWNLOAD,
+	STIR_SHAKEN_ERROR_CERT_COPY,
 	STIR_SHAKEN_ERROR_SIP_403_STALE_DATE,
 	STIR_SHAKEN_ERROR_SIP_428_USE_IDENTITY_HEADER,
 	STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO,
@@ -310,6 +314,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_FILE_READ,
 	STIR_SHAKEN_ERROR_FILE_WRITE,
 	STIR_SHAKEN_ERROR_EVP_PKEY_TO_RAW,
+	STIR_SHAKEN_ERROR_CALLBACK_NOT_SET,
+	STIR_SHAKEN_ERROR_CALLBACK_ACTION_CERT_FETCH_ENQUIRY,
 } stir_shaken_error_t;
 
 #define STIR_SHAKEN_HTTP_REQ_404_INVALID "404"
@@ -322,7 +328,21 @@ typedef enum stir_shaken_http_req_type {
 	STIR_SHAKEN_HTTP_REQ_TYPE_HEAD
 } stir_shaken_http_req_type_t;
 
-typedef struct stir_shaken_context_s {
+typedef enum stir_shaken_callback_action {
+	STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY,
+} stir_shaken_callback_action_t;
+
+typedef struct stir_shaken_callback_arg_s {
+	stir_shaken_callback_action_t	action;
+	stir_shaken_cert_t				cert;
+} stir_shaken_callback_arg_t;
+
+void stir_shaken_destroy_callback_arg(stir_shaken_callback_arg_t *callback_arg);
+
+typedef stir_shaken_status_t (*stir_shaken_callback_t)(stir_shaken_callback_arg_t *);
+stir_shaken_status_t stir_shaken_default_callback(stir_shaken_callback_arg_t *arg);
+
+typedef struct stir_shaken_context_error_s {
 	char err_buf0[STIR_SHAKEN_ERROR_BUF_LEN];
 	char err_buf1[STIR_SHAKEN_ERROR_BUF_LEN];
 	char err_buf2[STIR_SHAKEN_ERROR_BUF_LEN];
@@ -332,7 +352,15 @@ typedef struct stir_shaken_context_s {
 	char err[6*STIR_SHAKEN_ERROR_BUF_LEN];
 	stir_shaken_error_t error;
 	uint8_t got_error;
+} stir_shaken_context_error_t;
+
+typedef struct stir_shaken_context_s {
+	stir_shaken_context_error_t	e;
+	stir_shaken_callback_t		callback;
+	stir_shaken_callback_arg_t	callback_arg;
 } stir_shaken_context_t;
+
+void stir_shaken_destroy_context(stir_shaken_context_t *ss);
 
 typedef struct mem_chunk_s {
 	char    *mem;
@@ -646,6 +674,7 @@ char* stir_shaken_cert_get_notAfter(stir_shaken_cert_t *cert);
 char* stir_shaken_cert_get_issuer(stir_shaken_cert_t *cert);
 char* stir_shaken_cert_get_subject(stir_shaken_cert_t *cert);
 int stir_shaken_cert_get_version(stir_shaken_cert_t *cert);
+stir_shaken_status_t stir_shaken_cert_copy(stir_shaken_context_t *ss, stir_shaken_cert_t *dst, stir_shaken_cert_t *src);
 
 EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const char *file);
 EVP_PKEY* stir_shaken_load_privkey_from_file(stir_shaken_context_t *ss, const char *file);
@@ -678,6 +707,7 @@ int stir_shaken_do_verify_data_file(stir_shaken_context_t *ss, const char *data_
 int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size_t datalen, const unsigned char *sig, size_t siglen, EVP_PKEY *public_key);
 
 stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out);
 
 stir_shaken_status_t stir_shaken_check_authority_over_number(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport);
 stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport);
@@ -690,7 +720,7 @@ stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss,
 stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out);
 
 /**
- * This will call stir_shaken_jwt_verify and will also perform X509 cert path verification on downloaded cert.
+ * This will call stir_shaken_jwt_verify and will also perform X509 cert path verification on the cert.
  * Optionally get cert and/or JWT out of the method.
  */
 stir_shaken_status_t stir_shaken_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out);
@@ -700,10 +730,9 @@ stir_shaken_status_t stir_shaken_jwt_verify_and_check_x509_cert_path(stir_shaken
  *
  * This will first process @identity_header into JWT token and parameters including cert URL.
  * This will then call stir_shaken_jwt_verify_and_check_x509_cert_path().
- * If successful retrieved PASSporT is returned via @passport and STI cert via @cert.
- * Optionally get cert out of the method.
+ * If successful retrieved PASSporT is returned via @passport and (optionally) STI cert via *@cert_out (if @cert_out is not NULL).
  *
- * NOTE: @passport should point to allocated memory big enough to create PASSporT, @cert may be NULL (will be malloced then and it is caller's responsibility to free it).
+ * NOTE: @passport should point to allocated memory big enough to create PASSporT, *@cert_out may be NULL (will be malloced then and it is caller's responsibility to free it).
  */
 stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_passport_t *passport, stir_shaken_cert_t **cert_out, time_t iat_freshness);
 

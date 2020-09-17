@@ -158,7 +158,7 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_s
 /*
  * cert - (in/out)
  */
-stir_shaken_status_t stir_shaken_jwt_download_cert(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
+stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
 {
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
     stir_shaken_http_req_t	http_req = { 0 };
@@ -185,39 +185,73 @@ stir_shaken_status_t stir_shaken_jwt_download_cert(stir_shaken_context_t *ss, co
         goto fail;
     }
 
-    cert_url = jwt_get_header(jwt, "x5u");
-    if (stir_shaken_zstr(cert_url)) {
-        stir_shaken_set_error(ss, "SPC token is missing x5u, cannot download certificate", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
-        goto fail;
-    }
-    http_req.url = strdup(cert_url);
+	cert_url = jwt_get_header(jwt, "x5u");
+	if (stir_shaken_zstr(cert_url)) {
+		stir_shaken_set_error(ss, "SPC token is missing x5u, cannot download certificate", STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE);
+		goto fail;
+	}
 
-    jwt_free(jwt);
-    jwt = NULL;
+	cert = malloc(sizeof(stir_shaken_cert_t));
+	if (!cert) {
+		stir_shaken_set_error(ss, "Cannot allocate cert", STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
+	}
+	memset(cert, 0, sizeof(stir_shaken_cert_t));
 
-    ss_status = stir_shaken_download_cert(ss, &http_req);
-    if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
-        goto fail;
-    }
+	// In order to get the certificate we execute the callback checking if caller wants to perform this verification with local cert,
+	// because for instance, it could have been cached earlier. If the caller doesn't supply cert then we perform standard download over HTTP(S).
 
-    cert = malloc(sizeof(stir_shaken_cert_t));
-    if (!cert) {
-        stir_shaken_set_error(ss, "Cannot allocate cert", STIR_SHAKEN_ERROR_GENERAL);
-        goto fail;
-    }
-    memset(cert, 0, sizeof(stir_shaken_cert_t));
+	// Let the caller supply the cert, e.g. cause it has been cached earlier
 
-    ss_status = stir_shaken_load_x509_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem);
-    if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
-        goto fail;
-    }
+	if (!ss->callback) {
+		stir_shaken_set_error(ss, "Callback not set", STIR_SHAKEN_ERROR_CALLBACK_NOT_SET);
+		goto fail;
+	}
 
-    cert->len = http_req.response.mem.size;
+	ss->callback_arg.action = STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY;
 
-    // Note, cert must be destroyed by caller
-    *cert_out = cert;
+	if (STIR_SHAKEN_STATUS_HANDLED == (ss->callback)(&ss->callback_arg)) {
+
+		// Maybe fetched cert supplied by the caller
+
+		if (!ss->callback_arg.cert.x) {
+			stir_shaken_set_error(ss, "Caller returned STATUS_HANDLED for callback action STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY but no certificate. "
+										"Return STATUS_NOT_HANDLED for callback action STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY if certificate should be downloaded, "
+										"or return STATUS_HANDLED and load cert to callback's argument if pre-cached cert should be used", STIR_SHAKEN_ERROR_CALLBACK_ACTION_CERT_FETCH_ENQUIRY);
+			goto fail;
+		}
+
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(ss, cert, &ss->callback_arg.cert)) {
+			stir_shaken_set_error(ss, "Cannot copy certificate", STIR_SHAKEN_ERROR_CERT_COPY);
+			goto fail;
+		}
+
+	} else {
+
+		// Download cert if it has not been supplied by the caller
+		http_req.url = strdup(cert_url);
+
+		jwt_free(jwt);
+		jwt = NULL;
+
+		ss_status = stir_shaken_download_cert(ss, &http_req);
+		if (STIR_SHAKEN_STATUS_OK != ss_status) {
+			stir_shaken_set_error(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+			goto fail;
+		}
+
+		ss_status = stir_shaken_load_x509_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem);
+		if (STIR_SHAKEN_STATUS_OK != ss_status) {
+			stir_shaken_set_error(ss, "Error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
+			goto fail;
+		}
+
+		cert->len = http_req.response.mem.size;
+	}
+
+	// Note, cert must be destroyed by caller
+	*cert_out = cert;
+
     if (jwt_out) {
         *jwt_out = jwt;
     } else {
@@ -291,9 +325,9 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
         goto fail;
     }
 
-    ss_status = stir_shaken_jwt_download_cert(ss, token, &cert, &jwt);
+    ss_status = stir_shaken_jwt_fetch_or_download_cert(ss, token, &cert, &jwt);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Failed to download certificate", STIR_SHAKEN_ERROR_CERT_DOWNLOAD);
+        stir_shaken_set_error(ss, "Failed to fetch or download certificate", STIR_SHAKEN_ERROR_CERT_FETCH_OR_DOWNLOAD);
         goto fail;
     }
 

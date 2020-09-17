@@ -1675,6 +1675,33 @@ int stir_shaken_cert_get_version(stir_shaken_cert_t *cert)
     return cert->version;
 }
 
+stir_shaken_status_t stir_shaken_cert_copy(stir_shaken_context_t *ss, stir_shaken_cert_t *dst, stir_shaken_cert_t *src)
+{
+	if (!dst || !src) {
+		stir_shaken_set_error(ss, "Certs not set", STIR_SHAKEN_ERROR_BAD_PARAMS);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset(dst, 0, sizeof(*dst));
+
+	if (src->len < 1) {
+		stir_shaken_set_error(ss, "Cert length invalid", STIR_SHAKEN_ERROR_CERT_INVALID);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	dst->x = malloc(src->len);
+	if (!dst->x) {
+		stir_shaken_set_error(ss, "Cannot allocate cert", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+	memset(dst->x, 0, src->len);
+	memcpy(dst->x, src->x, src->len);
+	dst->len = src->len;
+	X509_up_ref(src->x);
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 /**
  * @buf - (out) will contain fingerprint, must be of size at least 3*EVP_MAX_MD_SIZE bytes
  * @buflen - (out) will contain string len including '\0'

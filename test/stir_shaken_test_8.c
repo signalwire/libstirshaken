@@ -16,7 +16,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
     const char *origid = "Trump's Office";
     char *sih = NULL, *p = NULL;
     stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
-	stir_shaken_context_t ss = { 0 };
+	stir_shaken_context_t ss = { .callback = stir_shaken_default_callback };
 	const char *error_description = NULL;
 	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
 

@@ -400,7 +400,7 @@ const char* stir_shaken_path_to_base_file_name(const char *path)
     return ((p = strrchr(path, '/')) ? ++p : path);
 }
 
-// Return 1 if string is NULL or empty (0-length)
+// Return 1 if string is NULL or empty (0-length) [i.e. has no content: "\0"] 
 int stir_shaken_zstr(const char *str)
 {
     if (!str || (0 == strlen(str)))
@@ -410,11 +410,11 @@ int stir_shaken_zstr(const char *str)
 
 static void shift_errors(stir_shaken_context_t *ss) {
     if (!ss) return;
-    strncpy(ss->err_buf5, ss->err_buf4, STIR_SHAKEN_ERROR_BUF_LEN);
-    strncpy(ss->err_buf4, ss->err_buf3, STIR_SHAKEN_ERROR_BUF_LEN);
-    strncpy(ss->err_buf3, ss->err_buf2, STIR_SHAKEN_ERROR_BUF_LEN);
-    strncpy(ss->err_buf2, ss->err_buf1, STIR_SHAKEN_ERROR_BUF_LEN);
-    strncpy(ss->err_buf1, ss->err_buf0, STIR_SHAKEN_ERROR_BUF_LEN);
+    strncpy(ss->e.err_buf5, ss->e.err_buf4, STIR_SHAKEN_ERROR_BUF_LEN);
+    strncpy(ss->e.err_buf4, ss->e.err_buf3, STIR_SHAKEN_ERROR_BUF_LEN);
+    strncpy(ss->e.err_buf3, ss->e.err_buf2, STIR_SHAKEN_ERROR_BUF_LEN);
+    strncpy(ss->e.err_buf2, ss->e.err_buf1, STIR_SHAKEN_ERROR_BUF_LEN);
+    strncpy(ss->e.err_buf1, ss->e.err_buf0, STIR_SHAKEN_ERROR_BUF_LEN);
 }
 
 void stir_shaken_do_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error, char *file, int line)
@@ -425,26 +425,26 @@ void stir_shaken_do_set_error(stir_shaken_context_t *ss, const char *description
 
     shift_errors(ss);
 
-    memset(ss->err_buf0, 0, STIR_SHAKEN_ERROR_BUF_LEN);
-    sprintf(ss->err_buf0, "%s:%d: ", file, line);
-    i = strlen(ss->err_buf0);
+    memset(ss->e.err_buf0, 0, STIR_SHAKEN_ERROR_BUF_LEN);
+    sprintf(ss->e.err_buf0, "%s:%d: [error_code: %d] ", file, line, error);
+    i = strlen(ss->e.err_buf0);
 
     while ((i < STIR_SHAKEN_ERROR_BUF_LEN - 1) && (description[j] != '\0')) {
-        ss->err_buf0[i] = description[j];
+        ss->e.err_buf0[i] = description[j];
         ++i;
         ++j;
     }
 
-    ss->err_buf0[i] = '\0';
-    ss->error = error;
-    ss->got_error = 1;
+    ss->e.err_buf0[i] = '\0';
+    ss->e.error = error;
+    ss->e.got_error = 1;
 }
 
 void stir_shaken_do_set_error_if_clear(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error, char *file, int line)
 {
     if (ss) {
 
-        if (!ss->got_error) {
+        if (!ss->e.got_error) {
             stir_shaken_do_set_error(ss, description, error, file, line);
         }
     }
@@ -453,13 +453,13 @@ void stir_shaken_do_set_error_if_clear(stir_shaken_context_t *ss, const char *de
 void stir_shaken_clear_error(stir_shaken_context_t *ss)
 {
     if (!ss) return;
-    memset(ss, 0, sizeof(*ss));
+    memset(&ss->e, 0, sizeof(ss->e));
 }
 
 uint8_t stir_shaken_is_error_set(stir_shaken_context_t *ss)
 {
     if (!ss) return 0;
-    return (ss->got_error ? 1 : 0);
+    return (ss->e.got_error ? 1 : 0);
 }
 
 static const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
@@ -468,21 +468,21 @@ static const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
 
     if (stir_shaken_is_error_set(ss)) {
 
-        if (!stir_shaken_zstr(ss->err_buf5)) {
-            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2, ss->err_buf3, ss->err_buf4, ss->err_buf5);
-        } else if (!stir_shaken_zstr(ss->err_buf4)) {
-            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2, ss->err_buf3, ss->err_buf4);
-        } else if (!stir_shaken_zstr(ss->err_buf3)) {
-            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2, ss->err_buf3);
-        } else if (!stir_shaken_zstr(ss->err_buf2)) {
-            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n", ss->err_buf0, ss->err_buf1, ss->err_buf2);
-        } else if (!stir_shaken_zstr(ss->err_buf1)) {
-            snprintf(ss->err, sizeof(ss->err), "Error stack (top to bottom), outermost first - deepest last:\n[ERR 0] %s\n[ERR 1] %s\n", ss->err_buf0, ss->err_buf1);
+        if (!stir_shaken_zstr(ss->e.err_buf5)) {
+            snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, ss->e.err_buf5);
+        } else if (!stir_shaken_zstr(ss->e.err_buf4)) {
+            snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4);
+        } else if (!stir_shaken_zstr(ss->e.err_buf3)) {
+            snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3);
+        } else if (!stir_shaken_zstr(ss->e.err_buf2)) {
+            snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2);
+        } else if (!stir_shaken_zstr(ss->e.err_buf1)) {
+            snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom), outermost first - deepest last:\n[ERR 0] %s\n[ERR 1] %s\n", ss->e.err_buf0, ss->e.err_buf1);
         } else {
-            snprintf(ss->err, sizeof(ss->err), "[ERR 0] %s\n", ss->err_buf0);
+            snprintf(ss->e.err, sizeof(ss->e.err), "[ERR 0] %s\n", ss->e.err_buf0);
         }
 
-        return ss->err;
+        return ss->e.err;
     }
 
     return "No description provided";
@@ -496,7 +496,7 @@ stir_shaken_error_t stir_shaken_get_error_code(stir_shaken_context_t *ss)
         return STIR_SHAKEN_ERROR_GENERAL;
     }
 
-    return ss->error;
+    return ss->e.error;
 }
 
 const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t *error)
@@ -506,6 +506,21 @@ const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t
         *error = stir_shaken_get_error_code(ss);
     }
     return stir_shaken_get_error_string(ss);
+}
+
+void stir_shaken_destroy_callback_arg(stir_shaken_callback_arg_t *arg)
+{
+	if (!arg) return;
+	stir_shaken_destroy_cert(&arg->cert);
+	memset(arg, 0, sizeof(*arg));
+}
+
+void stir_shaken_destroy_context(stir_shaken_context_t *ss)
+{
+	if (!ss) return;
+	stir_shaken_clear_error(ss);
+	stir_shaken_destroy_callback_arg(&ss->callback_arg);
+	memset(ss, 0, sizeof(*ss));
 }
 
 size_t stir_shaken_hash_hash(size_t hashsize, size_t key)
@@ -827,6 +842,23 @@ stir_shaken_status_t stir_shaken_add_cert_trusted_from_file(stir_shaken_context_
 	X509_free(x);
 
 	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_default_callback(stir_shaken_callback_arg_t *arg)
+{
+	if (!arg) return STIR_SHAKEN_STATUS_TERM;
+
+	switch (arg->action) {
+
+		case STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY:
+			// Default behaviour for certificate fetch enquiry is to request downloading
+			return STIR_SHAKEN_STATUS_NOT_HANDLED;
+
+		default:
+			return STIR_SHAKEN_STATUS_NOT_HANDLED;
+	}
+
+	return STIR_SHAKEN_STATUS_NOT_HANDLED;
 }
 
 time_t stir_shaken_time_elapsed_s(time_t ts, time_t now)
