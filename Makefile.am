@@ -9,7 +9,7 @@ libstirshaken_la_LDFLAGS = -version-info 1:0:0
 pkgconfigdir   = @pkgconfigdir@
 pkgconfig_DATA = build/stirshaken.pc
 
-check_PROGRAMS = stir_shaken_test_1 stir_shaken_test_2 stir_shaken_test_3 stir_shaken_test_4 stir_shaken_test_5 stir_shaken_test_6 stir_shaken_test_7 stir_shaken_test_8 stir_shaken_test_9 stir_shaken_test_10 stir_shaken_test_11 stir_shaken_test_12 stir_shaken_test_13 stir_shaken_test_14
+check_PROGRAMS = stir_shaken_test_1 stir_shaken_test_2 stir_shaken_test_3 stir_shaken_test_4 stir_shaken_test_5 stir_shaken_test_6 stir_shaken_test_7 stir_shaken_test_8 stir_shaken_test_9 stir_shaken_test_10 stir_shaken_test_11 stir_shaken_test_12 stir_shaken_test_13
 TESTS = $(check_PROGRAMS)
 
 examples = stir_shaken_as_passport stir_shaken_vs stir_shaken_ca
@@ -72,10 +72,6 @@ stir_shaken_test_12_LDADD = libstirshaken.la
 stir_shaken_test_13_SOURCES = test/stir_shaken_test_13.c util/src/stir_shaken_ca.c util/src/mongoose.c
 stir_shaken_test_13_CFLAGS = -Iinclude -Iutil/include -DMG_ENABLE_SSL
 stir_shaken_test_13_LDADD = libstirshaken.la
-
-stir_shaken_test_14_SOURCES = test/stir_shaken_test_14.c
-stir_shaken_test_14_CFLAGS = -Iinclude
-stir_shaken_test_14_LDADD = libstirshaken.la
 
 stir_shaken_as_passport_SOURCES = examples/stir_shaken_as_passport.c
 stir_shaken_as_passport_CFLAGS = -Iinclude
