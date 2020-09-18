@@ -175,7 +175,7 @@ fail:
 
 int main(void)
 {
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, CA_DIR, CRL_DIR, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, CA_DIR, NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 
