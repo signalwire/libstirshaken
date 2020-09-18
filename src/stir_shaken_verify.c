@@ -225,6 +225,7 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 			stir_shaken_set_error(ss, "Cannot copy certificate", STIR_SHAKEN_ERROR_CERT_COPY);
 			goto fail;
 		}
+		stir_shaken_destroy_cert(&ss->callback_arg.cert);
 
 	} else {
 
@@ -325,7 +326,7 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
         goto fail;
     }
 
-    ss_status = stir_shaken_jwt_fetch_or_download_cert(ss, token, &cert, &jwt);
+    ss_status = stir_shaken_jwt_fetch_or_download_cert(ss, token, &cert, NULL);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
         stir_shaken_set_error(ss, "Failed to fetch or download certificate", STIR_SHAKEN_ERROR_CERT_FETCH_OR_DOWNLOAD);
         goto fail;

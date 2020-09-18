@@ -1689,13 +1689,7 @@ stir_shaken_status_t stir_shaken_cert_copy(stir_shaken_context_t *ss, stir_shake
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	dst->x = malloc(src->len);
-	if (!dst->x) {
-		stir_shaken_set_error(ss, "Cannot allocate cert", STIR_SHAKEN_ERROR_GENERAL);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
-	memset(dst->x, 0, src->len);
-	memcpy(dst->x, src->x, src->len);
+	dst->x = src->x;
 	dst->len = src->len;
 	X509_up_ref(src->x);
 

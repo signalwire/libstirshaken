@@ -2,8 +2,6 @@
 
 const char *path = "./test/run";
 
-#define CA_DIR	"./test/run/ca"
-#define CRL_DIR	"./test/run/crl"
 
 stir_shaken_ca_t ca;
 stir_shaken_sp_t sp;
@@ -65,7 +63,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Wrong status");
 	stir_shaken_assert(stir_shaken_is_error_set(&ss), "Error not set");
 	stir_shaken_assert(stir_shaken_get_error(&ss, &error_code) && error_code == STIR_SHAKEN_ERROR_CERT_FETCH_OR_DOWNLOAD, "Wrong error code");
-	
+
 	// Test 2: callback set to default, should perform download of the certificate
 	ss.callback = stir_shaken_default_callback;
 	status = stir_shaken_jwt_verify(&ss, passport_encoded, &cert, &jwt);
@@ -175,7 +173,7 @@ fail:
 
 int main(void)
 {
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, CA_DIR, NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, "test/ref/ca", NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 
