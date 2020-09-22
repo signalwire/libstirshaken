@@ -494,7 +494,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
     return STIR_SHAKEN_STATUS_OK;
 }
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
     stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, NULL, NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
 

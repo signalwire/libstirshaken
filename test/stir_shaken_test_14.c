@@ -8,6 +8,22 @@ stir_shaken_sp_t sp;
 stir_shaken_cert_t		cert_cached;
 stir_shaken_context_t	ss;
 
+const char *sp_pem = "-----BEGIN CERTIFICATE-----\n"
+"MIICBTCCAaugAwIBAgIBATAKBggqhkjOPQQDAjAuMQswCQYDVQQGEwJVUzEfMB0G\n"
+"A1UEAwwWU2lnbmFsV2lyZSBTVEktQ0EgVGVzdDAeFw0yMDA4MDEwMDM3MTlaFw00\n"
+"NzEyMTcwMDM3MTlaMC4xCzAJBgNVBAYTAlVTMR8wHQYDVQQDDBZTaWduYWxXaXJl\n"
+"IFNUSS1TUCBUZXN0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEV9UoHnzedLPO\n"
+"YsEZzePF2TU//V1WvMfnDzQSjKlHsGEh4gaFROB1DonrO5/zSrGcTqH8eEGKUMeN\n"
+"/yb3dsdsKaOBuTCBtjAdBgNVHQ4EFgQUJ3VMh19TxUy7+Hj6OtvBVO4L1VEwHwYD\n"
+"VR0jBBgwFoAUFHxMJ2mAvB7OJ3RYuUspH4fqZZ4wNQYJYIZIAYb4QgENBCgWJkFs\n"
+"d2F5cyBsb29rIG9uIHRoZSBicmlnaHQgc2lkZSBvZiBsaWZlMD0GCCsGAQUFBwEa\n"
+"BDEWL2NhLnNoYWtlbi5zaWduYWx3aXJlLmNvbS9zdGktY2EvYWNtZS9UTkF1dGhM\n"
+"aXN0MAoGCCqGSM49BAMCA0gAMEUCIHR+PsVso8HziaiVfMF7qu2s4+lkqJCaslbh\n"
+"rLDq/fuDAiEAnomQXpKBGkGpT7KFjcqBwA6kbz14Hnlw8sn8gPSGKYA=\n"
+"-----END CERTIFICATE-----";
+int http_req_mocked;
+int http_req_handled_from_cache;
+
 #define PRINT_SHAKEN_ERROR_IF_SET \
 	if (stir_shaken_is_error_set(&ss)) { \
 		error_description = stir_shaken_get_error(&ss, &error_code); \
@@ -15,18 +31,51 @@ stir_shaken_context_t	ss;
 		printf("Error code is: '%d'\n", error_code); \
 	}
 
+/*
+ * Mock HTTP transfers in this test.
+ */
+stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
+{
+	(void) ss;
+	int certlen = strlen(sp_pem);
+
+	printf("\n\nShakening surprise\n\n");
+	stir_shaken_assert(http_req != NULL, "http_req is NULL!");
+
+	printf("MOCK HTTP response code to 200 OK\n");
+	http_req->response.code = 200;
+
+	certlen = strlen(sp_pem);
+	stir_shaken_assert(http_req->response.mem.mem = malloc(certlen + 1), "Malloc failed");
+	memset(http_req->response.mem.mem, 0, certlen + 1);
+	strncpy(http_req->response.mem.mem, sp_pem, certlen);
+	http_req->response.mem.size = certlen + 1;
+
+	http_req_mocked = 1;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 stir_shaken_status_t stir_shaken_test_callback(stir_shaken_callback_arg_t *arg)
 {
-	if (!arg) return STIR_SHAKEN_STATUS_TERM;
+	stir_shaken_assert(arg, "Callback argument missing");
+	stir_shaken_assert(STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY == arg->action, "Wrong action");
 
 	switch (arg->action) {
 
 		case STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY:
+
 			// Default behaviour for certificate fetch enquiry is to request downloading, but in some cases it would be useful to avoid that and use pre-cached certificate.
 			// Here, we supply libstirshaken with certificate we cached earlier, avoiding HTTP(S) download.
 			// We must return STIR_SHAKEN_STATUS_HANDLED to signal this to the library, otherwise it would execute HTTP(S) download
+
 			printf("Supplying certificate from the cache...");
+
+			stir_shaken_assert(!strcmp("http://shaken.signalwire.com/sp.pem", arg->cert.public_url), "Wrong cert location");
 			stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_cert_copy(&ss, &arg->cert, &cert_cached), "Cannot copy certificate");
+
+			http_req_handled_from_cache = 1;
+
 			return STIR_SHAKEN_STATUS_HANDLED;
 
 		default:
@@ -53,18 +102,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	jwt_t	*jwt = NULL;
 
 
-	// Test 1: callback not set, should return error STIR_SHAKEN_ERROR_CERT_FETCH_OR_DOWNLOAD
-	status = stir_shaken_jwt_verify(&ss, passport_encoded, &cert, &jwt);
-	if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
-		printf("Error description is:\n%s\n", error_description);
-		printf("Error code is: %d\n", error_code);
-	}
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_FALSE, "Wrong status");
-	stir_shaken_assert(stir_shaken_is_error_set(&ss), "Error not set");
-	stir_shaken_assert(stir_shaken_get_error(&ss, &error_code) && error_code == STIR_SHAKEN_ERROR_CERT_FETCH_OR_DOWNLOAD, "Wrong error code");
-
-	// Test 2: callback set to default, should perform download of the certificate
+	// Test 1: callback set to default, should perform download of the certificate
 	ss.callback = stir_shaken_default_callback;
 	status = stir_shaken_jwt_verify(&ss, passport_encoded, &cert, &jwt);
 	if (stir_shaken_is_error_set(&ss)) {
@@ -72,6 +110,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 		printf("Error description is:\n%s\n", error_description);
 		printf("Error code is: %d\n", error_code);
 	}
+	stir_shaken_assert(http_req_mocked == 1, "HTTP request performed");
+	stir_shaken_assert(http_req_handled_from_cache == 0, "HTTP request not handled from cache");
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Wrong status");
 	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error not set");
 
@@ -101,8 +141,9 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	stir_shaken_destroy_cert(cert);
 	free(cert);
 	cert = NULL;
+	http_req_mocked = 0;
 
-	// Test 3: callback set to custom function supplying certificates from cache
+	// Test 2: callback set to custom function supplying certificates from cache
 	ss.callback = stir_shaken_test_callback;
 	status = stir_shaken_jwt_verify(&ss, passport_encoded, &cert, &jwt);
 	if (stir_shaken_is_error_set(&ss)) {
@@ -110,6 +151,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 		printf("Error description is:\n%s\n", error_description);
 		printf("Error code is: %d\n", error_code);
 	}
+	stir_shaken_assert(http_req_mocked == 0, "HTTP request performed");
+	stir_shaken_assert(http_req_handled_from_cache == 1, "HTTP request not handled from cache");
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Wrong status");
 	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error not set");
 
@@ -171,9 +214,22 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, "test/ref/ca", NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
+
+	if (argc == 1) {
+
+        // MOCK http transfers by default
+        stir_shaken_make_http_req = stir_shaken_make_http_req_mock;
+
+    } else if (argc > 1 && !stir_shaken_zstr(argv[1]) && !strcmp(argv[1], "nomock")) {
+
+        // do not MOCK
+    } else {
+        printf("ERR: this program takes no argument or one argument which must be 'nomock'\n");
+        exit(EXIT_FAILURE);
+    }
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

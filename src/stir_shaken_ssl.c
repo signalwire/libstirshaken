@@ -1684,13 +1684,8 @@ stir_shaken_status_t stir_shaken_cert_copy(stir_shaken_context_t *ss, stir_shake
 
 	memset(dst, 0, sizeof(*dst));
 
-	if (src->len < 1) {
-		stir_shaken_set_error(ss, "Cert length invalid", STIR_SHAKEN_ERROR_CERT_INVALID);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
-
 	dst->x = src->x;
-	dst->len = src->len;
+	strncpy(dst->public_url, src->public_url, STIR_SHAKEN_BUFLEN);
 	X509_up_ref(src->x);
 
 	return STIR_SHAKEN_STATUS_OK;

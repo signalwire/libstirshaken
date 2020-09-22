@@ -114,7 +114,6 @@ typedef struct stir_shaken_cert_s {
 	STACK_OF(X509)	*xchain;				// Certificate chain
 	X509_STORE_CTX	*verify_ctx;			// Verification SSL context using @store to validate cert chain against CA list and CRL
 	char        *body;
-	size_t		len;
 	uint8_t     is_fresh;
 	char		install_dir[STIR_SHAKEN_BUFLEN];			// folder, where cert must be put to be accessible with @public_url for other SPs
 	char		install_url[STIR_SHAKEN_BUFLEN];			// directory part of the publicly accessible URL

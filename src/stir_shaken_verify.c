@@ -201,14 +201,13 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 	// In order to get the certificate we execute the callback checking if caller wants to perform this verification with local cert,
 	// because for instance, it could have been cached earlier. If the caller doesn't supply cert then we perform standard download over HTTP(S).
 
-	// Let the caller supply the cert, e.g. cause it has been cached earlier
-
 	if (!ss->callback) {
-		stir_shaken_set_error(ss, "Callback not set", STIR_SHAKEN_ERROR_CALLBACK_NOT_SET);
-		goto fail;
+		ss->callback = stir_shaken_default_callback;
 	}
 
 	ss->callback_arg.action = STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY;
+	strncpy(ss->callback_arg.cert.public_url, cert_url, STIR_SHAKEN_BUFLEN);
+	ss->callback_arg.cert.public_url[STIR_SHAKEN_BUFLEN - 1] = '\0';
 
 	if (STIR_SHAKEN_STATUS_HANDLED == (ss->callback)(&ss->callback_arg)) {
 
@@ -246,8 +245,6 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 			stir_shaken_set_error(ss, "Error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
 			goto fail;
 		}
-
-		cert->len = http_req.response.mem.size;
 	}
 
 	// Note, cert must be destroyed by caller
