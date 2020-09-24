@@ -29,10 +29,59 @@
  * eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNvbS9zcC5wZW0ifQ.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTU5OTI1ODkzOCwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.URaXwA1TcXJtqfbGKT_FH14y8KgCGM4mrJW8ApdEb2bhstrErjDMSEY1llsAV_zxcWpyIf5hUIk_XI4WpkVACw;info=<http://shaken.signalwire.com/sp.pem>;alg=ES256;ppt=shaken
  **/
 
-int main(void)
+stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
+{
+	stir_shaken_context_t	ss = { 0 };
+	const char				*error_description = NULL;
+	stir_shaken_error_t		error_code = STIR_SHAKEN_ERROR_GENERAL;
+	stir_shaken_cert_t		cert_cached = { 0 };
+
+	switch (arg->action) {
+
+		case STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY:
+
+			// Default behaviour for certificate fetch enquiry is to request downloading, but in some cases it would be useful to avoid that and use pre-cached certificate.
+			// Here, we supply libstirshaken with certificate we cached earlier, avoiding HTTP(S) download.
+			// We must return STIR_SHAKEN_STATUS_HANDLED to signal this to the library, otherwise it would execute HTTP(S) download
+
+			if (!strcmp("http://shaken.signalwire.com/sp.pem", arg->cert.public_url)) {
+
+				printf("Supplying certificate from the cache: %s...", arg->cert.public_url);
+
+				if (!(cert_cached.x = stir_shaken_load_x509_from_file(&ss, "examples/cache/sp.pem"))) {
+					printf("Cannot load X509 from memory");
+					goto exit;
+				}
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(&ss, &arg->cert, &cert_cached)) {
+					printf("Cannot copy certificate");
+					goto exit;
+				}
+
+				stir_shaken_destroy_cert(&cert_cached);
+
+				return STIR_SHAKEN_STATUS_HANDLED;
+			}
+
+		default:
+			return STIR_SHAKEN_STATUS_NOT_HANDLED;
+	}
+
+exit:
+
+	if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is:\n%s\n", error_description);
+		printf("Error code is: %d\n", error_code);
+	}
+
+	return STIR_SHAKEN_STATUS_NOT_HANDLED;
+}
+
+void run_verification_service(stir_shaken_callback_t callback)
 {
 	const char	*error_description = NULL;
-	stir_shaken_context_t	ss = { 0 };
+	stir_shaken_context_t	ss = { .callback = callback};
 	stir_shaken_error_t		error_code = STIR_SHAKEN_ERROR_GENERAL;
 	stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
 
@@ -121,6 +170,11 @@ exit:
 	free(cert);
 	cert = NULL;
 	stir_shaken_do_deinit();
+}
 
+int main(void)
+{
+	run_verification_service(NULL);
+	run_verification_service(cache_callback);
 	return 0;
 }
