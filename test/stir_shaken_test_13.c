@@ -440,7 +440,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
     PRINT_SHAKEN_ERROR_IF_SET
         stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
 
-    // Reqeust STI cetificate
+    // Reqeust STI certificate
 
     kid = NULL;
     nonce = NULL;

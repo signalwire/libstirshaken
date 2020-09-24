@@ -49,7 +49,7 @@ stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
 				printf("Supplying certificate from the cache: %s...", arg->cert.public_url);
 
 				if (!(cert_cached.x = stir_shaken_load_x509_from_file(&ss, "examples/cache/sp.pem"))) {
-					printf("Cannot load X509 from memory");
+					printf("Cannot load X509 from file");
 					goto exit;
 				}
 
