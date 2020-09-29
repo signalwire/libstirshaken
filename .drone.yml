@@ -1,40 +1,80 @@
 ---
 kind: pipeline
-name: scan-build
+name: default
 
-node:
-  freeswitch: stack
+steps:
+    - name: unit-tests
+      image: signalwire/freeswitch-public-base
+      pull: true
+      commands:
+      - export WORK_DIR=$PWD
+      - echo $WORK_DIR
+      - export ASAN_OPTIONS=log_path=stdout:disable_coredump=0:unmap_shadow_on_exit=1
+      - ./bootstrap.sh
+      - ./configure --enable-address-sanitizer
+      - echo '#!/bin/bash\nmake -j`nproc --all` |& tee $WORK_DIR/unit-tests-build-result.txt\nexitstatus=$${PIPESTATUS[0]}\necho $$exitstatus > $WORK_DIR/build-status.txt\n' > build.sh
+      - chmod +x build.sh
+      - ./build.sh
+      - mkdir -p $WORK_DIR/tests/unit
+      - cat /proc/sys/kernel/core_pattern
+      - ./run-tests-parallel.sh 
+      - echo 0 > $WORK_DIR/tests/unit/run-tests-status.txt
+      - ./collect-test-logs.sh && exit 0 || echo 'Some tests failed'
+      - ls -la ./test
+      - echo 1 > $WORK_DIR/tests/unit/run-tests-status.txt
+      - ls -la /cores
+      - mkdir -p $WORK_DIR/tests/unit/logs
+      - (mv artifacts.html $WORK_DIR/tests/unit/logs/ || true)
+      - (mv log_run-tests_*.html $WORK_DIR/tests/unit/logs/ || true)
+      - (mv backtrace_*.txt $WORK_DIR/tests/unit/logs/ || true)
+      - ls -la $WORK_DIR/tests/unit/logs
+
+    - name: notify
+      image: signalwire/drone-notify
+      pull: true
+      environment:
+        SLACK_WEBHOOK_URL:
+          from_secret: slack_webhook_url
+        ENV_FILE:
+          from_secret: notify_env
+      commands:
+      - /root/unit-tests-notify.sh
+      
+trigger:
+  branch:
+  - master
+  event:
+  - pull_request
+  - push
+
+---
+kind: pipeline
+name: scan-build
 
 steps:
     - name: scan-build
       image: signalwire/freeswitch-public-base
       pull: true
       commands:
-      - apt-get update && apt-get install -y clang-tools-7 libcurl4-openssl-dev libjwt-dev libks
       - ./bootstrap.sh
-      - ./configure --enable-address-sanitizer
+      - ./configure
       - mkdir -p scan-build
       - echo '#!/bin/bash\nscan-build-7 -o ./scan-build/ make -j`nproc --all` |& tee ./scan-build-result.txt\nexitstatus=$${PIPESTATUS[0]}\necho $$exitstatus > ./scan-build-status.txt\n' > scan.sh
       - chmod +x scan.sh
       - ./scan.sh
       - exitstatus=`cat ./scan-build-status.txt`
       - echo "*** Exit status is $exitstatus"
-      - make install
-      - make check
 
     - name: notify
-      image: signalwire/scan-build-notify
+      image: signalwire/drone-notify
       pull: true
       environment:
-        GITHUB_CI_APP_PEM:
-          from_secret: github_ci_app_pem
-        SSH_KEY:
-          from_secret: ssh_key
         SLACK_WEBHOOK_URL:
           from_secret: slack_webhook_url
+        ENV_FILE:
+          from_secret: notify_env
       commands:
-      - /root/notify.sh
-
+      - /root/scan-build-notify.sh
       
 trigger:
   branch:
@@ -44,6 +84,6 @@ trigger:
   - push
 ---
 kind: signature
-hmac: 700f49ce871925296c00888ff8842aba8f5d1660ccea1784b07a20ab8619ec22
+hmac: a3b14315871942a50a2af1a762e9ae3e96fc338cf120bcbb7848fb475734f16d
 
 ...
