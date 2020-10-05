@@ -3,7 +3,7 @@
 
 const char *path = "./test/run";
 
-stir_shaken_ca_t ca = { .cert_name = "test/ref/ca/ca.pem", .private_key_name = "test/ref/ca/ca.priv", .issuer_c = "US", .issuer_cn = "TEST CA", .serial = 1, .expiry_days = 9999, .tn_auth_list_uri = "https://test-ca.com/auth-list-check" };
+stir_shaken_ca_t ca = { .ss = { .callback = stir_shaken_default_callback }, .cert_name = "test/ref/ca/ca.pem", .private_key_name = "test/ref/ca/ca.priv", .issuer_c = "US", .issuer_cn = "TEST CA", .serial = 1, .expiry_days = 9999, .tn_auth_list_uri = "https://test-ca.com/auth-list-check" };
 int polling;
 int ca_verifying_spc_token;
 const char *pa_pem = "-----BEGIN CERTIFICATE-----\n"
@@ -494,7 +494,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
     return STIR_SHAKEN_STATUS_OK;
 }
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
     stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, NULL, NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
 

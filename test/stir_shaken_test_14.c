@@ -1,12 +1,28 @@
-#include "../include/stir_shaken.h"
+#include <stir_shaken.h>
 
 const char *path = "./test/run";
 
-#define CA_DIR	"./test/run/ca"
-#define CRL_DIR	"./test/run/crl"
 
 stir_shaken_ca_t ca;
 stir_shaken_sp_t sp;
+stir_shaken_cert_t		cert_cached;
+stir_shaken_context_t	ss;
+
+const char *sp_pem = "-----BEGIN CERTIFICATE-----\n"
+"MIICBTCCAaugAwIBAgIBATAKBggqhkjOPQQDAjAuMQswCQYDVQQGEwJVUzEfMB0G\n"
+"A1UEAwwWU2lnbmFsV2lyZSBTVEktQ0EgVGVzdDAeFw0yMDA4MDEwMDM3MTlaFw00\n"
+"NzEyMTcwMDM3MTlaMC4xCzAJBgNVBAYTAlVTMR8wHQYDVQQDDBZTaWduYWxXaXJl\n"
+"IFNUSS1TUCBUZXN0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEV9UoHnzedLPO\n"
+"YsEZzePF2TU//V1WvMfnDzQSjKlHsGEh4gaFROB1DonrO5/zSrGcTqH8eEGKUMeN\n"
+"/yb3dsdsKaOBuTCBtjAdBgNVHQ4EFgQUJ3VMh19TxUy7+Hj6OtvBVO4L1VEwHwYD\n"
+"VR0jBBgwFoAUFHxMJ2mAvB7OJ3RYuUspH4fqZZ4wNQYJYIZIAYb4QgENBCgWJkFs\n"
+"d2F5cyBsb29rIG9uIHRoZSBicmlnaHQgc2lkZSBvZiBsaWZlMD0GCCsGAQUFBwEa\n"
+"BDEWL2NhLnNoYWtlbi5zaWduYWx3aXJlLmNvbS9zdGktY2EvYWNtZS9UTkF1dGhM\n"
+"aXN0MAoGCCqGSM49BAMCA0gAMEUCIHR+PsVso8HziaiVfMF7qu2s4+lkqJCaslbh\n"
+"rLDq/fuDAiEAnomQXpKBGkGpT7KFjcqBwA6kbz14Hnlw8sn8gPSGKYA=\n"
+"-----END CERTIFICATE-----";
+int http_req_mocked;
+int http_req_handled_from_cache;
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
 	if (stir_shaken_is_error_set(&ss)) { \
@@ -15,182 +31,205 @@ stir_shaken_sp_t sp;
 		printf("Error code is: '%d'\n", error_code); \
 	}
 
-stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
+/*
+ * Mock HTTP transfers in this test.
+ */
+stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
-	EVP_PKEY *pkey = NULL;
-	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
-	stir_shaken_context_t ss = { 0 };
-	const char *error_description = NULL;
-	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
-	unsigned long hash = 0;
-	char hashstr[100] = { 0 };
-	int hashstrlen = 100;
+	(void) ss;
+	int certlen = strlen(sp_pem);
 
+	printf("\n\nShakening surprise\n\n");
+	stir_shaken_assert(http_req != NULL, "http_req is NULL!");
 
-	sprintf(ca.private_key_name, "%s%c%s", path, '/', "12_ca_private_key.pem");
-	sprintf(ca.public_key_name, "%s%c%s", path, '/', "12_ca_public_key.pem");
-	sprintf(ca.cert_name, "%s%c%s", path, '/', "12_ca_cert.crt");
+	printf("MOCK HTTP response code to 200 OK\n");
+	http_req->response.code = 200;
 
-	sprintf(sp.private_key_name, "%s%c%s", path, '/', "12_sp_private_key.pem");
-	sprintf(sp.public_key_name, "%s%c%s", path, '/', "12_sp_public_key.pem");
-	sprintf(sp.csr_name, "%s%c%s", path, '/', "12_sp_csr.pem");
-	sprintf(sp.cert_name, "%s%c%s", path, '/', "12_sp_cert.crt");
+	certlen = strlen(sp_pem);
+	stir_shaken_assert(http_req->response.mem.mem = malloc(certlen + 1), "Malloc failed");
+	memset(http_req->response.mem.mem, 0, certlen + 1);
+	strncpy(http_req->response.mem.mem, sp_pem, certlen);
+	http_req->response.mem.size = certlen + 1;
 
-	printf("=== Unit testing: STIR/Shaken X509 cert path verification [stir_shaken_unit_test_x509_cert_path_verification]\n\n");
+	http_req_mocked = 1;
 
-	printf("CA: Generate CA keys\n");
-
-	// Generate CA keys
-	ca.keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
-	status = stir_shaken_generate_keys(&ss, &ca.keys.ec_key, &ca.keys.private_key, &ca.keys.public_key, ca.private_key_name, ca.public_key_name, ca.keys.priv_raw, &ca.keys.priv_raw_len);
-	PRINT_SHAKEN_ERROR_IF_SET
-		stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
-	stir_shaken_assert(ca.keys.ec_key != NULL, "Err, failed to generate EC key\n\n");
-	stir_shaken_assert(ca.keys.private_key != NULL, "Err, failed to generate private key");
-	stir_shaken_assert(ca.keys.public_key != NULL, "Err, failed to generate public key");
-
-	// 1
-	// SP obtains SPC and SPC token from PA and can now construct CSR
-
-	printf("SP: Generate SP keys\n");
-
-	// Generate SP keys
-	sp.keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
-	status = stir_shaken_generate_keys(&ss, &sp.keys.ec_key, &sp.keys.private_key, &sp.keys.public_key, sp.private_key_name, sp.public_key_name, sp.keys.priv_raw, &sp.keys.priv_raw_len);
-	PRINT_SHAKEN_ERROR_IF_SET
-		stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
-	stir_shaken_assert(sp.keys.ec_key != NULL, "Err, failed to generate EC key\n\n");
-	stir_shaken_assert(sp.keys.private_key != NULL, "Err, failed to generate private key");
-	stir_shaken_assert(sp.keys.public_key != NULL, "Err, failed to generate public key");
-
-	printf("SP: Create CSR\n");
-	sp.code = 7777;
-	snprintf(sp.subject_c, STIR_SHAKEN_BUFLEN, "US");
-	snprintf(sp.subject_cn, STIR_SHAKEN_BUFLEN, "NewSTI-SP, But Absolutely Fine Inc.");
-
-	status = stir_shaken_generate_csr(&ss, sp.code, &sp.csr.req, sp.keys.private_key, sp.keys.public_key, sp.subject_c, sp.subject_cn);
-	PRINT_SHAKEN_ERROR_IF_SET
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
-
-	// 2
-	// CA creates self-signed cert
-
-	printf("CA: Create self-signed CA Certificate\n");
-
-	snprintf(ca.issuer_c, STIR_SHAKEN_BUFLEN, "US");
-	snprintf(ca.issuer_cn, STIR_SHAKEN_BUFLEN, "SignalWire Secure");
-	ca.serial = 1;
-	ca.expiry_days = 90;
-	ca.cert.x = stir_shaken_generate_x509_self_signed_ca_cert(&ss, ca.keys.private_key, ca.keys.public_key, ca.issuer_c, ca.issuer_cn, ca.serial, ca.expiry_days);
-	PRINT_SHAKEN_ERROR_IF_SET
-		stir_shaken_assert(ca.cert.x, "Err, generating CA cert");
-
-
-	// 3
-	// SP sends CSR to CA
-
-	// 4
-	// CA challanges SP with TNAuthList challenge
-
-	// 5
-	// SP responds with SPC token
-
-	// 6
-	// CA can generate cert for SP now
-	printf("CA: Create end-entity SP Certificate from SP's CSR\n");
-	snprintf(ca.tn_auth_list_uri, STIR_SHAKEN_BUFLEN, "http://ca.com/api");
-	//sp.cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, sp.code, sp.csr.req, ca.keys.private_key, ca.issuer_c, ca.issuer_cn, sp.serial, sp.expiry_days);
-	pkey = X509_REQ_get_pubkey(sp.csr.req);
-	stir_shaken_assert(1 == EVP_PKEY_cmp(pkey, sp.keys.public_key), "Public key in CSR different than SP's");
-	//sp.cert.x = stir_shaken_generate_x509_end_entity_cert(&ss, ca.cert.x, ca.keys.private_key, sp.keys.public_key, ca.issuer_c, ca.issuer_cn, sp.subject_c, sp.subject_cn, ca.serial_sp, ca.expiry_days_sp, ca.number_start_sp, ca.number_end_sp);
-	sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(&ss, ca.cert.x, ca.keys.private_key, ca.issuer_c, ca.issuer_cn, sp.csr.req, ca.serial, ca.expiry_days, ca.tn_auth_list_uri);
-	PRINT_SHAKEN_ERROR_IF_SET
-    stir_shaken_assert(sp.cert.x != NULL, "Err, generating Cert");
-
-	// SAVE CSR and certificates
-
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_csr_to_disk(&ss, sp.csr.req, sp.csr_name)) {
-		printf("STIR-Shaken: Failed to write CSR to disk\n");
-		PRINT_SHAKEN_ERROR_IF_SET
-			return STIR_SHAKEN_STATUS_TERM;
-	}
-
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(&ss, ca.cert.x, ca.cert_name)) {
-		printf("Failed to write CA certificate to disk\n");
-		PRINT_SHAKEN_ERROR_IF_SET
-			return STIR_SHAKEN_STATUS_TERM;
-	}
-
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(&ss, sp.cert.x, sp.cert_name)) {
-		printf("Failed to write SP certificate to disk\n");
-		PRINT_SHAKEN_ERROR_IF_SET
-			return STIR_SHAKEN_STATUS_TERM;
-	}
-
-	/* Test */
-	printf("TEST: verifying end-entity + CA combo cert with X509 cert path verification...\n\n");
-
-	printf("TEST 1: Checking if X509_verify_cert returns error for SP cert\n");
-	status = stir_shaken_verify_cert(&ss, &sp.cert);
-	if (STIR_SHAKEN_STATUS_OK != status) {
-		printf("X509 cert path verification correctly failed, no CA cert in CA dir yet...\n");
-		PRINT_SHAKEN_ERROR_IF_SET
-	}
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != status, "Error, status should NOT be OK");
-
-	// Add CA cert to CA dir, as trusted anchor
-	// Must be in hash.N form for X509_verify_cert to recognize it
-	hash = stir_shaken_get_cert_name_hashed(&ss, ca.cert.x);
-	if (hash == 0) {
-		printf("Failed to get CA cert name hashed\n");
-		PRINT_SHAKEN_ERROR_IF_SET
-			return STIR_SHAKEN_STATUS_TERM;
-	}
-	printf("CA name hash is %lu\n", hash);
-
-	stir_shaken_cert_name_hashed_2_string(hash, hashstr, hashstrlen);
-
-	sprintf(ca.cert_name_hashed, "./test/run/ca/%s.0", hashstr);
-	printf("Adding CA cert to CA dir as %s\n", ca.cert_name_hashed);
-
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(&ss, ca.cert.x, ca.cert_name_hashed)) {
-		printf("Failed to write CA certificate to CA dir\n");
-		PRINT_SHAKEN_ERROR_IF_SET
-			return STIR_SHAKEN_STATUS_TERM;
-	}
-
-	printf("Reinitialising X509 cert store...\n");
-	// Must reinitialize now X509 cert store
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_init_cert_store(&ss, NULL, CA_DIR, NULL, NULL)) {
-		printf("Failed to re-init CA dir\n");
-		PRINT_SHAKEN_ERROR_IF_SET
-			return STIR_SHAKEN_STATUS_TERM;
-	}
-
-	printf("TEST 2: Checking if X509_verify_cert returns SUCCESS for SP cert\n");
-	// Now it should work
-	status = stir_shaken_verify_cert(&ss, &sp.cert);
-	if (STIR_SHAKEN_STATUS_OK != status) {
-		printf("X509 cert path verification failed for SP certificate\n");
-		PRINT_SHAKEN_ERROR_IF_SET
-	}
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == status, "Error, status should be OK");
-
-	// CA cleanup	
-	stir_shaken_destroy_cert(&ca.cert);
-	stir_shaken_destroy_keys_ex(&ca.keys.ec_key, &ca.keys.private_key, &ca.keys.public_key);
-
-	// SP cleanup	
-	stir_shaken_sp_destroy(&sp);
-
-	EVP_PKEY_free(pkey);
-
-	return status;
+	return STIR_SHAKEN_STATUS_OK;
 }
 
-int main(void)
+stir_shaken_status_t stir_shaken_test_callback(stir_shaken_callback_arg_t *arg)
 {
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, CA_DIR, CRL_DIR, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
+	stir_shaken_assert(arg, "Callback argument missing");
+	stir_shaken_assert(STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY == arg->action, "Wrong action");
+
+	switch (arg->action) {
+
+		case STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY:
+
+			// Default behaviour for certificate fetch enquiry is to request downloading, but in some cases it would be useful to avoid that and use pre-cached certificate.
+			// Here, we supply libstirshaken with certificate we cached earlier, avoiding HTTP(S) download.
+			// We must return STIR_SHAKEN_STATUS_HANDLED to signal this to the library, otherwise it would execute HTTP(S) download
+
+			printf("Supplying certificate from the cache...");
+
+			stir_shaken_assert(!strcmp("http://shaken.signalwire.com/sp.pem", arg->cert.public_url), "Wrong cert location");
+			stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_cert_copy(&ss, &arg->cert, &cert_cached), "Cannot copy certificate");
+
+			http_req_handled_from_cache = 1;
+
+			return STIR_SHAKEN_STATUS_HANDLED;
+
+		default:
+			return STIR_SHAKEN_STATUS_NOT_HANDLED;
+	}
+
+exit:
+	return STIR_SHAKEN_STATUS_NOT_HANDLED;
+}
+
+stir_shaken_status_t stir_shaken_unit_test_verify(void)
+{
+	const char	*error_description = NULL;
+	stir_shaken_context_t	ss = { 0 };
+	stir_shaken_error_t		error_code = STIR_SHAKEN_ERROR_GENERAL;
+	stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
+
+	char *passport_encoded = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNvbS9zcC5wZW0ifQ.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTU5OTI1ODkzOCwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.p_lhqTk-zBBNcsZgv5gNmO63xrbvapMwZmqmN2NwfbiJB2VxBait5EeUxgDpFs30EC7r4cm8tQD8CV2gFkFEtw";
+
+	stir_shaken_passport_t	passport = {0};
+	stir_shaken_cert_t		*cert = NULL;
+	int		iat_freshness_seconds = INT_MAX;
+	char	*passport_decoded = NULL;
+	jwt_t	*jwt = NULL;
+
+
+	// Test 1: callback set to default, should perform download of the certificate
+	ss.callback = stir_shaken_default_callback;
+	status = stir_shaken_jwt_verify(&ss, passport_encoded, &cert, &jwt);
+	if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is:\n%s\n", error_description);
+		printf("Error code is: %d\n", error_code);
+	}
+	stir_shaken_assert(http_req_mocked == 1, "HTTP request performed");
+	stir_shaken_assert(http_req_handled_from_cache == 0, "HTTP request not handled from cache");
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Wrong status");
+	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error not set");
+
+	stir_shaken_jwt_move_to_passport(jwt, &passport);
+	jwt = NULL;
+
+	printf("\nPASSporT Verified.\n\n");
+
+	// Print PASSporT
+	passport_decoded = stir_shaken_passport_dump_str(&passport, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+
+	// Print the certificate
+	if (STIR_SHAKEN_STATUS_OK == stir_shaken_read_cert_fields(&ss, cert)) {
+		printf("Certificate is:\n");
+		stir_shaken_print_cert_fields(stdout, cert);
+	}
+
+	// Cache it
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_cert_copy(&ss, &cert_cached, cert), "Cannot cache certificate!");
+
+	stir_shaken_passport_destroy(&passport);
+	stir_shaken_destroy_cert(cert);
+	free(cert);
+	cert = NULL;
+	http_req_mocked = 0;
+
+	// Test 2: callback set to custom function supplying certificates from cache
+	ss.callback = stir_shaken_test_callback;
+	status = stir_shaken_jwt_verify(&ss, passport_encoded, &cert, &jwt);
+	if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is:\n%s\n", error_description);
+		printf("Error code is: %d\n", error_code);
+	}
+	stir_shaken_assert(http_req_mocked == 0, "HTTP request performed");
+	stir_shaken_assert(http_req_handled_from_cache == 1, "HTTP request not handled from cache");
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Wrong status");
+	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error not set");
+
+	stir_shaken_jwt_move_to_passport(jwt, &passport);
+	jwt = NULL;
+
+	printf("\nPASSporT Verified.\n\n");
+
+	// Print PASSporT
+	passport_decoded = stir_shaken_passport_dump_str(&passport, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+
+	// Print the certificate
+	if (STIR_SHAKEN_STATUS_OK == stir_shaken_read_cert_fields(&ss, cert)) {
+		printf("Certificate is:\n");
+		stir_shaken_print_cert_fields(stdout, cert);
+	}
+
+	stir_shaken_passport_destroy(&passport);
+	stir_shaken_destroy_cert(cert);
+	free(cert);
+	cert = NULL;
+	stir_shaken_destroy_cert(&cert_cached);
+
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+
+	if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is:\n%s\n", error_description);
+		printf("Error code is: %d\n", error_code);
+	}
+
+	// Print PASSporT
+	passport_decoded = stir_shaken_passport_dump_str(&passport, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+
+	// Print the certificate
+	if (STIR_SHAKEN_STATUS_OK == stir_shaken_read_cert_fields(&ss, cert)) {
+		printf("Certificate is:\n");
+		stir_shaken_print_cert_fields(stdout, cert);
+	}
+
+	stir_shaken_passport_destroy(&passport);
+	stir_shaken_destroy_cert(cert);
+	free(cert);
+	cert = NULL;
+	stir_shaken_do_deinit();
+
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+int main(int argc, char **argv)
+{
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, "test/ref/ca", NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
+
+	if (argc == 1) {
+
+        // MOCK http transfers by default
+        stir_shaken_make_http_req = stir_shaken_make_http_req_mock;
+
+    } else if (argc > 1 && !stir_shaken_zstr(argv[1]) && !strcmp(argv[1], "nomock")) {
+
+        // do not MOCK
+    } else {
+        printf("ERR: this program takes no argument or one argument which must be 'nomock'\n");
+        exit(EXIT_FAILURE);
+    }
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 
@@ -201,7 +240,7 @@ int main(void)
 		}
 	}
 
-	if (stir_shaken_unit_test_x509_cert_path_verification() != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_unit_test_verify() != STIR_SHAKEN_STATUS_OK) {
 
 		printf("Fail\n");
 		return -2;
