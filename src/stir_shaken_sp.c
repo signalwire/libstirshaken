@@ -92,6 +92,8 @@ stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_sha
         goto exit;
     }
 
+	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "-> Got STI certificate from CA:\n%s\n", http_req->response.mem.mem);
+
     return STIR_SHAKEN_STATUS_OK;
 
 
@@ -163,8 +165,6 @@ stir_shaken_status_t stir_shaken_sp_cert_req_ex(stir_shaken_context_t *ss, stir_
         ss_status = STIR_SHAKEN_STATUS_FALSE;
         goto exit;
     }
-
-    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Got STI certificate from CA:\n%s\n", http_req->response.mem.mem);
 
     if (json) {
         *json = jwt_decoded;

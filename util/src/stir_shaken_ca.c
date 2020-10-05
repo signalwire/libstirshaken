@@ -1404,6 +1404,11 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 		fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Using HTTPS with cert (%s) and key (%s)...\n", bopts.ssl_cert, bopts.ssl_key);
 	}
 
+	if (!ca->ss.callback) {
+		fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Callback not set. Setting callback to default...\n");
+		ca->ss.callback = stir_shaken_default_callback;
+	}
+
 	mg_mgr_init(&mgr, NULL);
 
 	if (ca->port == 0)
