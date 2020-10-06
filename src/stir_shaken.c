@@ -134,7 +134,7 @@ stir_shaken_status_t stir_shaken_dir_create_recursive(const char *path)
 
             if (stir_shaken_dir_exists(tmp) == STIR_SHAKEN_STATUS_FALSE) {
 
-                if (mkdir(tmp, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) != 0) {
+                if (mkdir(tmp, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) != 0 && errno != EEXIST) {
                     goto fail;
                 }
             }
@@ -143,9 +143,11 @@ stir_shaken_status_t stir_shaken_dir_create_recursive(const char *path)
         }
     }
 
-    if (mkdir(tmp, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) != 0) {
-        goto fail;
-    }
+	if (stir_shaken_dir_exists(tmp) == STIR_SHAKEN_STATUS_FALSE) {
+		if (mkdir(tmp, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) != 0 && errno != EEXIST) {
+			goto fail;
+		}
+	}
 
     if (tmp) {
         free(tmp);
