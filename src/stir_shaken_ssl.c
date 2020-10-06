@@ -670,6 +670,7 @@ X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public
     X509_gmtime_adj(X509_get_notBefore(x), 0);
     X509_gmtime_adj(X509_get_notAfter(x), expiry_days * 24 * 60 * 60);
 
+	stir_shaken_clear_error(ss);
     return x;
 
 fail:
@@ -993,8 +994,7 @@ fail:
     return NULL;
 }
 
-// Create SP certificate from CSR.
-X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int64_t serial, long expiry_days, char *tn_auth_list_uri)
+X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int64_t serial, long expiry_days, char *tn_auth_list_uri)
 {
     X509 *x = NULL;
     EVP_PKEY *public_key = NULL;
@@ -1017,27 +1017,52 @@ X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *
 
     x = stir_shaken_generate_x509_cert(ss, public_key, issuer_c, issuer_cn, NULL, NULL, serial, expiry_days);
     if (!x) {
-        stir_shaken_set_error_if_clear(ss, "Failed to generate initial X509 certificate", STIR_SHAKEN_ERROR_GENERAL);
+        stir_shaken_set_error(ss, "Failed to generate initial X509 certificate", STIR_SHAKEN_ERROR_GENERATE_CERT);
         EVP_PKEY_free(public_key);
         return NULL;
     }
 
     X509_set_subject_name(x, X509_REQ_get_subject_name(req));
 
+    EVP_PKEY_free(public_key);
+
+    return x;
+
+fail:
+    if (public_key) EVP_PKEY_free(public_key);
+    if (x) X509_free(x);
+    stir_shaken_set_error_if_clear(ss, "Unknown error while generating X509 certificate from CSR", STIR_SHAKEN_ERROR_GENERAL);
+    return NULL;
+}
+
+// Create SP certificate from CSR.
+X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *ss, X509 *ca_x, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int64_t serial, long expiry_days, char *tn_auth_list_uri)
+{
+    X509 *x = NULL;
+    EVP_PKEY *public_key = NULL;
+
+
+	x = stir_shaken_generate_x509_cert_from_csr(ss, issuer_c, issuer_cn, req, serial, expiry_days, tn_auth_list_uri);
+    if (!x) {
+        stir_shaken_set_error(ss, "Failed to generate initial X509 certificate from CSR", STIR_SHAKEN_ERROR_GENERATE_CERT_FROM_CSR);
+        EVP_PKEY_free(public_key);
+        return NULL;
+    }
+
     if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_add_standard_extensions(ss, ca_x, x)) {
-        stir_shaken_set_error_if_clear(ss, "Failed to add standard X509 extensions", STIR_SHAKEN_ERROR_GENERAL);
+        stir_shaken_set_error(ss, "Failed to add standard X509 extensions", STIR_SHAKEN_ERROR_GENERAL);
         goto fail;
     }
 
     if (tn_auth_list_uri) {
         if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_add_tnauthlist_extension_uri(ss, ca_x, x, tn_auth_list_uri)) {
-            stir_shaken_set_error_if_clear(ss, "Failed to add TNAuthList Uri X509 extension", STIR_SHAKEN_ERROR_TNAUTHLIST);
+            stir_shaken_set_error(ss, "Failed to add TNAuthList Uri X509 extension", STIR_SHAKEN_ERROR_TNAUTHLIST);
             goto fail;
         }
     }
 
     if (STIR_SHAKEN_STATUS_OK != stir_shaken_sign_x509_cert(ss, x, private_key)) {
-        stir_shaken_set_error_if_clear(ss, "Failed to sign X509 end entity certificate", STIR_SHAKEN_ERROR_GENERAL);
+        stir_shaken_set_error(ss, "Failed to sign X509 end entity certificate", STIR_SHAKEN_ERROR_GENERAL);
         goto fail;
     }
 
@@ -1048,100 +1073,7 @@ X509* stir_shaken_generate_x509_end_entity_cert_from_csr(stir_shaken_context_t *
 fail:
     if (public_key) EVP_PKEY_free(public_key);
     if (x) X509_free(x);
-    stir_shaken_set_error_if_clear(ss, "Failed to generate X509 end entity certificate", STIR_SHAKEN_ERROR_GENERAL);
-    return NULL;
-}
-
-X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int64_t serial, long expiry_days)
-{
-    X509            *x = NULL;
-    EVP_PKEY        *pkey = NULL;
-    X509_NAME		*tmp = NULL;
-
-
-    stir_shaken_clear_error(ss);
-
-    if (!req) {
-        stir_shaken_set_error(ss, "X509 CSR not set", STIR_SHAKEN_ERROR_GENERAL);
-        return NULL;
-    }
-
-    if (!issuer_c) {
-        stir_shaken_set_error(ss, "Issuer 'C' for X509 not set", STIR_SHAKEN_ERROR_GENERAL);
-        return NULL;
-    }
-
-    if (!issuer_cn) {
-        stir_shaken_set_error(ss, "Issuer 'CN' for X509 not set", STIR_SHAKEN_ERROR_GENERAL);
-        return NULL;
-    }
-
-    if (!(pkey = X509_REQ_get_pubkey(req))) {
-        stir_shaken_set_error(ss, "Cannot get public key from X509_REQ", STIR_SHAKEN_ERROR_SSL);
-        return NULL;
-    }
-
-    if (X509_REQ_verify(req, pkey) < 0) {
-        stir_shaken_set_error(ss, "'X509_REQ-public key' pair invalid", STIR_SHAKEN_ERROR_SSL);
-        return NULL;
-    }
-
-    EVP_PKEY_free(pkey);
-    pkey = NULL;
-
-    if ((x = X509_new()) == NULL) {
-        stir_shaken_set_error(ss, "SSL error while creating new X509 certificate", STIR_SHAKEN_ERROR_SSL);
-        return NULL;
-    }
-
-    if (!X509_set_version(x, 2L)) {
-        stir_shaken_set_error(ss, "Failed to set version on Certificate", STIR_SHAKEN_ERROR_SSL);
-        goto fail;
-    }
-
-    if (!ASN1_INTEGER_set_int64(X509_get_serialNumber(x), serial)) {
-        stir_shaken_set_error(ss, "Cannot set serial number on the Certificate", STIR_SHAKEN_ERROR_SSL);
-        goto fail;
-    }
-
-    tmp = X509_get_issuer_name(x);
-    if (!tmp) {
-        stir_shaken_set_error(ss, "Failed to get X509 issuer name", STIR_SHAKEN_ERROR_SSL);
-        return NULL;
-    }
-
-    if (!X509_NAME_add_entry_by_txt(tmp, "C", MBSTRING_ASC, (const unsigned char*) issuer_c, -1, -1, 0)) {
-        stir_shaken_set_error(ss, "Failed to set X509 issuer 'C'", STIR_SHAKEN_ERROR_SSL);
-        return NULL;
-    }
-
-    if (!X509_NAME_add_entry_by_txt(tmp,"CN", MBSTRING_ASC, (const unsigned char*) issuer_cn, -1, -1, 0)) {
-        stir_shaken_set_error(ss, "Failed to set X509 issuer 'CN'", STIR_SHAKEN_ERROR_SSL);
-        return NULL;
-    }
-
-    if (1 != X509_set_issuer_name(x, tmp)) {
-        stir_shaken_set_error(ss, "Failed to set X509 issuer name", STIR_SHAKEN_ERROR_SSL);
-        return NULL;
-    }
-
-    X509_set_subject_name(x, X509_REQ_get_subject_name(req));
-
-    X509_gmtime_adj(X509_get_notBefore(x), 0);
-    X509_time_adj_ex(X509_get_notAfter(x), expiry_days * 24 * 60 * 60, 0, NULL);
-
-    pkey = X509_REQ_get_pubkey(req);
-    X509_set_pubkey(x, pkey);
-    EVP_PKEY_free(pkey);
-    pkey = NULL;
-
-    return x;
-
-fail:
-    if (x) {
-        X509_free(x);
-    }
-    stir_shaken_set_error_if_clear(ss, "Error creating cert", STIR_SHAKEN_ERROR_SSL);
+    stir_shaken_set_error_if_clear(ss, "Unknown error while generating X509 end entity certificate from CSR", STIR_SHAKEN_ERROR_GENERAL);
     return NULL;
 }
 

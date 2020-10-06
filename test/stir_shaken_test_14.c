@@ -111,7 +111,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 		printf("Error code is: %d\n", error_code);
 	}
 	stir_shaken_assert(http_req_mocked == 1, "HTTP request performed");
-	stir_shaken_assert(http_req_handled_from_cache == 0, "HTTP request not handled from cache");
+	stir_shaken_assert(http_req_handled_from_cache == 0, "HTTP request handled with cert from cache");
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Wrong status");
 	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error not set");
 
@@ -152,7 +152,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 		printf("Error code is: %d\n", error_code);
 	}
 	stir_shaken_assert(http_req_mocked == 0, "HTTP request performed");
-	stir_shaken_assert(http_req_handled_from_cache == 1, "HTTP request not handled from cache");
+	stir_shaken_assert(http_req_handled_from_cache == 1, "HTTP request not handled with cert from cache");
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Wrong status");
 	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error not set");
 
@@ -221,11 +221,14 @@ int main(int argc, char **argv)
 	if (argc == 1) {
 
         // MOCK http transfers by default
+		printf("Mocking HTTP requests...\n");
         stir_shaken_make_http_req = stir_shaken_make_http_req_mock;
 
     } else if (argc > 1 && !stir_shaken_zstr(argv[1]) && !strcmp(argv[1], "nomock")) {
 
         // do not MOCK
+		printf("Not mocking HTTP requests...\n");
+
     } else {
         printf("ERR: this program takes no argument or one argument which must be 'nomock'\n");
         exit(EXIT_FAILURE);

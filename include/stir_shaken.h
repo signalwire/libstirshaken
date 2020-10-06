@@ -315,6 +315,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_EVP_PKEY_TO_RAW,
 	STIR_SHAKEN_ERROR_CALLBACK_NOT_SET,
 	STIR_SHAKEN_ERROR_CALLBACK_ACTION_CERT_FETCH_ENQUIRY,
+	STIR_SHAKEN_ERROR_GENERATE_CERT,
+	STIR_SHAKEN_ERROR_GENERATE_CERT_FROM_CSR,
 } stir_shaken_error_t;
 
 #define STIR_SHAKEN_HTTP_REQ_404_INVALID "404"
@@ -652,7 +654,7 @@ stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, 
 X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY *pkey);
 
 stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name);
-X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ *req, EVP_PKEY *private_key, const char* issuer_c, const char *issuer_cn, int64_t serial, long expiry_days);
+X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int64_t serial, long expiry_days, char *tn_auth_list_uri);
 void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
 void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);

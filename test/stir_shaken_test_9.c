@@ -112,7 +112,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert_spoofed(void)
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
     
     printf("Creating Certificate\n");
-    cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, sp_code, csr.req, private_key, "US", "Signalwire & Friends", 1, 365);
+	cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, "US", "SignalWire Solutions", csr.req, 1, 365, "ca.shaken.signalwire.com/tnauthlist");
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
