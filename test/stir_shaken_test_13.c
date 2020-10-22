@@ -444,7 +444,7 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 
     kid = NULL;
     nonce = NULL;
-    sprintf(url, "http://%s%s", STI_CA_ACME_ADDR, STI_CA_ACME_CERT_REQ_URL);
+    sprintf(url, "https://ca.shaken.signalwire.cloud/sti-ca/acme/cert");
     nb = "01 Apr 2020";
     na = "01 Apr 2021";
 
