@@ -872,5 +872,5 @@ time_t stir_shaken_time_elapsed_s(time_t ts, time_t now)
 stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line)
 {
     fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "FAIL: %s. %s:%d\n", reason, file, line);
-    return STIR_SHAKEN_STATUS_FALSE;
+    exit(EXIT_FAILURE);
 }
