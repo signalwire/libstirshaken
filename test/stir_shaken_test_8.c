@@ -101,7 +101,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_csr_to_disk(&ss, csr.req, csr_name), "Error writing CSR to disk");
     
     printf("Creating Certificate\n");
-	cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, "US", "SignalWire Solutions", csr.req, 1, 365, "ca.shaken.signalwire.com/tnauthlist");
+	cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, "US", "SignalWire Solutions", csr.req, 1, 365, "ca.shaken.signalwire.cloud/tnauthlist");
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
