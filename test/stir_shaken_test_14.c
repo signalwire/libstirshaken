@@ -69,9 +69,9 @@ stir_shaken_status_t stir_shaken_test_callback(stir_shaken_callback_arg_t *arg)
 			// Here, we supply libstirshaken with certificate we cached earlier, avoiding HTTP(S) download.
 			// We must return STIR_SHAKEN_STATUS_HANDLED to signal this to the library, otherwise it would execute HTTP(S) download
 
-			printf("Supplying certificate from the cache...");
+			printf("Supplying certificate from the cache...\n");
 
-			stir_shaken_assert(!strcmp("http://shaken.signalwire.com/sp.pem", arg->cert.public_url), "Wrong cert location");
+			stir_shaken_assert(!strcmp("http://shaken.signalwire.cloud/sp.pem", arg->cert.public_url), "Wrong cert location");
 			stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_cert_copy(&ss, &arg->cert, &cert_cached), "Cannot copy certificate");
 
 			http_req_handled_from_cache = 1;
@@ -93,8 +93,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	stir_shaken_error_t		error_code = STIR_SHAKEN_ERROR_GENERAL;
 	stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
 
-	char *passport_encoded = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNvbS9zcC5wZW0ifQ.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTU5OTI1ODkzOCwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.p_lhqTk-zBBNcsZgv5gNmO63xrbvapMwZmqmN2NwfbiJB2VxBait5EeUxgDpFs30EC7r4cm8tQD8CV2gFkFEtw";
 
+	char *passport_encoded = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.G_6hnwPGAeUalviElXbxl4kKR5qenib6fRrCP-cgwKN2hMsSTXYjIFEhl_VqmeTB8dk9fidroDlFe8dPdyPy3g";
 	stir_shaken_passport_t	passport = {0};
 	stir_shaken_cert_t		*cert = NULL;
 	int		iat_freshness_seconds = INT_MAX;

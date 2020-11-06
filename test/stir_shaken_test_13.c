@@ -444,35 +444,35 @@ stir_shaken_status_t stir_shaken_unit_test_sp_cert_req(void)
 
     kid = NULL;
     nonce = NULL;
-    sprintf(url, "http://%s%s", STI_CA_ACME_ADDR, STI_CA_ACME_CERT_REQ_URL);
+    sprintf(url, "https://ca.shaken.signalwire.cloud/sti-ca/acme/cert");
     nb = "01 Apr 2020";
     na = "01 Apr 2021";
 
     // Set SPC token to this:
-    //
-    // SPC token encoded:
-    //
-    // eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoicGEuc2hha2VuLnNpZ25hbHdpcmUuY29tL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.i4h-yFR3Xofu35mzkq85o45iXMBfzBCuII4Se0g6n40KRJqKD8L1Wnzqf0xwbW7yN2nY8-LbGBmouq-uBhx09Q
+    // cat test/ref/sp/spc_token.txt 
+	// SPC token encoded:
+	// 
+	// eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIFRlc3QiLCJ0eXAiOiJKV1QiLCJ4NXUiOiJwYS5zaGFrZW4uc2lnbmFsd2lyZS5jbG91ZC9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.l61Y8K1bwZw9APXsrAQPZVPAkx5UIucwNKzRWxn0N5DcdVWaEgA_i5tW65f_aeqA46CTP789l4o6rFpiN7IZUA
+	// 
+	// SPC token decoded:
+	// 
+	// 
+	// {
+	//     "alg": "ES256",
+	//     "issuer": "SignalWire STI-PA Test",
+	//     "typ": "JWT",
+	//     "x5u": "pa.shaken.signalwire.cloud/pa.pem"
+	// }
+	// .
+	// {
+	//     "notAfter": "1 year from now",
+	//     "notBefore": "today",
+	//     "spc": "1",
+	//    "type": "spc-token"
+	// }
 
-    // SPC token decoded:
-    //
-    //
-    //	{
-    //		"alg": "ES256",
-    //		"issuer": "SignalWire STI-PA",
-    //		"typ": "JWT",
-    //		"x5u": "pa.shaken.signalwire.com/pa.pem"
-    //	}
-    //	.
-    //	{
-    //		"notAfter": "1 year from now",
-    //	    "notBefore": "today",
-    //		"spc": "1",
-    //		"type": "spc-token"
-    //	}
 
-
-    spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIiwidHlwIjoiSldUIiwieDV1IjoicGEuc2hha2VuLnNpZ25hbHdpcmUuY29tL3BhLnBlbSJ9.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.i4h-yFR3Xofu35mzkq85o45iXMBfzBCuII4Se0g6n40KRJqKD8L1Wnzqf0xwbW7yN2nY8-LbGBmouq-uBhx09Q";
+	spc_token = "eyJhbGciOiJFUzI1NiIsImlzc3VlciI6IlNpZ25hbFdpcmUgU1RJLVBBIFRlc3QiLCJ0eXAiOiJKV1QiLCJ4NXUiOiJwYS5zaGFrZW4uc2lnbmFsd2lyZS5jbG91ZC9wYS5wZW0ifQ.eyJub3RBZnRlciI6IjEgeWVhciBmcm9tIG5vdyIsIm5vdEJlZm9yZSI6InRvZGF5Iiwic3BjIjoiMSIsInR5cGUiOiJzcGMtdG9rZW4ifQ.l61Y8K1bwZw9APXsrAQPZVPAkx5UIucwNKzRWxn0N5DcdVWaEgA_i5tW65f_aeqA46CTP789l4o6rFpiN7IZUA";
     http_req.url = strdup(url);
     http_req.remote_port = 8082;
 
