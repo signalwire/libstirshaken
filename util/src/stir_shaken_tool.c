@@ -21,7 +21,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s --%s URL --%s port\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s --%s URL --%s port --%s key --%s key --%s csr.pem --%s CODE --%s SPC_TOKEN -f CERT_NAME\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL, OPTION_NAME_PORT, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_CSR, OPTION_NAME_SPC, OPTION_NAME_SPC_TOKEN);
-	fprintf(stderr, "\t\t %s --%s key --%s x5u_URL -f passport_file_name\n", COMMAND_NAME_PASSPORT_CREATE, OPTION_NAME_PRIVKEY, OPTION_NAME_URL);
+	fprintf(stderr, "\t\t %s --%s key --%s x5u_URL --%s attestation_level --%s origtn --%s desttn --%s origid -f passport_file_name\n", COMMAND_NAME_PASSPORT_CREATE, OPTION_NAME_PRIVKEY, OPTION_NAME_URL, OPTION_NAME_ATTEST, OPTION_NAME_ORIGTN, OPTION_NAME_DESTTN, OPTION_NAME_ORIGID);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "\t\t Each command accepts setting print/logging verbosity level:\n");
 	fprintf(stderr, "\t\t --v\t\tbasic logging\n");
@@ -43,7 +43,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s			: run PA service on port given to --%s\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s		: request SP Code token from PA at url given to --%s\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
 	fprintf(stderr, "\t\t %s		: request SP certificate for Service Provider identified by number given to --%s from CA at url given to --%s on port given to --%s\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_SPC, OPTION_NAME_URL, OPTION_NAME_PORT);
-	fprintf(stderr, "\t\t %s	: generate PASSporT with x5u pointing to given URL and sign it using specified private key\n\n", COMMAND_NAME_PASSPORT_CREATE);
+	fprintf(stderr, "\t\t %s	: generate PASSporT with x5u pointing to given URL, with given attestation level, origination and destination telephone numbers and with given reference, and sign it using specified private key\n\n", COMMAND_NAME_PASSPORT_CREATE);
 	fprintf(stderr, "\n");
 }
 
@@ -97,6 +97,10 @@ int main(int argc, char *argv[])
 		{ OPTION_NAME_SSL_KEY, required_argument, 0, OPTION_SSL_KEY },
 		{ OPTION_NAME_PA_CERT, required_argument, 0, OPTION_PA_CERT },
 		{ OPTION_NAME_PA_DIR, required_argument, 0, OPTION_PA_DIR },
+		{ OPTION_NAME_ORIGTN, required_argument, 0, OPTION_ORIGTN },
+		{ OPTION_NAME_DESTTN, required_argument, 0, OPTION_DESTTN },
+		{ OPTION_NAME_ORIGID, required_argument, 0, OPTION_ORIGID },
+		{ OPTION_NAME_ATTEST, required_argument, 0, OPTION_ATTEST },
 		{ OPTION_NAME_V, no_argument, 0, OPTION_V },
 		{ OPTION_NAME_VV, no_argument, 0, OPTION_VV },
 		{ OPTION_NAME_VVV, no_argument, 0, OPTION_VVV },
@@ -280,6 +284,32 @@ int main(int argc, char *argv[])
 				STIR_SHAKEN_CHECK_OPTARG
 					strncpy(options.pa_dir_name, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "PA dir is: %s\n", options.pa_dir_name);
+				break;
+
+			case OPTION_ORIGTN:
+				STIR_SHAKEN_CHECK_OPTARG
+				options.passport_params.origtn_val = strdup(optarg);
+				options.passport_params.origtn_key = strdup("tn");
+				fprintf(stderr, "origination telephone number is: %s\n", options.passport_params.origtn_val);
+				break;
+
+			case OPTION_DESTTN:
+				STIR_SHAKEN_CHECK_OPTARG
+				options.passport_params.desttn_val = strdup(optarg);
+				options.passport_params.desttn_key = strdup("tn");
+				fprintf(stderr, "destination telephone number is: %s\n", options.passport_params.desttn_val);
+				break;
+
+			case OPTION_ORIGID:
+				STIR_SHAKEN_CHECK_OPTARG
+				options.passport_params.origid = strdup(optarg);
+				fprintf(stderr, "origination id (reference) is: %s\n", options.passport_params.origid);
+				break;
+
+			case OPTION_ATTEST:
+				STIR_SHAKEN_CHECK_OPTARG
+				options.passport_params.attest = strdup(optarg);
+				fprintf(stderr, "attestation level is: %s\n", options.passport_params.attest);
 				break;
 
 			case OPTION_V:

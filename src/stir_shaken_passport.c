@@ -1,6 +1,20 @@
 #include "stir_shaken.h"
 
 
+/* Use this to destroy params struct only if it has been initialized with dynamic strings (not stored in static memory). */
+void stir_shaken_passport_params_destroy(stir_shaken_passport_params_t *params)
+{
+	if (!params) return;
+	free((char*)params->x5u);
+	free((char*)params->origtn_key);
+	free((char*)params->origtn_val);
+	free((char*)params->desttn_key);
+	free((char*)params->desttn_val);
+	free((char*)params->origid);
+	free((char*)params->attest);
+	memset(params, 0, sizeof(*params));
+}
+
 /* Produce JWT.
  *
  * The Personal Assertion Token, PASSporT: https://tools.ietf.org/html/rfc8225.

@@ -444,6 +444,8 @@ typedef struct stir_shaken_passport_params_s {
 	uint8_t     ppt_ignore;     // Should skip ppt field?
 } stir_shaken_passport_params_t;
 
+void stir_shaken_passport_params_destroy(stir_shaken_passport_params_t *params);
+
 /**
  * The Personal Assertion Token, PASSporT: https://tools.ietf.org/html/rfc8225.
  * PASSporT implementation wrapping @jwt.
@@ -956,6 +958,7 @@ typedef struct stir_shaken_sp_s {
 	char cert_name[STIR_SHAKEN_BUFLEN];
 	char spc_token[STIR_SHAKEN_BUFLEN];
 	uint16_t port;
+	stir_shaken_passport_params_t passport_params;
 } stir_shaken_sp_t;
 
 typedef struct stir_shaken_ca_session_s {

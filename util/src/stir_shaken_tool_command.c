@@ -118,6 +118,12 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		return COMMAND_JWT_DUMP;
 
 	} else if (!strcmp(command_name, COMMAND_NAME_PASSPORT_CREATE)) {
+		memcpy(&sp->sp.passport_params, &options->passport_params, sizeof(sp->sp.passport_params));
+		sp->sp.passport_params.x5u = strdup(options->url);
+		sp->sp.passport_params.iat = time(NULL);
+		//strncpy(sp->sp.passport_params.origtn, options->passport_params.origtn, STIR_SHAKEN_BUFLEN);
+		//strncpy(sp->sp.passport_params.desttn, options->passport_params.desttn, STIR_SHAKEN_BUFLEN);
+		//strncpy(sp->sp.passport_params.origid, options->passport_params.origid, STIR_SHAKEN_BUFLEN);
 		return COMMAND_PASSPORT_CREATE;
 
 	} else {
@@ -136,10 +142,26 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 
 		case COMMAND_KEYS:
 
-			if (stir_shaken_zstr(options->private_key_name) && stir_shaken_zstr(options->public_key_name)) {
-				fprintf(stderr, "ERROR: both keys are empty\n");
+			if (stir_shaken_zstr(options->private_key_name)) {
+				fprintf(stderr, "ERROR: private key parameter missing\n");
 				goto fail;
 			}
+
+			if (stir_shaken_zstr(options->public_key_name)) {
+				fprintf(stderr, "ERROR: public key parameter missing\n");
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(options->private_key_name)) {
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", options->private_key_name);
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(options->public_key_name)) {
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", options->public_key_name);
+				goto fail;
+			}
+
 			break;
 
 		case COMMAND_CSR:
@@ -313,6 +335,21 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 
 			if (stir_shaken_zstr(options->url)) {
 				fprintf(stderr, "ERROR: cert URL missing\n");
+				goto fail;
+			}
+
+			if (stir_shaken_zstr(sp->sp.passport_params.origtn_val)) {
+				fprintf(stderr, "ERROR: PASSporT's origtn param missing\n");
+				goto fail;
+			}
+
+			if (stir_shaken_zstr(sp->sp.passport_params.desttn_val)) {
+				fprintf(stderr, "ERROR: PASSporT's desttn param missing\n");
+				goto fail;
+			}
+
+			if (stir_shaken_zstr(sp->sp.passport_params.origid)) {
+				fprintf(stderr, "ERROR: PASSporT's origid param missing\n");
 				goto fail;
 			}
 
@@ -665,17 +702,6 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 		case COMMAND_PASSPORT_CREATE:
 
 			{
-				stir_shaken_passport_params_t params = {
-					.x5u = options->url,
-					.attest = "A",
-					.desttn_key = "tn",
-					.desttn_val = "01256500600",
-					.iat = time(NULL),
-					.origtn_key = "tn",
-					.origtn_val = "01256789999",
-					.origid = "ref"
-				};
-
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading key...\n");
 				options->keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
 				if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, options->private_key_name, options->keys.priv_raw, &options->keys.priv_raw_len)) {
@@ -683,7 +709,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				}
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Assigning parameters to PASSporT...\n");
-				status = stir_shaken_passport_init(ss, &passport, &params, options->keys.priv_raw, options->keys.priv_raw_len);
+				status = stir_shaken_passport_init(ss, &passport, &sp->sp.passport_params, options->keys.priv_raw, options->keys.priv_raw_len);
 				if (STIR_SHAKEN_STATUS_OK != status) {
 					goto fail;
 				}
@@ -770,6 +796,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 		jwt_free(jwt);
 		jwt = NULL;
 	}
+	stir_shaken_passport_params_destroy(&sp->sp.passport_params);
 
 	return STIR_SHAKEN_STATUS_OK;
 
@@ -800,5 +827,6 @@ fail:
 		sih = NULL;
 	}
 	stir_shaken_passport_destroy(&passport);
+	stir_shaken_passport_params_destroy(&sp->sp.passport_params);
 	return STIR_SHAKEN_STATUS_FALSE;
 }
