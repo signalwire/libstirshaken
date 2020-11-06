@@ -64,10 +64,14 @@
 #define OPTION_SSL_KEY      21
 #define OPTION_PA_CERT		22
 #define OPTION_PA_DIR		23
-#define OPTION_V			24
-#define OPTION_VV			25
-#define OPTION_VVV			26
-#define OPTION_MAX			27
+#define OPTION_ORIGTN		24
+#define OPTION_DESTTN		25
+#define OPTION_ORIGID		26
+#define OPTION_ATTEST		27
+#define OPTION_V			28
+#define OPTION_VV			29
+#define OPTION_VVV			30
+#define OPTION_MAX			31
 
 #define OPTION_NAME_PUBKEY		"pubkey"
 #define OPTION_NAME_PRIVKEY		"privkey"
@@ -95,6 +99,10 @@
 #define OPTION_NAME_SSL_KEY	    "ssl_key"
 #define OPTION_NAME_PA_CERT		"pa_cert"
 #define OPTION_NAME_PA_DIR		"pa_dir"
+#define OPTION_NAME_ORIGTN		"origtn"
+#define OPTION_NAME_DESTTN		"desttn"
+#define OPTION_NAME_ORIGID		"origid"
+#define OPTION_NAME_ATTEST		"attest"
 #define OPTION_NAME_V			"v"
 #define OPTION_NAME_VV			"vv"
 #define OPTION_NAME_VVV			"vvv"
@@ -209,6 +217,7 @@ struct options {
 	char ssl_key_name[STIR_SHAKEN_BUFLEN];
 	char pa_cert[STIR_SHAKEN_BUFLEN];
 	char pa_dir_name[STIR_SHAKEN_BUFLEN];
+	stir_shaken_passport_params_t passport_params;
 } options;
 
 void stirshaken_range_error(char arg, unsigned long val);
