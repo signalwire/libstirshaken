@@ -590,7 +590,7 @@ stir_shaken_status_t stir_shaken_passport_validate_headers(stir_shaken_context_t
 	}
 
 	h = stir_shaken_passport_get_header(passport, "x5u");
-	if (!h || !strcmp(h, "")) {
+	if (!h || stir_shaken_zstr(h)) {
 		sprintf(err_buf, "PASSporT Invalid. @x5u is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
 		return STIR_SHAKEN_STATUS_FALSE;

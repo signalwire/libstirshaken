@@ -335,7 +335,7 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
     }
 
     if (jwt_decode(&jwt, token, key, key_len)) {
-        stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+        stir_shaken_set_error(ss, "JWT cannot be decoded", STIR_SHAKEN_ERROR_JWT_DECODE);
         goto fail;
     }
 
@@ -385,25 +385,25 @@ stir_shaken_status_t stir_shaken_jwt_verify_and_check_x509_cert_path(stir_shaken
 
     ss_status = stir_shaken_jwt_verify(ss, token, &cert, &jwt);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+        stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_JWT_VERIFY);
         goto fail;
     }
 
     ss_status = stir_shaken_read_cert_fields(ss, cert);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Error parsing certificate", STIR_SHAKEN_ERROR_GENERAL);
+        stir_shaken_set_error(ss, "Error parsing certificate", STIR_SHAKEN_ERROR_JWT_CERT_MALFORFED);
         goto fail;
     }
 
     ss_status = stir_shaken_basic_cert_check(ss, cert);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Cert did not pass basic check (wrong version or expired)", STIR_SHAKEN_ERROR_CERT_INVALID);
+        stir_shaken_set_error(ss, "Cert did not pass basic check (wrong version or expired)", STIR_SHAKEN_ERROR_JWT_CERT_INVALID);
         goto fail;
     }
 
     ss_status = stir_shaken_verify_cert_path(ss, cert);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_CERT_INVALID);
+        stir_shaken_set_error(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_JWT_CERT_X509_PATH_INVALID);
         goto fail;
     }
 
@@ -565,7 +565,7 @@ stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const cha
 
     ss_status = stir_shaken_jwt_verify_and_check_x509_cert_path(ss, (char *) jwt_encoded, &cert, &jwt);
     if (ss_status != STIR_SHAKEN_STATUS_OK) {
-        stir_shaken_set_error(ss, "JWT verification with X509 cert path check unsuccessful", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+        stir_shaken_set_error(ss, "JWT verification with X509 cert path check unsuccessful", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH);
         goto end;
     }
 
