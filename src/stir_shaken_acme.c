@@ -809,7 +809,7 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
             if (strcmp("pending", ks_json_value_string(auth_status)) != 0) {
 
                 if (0 == strcmp("failed", ks_json_value_string(auth_status))) {
-                    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got 'failed' polling status");
+                    fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got 'failed' polling status\n");
                     snprintf(err_buf, STIR_SHAKEN_BUFLEN, "\t-> Got 'failed' polling status (%s): ACME authorization unsuccessful\n", ks_json_value_string(auth_status));
                     stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME_AUTHZ_UNSUCCESSFUL);
                     goto fail;
