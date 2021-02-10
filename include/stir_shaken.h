@@ -304,6 +304,11 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_POLLING_STATUS,
 	STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID,
+	STIR_SHAKEN_ERROR_PASSPORT_VALIDATE,
+	STIR_SHAKEN_ERROR_PASSPORT_SIGN,
+	STIR_SHAKEN_ERROR_SIH_MEM,
+	STIR_SHAKEN_ERROR_PASSPORT_HEADERS_INVALID,
+	STIR_SHAKEN_ERROR_PASSPORT_GRANTS_INVALID,
 	STIR_SHAKEN_ERROR_TNAUTHLIST,
 	STIR_SHAKEN_ERROR_LOAD_CA,
 	STIR_SHAKEN_ERROR_LOAD_CRL,
@@ -505,6 +510,7 @@ const char*					stir_shaken_passport_get_header(stir_shaken_passport_t *passport
 const char*					stir_shaken_passport_get_headers_json(stir_shaken_passport_t *passport, const char* key);
 const char*					stir_shaken_passport_get_grant(stir_shaken_passport_t *passport, const char* key);
 long int					stir_shaken_passport_get_grant_int(stir_shaken_passport_t *passport, const char* key);
+const char*					stir_shaken_passport_get_grants_json(stir_shaken_passport_t *passport, const char* key);
 char*						stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, int *is_tn);
 void						stir_shaken_http_add_header(stir_shaken_http_req_t *http_req, const char *h);
 

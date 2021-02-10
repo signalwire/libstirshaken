@@ -3,11 +3,12 @@
 const char *path = "./test/run";
 const char *x5u = "https://not.here.org/passport.cer";
 const char *attest = "B";
-const char *desttn_key = "uri";
-const char *desttn_val = "sip:Obama@democrats.com";
-int iat = 9876543;
+const char *desttn_key = "tn";
+const char *desttn_val = "1122334455";
+int iat = 0;
+int iat_freshness = 60;
 const char *origtn_key = "";
-const char *origtn_val = "07483866525";
+const char *origtn_val = "99887766";
 const char *origid = "Trump's Office";
 
 
@@ -38,15 +39,32 @@ static int test_passport_data(stir_shaken_passport_t *passport)
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
     stir_shaken_assert(!strcmp(p, attest), "ERROR: wrong param value");
     
-    p = stir_shaken_passport_get_grant(passport, "dest");
+    p = stir_shaken_passport_get_grants_json(passport, "dest");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
+	{
+		ks_json_t *j = ks_json_parse(p), *item = NULL;
+		stir_shaken_assert(j, "Failed to parse @dest into JSON");
+		stir_shaken_assert(NULL != (item = ks_json_get_object_item(j, "tn")), "Failed to get @tn from @dest JSON");
+		stir_shaken_assert(NULL != (item = ks_json_get_array_item(item, 0)), "Failed to get array item from @dest @tn array JSON");
+		printf("\n@dest @tn is %s\n", ks_json_value_string(item));
+		stir_shaken_assert(!strcmp(desttn_val, ks_json_value_string(item)), "@dest invalid");
+		ks_json_delete(&j);
+	}
     
     iat_ = stir_shaken_passport_get_grant_int(passport, "iat");
     stir_shaken_assert(errno != ENOENT, "PASSporT is missing param");
     stir_shaken_assert(iat_ == iat, "ERROR: wrong param value");
     
-    p = stir_shaken_passport_get_grant(passport, "orig");
+    p = stir_shaken_passport_get_grants_json(passport, "orig");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
+	{
+		ks_json_t *j = ks_json_parse(p), *item = NULL;
+		stir_shaken_assert(j, "Failed to parse @orig into JSON");
+		stir_shaken_assert(NULL != (item = ks_json_get_object_item(j, "tn")), "Failed to get @tn from @orig JSON");
+		printf("\n@orig @tn is %s\n", ks_json_value_string(item));
+		stir_shaken_assert(!strcmp(origtn_val, ks_json_value_string(item)), "@orig invalid");
+		ks_json_delete(&j);
+	}
     
     p = stir_shaken_passport_get_grant(passport, "origid");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
@@ -64,7 +82,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
 	const char *error_description = NULL;
 	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
 
-    stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat, .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid };
+    stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat = time(NULL), .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid };
     
 	char private_key_name[300] = { 0 };
 	char public_key_name[300] = { 0 };
@@ -132,6 +150,11 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
     stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 	
 	test_passport_data(&passport);
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_headers(&ss, &passport), "Err, PASSporT validate hedaers");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_grants(&ss, &passport), "Err, PASSporT validate grants");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_headers_and_grants(&ss, &passport), "Err, PASSporT validate grants");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_iat_against_freshness(&ss, &passport, iat_freshness), "Err, PASSporT validate @iat");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate(&ss, &passport, iat_freshness), "Err, PASSporT validate");
     
     printf("OK\n\n");
 	
