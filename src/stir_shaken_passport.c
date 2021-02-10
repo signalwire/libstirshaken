@@ -375,7 +375,7 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 
     // extra length of 15 for info=<> alg= ppt=
     len = strlen(token) + 3 + strlen(info) + 1 + strlen(alg) + 1 + strlen(ppt) + 1 + 15;
-    sih = malloc(len); // TODO free
+    sih = malloc(len);
     if (!sih) {
 		jwt_free_str(token);
 		stir_shaken_set_error(ss, "SIP Identity create: Out of memory", STIR_SHAKEN_ERROR_SIH_MEM);
@@ -413,7 +413,7 @@ stir_shaken_status_t stir_shaken_jwt_authenticate_keep_passport(stir_shaken_cont
 
 	*sih = stir_shaken_jwt_sip_identity_create(ss, passport, key, keylen);
 	if (!*sih) {
-		stir_shaken_set_error_if_clear(ss, "JWT Authorize: Failed to create SIP Identity Header from JWT PASSporT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "JWT Authorize: Failed to create SIP Identity Header from JWT PASSporT", STIR_SHAKEN_ERROR_GENERAL);
 		stir_shaken_passport_destroy(passport);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
@@ -499,65 +499,83 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 	char *id = NULL;
 	const char *orig = NULL;
 	int tn_form = 0;
+	int id_int = 0;
+	ks_json_t *item = NULL;
 
 	if (!passport) return NULL;
 
 	orig = stir_shaken_passport_get_grants_json(passport, "orig");
-	if (orig) {
+	if (!orig) {
+		stir_shaken_set_error(ss, "@orig grant is missing", STIR_SHAKEN_ERROR_PASSPORT_ORIG_MISSING);
+		return NULL;
+	}
 
-		ks_json_t *origjson = ks_json_parse(orig);
-		if (!origjson) {
-			stir_shaken_set_error(ss, "Failed to convert 'orig'to JSON", STIR_SHAKEN_ERROR_KSJSON);
+	ks_json_t *origjson = ks_json_parse(orig);
+	if (!origjson) {
+		stir_shaken_set_error(ss, "Failed to convert @orig to JSON", STIR_SHAKEN_ERROR_PASSPORT_ORIG_PARSE);
+		return NULL;
+	}
+
+	if (ks_json_type_get(origjson) == KS_JSON_TYPE_ARRAY) {
+
+		item = ks_json_get_array_item(origjson, 0);
+		if (!item) {
+			stir_shaken_set_error(ss, "@orig array is empty", STIR_SHAKEN_ERROR_PASSPORT_ARRAY_ITEM);
+			ks_json_delete(&origjson);
 			return NULL;
 		}
 
-		if (ks_json_type_get(origjson) == KS_JSON_TYPE_ARRAY) {
-
-			// uri form
-			ks_json_t *uri = ks_json_get_array_item(origjson, 0);
-
-			if (!uri) {
-				stir_shaken_set_error(ss, "No 'uri' in 'orig' but it's an array. Array should have 'uri' item", STIR_SHAKEN_ERROR_GENERAL);
-				ks_json_delete(&origjson);
-				return NULL;
-			}
-
-			if (ks_json_type_get(uri) != KS_JSON_TYPE_STRING) {
-				stir_shaken_set_error(ss, "'uri' in 'orig' array is not a string", STIR_SHAKEN_ERROR_GENERAL);
-				ks_json_delete(&origjson);
-				return NULL;
-			}
-
-			id = strdup(ks_json_value_string(uri));
-			tn_form = 0;
-
-		} else {
-
-			// tn form
-
-			ks_json_t *tn = ks_json_get_object_item(origjson, "tn");
-			if (!tn) {
-				stir_shaken_set_error(ss, "No 'tn' in 'orig'", STIR_SHAKEN_ERROR_GENERAL);
-				ks_json_delete(&origjson);
-				return NULL;
-			}
-
-			if (ks_json_type_get(tn) != KS_JSON_TYPE_STRING) {
-				stir_shaken_set_error(ss, "'tn' in 'orig' is not a string", STIR_SHAKEN_ERROR_GENERAL);
-				ks_json_delete(&origjson);
-				return NULL;
-			}
-
-			id = strdup(ks_json_value_string(tn));
+		if (ks_json_get_object_item(item, "tn")) {
 			tn_form = 1;
 		}
 
-		if (is_tn) *is_tn = tn_form;
-		ks_json_delete(&origjson);
-		return id;
+	} else {
+
+		ks_json_t *tn = NULL;
+
+		if (ks_json_get_object_item(origjson, "tn")) {
+		
+			item = ks_json_get_object_item(origjson, "tn");
+			if (!item) {
+				stir_shaken_set_error(ss, "Failed to get @tn from JSON", STIR_SHAKEN_ERROR_PASSPORT_ORIG_TN);
+				ks_json_delete(&origjson);
+				return NULL;
+			}
+
+			tn_form = 1;
+		} else if (ks_json_get_object_item(origjson, "uri")) {
+
+			item = ks_json_get_object_item(origjson, "uri");
+			if (!item) {
+				stir_shaken_set_error(ss, "Failed to get @uri from JSON", STIR_SHAKEN_ERROR_PASSPORT_ORIG_URI);
+				ks_json_delete(&origjson);
+				return NULL;
+			}
+
+			tn_form = 0;
+		}
 	}
 
-	return NULL;
+	if (ks_json_type_get(item) == KS_JSON_TYPE_STRING) {
+		id = strdup(ks_json_value_string(item));
+	} else if (ks_json_type_get(item) == KS_JSON_TYPE_NUMBER) {
+		id_int = ks_json_value_number_int(item);
+		id = malloc(20);
+		if (!id) {
+			stir_shaken_set_error(ss, "Not enough memory", STIR_SHAKEN_ERROR_MEM);
+			ks_json_delete(&origjson);
+			return NULL;
+		}
+		snprintf(id, sizeof(*id), "%s", id_int);
+	} else {
+		stir_shaken_set_error(ss, "JSON malformed", STIR_SHAKEN_ERROR_PASSPORT_ORIG_TYPE);
+		ks_json_delete(&origjson);
+		return NULL;
+	}
+
+	if (is_tn) *is_tn = tn_form;
+	ks_json_delete(&origjson);
+	return id;
 }
 
 /**
