@@ -502,7 +502,7 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 
 	if (!passport) return NULL;
 
-	orig = stir_shaken_passport_get_grant(passport, "orig");
+	orig = stir_shaken_passport_get_grants_json(passport, "orig");
 	if (orig) {
 
 		ks_json_t *origjson = ks_json_parse(orig);
@@ -556,6 +556,7 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 		ks_json_delete(&origjson);
 		return id;
 	}
+
 	return NULL;
 }
 

@@ -50,7 +50,7 @@ static int test_passport_data(stir_shaken_passport_t *passport)
 		stir_shaken_assert(!strcmp(desttn_val, ks_json_value_string(item)), "@dest invalid");
 		ks_json_delete(&j);
 	}
-    
+
     iat_ = stir_shaken_passport_get_grant_int(passport, "iat");
     stir_shaken_assert(errno != ENOENT, "PASSporT is missing param");
     stir_shaken_assert(iat_ == iat, "ERROR: wrong param value");
@@ -92,7 +92,9 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
     EVP_PKEY *public_key = NULL;
 
 	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN] = { 0 };
-	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;	
+	uint32_t		priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
+	char *id = NULL;
+	int is_tn = 0;
 
 
 	sprintf(private_key_name, "%s%c%s", path, '/', "u7_private_key.pem");
@@ -136,6 +138,15 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
 	stir_shaken_free_jwt_str(s); s = NULL;
 
 	test_passport_data(&passport);
+	id = stir_shaken_passport_get_identity(&ss, &passport, &is_tn);
+    if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
+	stir_shaken_assert(id, "Failed to get identity");
+	stir_shaken_assert(is_tn == 1, "Wrong tn form returned");
+	stir_shaken_assert(!strcmp(id, origtn_val), "Bad @tn returned");	
 
 	status = stir_shaken_passport_sign(&ss, &passport, priv_raw, priv_raw_len, &encoded);
     if (stir_shaken_is_error_set(&ss)) {
