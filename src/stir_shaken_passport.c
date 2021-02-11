@@ -31,7 +31,6 @@ void stir_shaken_passport_params_destroy(stir_shaken_passport_params_t *params)
  *			iat      This value indicates the timestamp when the token was created. The timestamp is the number of seconds that have passed since the beginning of 00:00:00 UTC 1 January 1970.
  *			orig     This value indicates the calling number or calling Uniform Resource Identifier.
  *			origid   This value indicates the origination identifier. (This is Shaken extension to PASSporT)
- *		JWS Signature (when encoded, in signed form)
  */
 stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
 {
@@ -116,7 +115,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 				return STIR_SHAKEN_STATUS_ERR;
 			}
 
-			if (!origtn_key || !origtn_val) {
+			if (!origtn_val) {
 
 				return STIR_SHAKEN_STATUS_ERR;
 
@@ -130,7 +129,9 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 					return STIR_SHAKEN_STATUS_ERR;
 				}
 
-				if (!strcmp(origtn_key, "uri")) {
+				// If @origtn_key is NULL or empty, use "tn" form
+
+				if (origtn_key && !strcmp(origtn_key, "uri")) {
 
 					tn = ks_json_create_array();
 					if (!tn) {
@@ -158,7 +159,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 				}
 			}
 
-			if (!desttn_key || !desttn_val) {
+			if (!desttn_val) {
 
 				return STIR_SHAKEN_STATUS_ERR;
 
@@ -183,7 +184,9 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 
 				ks_json_add_string_to_array(tn, desttn_val);
 
-				if (!ks_json_add_item_to_object(dest, desttn_key, tn)) {
+				// If @desttn_key is NULL or empty, use "tn" form
+
+				if ((stir_shaken_zstr(desttn_key) && !ks_json_add_item_to_object(dest, "tn", tn)) || !ks_json_add_item_to_object(dest, desttn_key, tn)) {
 					stir_shaken_set_error(ss, "Passport create json: Failed to add @desttn [key]", STIR_SHAKEN_ERROR_KSJSON);
 					ks_json_delete(&dest);
 					return STIR_SHAKEN_STATUS_ERR;
@@ -501,6 +504,7 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 	int tn_form = 0;
 	int id_int = 0;
 	ks_json_t *item = NULL;
+	ks_json_t *origjson = NULL;
 
 	if (!passport) return NULL;
 
@@ -510,7 +514,7 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 		return NULL;
 	}
 
-	ks_json_t *origjson = ks_json_parse(orig);
+	origjson = ks_json_parse(orig);
 	if (!origjson) {
 		stir_shaken_set_error(ss, "Failed to convert @orig to JSON", STIR_SHAKEN_ERROR_PASSPORT_ORIG_PARSE);
 		return NULL;
@@ -533,26 +537,18 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 
 		ks_json_t *tn = NULL;
 
-		if (ks_json_get_object_item(origjson, "tn")) {
+		if ((item = ks_json_get_object_item(origjson, "tn"))) {
 		
-			item = ks_json_get_object_item(origjson, "tn");
-			if (!item) {
-				stir_shaken_set_error(ss, "Failed to get @tn from JSON", STIR_SHAKEN_ERROR_PASSPORT_ORIG_TN);
-				ks_json_delete(&origjson);
-				return NULL;
-			}
-
 			tn_form = 1;
-		} else if (ks_json_get_object_item(origjson, "uri")) {
 
-			item = ks_json_get_object_item(origjson, "uri");
-			if (!item) {
-				stir_shaken_set_error(ss, "Failed to get @uri from JSON", STIR_SHAKEN_ERROR_PASSPORT_ORIG_URI);
-				ks_json_delete(&origjson);
-				return NULL;
-			}
+		} else if ((item = ks_json_get_object_item(origjson, "uri"))) {
 
 			tn_form = 0;
+
+		} else {
+				stir_shaken_set_error(ss, "@orig grant is neither in @tn nor @uri form", STIR_SHAKEN_ERROR_PASSPORT_ORIG_FORM);
+				ks_json_delete(&origjson);
+				return NULL;
 		}
 	}
 
@@ -568,7 +564,7 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 		}
 		snprintf(id, sizeof(*id), "%s", id_int);
 	} else {
-		stir_shaken_set_error(ss, "JSON malformed", STIR_SHAKEN_ERROR_PASSPORT_ORIG_TYPE);
+		stir_shaken_set_error(ss, "@orig's @tn/@uri is neither string nor number", STIR_SHAKEN_ERROR_PASSPORT_ORIG_TN_URI_TYPE);
 		ks_json_delete(&origjson);
 		return NULL;
 	}
