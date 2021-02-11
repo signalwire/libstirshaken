@@ -656,27 +656,41 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 		case COMMAND_JWT_CHECK:
 
-			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT...\n");
-			if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(ss, options->jwt, &cert, &jwt)) {
-				stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT failed verification against referenced certificate\n");
-				goto fail;
+			{
+
+				unsigned char cert_raw[STIR_SHAKEN_BUFLEN] = { 0 };
+				int cert_raw_len = STIR_SHAKEN_BUFLEN;
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT...\n");
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(ss, options->jwt, &cert, &jwt)) {
+					stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT failed verification against referenced certificate\n");
+					goto fail;
+				}
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_get_x509_raw(ss, cert->x, cert_raw, &cert_raw_len)) {
+					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Cannot read certificate\n");
+					goto fail;
+				}
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nReferenced certificate is:\n\n%s\n", cert_raw);
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_read_cert_fields(ss, cert)) {
+					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Cannot parse referenced certificate\n");
+					goto fail;
+				}
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Certificate summary (for details: openssl x509 -in cert.pem -noout -text):\n\n");
+				stir_shaken_print_cert_fields(stderr, cert);
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nVerified. JWT matches the referenced certificate\n");
+
+				jwt_free(jwt);
+				jwt = NULL;
+				stir_shaken_destroy_cert(cert);
+				free(cert);
+				cert = NULL;
 			}
 
-			if (STIR_SHAKEN_STATUS_OK != stir_shaken_read_cert_fields(ss, cert)) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Cannot parse referenced certificate\n");
-				goto fail;
-			}
-
-			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Referenced certificate is:\n\n");
-			stir_shaken_print_cert_fields(stderr, cert);
-			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nVerified. JWT matches the referenced certificate\n");
-
-			jwt_free(jwt);
-			jwt = NULL;
-			stir_shaken_destroy_cert(cert);
-			free(cert);
-			cert = NULL;
 			break;
 
 		case COMMAND_JWT_DUMP:
