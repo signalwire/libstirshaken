@@ -237,16 +237,6 @@ draft-barnes-acme-service-provider, ACME Identifiers and Challenges for VoIP Ser
 * draft-ietf-acme-authority-token-tnauthlist
 
 
-### Troubleshooting
-
-If build goes terribly wrong then as a last resort please have a look at 
-
-```
-./do_install.sh
-```
-
-This script contains a list of steps performed initially for original build on debian 10 buster, so you can get the idea of what deps you need, etc.
-
 ### Help
 
 Any questions? Please let us know at: https://signalwire-community.slack.com
