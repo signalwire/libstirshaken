@@ -186,7 +186,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 
 				// If @desttn_key is NULL or empty, use "tn" form
 
-				if ((stir_shaken_zstr(desttn_key) && !ks_json_add_item_to_object(dest, "tn", tn)) || !ks_json_add_item_to_object(dest, desttn_key, tn)) {
+				if ((stir_shaken_zstr(desttn_key) && !ks_json_add_item_to_object(dest, "tn", tn)) || (!stir_shaken_zstr(desttn_key) && !ks_json_add_item_to_object(dest, desttn_key, tn))) {
 					stir_shaken_set_error(ss, "Passport create json: Failed to add @desttn [key]", STIR_SHAKEN_ERROR_KSJSON);
 					ks_json_delete(&dest);
 					return STIR_SHAKEN_STATUS_ERR;
