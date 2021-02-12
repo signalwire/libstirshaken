@@ -84,7 +84,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
 	stir_shaken_free_jwt_str(s); s = NULL;
 
 
-    // Test encodeing/decoding with libjwt
+    // Test encoding/decoding with libjwt
 
 	encoded = jwt_encode_str(passport.jwt);
 	stir_shaken_assert(encoded, "Ooops, libjwt failed to encode string");
