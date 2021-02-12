@@ -238,6 +238,21 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_GENERAL,
 	STIR_SHAKEN_ERROR_BAD_PARAMS,
 	STIR_SHAKEN_ERROR_KSJSON,
+	STIR_SHAKEN_ERROR_KSJSON_CREATE_OBJECT_JSON,
+	STIR_SHAKEN_ERROR_KSJSON_ADD_IAT,
+	STIR_SHAKEN_ERROR_KSJSON_ADD_ATTEST,
+	STIR_SHAKEN_ERROR_KSJSON_ADD_ORIGID,
+	STIR_SHAKEN_ERROR_KSJSON_CREATE_OBJECT_ORIG,
+	STIR_SHAKEN_ERROR_KSJSON_CREATE_ARRAY_ORIG,
+	STIR_SHAKEN_ERROR_KSJSON_ADD_ORIG_TO_ARRAY,
+	STIR_SHAKEN_ERROR_KSJSON_ADD_ORIG_ARRAY,
+	STIR_SHAKEN_ERROR_KSJSON_ADD_TN,
+	STIR_SHAKEN_ERROR_KSJSON_ADD_ORIG,
+	STIR_SHAKEN_ERROR_KSJSON_CREATE_OBJECT_DEST,
+	STIR_SHAKEN_ERROR_KSJSON_CREATE_ARRAY_DEST,
+	STIR_SHAKEN_ERROR_KSJSON_ADD_DEST_TO_ARRAY,
+	STIR_SHAKEN_ERROR_KSJSON_ADD_DEST_ARRAY,
+	STIR_SHAKEN_ERROR_KSJSON_ADD_DEST,
 	STIR_SHAKEN_ERROR_CURL,
 	STIR_SHAKEN_ERROR_STICA_NOT_APPROVED,
 	STIR_SHAKEN_ERROR_SSL,
@@ -271,6 +286,10 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_JWT_CERT_X509_PATH_INVALID,
 	STIR_SHAKEN_ERROR_JWT_DECODE,
 	STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH,
+	STIR_SHAKEN_ERROR_JWT_ADD_HDR_PPT,
+	STIR_SHAKEN_ERROR_JWT_ADD_HDR_TYP,
+	STIR_SHAKEN_ERROR_JWT_ADD_HDR_X5U,
+	STIR_SHAKEN_ERROR_JWT_SET_ALG_ES256,
 	STIR_SHAKEN_ERROR_JSON,
 	STIR_SHAKEN_ERROR_ACME,
 	STIR_SHAKEN_ERROR_ACME_URI,
@@ -307,8 +326,6 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_PASSPORT_VALIDATE,
 	STIR_SHAKEN_ERROR_PASSPORT_SIGN,
 	STIR_SHAKEN_ERROR_SIH_MEM,
-	STIR_SHAKEN_ERROR_PASSPORT_HEADERS_INVALID,
-	STIR_SHAKEN_ERROR_PASSPORT_GRANTS_INVALID,
 	STIR_SHAKEN_ERROR_TNAUTHLIST,
 	STIR_SHAKEN_ERROR_LOAD_CA,
 	STIR_SHAKEN_ERROR_LOAD_CRL,
@@ -318,6 +335,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_PA_NOT_TRUSTED,
 	STIR_SHAKEN_ERROR_PA_ADD,
 	STIR_SHAKEN_ERROR_SET_DEFAULT_PATHS,
+	STIR_SHAKEN_ERROR_PASSPORT_HEADERS_INVALID,
+	STIR_SHAKEN_ERROR_PASSPORT_GRANTS_INVALID,
 	STIR_SHAKEN_ERROR_PASSPORT_EXPIRED,
 	STIR_SHAKEN_ERROR_PASSPORT_MISSING,
 	STIR_SHAKEN_ERROR_PASSPORT_MALFORMED,
@@ -330,6 +349,13 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_PASSPORT_ORIG_URI,
 	STIR_SHAKEN_ERROR_PASSPORT_ORIG_TYPE,
 	STIR_SHAKEN_ERROR_PASSPORT_ORIG_TN_URI_TYPE,
+	STIR_SHAKEN_ERROR_PASSPORT_ATTEST_MISSING,
+	STIR_SHAKEN_ERROR_PASSPORT_ATTEST_VALUE,
+	STIR_SHAKEN_ERROR_PASSPORT_ORIGID_MISSING,
+	STIR_SHAKEN_ERROR_PASSPORT_ORIG_TN_MISSING,
+	STIR_SHAKEN_ERROR_PASSPORT_DEST_TN_MISSING,
+	STIR_SHAKEN_ERROR_PASSPORT_JWT_PRINT_JSON,
+	STIR_SHAKEN_ERROR_PASSPORT_JWT_ADD_GRANTS_JSON,
 	STIR_SHAKEN_ERROR_BUFFER_LENGTH,
 	STIR_SHAKEN_ERROR_BIND,
 	STIR_SHAKEN_ERROR_FILE_OPEN,
@@ -516,10 +542,16 @@ stir_shaken_passport_t*	stir_shaken_passport_create_new(stir_shaken_context_t *s
 void						stir_shaken_passport_destroy(stir_shaken_passport_t *passport);
 stir_shaken_status_t		stir_shaken_passport_sign(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, unsigned char *key, uint32_t keylen, char **out);
 const char*					stir_shaken_passport_get_header(stir_shaken_passport_t *passport, const char* key);
-const char*					stir_shaken_passport_get_headers_json(stir_shaken_passport_t *passport, const char* key);
+
+// Returns headers in JSON. Must be freed by caller.
+char*						stir_shaken_passport_get_headers_json(stir_shaken_passport_t *passport, const char* key);
+
 const char*					stir_shaken_passport_get_grant(stir_shaken_passport_t *passport, const char* key);
 long int					stir_shaken_passport_get_grant_int(stir_shaken_passport_t *passport, const char* key);
-const char*					stir_shaken_passport_get_grants_json(stir_shaken_passport_t *passport, const char* key);
+
+// Returns grants in JSON. Must be freed by caller.
+char*						stir_shaken_passport_get_grants_json(stir_shaken_passport_t *passport, const char* key);
+
 char*						stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, int *is_tn);
 void						stir_shaken_http_add_header(stir_shaken_http_req_t *http_req, const char *h);
 

@@ -50,6 +50,8 @@ static int test_passport_data(stir_shaken_passport_t *passport)
 		stir_shaken_assert(!strcmp(desttn_val, ks_json_value_string(item)), "@dest invalid");
 		ks_json_delete(&j);
 	}
+	free((char*)p);
+	p = NULL;
 
     iat_ = stir_shaken_passport_get_grant_int(passport, "iat");
     stir_shaken_assert(errno != ENOENT, "PASSporT is missing param");
@@ -65,6 +67,8 @@ static int test_passport_data(stir_shaken_passport_t *passport)
 		stir_shaken_assert(!strcmp(origtn_val, ks_json_value_string(item)), "@orig invalid");
 		ks_json_delete(&j);
 	}
+	free((char*)p);
+	p = NULL;
     
     p = stir_shaken_passport_get_grant(passport, "origid");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
@@ -171,6 +175,8 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
 	
 	stir_shaken_free_jwt_str(encoded);
 	encoded = NULL;
+	free(id);
+	id = NULL;
 	
 	stir_shaken_passport_destroy(&passport);
 	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
