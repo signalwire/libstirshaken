@@ -729,7 +729,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				}
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Getting plain version of PASSporT (decoded, not signed, with no signature)...\n");
-				p1 = stir_shaken_passport_dump_str(&passport, 1);
+				p1 = stir_shaken_passport_dump_str(ss, &passport, 1);
 				if (stir_shaken_zstr(p1)) {
 					goto fail;
 				}

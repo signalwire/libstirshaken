@@ -18,28 +18,28 @@ static int test_passport_data(stir_shaken_passport_t *passport)
 	long int iat_ = -1;
 
     // test JWT header
-    p = stir_shaken_passport_get_header(passport, "alg");
+    p = stir_shaken_passport_get_header(NULL, passport, "alg");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
     stir_shaken_assert(!strcmp(p, "ES256"), "ERROR: wrong param value");
 
-    p = stir_shaken_passport_get_header(passport, "ppt");
+    p = stir_shaken_passport_get_header(NULL, passport, "ppt");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
     stir_shaken_assert(!strcmp(p, "shaken"), "ERROR: wrong param value");
 
-    p = stir_shaken_passport_get_header(passport, "typ");
+    p = stir_shaken_passport_get_header(NULL, passport, "typ");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
     stir_shaken_assert(!strcmp(p, "passport"), "ERROR: wrong param value");
 
-    p = stir_shaken_passport_get_header(passport, "x5u");
+    p = stir_shaken_passport_get_header(NULL, passport, "x5u");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
     stir_shaken_assert(!strcmp(p, x5u), "ERROR: wrong param value");
 
     // test JWT paylaod
-    p = stir_shaken_passport_get_grant(passport, "attest");
+    p = stir_shaken_passport_get_grant(NULL, passport, "attest");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
     stir_shaken_assert(!strcmp(p, attest), "ERROR: wrong param value");
     
-    p = stir_shaken_passport_get_grants_json(passport, "dest");
+    p = stir_shaken_passport_get_grants_json(NULL, passport, "dest");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
 	{
 		ks_json_t *j = ks_json_parse(p), *item = NULL;
@@ -53,11 +53,11 @@ static int test_passport_data(stir_shaken_passport_t *passport)
 	free((char*)p);
 	p = NULL;
 
-    iat_ = stir_shaken_passport_get_grant_int(passport, "iat");
+    iat_ = stir_shaken_passport_get_grant_int(NULL, passport, "iat");
     stir_shaken_assert(errno != ENOENT, "PASSporT is missing param");
     stir_shaken_assert(iat_ == iat, "ERROR: wrong param value");
     
-    p = stir_shaken_passport_get_grants_json(passport, "orig");
+    p = stir_shaken_passport_get_grants_json(NULL, passport, "orig");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
 	{
 		ks_json_t *j = ks_json_parse(p), *item = NULL;
@@ -70,7 +70,7 @@ static int test_passport_data(stir_shaken_passport_t *passport)
 	free((char*)p);
 	p = NULL;
     
-    p = stir_shaken_passport_get_grant(passport, "origid");
+    p = stir_shaken_passport_get_grant(NULL, passport, "origid");
     stir_shaken_assert(p != NULL, "PASSporT is missing param");
     stir_shaken_assert(!strcmp(p, origid), "ERROR: wrong param value");
 	
@@ -137,7 +137,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
     
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
     stir_shaken_assert(passport.jwt != NULL, "JWT has not been created");
-	s = stir_shaken_passport_dump_str(&passport, 1);
+	s = stir_shaken_passport_dump_str(&ss, &passport, 1);
 	printf("1. JWT:\n%s\n", s);
 	stir_shaken_free_jwt_str(s); s = NULL;
 

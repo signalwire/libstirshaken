@@ -95,7 +95,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_authenticate_keep_passport(void)
 	}
     stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, verifying");
 	stir_shaken_assert(passport.jwt, "Err, verifying: JWT not returned");
-	passport_rx = stir_shaken_passport_dump_str(&passport, 1);
+	passport_rx = stir_shaken_passport_dump_str(&ss, &passport, 1);
     printf("PASSporT (decoded from SIH) is:\n%s\n\n", passport_rx);
 	stir_shaken_free_jwt_str(passport_rx);
 	passport_rx = NULL;
@@ -113,7 +113,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_authenticate_keep_passport(void)
     printf("SIP Identity Header:\n%s\n\n", sih);
 
 	// PASSporT transmitted
-	passport_tx = stir_shaken_passport_dump_str(&passport, 1);
+	passport_tx = stir_shaken_passport_dump_str(&ss, &passport, 1);
 	stir_shaken_assert(passport_tx != NULL, "Failed to dump PASSporT");
     printf("Created PASSporT\n\n");
     printf("PASSporT:\n%s\n", passport_tx);
@@ -130,7 +130,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_authenticate_keep_passport(void)
 	stir_shaken_assert(passport.jwt, "Err, verifying: JWT not returned");
 
 	// PASSporT received
-	passport_rx = stir_shaken_passport_dump_str(&passport, 1);
+	passport_rx = stir_shaken_passport_dump_str(&ss, &passport, 1);
     printf("PASSporT (decoded from SIH) is:\n%s\n\n", passport_rx);
 
 	// And now...

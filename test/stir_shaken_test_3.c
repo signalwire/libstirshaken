@@ -79,7 +79,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
     
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
     stir_shaken_assert(passport.jwt != NULL, "JWT has not been created");
-	s = stir_shaken_passport_dump_str(&passport, 1);
+	s = stir_shaken_passport_dump_str(&ss, &passport, 1);
 	printf("1. JWT:\n%s\n", s);
 	stir_shaken_free_jwt_str(s); s = NULL;
 

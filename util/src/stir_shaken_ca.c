@@ -773,7 +773,7 @@ stir_shaken_status_t ca_verify_pa_cert(stir_shaken_context_t *ss, stir_shaken_ca
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
 
 	if (!ca || !cert) {
-		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS);
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS_9);
 		return STIR_SHAKEN_STATUS_ERR;
 	}
 

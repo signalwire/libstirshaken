@@ -70,7 +70,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 		if (key && keylen) {		
 
 			if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
-				stir_shaken_set_error(ss, "Failed to add @alg to PASSporT", STIR_SHAKEN_ERROR_JWT_SET_ALG_ES256);
+				stir_shaken_set_error(ss, "Failed to add @alg to PASSporT", STIR_SHAKEN_ERROR_JWT_SET_ALG_ES256_1);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
 		}
@@ -264,7 +264,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init_from_json(stir_shaken_context
 	if (headers_json) {
 
 		if (jwt_add_headers_json(jwt, headers_json) != 0) {
-			stir_shaken_set_error(ss, "JWT init from JSON: Failed to add headers from json", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error(ss, "JWT init from JSON: Failed to add headers from json", STIR_SHAKEN_ERROR_JWT_ADD_HEADERS_JSON);
 			return STIR_SHAKEN_STATUS_TERM;
 		}
 	}
@@ -272,7 +272,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init_from_json(stir_shaken_context
 	if (grants_json) {
 
 		if (jwt_add_grants_json(jwt, grants_json) != 0) {
-			stir_shaken_set_error(ss, "JWT init from JSON: Failed to add grants from json", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error(ss, "JWT init from JSON: Failed to add grants from json", STIR_SHAKEN_ERROR_JWT_ADD_GRANTS_JSON);
 			return STIR_SHAKEN_STATUS_TERM;
 		}
 	}
@@ -280,7 +280,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init_from_json(stir_shaken_context
 	if (key && keylen) {		
 
 		if(jwt_set_alg(jwt, JWT_ALG_ES256, key, keylen) != 0) {
-			stir_shaken_set_error(ss, "JWT init from JSON: Failed to set algorithm and key", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error(ss, "JWT init from JSON: Failed to set algorithm and key", STIR_SHAKEN_ERROR_JWT_SET_ALG_ES256_2);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 	}
@@ -309,7 +309,7 @@ stir_shaken_status_t stir_shaken_passport_init(stir_shaken_context_t *ss, stir_s
 
 		where->jwt = stir_shaken_passport_jwt_create_new(ss);
 		if (!where->jwt) {
-			stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_PASSPORT_JWT_CREATE_1);
 			return STIR_SHAKEN_STATUS_RESTART;
 		}
 	}
@@ -317,7 +317,7 @@ stir_shaken_status_t stir_shaken_passport_init(stir_shaken_context_t *ss, stir_s
 	if (params) {
 
 		if (stir_shaken_passport_jwt_init(ss, where->jwt, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
-			stir_shaken_set_error_if_clear(ss, "Cannot init JWT", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error(ss, "Cannot init JWT", STIR_SHAKEN_ERROR_PASSPORT_JWT_INIT);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
 	}
@@ -331,18 +331,18 @@ stir_shaken_passport_t*	stir_shaken_passport_create_new(stir_shaken_context_t *s
 
 	passport = malloc(sizeof(*passport));
 	if (!passport) {
-		stir_shaken_set_error(ss, "Out of memory", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Can't allocate passport", STIR_SHAKEN_ERROR_MEM_PASSPORT);
 		return NULL;
 	}
 
 	passport->jwt = stir_shaken_passport_jwt_create_new(ss);
 	if (!passport->jwt) {
-		stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_PASSPORT_JWT_CREATE_2);
 		goto fail;
 	}
 
 	if (stir_shaken_passport_init(ss, passport, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
-		stir_shaken_set_error_if_clear(ss, "Failed init PASSporT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "Failed init PASSporT", STIR_SHAKEN_ERROR_PASSPORT_INIT_2);
 		goto fail;
 	}
 
@@ -354,7 +354,6 @@ fail:
 		free(passport);
 		passport = NULL;
 	}
-	stir_shaken_set_error_if_clear(ss, "Failed create new PASSporT", STIR_SHAKEN_ERROR_GENERAL);
 	return NULL;
 }
 
@@ -374,14 +373,14 @@ stir_shaken_status_t stir_shaken_passport_sign(stir_shaken_context_t *ss, stir_s
 		// Install new key
 
 		if(jwt_set_alg(passport->jwt, JWT_ALG_ES256, key, keylen) != 0) {
-			stir_shaken_set_error(ss, "JWT PASSporT Sign: Failed to set key and algorithm on JWT", STIR_SHAKEN_ERROR_GENERAL);
+			stir_shaken_set_error(ss, "JWT PASSporT Sign: Failed to set key and algorithm on JWT", STIR_SHAKEN_ERROR_JWT_SET_ALG_ES256_3);
 			return STIR_SHAKEN_STATUS_ERR;
 		}
 	}
 
 	*out = jwt_encode_str(passport->jwt);
 	if (!*out) {
-		stir_shaken_set_error(ss, "JWT PASSporT Sign: Failed to encode JWT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "JWT PASSporT Sign: Failed to encode JWT", STIR_SHAKEN_ERROR_JWT_ENCODE);
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
@@ -399,7 +398,7 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 	stir_shaken_clear_error(ss);
 
     if (!passport || !passport->jwt) {
-		stir_shaken_set_error(ss, "SIP Identity create: Bad params", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "SIP Identity create: Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS_1);
 		return NULL;
 	}
 
@@ -408,16 +407,30 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 		return NULL;
 	}
 
-	info = stir_shaken_passport_get_header(passport, "x5u");
-	alg = stir_shaken_passport_get_header(passport, "alg");
-	ppt = stir_shaken_passport_get_header(passport, "ppt");
+	info = stir_shaken_passport_get_header(ss, passport, "x5u");
+	if (stir_shaken_zstr(info)) {
+		stir_shaken_set_error(ss, "SIP Identity create: @x5u missing", STIR_SHAKEN_ERROR_PASSPORT_X5U);
+		return NULL;
+	}
+
+	alg = stir_shaken_passport_get_header(ss, passport, "alg");
+	if (stir_shaken_zstr(alg)) {
+		stir_shaken_set_error(ss, "SIP Identity create: @alg missing", STIR_SHAKEN_ERROR_PASSPORT_ALG);
+		return NULL;
+	}
+
+	ppt = stir_shaken_passport_get_header(ss, passport, "ppt");
+	if (stir_shaken_zstr(ppt)) {
+		stir_shaken_set_error(ss, "SIP Identity create: @ppt missing", STIR_SHAKEN_ERROR_PASSPORT_PPT);
+		return NULL;
+	}
 
     // extra length of 15 for info=<> alg= ppt=
     len = strlen(token) + 3 + strlen(info) + 1 + strlen(alg) + 1 + strlen(ppt) + 1 + 15;
     sih = malloc(len);
     if (!sih) {
 		jwt_free_str(token);
-		stir_shaken_set_error(ss, "SIP Identity create: Out of memory", STIR_SHAKEN_ERROR_SIH_MEM);
+		stir_shaken_set_error(ss, "SIP Identity create: Out of memory", STIR_SHAKEN_ERROR_MEM_SIH);
 		return NULL;
 	}
 	memset(sih, 0, len);
@@ -446,13 +459,13 @@ stir_shaken_status_t stir_shaken_jwt_authenticate_keep_passport(stir_shaken_cont
 	if (!passport) return STIR_SHAKEN_STATUS_TERM;
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_init(ss, passport, params, key, keylen)) {
-		stir_shaken_set_error_if_clear(ss, "JWT Authorize: jwt passport init failed", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "JWT Authorize: jwt passport init failed", STIR_SHAKEN_ERROR_PASSPORT_INIT_1);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
 	*sih = stir_shaken_jwt_sip_identity_create(ss, passport, key, keylen);
 	if (!*sih) {
-		stir_shaken_set_error(ss, "JWT Authorize: Failed to create SIP Identity Header from JWT PASSporT", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "JWT Authorize: Failed to create SIP Identity Header from JWT PASSporT", STIR_SHAKEN_ERROR_SIH_CREATE);
 		stir_shaken_passport_destroy(passport);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
@@ -472,9 +485,12 @@ stir_shaken_status_t stir_shaken_jwt_authenticate(stir_shaken_context_t *ss, cha
 	return status;
 }
 
-char* stir_shaken_passport_dump_str(stir_shaken_passport_t *passport, uint8_t pretty)
+char* stir_shaken_passport_dump_str(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, uint8_t pretty)
 {
-	if (!passport || !passport->jwt) return NULL;
+	if (!passport || !passport->jwt) {
+		stir_shaken_set_error(ss, "PASSporT dump str: bad params (passport or jwt missing)", STIR_SHAKEN_ERROR_BAD_PARAMS_2);
+		return NULL;
+	}
 
 	return jwt_dump_str(passport->jwt, pretty);
 }
@@ -488,16 +504,25 @@ void stir_shaken_free_jwt_str(char *s)
 /*
  * NOTE: @passport takes sownership of @jwt.
  */
-void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_passport_t *passport)
+jwt_t* stir_shaken_jwt_move_to_passport(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_t *passport)
 {
-	if (!passport) return;
+	if (!passport) {
+		stir_shaken_set_error(ss, "PASSporT jwt move to PASSporT: bad params (passport missing)", STIR_SHAKEN_ERROR_BAD_PARAMS_3);
+		return NULL;
+	}
+
 	if (passport->jwt) jwt_free(passport->jwt);
 	passport->jwt = jwt;
+	return jwt;
 }
 
-const char* stir_shaken_passport_get_header(stir_shaken_passport_t *passport, const char* key)
+const char* stir_shaken_passport_get_header(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key)
 {
-	if (!passport || !key) return NULL;
+	if (!passport || !key) {
+		stir_shaken_set_error(ss, "PASSporT get header: bad params (passport or key missing)", STIR_SHAKEN_ERROR_BAD_PARAMS_4);
+		return NULL;
+	}
+
 	return jwt_get_header(passport->jwt, key);
 
 }
@@ -505,21 +530,30 @@ const char* stir_shaken_passport_get_header(stir_shaken_passport_t *passport, co
 /**
  * Returns headers in JSON. Must be freed by caller.
  */
-char* stir_shaken_passport_get_headers_json(stir_shaken_passport_t *passport, const char* key)
+char* stir_shaken_passport_get_headers_json(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key)
 {
-	if (!passport || !key) return NULL;
+	if (!passport || !key) {
+		stir_shaken_set_error(ss, "PASSporT get headers json: bad params (passport or key missing)", STIR_SHAKEN_ERROR_BAD_PARAMS_5);
+		return NULL;
+	}
+
 	return jwt_get_headers_json(passport->jwt, key);
 }
 
-const char* stir_shaken_passport_get_grant(stir_shaken_passport_t *passport, const char* key)
+const char* stir_shaken_passport_get_grant(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key)
 {
-	if (!passport || !key) return NULL;
+	if (!passport || !key) {
+		stir_shaken_set_error(ss, "PASSporT get grant json: bad params (passport or key missing)", STIR_SHAKEN_ERROR_BAD_PARAMS_6);
+		return NULL;
+	}
+
 	return jwt_get_grant(passport->jwt, key);
 }
 
-long int stir_shaken_passport_get_grant_int(stir_shaken_passport_t *passport, const char* key)
+long int stir_shaken_passport_get_grant_int(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key)
 {
 	if (!passport || !key) {
+		stir_shaken_set_error(ss, "PASSporT get grant int: bad params (passport or key missing)", STIR_SHAKEN_ERROR_BAD_PARAMS_7);
 		errno = ENOENT;
 		return 0;
 	}
@@ -530,9 +564,13 @@ long int stir_shaken_passport_get_grant_int(stir_shaken_passport_t *passport, co
 /**
  * Returns grants in JSON. Must be freed by caller.
  */
-char* stir_shaken_passport_get_grants_json(stir_shaken_passport_t *passport, const char* key)
+char* stir_shaken_passport_get_grants_json(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key)
 {
-	if (!passport || !key) return NULL;
+	if (!passport || !key) {
+		stir_shaken_set_error(ss, "PASSporT get grants json: bad params (passport or key missing)", STIR_SHAKEN_ERROR_BAD_PARAMS_8);
+		return NULL;
+	}
+
 	return jwt_get_grants_json(passport->jwt, key);
 }
 
@@ -550,7 +588,7 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 
 	if (!passport) return NULL;
 
-	orig = stir_shaken_passport_get_grants_json(passport, "orig");
+	orig = stir_shaken_passport_get_grants_json(ss, passport, "orig");
 	if (!orig) {
 		stir_shaken_set_error(ss, "@orig grant is missing", STIR_SHAKEN_ERROR_PASSPORT_ORIG_MISSING);
 		return NULL;
@@ -603,7 +641,7 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 		id_int = ks_json_value_number_int(item);
 		id = malloc(20);
 		if (!id) {
-			stir_shaken_set_error(ss, "Not enough memory", STIR_SHAKEN_ERROR_MEM);
+			stir_shaken_set_error(ss, "Not enough memory", STIR_SHAKEN_ERROR_MEM_ID);
 			ks_json_delete(&origjson);
 			free(orig);
 			return NULL;
@@ -632,31 +670,31 @@ stir_shaken_status_t stir_shaken_passport_validate_headers(stir_shaken_context_t
 
 	if (!passport) return STIR_SHAKEN_STATUS_TERM;
 	
-	h = stir_shaken_passport_get_header(passport, "alg");
+	h = stir_shaken_passport_get_header(ss, passport, "alg");
 	if (!h || strcmp(h, "ES256")) {
 		sprintf(err_buf, "PASSporT Invalid. @alg should be 'ES256' but is (%s)", h);  
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_ALG);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	h = stir_shaken_passport_get_header(passport, "ppt");
+	h = stir_shaken_passport_get_header(ss, passport, "ppt");
 	if (!h || strcmp(h, "shaken")) {
 		sprintf(err_buf, "PASSporT Invalid. @ppt should be 'shaken' but is (%s)", h);  
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_PPT);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
-	h = stir_shaken_passport_get_header(passport, "typ");
+	h = stir_shaken_passport_get_header(ss, passport, "typ");
 	if (!h || strcmp(h, "passport")) {
 		sprintf(err_buf, "PASSporT Invalid. @typ should be 'passport' but is (%s)", h);  
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_TYP);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	h = stir_shaken_passport_get_header(passport, "x5u");
+	h = stir_shaken_passport_get_header(ss, passport, "x5u");
 	if (stir_shaken_zstr(h)) {
 		sprintf(err_buf, "PASSporT Invalid. @x5u is missing");  
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_X5U);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -674,46 +712,46 @@ stir_shaken_status_t stir_shaken_passport_validate_grants(stir_shaken_context_t 
 
 	if (!passport) return STIR_SHAKEN_STATUS_TERM;
 
-	iat = stir_shaken_passport_get_grant_int(passport, "iat");
+	iat = stir_shaken_passport_get_grant_int(ss, passport, "iat");
 	if (errno == ENOENT) {
 		sprintf(err_buf, "PASSporT Invalid. @iat is missing");  
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	if (iat == 0 ) {
 		sprintf(err_buf, "PASSporT Invalid. @iat is 0");  
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	h = stir_shaken_passport_get_grant(passport, "origid");
+	h = stir_shaken_passport_get_grant(ss, passport, "origid");
 	if (!h || !strcmp(h, "")) {
 		sprintf(err_buf, "PASSporT Invalid. @origid is missing");  
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_ORIGID);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
-	h = stir_shaken_passport_get_grant(passport, "attest");
+	h = stir_shaken_passport_get_grant(ss, passport, "attest");
 	if (!h || !strcmp(h, "")) {
 		sprintf(err_buf, "PASSporT Invalid. @attest is missing");  
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_ATTEST);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	h = stir_shaken_passport_get_grants_json(passport, "orig");
+	h = stir_shaken_passport_get_grants_json(ss, passport, "orig");
 	if (!h || !strcmp(h, "")) {
 		sprintf(err_buf, "PASSporT Invalid. @orig is missing");  
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_ORIG);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	free((char*)h);
 	h = NULL;
 
-	h = stir_shaken_passport_get_grants_json(passport, "dest");
+	h = stir_shaken_passport_get_grants_json(ss, passport, "dest");
 	if (!h || !strcmp(h, "")) {
 		sprintf(err_buf, "PASSporT Invalid. @dest is missing");  
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID);	
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_DEST);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	free((char*)h);
@@ -756,28 +794,29 @@ stir_shaken_status_t stir_shaken_passport_validate_iat_against_freshness(stir_sh
 	// Validate @iat against @iat freshness
 
 	if (!passport) {
-		stir_shaken_set_error(ss, "Verify PASSporT @iat against: Bad params", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Verify PASSporT @iat against: Bad params", STIR_SHAKEN_ERROR_PASSPORT_MISSING);
         return -1;
 	}
 
-	iat = stir_shaken_passport_get_grant_int(passport, "iat");
-	if (errno == ENOENT || iat == 0) {
+	if (iat_freshness >= now_s) {
+		return STIR_SHAKEN_STATUS_OK;
+	}
 
-		stir_shaken_set_error(ss, "PASSporT must have @iat param (application should reply with SIP 438 INVALID IDENTITY HEADER error)\n", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+	iat = stir_shaken_passport_get_grant_int(ss, passport, "iat");
+	if (errno == ENOENT || iat == 0) {
+		stir_shaken_set_error(ss, "PASSporT must have @iat param (application should reply with SIP 438 INVALID IDENTITY HEADER error)\n", STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
 	if (now_s < iat) {
-
-		// This is warning really not an error 'yet'
-		sprintf(err_buf, "WARNING: PASSporT's @iat (in seconds) is: %zu BUT now is %zu (it shoould be <=)", iat, now_s);
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
+		sprintf(err_buf, "PASSporT's @iat (in seconds) is: %zu, freshness is: %zu, BUT now is %zu (this is PASSporT to the future, too young, not valid yet)", iat, iat_freshness, now_s);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_FUTURE);
+		return STIR_SHAKEN_STATUS_ERR;
 	}
 
 	if (iat + iat_freshness < now_s) {
-
-		// Too old, expired
-		stir_shaken_set_error(ss, "PASSporT's @iat too old based on local policy for @iat freshness (application should reply with SIP 403 STALE DATE error)", STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
+		sprintf(err_buf, "PASSporT's @iat (in seconds) is: %zu, freshness is: %zu, BUT now is %zu (PASSporT too old, expired)", iat, iat_freshness, now_s);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_EXPIRED);
 		return STIR_SHAKEN_STATUS_ERR;
 	}
 

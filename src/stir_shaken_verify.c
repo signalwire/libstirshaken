@@ -304,7 +304,12 @@ stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss,
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
-    stir_shaken_jwt_move_to_passport(jwt, passport);
+    if (!stir_shaken_jwt_move_to_passport(ss, jwt, passport)) {
+        stir_shaken_set_error(ss, "Failed to assign JWT to PASSporT", STIR_SHAKEN_ERROR_SIH_JWT_MOVE_TO_PASSPORT_1);
+        jwt_free(jwt);
+        return STIR_SHAKEN_STATUS_FALSE;
+	}
+
     return STIR_SHAKEN_STATUS_OK;
 }
 
@@ -573,7 +578,10 @@ stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const cha
         goto end;
     }
 
-    stir_shaken_jwt_move_to_passport(jwt, passport);
+    if (!stir_shaken_jwt_move_to_passport(ss, jwt, passport)) {
+        stir_shaken_set_error(ss, "Failed to assign JWT to PASSporT", STIR_SHAKEN_ERROR_SIH_JWT_MOVE_TO_PASSPORT_2);
+        goto end;
+	}
 
     // TODO move it outside as an optional check
 #if STIR_SHAKEN_CHECK_AUTHORITY_OVER_NUMBER

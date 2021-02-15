@@ -115,13 +115,13 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Wrong status");
 	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error not set");
 
-	stir_shaken_jwt_move_to_passport(jwt, &passport);
+	stir_shaken_assert(stir_shaken_jwt_move_to_passport(NULL, jwt, &passport) == jwt, "JWT Move to PASSporT failed");
 	jwt = NULL;
 
 	printf("\nPASSporT Verified.\n\n");
 
 	// Print PASSporT
-	passport_decoded = stir_shaken_passport_dump_str(&passport, 1);
+	passport_decoded = stir_shaken_passport_dump_str(&ss, &passport, 1);
 	if (passport_decoded) {
 		printf("PASSporT is:\n%s\n", passport_decoded);
 		stir_shaken_free_jwt_str(passport_decoded);
@@ -156,13 +156,13 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Wrong status");
 	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error not set");
 
-	stir_shaken_jwt_move_to_passport(jwt, &passport);
+	stir_shaken_assert(stir_shaken_jwt_move_to_passport(NULL, jwt, &passport) == jwt, "JWT Move to PASSporT failed");
 	jwt = NULL;
 
 	printf("\nPASSporT Verified.\n\n");
 
 	// Print PASSporT
-	passport_decoded = stir_shaken_passport_dump_str(&passport, 1);
+	passport_decoded = stir_shaken_passport_dump_str(&ss, &passport, 1);
 	if (passport_decoded) {
 		printf("PASSporT is:\n%s\n", passport_decoded);
 		stir_shaken_free_jwt_str(passport_decoded);
@@ -192,7 +192,7 @@ fail:
 	}
 
 	// Print PASSporT
-	passport_decoded = stir_shaken_passport_dump_str(&passport, 1);
+	passport_decoded = stir_shaken_passport_dump_str(&ss, &passport, 1);
 	if (passport_decoded) {
 		printf("PASSporT is:\n%s\n", passport_decoded);
 		stir_shaken_free_jwt_str(passport_decoded);

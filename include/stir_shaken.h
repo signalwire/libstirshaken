@@ -236,7 +236,15 @@ typedef struct curl_slist curl_slist_t;
 // the verification service shall treat this as a 438 'Invalid Identity Header' error and proceed as defined above.
 typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_GENERAL,
-	STIR_SHAKEN_ERROR_BAD_PARAMS,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_1,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_2,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_3,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_4,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_5,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_6,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_7,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_8,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_9,
 	STIR_SHAKEN_ERROR_KSJSON,
 	STIR_SHAKEN_ERROR_KSJSON_CREATE_OBJECT_JSON,
 	STIR_SHAKEN_ERROR_KSJSON_ADD_IAT,
@@ -289,7 +297,12 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_JWT_ADD_HDR_PPT,
 	STIR_SHAKEN_ERROR_JWT_ADD_HDR_TYP,
 	STIR_SHAKEN_ERROR_JWT_ADD_HDR_X5U,
-	STIR_SHAKEN_ERROR_JWT_SET_ALG_ES256,
+	STIR_SHAKEN_ERROR_JWT_SET_ALG_ES256_1,
+	STIR_SHAKEN_ERROR_JWT_SET_ALG_ES256_2,
+	STIR_SHAKEN_ERROR_JWT_SET_ALG_ES256_3,
+	STIR_SHAKEN_ERROR_JWT_ADD_HEADERS_JSON,
+	STIR_SHAKEN_ERROR_JWT_ADD_GRANTS_JSON,
+	STIR_SHAKEN_ERROR_JWT_ENCODE,
 	STIR_SHAKEN_ERROR_JSON,
 	STIR_SHAKEN_ERROR_ACME,
 	STIR_SHAKEN_ERROR_ACME_URI,
@@ -322,10 +335,10 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_ACME_BAD_REQUEST,
 	STIR_SHAKEN_ERROR_ACME_BAD_AUTHZ_POLLING_STATUS,
 	STIR_SHAKEN_ERROR_ACME_BAD_MESSAGE,
-	STIR_SHAKEN_ERROR_PASSPORT_INVALID,
-	STIR_SHAKEN_ERROR_PASSPORT_VALIDATE,
 	STIR_SHAKEN_ERROR_PASSPORT_SIGN,
 	STIR_SHAKEN_ERROR_SIH_MEM,
+	STIR_SHAKEN_ERROR_SIH_JWT_MOVE_TO_PASSPORT_1,
+	STIR_SHAKEN_ERROR_SIH_JWT_MOVE_TO_PASSPORT_2,
 	STIR_SHAKEN_ERROR_TNAUTHLIST,
 	STIR_SHAKEN_ERROR_LOAD_CA,
 	STIR_SHAKEN_ERROR_LOAD_CRL,
@@ -335,8 +348,22 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_PA_NOT_TRUSTED,
 	STIR_SHAKEN_ERROR_PA_ADD,
 	STIR_SHAKEN_ERROR_SET_DEFAULT_PATHS,
+	STIR_SHAKEN_ERROR_PASSPORT_INIT_1,
+	STIR_SHAKEN_ERROR_PASSPORT_INIT_2,
 	STIR_SHAKEN_ERROR_PASSPORT_HEADERS_INVALID,
 	STIR_SHAKEN_ERROR_PASSPORT_GRANTS_INVALID,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_ALG,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_PPT,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_TYP,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_X5U,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_ORIGID,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_ATTEST,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_ORIG,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_DEST,
+	STIR_SHAKEN_ERROR_PASSPORT_VALIDATE,
 	STIR_SHAKEN_ERROR_PASSPORT_EXPIRED,
 	STIR_SHAKEN_ERROR_PASSPORT_MISSING,
 	STIR_SHAKEN_ERROR_PASSPORT_MALFORMED,
@@ -356,6 +383,15 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_PASSPORT_DEST_TN_MISSING,
 	STIR_SHAKEN_ERROR_PASSPORT_JWT_PRINT_JSON,
 	STIR_SHAKEN_ERROR_PASSPORT_JWT_ADD_GRANTS_JSON,
+	STIR_SHAKEN_ERROR_PASSPORT_JWT_CREATE_1,
+	STIR_SHAKEN_ERROR_PASSPORT_JWT_CREATE_2,
+	STIR_SHAKEN_ERROR_PASSPORT_JWT_INIT,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_FUTURE,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_EXPIRED,
+	STIR_SHAKEN_ERROR_PASSPORT_X5U,
+	STIR_SHAKEN_ERROR_PASSPORT_ALG,
+	STIR_SHAKEN_ERROR_PASSPORT_PPT,
+	STIR_SHAKEN_ERROR_SIH_CREATE,
 	STIR_SHAKEN_ERROR_BUFFER_LENGTH,
 	STIR_SHAKEN_ERROR_BIND,
 	STIR_SHAKEN_ERROR_FILE_OPEN,
@@ -366,7 +402,9 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_CALLBACK_ACTION_CERT_FETCH_ENQUIRY,
 	STIR_SHAKEN_ERROR_GENERATE_CERT,
 	STIR_SHAKEN_ERROR_GENERATE_CERT_FROM_CSR,
-	STIR_SHAKEN_ERROR_MEM,
+	STIR_SHAKEN_ERROR_MEM_SIH,
+	STIR_SHAKEN_ERROR_MEM_PASSPORT,
+	STIR_SHAKEN_ERROR_MEM_ID,
 } stir_shaken_error_t;
 
 #define STIR_SHAKEN_HTTP_REQ_404_INVALID "404"
@@ -541,16 +579,16 @@ stir_shaken_status_t		stir_shaken_passport_jwt_init_from_json(stir_shaken_contex
 stir_shaken_passport_t*	stir_shaken_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 void						stir_shaken_passport_destroy(stir_shaken_passport_t *passport);
 stir_shaken_status_t		stir_shaken_passport_sign(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, unsigned char *key, uint32_t keylen, char **out);
-const char*					stir_shaken_passport_get_header(stir_shaken_passport_t *passport, const char* key);
+const char*					stir_shaken_passport_get_header(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
 
 // Returns headers in JSON. Must be freed by caller.
-char*						stir_shaken_passport_get_headers_json(stir_shaken_passport_t *passport, const char* key);
+char*						stir_shaken_passport_get_headers_json(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
 
-const char*					stir_shaken_passport_get_grant(stir_shaken_passport_t *passport, const char* key);
-long int					stir_shaken_passport_get_grant_int(stir_shaken_passport_t *passport, const char* key);
+const char*					stir_shaken_passport_get_grant(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
+long int					stir_shaken_passport_get_grant_int(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
 
 // Returns grants in JSON. Must be freed by caller.
-char*						stir_shaken_passport_get_grants_json(stir_shaken_passport_t *passport, const char* key);
+char*						stir_shaken_passport_get_grants_json(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
 
 char*						stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, int *is_tn);
 void						stir_shaken_http_add_header(stir_shaken_http_req_t *http_req, const char *h);
@@ -627,9 +665,9 @@ stir_shaken_status_t stir_shaken_jwt_authenticate_keep_passport(stir_shaken_cont
  */
 stir_shaken_status_t stir_shaken_jwt_authenticate(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 
-char* stir_shaken_passport_dump_str(stir_shaken_passport_t *passport, uint8_t pretty);
+char* stir_shaken_passport_dump_str(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, uint8_t pretty);
 void stir_shaken_free_jwt_str(char *s);
-void stir_shaken_jwt_move_to_passport(jwt_t *jwt, stir_shaken_passport_t *passport);
+jwt_t* stir_shaken_jwt_move_to_passport(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_t *passport);
 
 /* Global Values */
 typedef struct stir_shaken_globals_s {

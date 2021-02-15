@@ -1610,7 +1610,7 @@ int stir_shaken_cert_get_version(stir_shaken_cert_t *cert)
 stir_shaken_status_t stir_shaken_cert_copy(stir_shaken_context_t *ss, stir_shaken_cert_t *dst, stir_shaken_cert_t *src)
 {
 	if (!dst || !src) {
-		stir_shaken_set_error(ss, "Certs not set", STIR_SHAKEN_ERROR_BAD_PARAMS);
+		stir_shaken_set_error(ss, "Certs not set", STIR_SHAKEN_ERROR_BAD_PARAMS_3);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
