@@ -3,8 +3,14 @@
 STIR-Shaken is a technology for making secure calls by use of SSL certificates and JSON Web Tokens.
 For a general overview of the framwork please search web for: ATIS, "Signature-based Handling of Asserted Information using Tokens (SHAKEN). Governance Model and Certificate Management",
 (no link provided because spec is actively worked on and updated frequently).
+
+## libstirshaken
+
 This library provides building blocks for implementing STIR-Shaken authentication and verification services, (STI-SP/AS, STI-SP/VS),
 as well as elements of STI-CA and STI-PA.
+
+libstirshaken was tested for interoperability with other leading Shaken implementations (e.g. TransNexus).
+
 You can find a list of specs relevant to Shaken at the bottom of this document.
 
 
