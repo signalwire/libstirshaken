@@ -81,7 +81,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 			ks_json_t *json = ks_json_create_object();
 
 			if (!json) {
-				stir_shaken_set_error(ss, "Passport can't create JSON object", STIR_SHAKEN_ERROR_KSJSON_CREATE_OBJECT_JSON);
+				stir_shaken_set_error(ss, "Passport can't create JSON object", STIR_SHAKEN_ERROR_KSJSON_CREATE_OBJECT_JSON_2);
 				ks_json_delete(&json);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
