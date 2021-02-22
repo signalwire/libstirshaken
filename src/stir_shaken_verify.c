@@ -22,7 +22,7 @@ stir_shaken_status_t stir_shaken_basic_cert_check(stir_shaken_context_t *ss, sti
 
     res = X509_cmp_current_time(cert->notBefore_ASN1);
     if (res == 0) {
-        stir_shaken_set_error(ss, "Error validating STI Cert's notBefore timestamp", STIR_SHAKEN_ERROR_SSL);
+        stir_shaken_set_error(ss, "Error validating STI Cert's notBefore timestamp", STIR_SHAKEN_ERROR_SSL_1);
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
@@ -33,7 +33,7 @@ stir_shaken_status_t stir_shaken_basic_cert_check(stir_shaken_context_t *ss, sti
 
     res = X509_cmp_current_time(cert->notAfter_ASN1);
     if (res == 0) {
-        stir_shaken_set_error(ss, "Error validating STI Cert's notAfter timestamp", STIR_SHAKEN_ERROR_SSL);
+        stir_shaken_set_error(ss, "Error validating STI Cert's notAfter timestamp", STIR_SHAKEN_ERROR_SSL_2);
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
@@ -60,8 +60,13 @@ static int stir_shaken_verify_data_with_cert(stir_shaken_context_t *ss, const ch
     stir_shaken_clear_error(ss);
 
     // Get EVP_PKEY public key from cert
-    if (!cert || !cert->x || !(pkey = X509_get_pubkey(cert->x))) {
-        stir_shaken_set_error(ss, "Verify data with cert: Bad params", STIR_SHAKEN_ERROR_GENERAL);
+    if (!cert || !cert->x) {
+        stir_shaken_set_error(ss, "Verify data with cert: Bad params", STIR_SHAKEN_ERROR_CERT_NOT_SET);
+        return -1;
+    }
+
+	if (!(pkey = X509_get_pubkey(cert->x))) {
+        stir_shaken_set_error(ss, "Verify data with cert: Bad params", STIR_SHAKEN_ERROR_PUBKEY_GET);
         return -1;
     }
 
@@ -81,7 +86,7 @@ static stir_shaken_status_t stir_shaken_jwt_sih_to_jwt_encoded(stir_shaken_conte
 
 
     if (!identity_header) {
-		stir_shaken_set_error(ss, "Sih to jwt: PASSporT missing", STIR_SHAKEN_ERROR_PASSPORT_MISSING);
+		stir_shaken_set_error(ss, "Sih to jwt: PASSporT missing", STIR_SHAKEN_ERROR_PASSPORT_MISSING_1);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -94,7 +99,7 @@ static stir_shaken_status_t stir_shaken_jwt_sih_to_jwt_encoded(stir_shaken_conte
     len = p - identity_header + 1;
 
     if (len > jwt_encoded_len) {
-        stir_shaken_set_error(ss, "Sih to jwt: buffer for encoded JWT too short", STIR_SHAKEN_ERROR_BUFFER_LENGTH);
+        stir_shaken_set_error(ss, "Sih to jwt: buffer for encoded JWT too short", STIR_SHAKEN_ERROR_BUFFER_2);
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
@@ -111,13 +116,11 @@ static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
     mem_chunk_t *mem = (mem_chunk_t *) p;
 
 
-    stir_shaken_clear_error(mem->ss);
-
     fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, realsize + mem->size);
 
     m = realloc(mem->mem, mem->size + realsize + 1);
     if(!m) {
-        stir_shaken_set_error(mem->ss, "realloc returned NULL", STIR_SHAKEN_ERROR_GENERAL);
+        stir_shaken_set_error(mem->ss, "Realloc returned NULL", STIR_SHAKEN_ERROR_MEM_REALLOC);
         return 0;
     }
 
@@ -294,7 +297,7 @@ stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss,
     }
 
     if (stir_shaken_get_pubkey_raw_from_cert(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
-        stir_shaken_set_error_if_clear(ss, "Failed to get public key in raw format from remote STI-SP certificate", STIR_SHAKEN_ERROR_SSL);
+        stir_shaken_set_error_if_clear(ss, "Failed to get public key in raw format from remote STI-SP certificate", STIR_SHAKEN_ERROR_SSL_3);
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
@@ -304,7 +307,12 @@ stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss,
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
-    stir_shaken_jwt_move_to_passport(jwt, passport);
+    if (!stir_shaken_jwt_move_to_passport(ss, jwt, passport)) {
+        stir_shaken_set_error(ss, "Failed to assign JWT to PASSporT", STIR_SHAKEN_ERROR_SIH_JWT_MOVE_TO_PASSPORT_1);
+        jwt_free(jwt);
+        return STIR_SHAKEN_STATUS_FALSE;
+	}
+
     return STIR_SHAKEN_STATUS_OK;
 }
 
@@ -331,7 +339,7 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
     }
 
     if (stir_shaken_get_pubkey_raw_from_cert(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
-        stir_shaken_set_error(ss, "Failed to get public key in raw format from certificate", STIR_SHAKEN_ERROR_SSL);
+        stir_shaken_set_error(ss, "Failed to get public key in raw format from certificate", STIR_SHAKEN_ERROR_SSL_4);
         goto fail;
     }
 
@@ -557,7 +565,7 @@ stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const cha
 	}
 	
 	if (!passport) {
-		stir_shaken_set_error(ss, "PASSporT not set", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "PASSporT not set", STIR_SHAKEN_ERROR_PASSPORT_MISSING_2);
 		goto end;
 	}
 
@@ -573,7 +581,10 @@ stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const cha
         goto end;
     }
 
-    stir_shaken_jwt_move_to_passport(jwt, passport);
+    if (!stir_shaken_jwt_move_to_passport(ss, jwt, passport)) {
+        stir_shaken_set_error(ss, "Failed to assign JWT to PASSporT", STIR_SHAKEN_ERROR_SIH_JWT_MOVE_TO_PASSPORT_2);
+        goto end;
+	}
 
     // TODO move it outside as an optional check
 #if STIR_SHAKEN_CHECK_AUTHORITY_OVER_NUMBER

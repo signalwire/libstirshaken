@@ -77,7 +77,7 @@ int main(void)
 	}
 
 	// Get plain version of PASSporT (decoded, not signed, with no signature)
-	s = stir_shaken_passport_dump_str(&passport, 1);
+	s = stir_shaken_passport_dump_str(&ss, &passport, 1);
 	printf("PASSporT is:\n%s\n", s);
 	stir_shaken_free_jwt_str(s);
 	s = NULL;

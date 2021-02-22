@@ -203,7 +203,7 @@ stir_shaken_status_t stir_shaken_save_to_file(stir_shaken_context_t *ss, const c
 
     if (datalen != fwrite(data, 1, datalen, fp)) {
         fclose(fp);
-        stir_shaken_set_error(ss, "Error writing to file", STIR_SHAKEN_ERROR_FILE_WRITE);
+        stir_shaken_set_error(ss, "Error writing to file", STIR_SHAKEN_ERROR_FILE_WRITE_3);
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
@@ -230,7 +230,7 @@ stir_shaken_status_t stir_shaken_append_to_file(stir_shaken_context_t *ss, const
 
     if (datalen != fwrite(data, 1, datalen, fp)) {
         fclose(fp);
-        stir_shaken_set_error(ss, "Error writing to file", STIR_SHAKEN_ERROR_FILE_WRITE);
+        stir_shaken_set_error(ss, "Error writing to file", STIR_SHAKEN_ERROR_FILE_WRITE_4);
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
@@ -745,7 +745,7 @@ stir_shaken_status_t stir_shaken_is_cert_trusted(stir_shaken_context_t *ss, stir
 	EVP_PKEY	*pkey = NULL;
 
 	if (!cert || !cert->x) {
-		stir_shaken_set_error(ss, "X509 missing", STIR_SHAKEN_ERROR_X509_MISSING);
+		stir_shaken_set_error(ss, "X509 missing", STIR_SHAKEN_ERROR_X509_MISSING_7);
 		return STIR_SHAKEN_STATUS_ERR;
 	}
 

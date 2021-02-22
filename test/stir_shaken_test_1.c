@@ -77,9 +77,8 @@ stir_shaken_status_t stir_shaken_unit_test_sign_verify_data(void)
 		printf("Error code is: '%d'\n", error_code);
 	}
 	stir_shaken_assert(i == 1, "Err, verify failed");
-    stir_shaken_assert(stir_shaken_is_error_set(&ss) != 0, "Err, error condition should be set but it's NOT");
-	error_description = stir_shaken_get_error(&ss, &error_code);
-    stir_shaken_assert(error_description != NULL, "Err, error description NOT set");
+    stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
+    stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 	
 	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
 

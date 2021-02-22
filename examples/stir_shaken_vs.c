@@ -108,13 +108,16 @@ void run_verification_service(stir_shaken_callback_t callback)
 		goto exit;
 	}
 
-	stir_shaken_jwt_move_to_passport(jwt, &passport);
+	if (!stir_shaken_jwt_move_to_passport(&ss, jwt, &passport)) {
+		printf("Cannot assign JWT to PASSporT\n");
+		goto exit;
+	}
 	jwt = NULL;
 
 	printf("\nPASSporT Verified.\n\n");
 
 	// Print PASSporT
-	passport_decoded = stir_shaken_passport_dump_str(&passport, 1);
+	passport_decoded = stir_shaken_passport_dump_str(&ss, &passport, 1);
 	if (passport_decoded) {
 		printf("PASSporT is:\n%s\n", passport_decoded);
 		stir_shaken_free_jwt_str(passport_decoded);
@@ -151,7 +154,7 @@ exit:
 	}
 
 	// Print PASSporT
-	passport_decoded = stir_shaken_passport_dump_str(&passport, 1);
+	passport_decoded = stir_shaken_passport_dump_str(&ss, &passport, 1);
 	if (passport_decoded) {
 		printf("PASSporT is:\n%s\n", passport_decoded);
 		stir_shaken_free_jwt_str(passport_decoded);
@@ -169,6 +172,11 @@ exit:
 	free(cert);
 	cert = NULL;
 	stir_shaken_do_deinit();
+
+	if (jwt) {
+		jwt_free(jwt);
+		jwt = NULL;
+	}
 }
 
 int main(void)

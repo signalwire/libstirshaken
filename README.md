@@ -3,8 +3,14 @@
 STIR-Shaken is a technology for making secure calls by use of SSL certificates and JSON Web Tokens.
 For a general overview of the framwork please search web for: ATIS, "Signature-based Handling of Asserted Information using Tokens (SHAKEN). Governance Model and Certificate Management",
 (no link provided because spec is actively worked on and updated frequently).
+
+## libstirshaken
+
 This library provides building blocks for implementing STIR-Shaken authentication and verification services, (STI-SP/AS, STI-SP/VS),
 as well as elements of STI-CA and STI-PA.
+
+libstirshaken was tested for interoperability with other leading Shaken implementations (e.g. TransNexus).
+
 You can find a list of specs relevant to Shaken at the bottom of this document.
 
 
@@ -236,16 +242,6 @@ draft-barnes-acme-service-provider, ACME Identifiers and Challenges for VoIP Ser
 * draft-ietf-stir-oob
 * draft-ietf-acme-authority-token-tnauthlist
 
-
-### Troubleshooting
-
-If build goes terribly wrong then as a last resort please have a look at 
-
-```
-./do_install.sh
-```
-
-This script contains a list of steps performed initially for original build on debian 10 buster, so you can get the idea of what deps you need, etc.
 
 ### Help
 
