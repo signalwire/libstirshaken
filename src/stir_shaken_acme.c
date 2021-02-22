@@ -1095,13 +1095,13 @@ char* stir_shaken_acme_generate_cert_req_payload(stir_shaken_context_t *ss, cons
 
         if (stir_shaken_get_csr_raw(ss, req, &csr_raw[0], &csr_raw_len) != STIR_SHAKEN_STATUS_OK) {
 
-            stir_shaken_set_error_if_clear(ss, "Cannot get CSR raw", STIR_SHAKEN_ERROR_SSL);
+            stir_shaken_set_error_if_clear(ss, "Cannot get CSR raw", STIR_SHAKEN_ERROR_GET_CSR_RAW);
             goto exit;
         }
 
         if (stir_shaken_b64_encode(csr_raw, csr_raw_len, (unsigned char*) csr_b64, csr_b64_len) != STIR_SHAKEN_STATUS_OK) {
 
-            stir_shaken_set_error_if_clear(ss, "Cannot base 64 encode CSR raw", STIR_SHAKEN_ERROR_SSL);
+            stir_shaken_set_error_if_clear(ss, "Cannot base 64 encode CSR raw", STIR_SHAKEN_ERROR_BASE64_ENCODE);
             goto exit;
         }
 

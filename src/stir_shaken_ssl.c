@@ -349,7 +349,7 @@ X509_REQ* stir_shaken_generate_x509_req(stir_shaken_context_t *ss, const char *s
     }
 
     if (1 != X509_REQ_set_subject_name(req, tmp)) {
-        stir_shaken_set_error(ss, "Failed to set X509_REQ subject name", STIR_SHAKEN_ERROR_X509_REQ_SET_SUBJCT);
+        stir_shaken_set_error(ss, "Failed to set X509_REQ subject name", STIR_SHAKEN_ERROR_X509_REQ_SET_SUBJECT);
         goto fail;
     }
 
@@ -1004,7 +1004,7 @@ X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, const c
         return NULL;
     }
 
-    x = stir_shaken_generate_x509_cert(ss, public_key, issuer_c, issuer_cn, NULL, NULL, serial, expiry_days);
+    x = stir_shaken_generate_x509_cert(ss, public_key, issuer_c, issuer_cn, "US", "subject_cn", serial, expiry_days);
     if (!x) {
         stir_shaken_set_error(ss, "Failed to generate initial X509 certificate", STIR_SHAKEN_ERROR_X509_GENERATE_CERT_2);
         EVP_PKEY_free(public_key);
@@ -1599,7 +1599,7 @@ char* stir_shaken_cert_get_subject(stir_shaken_cert_t *cert)
 int stir_shaken_cert_get_version(stir_shaken_cert_t *cert)
 {
     if (!cert) {
-		return NULL;
+		return 0;
 	}
     return cert->version;
 }
@@ -1765,14 +1765,14 @@ stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X
 
     cbio = BIO_new_mem_buf(mem, -1);
     if (!cbio) {
-        stir_shaken_set_error(ss, "(SSL) Failed to create BIO", STIR_SHAKEN_ERROR_SSL);
+        stir_shaken_set_error(ss, "(SSL) Failed to create BIO", STIR_SHAKEN_ERROR_SSL_BIO_NEW_MEM_BUF_2);
         return STIR_SHAKEN_STATUS_TERM;
     }
 
     // Load end-entity certificate
     *x = PEM_read_bio_X509(cbio, NULL, NULL, NULL);
     if (!*x) {
-        stir_shaken_set_error(ss, "(SSL) Failed to read X509 from BIO", STIR_SHAKEN_ERROR_SSL);
+        stir_shaken_set_error(ss, "(SSL) Failed to read X509 from BIO", STIR_SHAKEN_ERROR_SSL_PEM_READ_BIO_X509_1);
         ss_status = STIR_SHAKEN_STATUS_TERM;
         goto exit;
     }
@@ -1784,7 +1784,7 @@ stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X
 
         stack = sk_X509_new_null();
         if (!stack) {
-            stir_shaken_set_error(ss, "Failed to allocate cert stack", STIR_SHAKEN_ERROR_SSL);
+            stir_shaken_set_error(ss, "Failed to allocate cert stack", STIR_SHAKEN_ERROR_SSL_X509_SK);
             X509_free(*x);
             ss_status = STIR_SHAKEN_STATUS_TERM;
             goto exit;
@@ -1792,7 +1792,7 @@ stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X
 
         sk = PEM_X509_INFO_read_bio(cbio, NULL, NULL, NULL);
         if (!sk) {
-            stir_shaken_set_error(ss, "Error reading certificate stack", STIR_SHAKEN_ERROR_SSL);
+            stir_shaken_set_error(ss, "Error reading certificate stack", STIR_SHAKEN_ERROR_SSL_PEM_READ_BIO_X509_2);
             X509_free(*x);
             sk_X509_free(stack);
             ss_status = STIR_SHAKEN_STATUS_FALSE;
@@ -2084,7 +2084,7 @@ stir_shaken_status_t stir_shaken_load_keys(stir_shaken_context_t *ss, EVP_PKEY *
         pubkey = stir_shaken_load_pubkey_from_file(ss, public_key_full_name);
         if (!pubkey) {
             sprintf(err_buf, "Failed to read public key from file %s", public_key_full_name);
-            stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL_LOAD_PUBKEY_FROM_FILE);
+            stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL_LOAD_PUBKEY_FROM_FILE_1);
             goto fail;
         }
     }
@@ -2524,7 +2524,7 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
         tmpsig_len = i2d_ECDSA_SIG(ec_sig, &p);
 
         if (tmpsig_len == 0) {
-            stir_shaken_set_error(ss, "Algorithm/key/method misconfiguration", STIR_SHAKEN_ERROR_SSL_EC_SIG_2;
+            stir_shaken_set_error(ss, "Algorithm/key/method misconfiguration", STIR_SHAKEN_ERROR_SSL_EC_SIG_2);
             goto err;
         }
     }

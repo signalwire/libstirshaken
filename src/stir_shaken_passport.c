@@ -794,7 +794,7 @@ stir_shaken_status_t stir_shaken_passport_validate_iat_against_freshness(stir_sh
 	// Validate @iat against @iat freshness
 
 	if (!passport) {
-		stir_shaken_set_error(ss, "Verify PASSporT @iat against: Bad params", STIR_SHAKEN_ERROR_PASSPORT_MISSING);
+		stir_shaken_set_error(ss, "Verify PASSporT @iat against: Bad params", STIR_SHAKEN_ERROR_PASSPORT_MISSING_3);
         return -1;
 	}
 
