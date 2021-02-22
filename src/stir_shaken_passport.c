@@ -82,7 +82,6 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 
 			if (!json) {
 				stir_shaken_set_error(ss, "Passport can't create JSON object", STIR_SHAKEN_ERROR_KSJSON_CREATE_OBJECT_JSON_2);
-				ks_json_delete(&json);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
 
@@ -98,7 +97,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 				return STIR_SHAKEN_STATUS_ERR;
 			}
 
-			if (*attest != 'A' && *attest != 'B' && *attest != 'C') {
+			if (!((*attest == 'A' || *attest == 'B' || *attest == 'C') && attest[1] == '\0')) {
 				stir_shaken_set_error(ss, "Passport @attest must be 'A', 'B' or 'C'", STIR_SHAKEN_ERROR_PASSPORT_ATTEST_VALUE);
 				ks_json_delete(&json);
 				return STIR_SHAKEN_STATUS_ERR;
@@ -153,6 +152,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 
 					if (!ks_json_add_string_to_array(tn, origtn_val)) {
 						stir_shaken_set_error(ss, "Passport create json: Failed to add @orig to array", STIR_SHAKEN_ERROR_KSJSON_ADD_ORIG_TO_ARRAY);
+						ks_json_delete(&tn);
 						ks_json_delete(&orig);
 						ks_json_delete(&json);
 						return STIR_SHAKEN_STATUS_ERR;
@@ -213,6 +213,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 
 				if (!ks_json_add_string_to_array(tn, desttn_val)) {
 						stir_shaken_set_error(ss, "Passport create json: Failed to add @desttn to array", STIR_SHAKEN_ERROR_KSJSON_ADD_DEST_TO_ARRAY);
+						ks_json_delete(&tn);
 						ks_json_delete(&dest);
 						ks_json_delete(&json);
 						return STIR_SHAKEN_STATUS_ERR;
@@ -222,6 +223,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 
 				if ((stir_shaken_zstr(desttn_key) && !ks_json_add_item_to_object(dest, "tn", tn)) || (!stir_shaken_zstr(desttn_key) && !ks_json_add_item_to_object(dest, desttn_key, tn))) {
 					stir_shaken_set_error(ss, "Passport create json: Failed to add @dest array", STIR_SHAKEN_ERROR_KSJSON_ADD_DEST_ARRAY);
+					ks_json_delete(&tn);
 					ks_json_delete(&dest);
 					ks_json_delete(&json);
 					return STIR_SHAKEN_STATUS_ERR;
@@ -434,7 +436,7 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 		return NULL;
 	}
 	memset(sih, 0, len);
-    sprintf(sih, "%s;info=<%s>;alg=%s;ppt=%s", token, info, alg, ppt);
+    snprintf(sih, len, "%s;info=<%s>;alg=%s;ppt=%s", token, info, alg, ppt);
 
 	jwt_free_str(token);
 
@@ -646,7 +648,7 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 			free(orig);
 			return NULL;
 		}
-		snprintf(id, sizeof(*id), "%s", id_int);
+		snprintf(id, 20, "%d", id_int);
 	} else {
 		stir_shaken_set_error(ss, "@orig's @tn/@uri is neither string nor number", STIR_SHAKEN_ERROR_PASSPORT_ORIG_TN_URI_TYPE);
 		ks_json_delete(&origjson);
@@ -672,28 +674,28 @@ stir_shaken_status_t stir_shaken_passport_validate_headers(stir_shaken_context_t
 	
 	h = stir_shaken_passport_get_header(ss, passport, "alg");
 	if (!h || strcmp(h, "ES256")) {
-		sprintf(err_buf, "PASSporT Invalid. @alg should be 'ES256' but is (%s)", h);  
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT Invalid. @alg should be 'ES256' but is (%s)", h);  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_ALG);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	h = stir_shaken_passport_get_header(ss, passport, "ppt");
 	if (!h || strcmp(h, "shaken")) {
-		sprintf(err_buf, "PASSporT Invalid. @ppt should be 'shaken' but is (%s)", h);  
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT Invalid. @ppt should be 'shaken' but is (%s)", h);  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_PPT);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
 	h = stir_shaken_passport_get_header(ss, passport, "typ");
 	if (!h || strcmp(h, "passport")) {
-		sprintf(err_buf, "PASSporT Invalid. @typ should be 'passport' but is (%s)", h);  
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT Invalid. @typ should be 'passport' but is (%s)", h);  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_TYP);	
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	h = stir_shaken_passport_get_header(ss, passport, "x5u");
 	if (stir_shaken_zstr(h)) {
-		sprintf(err_buf, "PASSporT Invalid. @x5u is missing");  
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT Invalid. @x5u is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_X5U);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
@@ -714,35 +716,36 @@ stir_shaken_status_t stir_shaken_passport_validate_grants(stir_shaken_context_t 
 
 	iat = stir_shaken_passport_get_grant_int(ss, passport, "iat");
 	if (errno == ENOENT) {
-		sprintf(err_buf, "PASSporT Invalid. @iat is missing");  
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT Invalid. @iat is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	if (iat == 0 ) {
-		sprintf(err_buf, "PASSporT Invalid. @iat is 0");  
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT Invalid. @iat is 0");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	h = stir_shaken_passport_get_grant(ss, passport, "origid");
 	if (!h || !strcmp(h, "")) {
-		sprintf(err_buf, "PASSporT Invalid. @origid is missing");  
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT Invalid. @origid is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_ORIGID);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	
 	h = stir_shaken_passport_get_grant(ss, passport, "attest");
 	if (!h || !strcmp(h, "")) {
-		sprintf(err_buf, "PASSporT Invalid. @attest is missing");  
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT Invalid. @attest is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_ATTEST);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	h = stir_shaken_passport_get_grants_json(ss, passport, "orig");
 	if (!h || !strcmp(h, "")) {
-		sprintf(err_buf, "PASSporT Invalid. @orig is missing");  
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT Invalid. @orig is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_ORIG);
+		if (h) free((char*)h);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	free((char*)h);
@@ -750,8 +753,9 @@ stir_shaken_status_t stir_shaken_passport_validate_grants(stir_shaken_context_t 
 
 	h = stir_shaken_passport_get_grants_json(ss, passport, "dest");
 	if (!h || !strcmp(h, "")) {
-		sprintf(err_buf, "PASSporT Invalid. @dest is missing");  
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT Invalid. @dest is missing");  
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_DEST);
+		if (h) free((char*)h);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 	free((char*)h);
@@ -809,13 +813,13 @@ stir_shaken_status_t stir_shaken_passport_validate_iat_against_freshness(stir_sh
 	}
 
 	if (now_s < iat) {
-		sprintf(err_buf, "PASSporT's @iat (in seconds) is: %zu, freshness is: %zu, BUT now is %zu (this is PASSporT to the future, too young, not valid yet)", iat, iat_freshness, now_s);
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT's @iat (in seconds) is: %zu, freshness is: %zu, BUT now is %zu (this is PASSporT to the future, too young, not valid yet)", iat, iat_freshness, now_s);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_FUTURE);
 		return STIR_SHAKEN_STATUS_ERR;
 	}
 
 	if (iat + iat_freshness < now_s) {
-		sprintf(err_buf, "PASSporT's @iat (in seconds) is: %zu, freshness is: %zu, BUT now is %zu (PASSporT too old, expired)", iat, iat_freshness, now_s);
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT's @iat (in seconds) is: %zu, freshness is: %zu, BUT now is %zu (PASSporT too old, expired)", iat, iat_freshness, now_s);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_EXPIRED);
 		return STIR_SHAKEN_STATUS_ERR;
 	}
