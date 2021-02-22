@@ -86,7 +86,7 @@ static stir_shaken_status_t stir_shaken_jwt_sih_to_jwt_encoded(stir_shaken_conte
 
 
     if (!identity_header) {
-		stir_shaken_set_error(ss, "Sih to jwt: PASSporT missing", STIR_SHAKEN_ERROR_PASSPORT_MISSING);
+		stir_shaken_set_error(ss, "Sih to jwt: PASSporT missing", STIR_SHAKEN_ERROR_PASSPORT_MISSING_1);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
