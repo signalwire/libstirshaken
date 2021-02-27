@@ -236,6 +236,9 @@ typedef struct curl_slist curl_slist_t;
 // the verification service shall treat this as a 438 'Invalid Identity Header' error and proceed as defined above.
 typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_GENERAL,
+	STIR_SHAKEN_ERROR_BASIC_INIT,
+	STIR_SHAKEN_ERROR_INIT_SSL,
+	STIR_SHAKEN_ERROR_BASIC_AND_SSL_INIT,
 	STIR_SHAKEN_ERROR_CREATE_CA_DIR,
 	STIR_SHAKEN_ERROR_CREATE_CRL_DIR,
 	STIR_SHAKEN_ERROR_LIB_NOT_INITIALISED,
@@ -640,6 +643,46 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_UNKNOWN_2,
 } stir_shaken_error_t;
 
+struct stir_shaken_service_s;
+struct stir_shaken_context_s;
+typedef stir_shaken_status_t (*stir_shaken_service_f)(struct stir_shaken_service_s *service, void *arg);
+
+// @arg - PASSporT params
+stir_shaken_status_t (*stir_shaken_as_f)(struct stir_shaken_service_s *service, void *arg);
+
+// @arg - PASSporT
+stir_shaken_status_t (*stir_shaken_vs_f)(struct stir_shaken_service_s *service, void *arg);
+
+typedef enum stir_shaken_service_type {
+	STIR_SHAKEN_AUTHENTICATION_SERVICE,
+	STIR_SHAKEN_VERIFICATION_SERVICE
+} stir_shaken_service_type_t;
+
+// Core service
+typedef struct stir_shaken_service_s {
+	stir_shaken_service_type_t		type;
+	stir_shaken_service_f			execute;
+} stir_shaken_service_t;
+
+// Authentication service
+typedef struct stir_shaken_as_s {
+	stir_shaken_service_t			base;
+	stir_shaken_ssl_keys_t			keys;
+	stir_shaken_csr_t				csr;
+	stir_shaken_cert_t				cert;
+} stir_shaken_as_t;
+
+// Verification service
+typedef struct stir_shaken_vs_s {
+	stir_shaken_service_t			base;
+	X509_STORE						*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
+} stir_shaken_vs_t;
+
+stir_shaken_service_t* stir_shaken_as_create(struct stir_shaken_context_s *ss, const char *private_key_full_name, const char *cert_full_name);
+stir_shaken_as_t* stir_shaken_do_as_create(struct stir_shaken_context_s *ss, stir_shaken_ssl_keys_t *keys, stir_shaken_csr_t *csr, stir_shaken_cert_t *cert);
+stir_shaken_service_t* stir_shaken_vs_create(struct stir_shaken_context_s *ss, const char *ca_dir, const char *crl_dir);
+stir_shaken_vs_t* stir_shaken_do_vs_create(struct stir_shaken_context_s *ss, const char *ca_dir, const char *crl_dir);
+
 #define STIR_SHAKEN_HTTP_REQ_404_INVALID "404"
 #define STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND "404"
 
@@ -916,16 +959,24 @@ typedef struct stir_shaken_globals_s {
 	int                 curve_nid;                  // id of the curve in OpenSSL
 	int					tn_authlist_nid;			// OID for ext-tnAuthList
 	//ASN1_OBJECT				*tn_authlist_obj;
+
+// DEPRECATED
 	X509_STORE			*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
+
 	int					loglevel;
 } stir_shaken_globals_t;
 
 extern stir_shaken_globals_t stir_shaken_globals;
 
-//static void stir_shaken_init(void) __attribute__ ((constructor));
+stir_shaken_status_t stir_shaken_init(stir_shaken_context_t *ss, int loglevel);
+
+stir_shaken_status_t stir_shaken_init_basic_and_ssl(stir_shaken_context_t *ss, int loglevel);
+
+// DEPRECATED
+// Only for backward compatibility
 stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir, int loglevel);
 
-//static void stir_shaken_deinit(void) __attribute__ ((destructor));
+void stir_shaken_deinit(void);
 void stir_shaken_do_deinit(void);
 
 
@@ -1024,7 +1075,7 @@ stir_shaken_status_t stir_shaken_privkey_to_raw(stir_shaken_context_t *ss, EVP_P
 stir_shaken_status_t stir_shaken_get_pubkey_raw_from_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, unsigned char *key, int *key_len);
 stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *ec_key, const char *kid, ks_json_t **jwk);
 void stir_shaken_print_cert_fields(FILE *file, stir_shaken_cert_t *cert);
-stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir);
+stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss);
 void stir_shaken_deinit_ssl(void);
 stir_shaken_status_t stir_shaken_cert_to_authority_check_url(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *authority_check_url, int buflen);
 

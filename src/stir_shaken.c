@@ -4,20 +4,14 @@
 stir_shaken_globals_t stir_shaken_globals;
 stir_shaken_status_t	(*stir_shaken_make_http_req)(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req) = stir_shaken_make_http_req_real;
 
-static void stir_shaken_init(void)
-{
-    stir_shaken_do_init(NULL, NULL, NULL, STIR_SHAKEN_LOGLEVEL_NOTHING);
-    return;
-}
 
-stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir, int loglevel)
+stir_shaken_status_t stir_shaken_basic_init(stir_shaken_context_t *ss, int loglevel)
 {
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
 
 	ks_init();
 
 	if (stir_shaken_globals.initialised) {
-		stir_shaken_set_error(ss, "Already initialised", STIR_SHAKEN_ERROR_GENERAL);
 		status = STIR_SHAKEN_STATUS_NOOP;
 		goto err;
 	}
@@ -25,7 +19,6 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *
 	stir_shaken_globals.loglevel = loglevel;
 	
 	if (pthread_mutexattr_init(&stir_shaken_globals.attr) != 0) {
-		
 		stir_shaken_set_error(ss, "Init mutex attr failed", STIR_SHAKEN_ERROR_GENERAL);
 		status = STIR_SHAKEN_STATUS_FALSE;
 		goto err;
@@ -34,17 +27,7 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *
 	pthread_mutexattr_settype(&stir_shaken_globals.attr, PTHREAD_MUTEX_RECURSIVE);
 	
 	if (pthread_mutex_init(&stir_shaken_globals.mutex, &stir_shaken_globals.attr) != 0) {
-		
 		stir_shaken_set_error(ss, "Init mutex failed", STIR_SHAKEN_ERROR_GENERAL);
-		status = STIR_SHAKEN_STATUS_FALSE;
-		goto err;
-	}
-
-	// TODO CA list and CRL will be passed here
-	status = stir_shaken_init_ssl(ss, ca_dir, crl_dir);
-	if (status != STIR_SHAKEN_STATUS_OK && status != STIR_SHAKEN_STATUS_NOOP) {
-	
-		stir_shaken_set_error_if_clear(ss, "Init SSL failed\n", STIR_SHAKEN_ERROR_GENERAL);
 		status = STIR_SHAKEN_STATUS_FALSE;
 		goto err;
 	}
@@ -59,7 +42,56 @@ err:
     return status;
 }
 
-static void stir_shaken_deinit(void)
+stir_shaken_status_t stir_shaken_init_basic_and_ssl(stir_shaken_context_t *ss, int loglevel)
+{
+    char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
+
+	status = stir_shaken_basic_init(ss, loglevel);
+	if (status != STIR_SHAKEN_STATUS_OK && status != STIR_SHAKEN_STATUS_NOOP) {
+		stir_shaken_set_error(ss, "Basic init failed\n", STIR_SHAKEN_ERROR_BASIC_INIT);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	status = stir_shaken_init_ssl(ss);
+	if (status != STIR_SHAKEN_STATUS_OK && status != STIR_SHAKEN_STATUS_NOOP) {
+		stir_shaken_set_error_if_clear(ss, "Init SSL failed\n", STIR_SHAKEN_ERROR_INIT_SSL);
+		// TODO basic deinit
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return status;
+}
+
+// DEPRECATED
+// Only for backward compatibility
+stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir, int loglevel)
+{
+    char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
+
+	status = stir_shaken_init_basic_and_ssl(ss, loglevel);
+	if (status != STIR_SHAKEN_STATUS_OK && status != STIR_SHAKEN_STATUS_NOOP) {
+		stir_shaken_set_error(ss, "Basic and SSL init failed\n", STIR_SHAKEN_ERROR_BASIC_AND_SSL_INIT);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_init_cert_store(ss, NULL, ca_dir, NULL, NULL)) {
+		sprintf(err_buf, "Cannot init x509 cert store (with: CA dir: %s, CRL: %s", ca_dir ? ca_dir : "(null)", crl_dir ? crl_dir : "(null)");
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CERT_STORE_1); 
+		// TODO basic and ssl deinit 
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return status;
+}
+
+stir_shaken_status_t stir_shaken_init(stir_shaken_context_t *ss, int loglevel)
+{
+    return stir_shaken_init_basic_and_ssl(ss, loglevel);
+}
+
+void stir_shaken_deinit(void)
 {
     return stir_shaken_do_deinit();
 }

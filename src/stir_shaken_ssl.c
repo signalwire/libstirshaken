@@ -1353,7 +1353,25 @@ void stir_shaken_hash_cert_name(stir_shaken_context_t *ss, stir_shaken_cert_t *c
 
 stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, const char *ca_list, const char *ca_dir, const char *crl_list, const char *crl_dir)
 {
+    char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
     stir_shaken_globals_t *g = &stir_shaken_globals;
+
+
+	if (ca_dir) {
+		if (stir_shaken_dir_exists(ca_dir) != STIR_SHAKEN_STATUS_OK) {
+			sprintf(err_buf, "CA dir does not exist and failed to create. Create %s?", ca_dir);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CREATE_CA_DIR);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+    }
+
+    if (crl_dir) {
+		if (stir_shaken_dir_exists(crl_dir) != STIR_SHAKEN_STATUS_OK) {
+			sprintf(err_buf, "CRL dir does not exist and failed to create. Create %s?", crl_dir);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CREATE_CRL_DIR);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
+    }
 
     if (g->store) {
         X509_STORE_free(g->store);
@@ -2825,7 +2843,7 @@ void stir_shaken_print_cert_fields(FILE *file, stir_shaken_cert_t *cert)
  * Setup OpenSSL lib.
  * Must be called locked.
  */
-stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char *ca_dir, const char *crl_dir)
+stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss)
 {
     const SSL_METHOD        **ssl_method = &stir_shaken_globals.ssl_method;
     SSL_CTX                 **ssl_ctx = &stir_shaken_globals.ssl_ctx;
@@ -2833,39 +2851,7 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char 
     EC_builtin_curve        *curves = NULL, *c = NULL, *curve = NULL;
     size_t                  i = 0, n = 0;
     int                     curve_nid = -1;                 // id of the curve in OpenSSL
-    char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
-
-    stir_shaken_clear_error(ss);
-
-    if (stir_shaken_globals.initialised) {
-        stir_shaken_set_error(ss, "Library already initialised", STIR_SHAKEN_ERROR_LIB_ALREADY_INITIALISED);
-        return STIR_SHAKEN_STATUS_NOOP;
-    }
-
-    if (ca_dir) {
-
-        if (stir_shaken_dir_exists(ca_dir) != STIR_SHAKEN_STATUS_OK) {
-
-            if (stir_shaken_dir_create_recursive(ca_dir) != STIR_SHAKEN_STATUS_OK) {
-                sprintf(err_buf, "CA dir does not exist and failed to create. Create %s?", ca_dir);
-                stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CREATE_CA_DIR);
-                return STIR_SHAKEN_STATUS_FALSE;
-            }
-        }
-    }
-
-    if (crl_dir) {
-
-        if (stir_shaken_dir_exists(crl_dir) != STIR_SHAKEN_STATUS_OK) {
-
-            if (stir_shaken_dir_create_recursive(crl_dir) != STIR_SHAKEN_STATUS_OK) {
-                sprintf(err_buf, "CRL dir does not exist and failed to create. Create %s?", crl_dir);
-                stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CREATE_CRL_DIR);
-                return STIR_SHAKEN_STATUS_FALSE;
-            }
-        }
-    }
 
     SSL_library_init();
     //SSL_load_errors();																																// TODO doesn't compile anymore ?
@@ -2927,13 +2913,6 @@ stir_shaken_status_t stir_shaken_init_ssl(stir_shaken_context_t *ss, const char 
     }
 
     fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "Using TNAuthList extension with nid %d\n", stir_shaken_globals.tn_authlist_nid);
-
-    // TODO pass CAs list and revocation list
-    if (STIR_SHAKEN_STATUS_OK != stir_shaken_init_cert_store(ss, NULL, ca_dir, NULL, NULL)) {
-        sprintf(err_buf, "Cannot init x509 cert store (with: CA list: %s, CRL: %s", ca_dir ? ca_dir : "(null)", crl_dir ? crl_dir : "(null)");
-        stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CERT_STORE_1); 
-        goto fail;
-    }
 
     free(curves);
     curves = NULL;
