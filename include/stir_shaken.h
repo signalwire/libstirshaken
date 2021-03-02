@@ -1240,7 +1240,6 @@ typedef struct stir_shaken_as_settings_s {
 	char private_key_name[STIR_SHAKEN_BUFLEN];
 	char cert_name[STIR_SHAKEN_BUFLEN];
 	char cert_install_dir[STIR_SHAKEN_BUFLEN];
-	char cert_public_url[STIR_SHAKEN_BUFLEN];
 	// internal
 	char private_key_full_name[STIR_SHAKEN_BUFLEN];
 	char cert_full_name[STIR_SHAKEN_BUFLEN];
@@ -1259,7 +1258,6 @@ stir_shaken_status_t stir_shaken_as_set_dir(struct stir_shaken_context_s *ss, st
 stir_shaken_status_t stir_shaken_as_set_private_key_name(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name);
 stir_shaken_status_t stir_shaken_as_set_cert_name(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_name);
 stir_shaken_status_t stir_shaken_as_set_cert_install_dir(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_install_dir);
-stir_shaken_status_t stir_shaken_as_set_cert_public_url(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_public_url);
 stir_shaken_status_t stir_shaken_as_configure(struct stir_shaken_context_s *ss, stir_shaken_as_t *as);
 char* stir_shaken_as_authenticate_to_passport(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out);
 char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out);

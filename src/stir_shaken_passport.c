@@ -336,6 +336,7 @@ stir_shaken_passport_t*	stir_shaken_passport_create(stir_shaken_context_t *ss, s
 		stir_shaken_set_error(ss, "Can't allocate passport", STIR_SHAKEN_ERROR_MEM_PASSPORT);
 		return NULL;
 	}
+	memset(passport, 0, sizeof(*passport));
 
 	passport->jwt = stir_shaken_passport_jwt_create_new(ss);
 	if (!passport->jwt) {

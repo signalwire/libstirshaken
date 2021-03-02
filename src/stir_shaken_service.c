@@ -629,6 +629,7 @@ stir_shaken_as_t* stir_shaken_as_create(struct stir_shaken_context_s *ss)
 		stir_shaken_set_error(ss, "Out of memory", STIR_SHAKEN_ERROR_AS_MEM);
 		return NULL;
 	}
+	memset(as, 0, sizeof(*as));
 	return as;
 }
 
@@ -652,6 +653,8 @@ stir_shaken_status_t stir_shaken_as_set_dir(struct stir_shaken_context_s *ss, st
 		strncpy(as->settings.as_dir, dir, sizeof(as->settings.as_dir) - 1);
 		as->settings.as_dir[sizeof(as->settings.as_dir) - 1] = '\0';
 	}
+
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 stir_shaken_status_t stir_shaken_as_set_private_key_name(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name)
@@ -667,6 +670,8 @@ stir_shaken_status_t stir_shaken_as_set_private_key_name(struct stir_shaken_cont
 		strncpy(as->settings.private_key_name, private_key_name, sizeof(as->settings.private_key_name) - 1);
 		as->settings.private_key_name[sizeof(as->settings.private_key_name) - 1] = '\0';
 	}
+
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 stir_shaken_status_t stir_shaken_as_set_cert_name(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_name)
@@ -682,6 +687,8 @@ stir_shaken_status_t stir_shaken_as_set_cert_name(struct stir_shaken_context_s *
 		strncpy(as->settings.cert_name, cert_name, sizeof(as->settings.cert_name) - 1);
 		as->settings.cert_name[sizeof(as->settings.cert_name) - 1] = '\0';
 	}
+
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 stir_shaken_status_t stir_shaken_as_set_cert_install_dir(struct stir_shaken_context_s *ss, stir_shaken_as_t *as,  const char *cert_install_dir)
@@ -697,21 +704,8 @@ stir_shaken_status_t stir_shaken_as_set_cert_install_dir(struct stir_shaken_cont
 		strncpy(as->settings.cert_install_dir, cert_install_dir, sizeof(as->settings.cert_install_dir) - 1);
 		as->settings.cert_install_dir[sizeof(as->settings.cert_install_dir) - 1] = '\0';
 	}
-}
 
-stir_shaken_status_t stir_shaken_as_set_cert_public_url(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_public_url)
-{
-	if (!as) {
-		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_4);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
-
-	memset((void*) as->settings.cert_public_url, 0, sizeof(as->settings.cert_public_url));
-
-	if (!stir_shaken_zstr(cert_public_url)) {
-		strncpy(as->settings.cert_public_url, cert_public_url, sizeof(as->settings.cert_public_url) - 1);
-		as->settings.cert_public_url[sizeof(as->settings.cert_public_url) - 1] = '\0';
-	}
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 stir_shaken_status_t stir_shaken_as_configure(struct stir_shaken_context_s *ss, stir_shaken_as_t *as)
@@ -731,26 +725,25 @@ stir_shaken_status_t stir_shaken_as_configure(struct stir_shaken_context_s *ss, 
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	if (!stir_shaken_make_complete_path(as->settings.cert_full_name, sizeof(as->settings.cert_full_name), as->settings.as_dir, as->settings.cert_name, "/")) {
-		stir_shaken_set_error(ss, "Could not create complete file name for certificate", STIR_SHAKEN_ERROR_AS_CERT_FULL_NAME);
-		return STIR_SHAKEN_STATUS_FALSE;
+	if (!stir_shaken_zstr(as->settings.cert_name)) {
+		if (!stir_shaken_make_complete_path(as->settings.cert_full_name, sizeof(as->settings.cert_full_name), as->settings.as_dir, as->settings.cert_name, "/")) {
+			stir_shaken_set_error(ss, "Could not create complete file name for certificate", STIR_SHAKEN_ERROR_AS_CERT_FULL_NAME);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
 	}
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_dir_exists(as->settings.cert_install_dir)) {
-		stir_shaken_set_error(ss, "Certificate installation directory does not exist", STIR_SHAKEN_ERROR_AS_CERTIFICATE_INSTALL_DIR_DOES_NOT_EXIST);
-		return STIR_SHAKEN_STATUS_RESTART;
-	}
+	if (!stir_shaken_zstr(as->settings.cert_install_dir)) {
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_dir_exists(as->settings.cert_install_dir)) {
+			stir_shaken_set_error(ss, "Certificate installation directory does not exist", STIR_SHAKEN_ERROR_AS_CERTIFICATE_INSTALL_DIR_DOES_NOT_EXIST);
+			return STIR_SHAKEN_STATUS_RESTART;
+		}
 
-	if (!stir_shaken_make_complete_path(as->settings.cert_install_full_name, sizeof(as->settings.cert_install_full_name), as->settings.cert_install_dir, as->settings.cert_name, "/")) {
-		stir_shaken_set_error(ss, "Could not create complete file name for certificate installation location", STIR_SHAKEN_ERROR_AS_CERT_INSTALL_FULL_NAME);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
+		if (!stir_shaken_make_complete_path(as->settings.cert_install_full_name, sizeof(as->settings.cert_install_full_name), as->settings.cert_install_dir, as->settings.cert_name, "/")) {
+			stir_shaken_set_error(ss, "Could not create complete file name for certificate installation location", STIR_SHAKEN_ERROR_AS_CERT_INSTALL_FULL_NAME);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
 
-	// TODO check that can write to installation dir
-
-	if (stir_shaken_zstr(as->settings.cert_public_url)) {
-		stir_shaken_set_error(ss, "Certificate public url not set", STIR_SHAKEN_ERROR_AS_CERTIFICATE_PUBLIC_URL_EMPTY);
-		return STIR_SHAKEN_STATUS_RESTART;
+		// TODO check that can write to installation dir
 	}
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(as->settings.private_key_full_name)) {
@@ -764,15 +757,17 @@ stir_shaken_status_t stir_shaken_as_configure(struct stir_shaken_context_s *ss, 
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(as->settings.cert_full_name)) {
-		stir_shaken_set_error(ss, "Certificate does not exist", STIR_SHAKEN_ERROR_AS_CERTIFICATE_DOES_NOT_EXIST);
-		return STIR_SHAKEN_STATUS_RESTART;
-	}
-	
-	as->cert.x = stir_shaken_load_x509_from_file(ss, as->settings.cert_full_name);
-	if (!as->cert.x) {
-		stir_shaken_set_error(ss, "Failed to load certificate", STIR_SHAKEN_ERROR_AS_LOAD_CERT);
-		return STIR_SHAKEN_STATUS_FALSE;
+	if (!stir_shaken_zstr(as->settings.cert_name)) {
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(as->settings.cert_full_name)) {
+			stir_shaken_set_error(ss, "Certificate does not exist", STIR_SHAKEN_ERROR_AS_CERTIFICATE_DOES_NOT_EXIST);
+			return STIR_SHAKEN_STATUS_RESTART;
+		}
+
+		as->cert.x = stir_shaken_load_x509_from_file(ss, as->settings.cert_full_name);
+		if (!as->cert.x) {
+			stir_shaken_set_error(ss, "Failed to load certificate", STIR_SHAKEN_ERROR_AS_LOAD_CERT);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
 	}
 
 	return STIR_SHAKEN_STATUS_OK;
@@ -847,8 +842,6 @@ char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_
 
 stir_shaken_status_t stir_shaken_as_install_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as)
 {
-	char cert_install_full_name[STIR_SHAKEN_BUFLEN] = { 0 };
-
 	if (!as) {
 		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_8);
 		return STIR_SHAKEN_STATUS_TERM;
