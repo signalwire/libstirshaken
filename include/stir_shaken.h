@@ -387,7 +387,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_HTTPS_KEY,
 	STIR_SHAKEN_ERROR_JWT,
 	STIR_SHAKEN_ERROR_JWT_VERIFY,
-	STIR_SHAKEN_ERROR_JWT_CERT_MALFORFED,
+	STIR_SHAKEN_ERROR_JWT_CERT_MALFORMED,
 	STIR_SHAKEN_ERROR_JWT_CERT_INVALID,
 	STIR_SHAKEN_ERROR_JWT_CERT_X509_PATH_INVALID,
 	STIR_SHAKEN_ERROR_JWT_DECODE,
@@ -639,49 +639,34 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_NID,
 	STIR_SHAKEN_ERROR_NID_ATTR,
 	STIR_SHAKEN_ERROR_EXT_BY_NID,
+	STIR_SHAKEN_ERROR_AS_MEM,
+	STIR_SHAKEN_ERROR_AS_MISSING_0,
+	STIR_SHAKEN_ERROR_AS_MISSING_1,
+	STIR_SHAKEN_ERROR_AS_MISSING_2,
+	STIR_SHAKEN_ERROR_AS_MISSING_3,
+	STIR_SHAKEN_ERROR_AS_MISSING_4,
+	STIR_SHAKEN_ERROR_AS_MISSING_5,
+	STIR_SHAKEN_ERROR_AS_MISSING_6,
+	STIR_SHAKEN_ERROR_AS_MISSING_7,
+	STIR_SHAKEN_ERROR_AS_MISSING_8,
+	STIR_SHAKEN_ERROR_AS_DIR_DOES_NOT_EXIST,
+	STIR_SHAKEN_ERROR_AS_PRIVKEY_DOES_NOT_EXIST,
+	STIR_SHAKEN_ERROR_AS_CERTIFICATE_DOES_NOT_EXIST,
+	STIR_SHAKEN_ERROR_AS_CERTIFICATE_INSTALL_DIR_DOES_NOT_EXIST,
+	STIR_SHAKEN_ERROR_AS_CERTIFICATE_PUBLIC_URL_EMPTY,
+	STIR_SHAKEN_ERROR_AS_PRIVKEY_FULL_NAME,
+	STIR_SHAKEN_ERROR_AS_CERT_FULL_NAME,
+	STIR_SHAKEN_ERROR_AS_CERT_INSTALL_FULL_NAME,
+	STIR_SHAKEN_ERROR_AS_LOAD_PRIVKEY,
+	STIR_SHAKEN_ERROR_AS_LOAD_CERT,
+	STIR_SHAKEN_ERROR_AS_CREATE_PASSPORT_1,
+	STIR_SHAKEN_ERROR_AS_CREATE_PASSPORT_2,
+	STIR_SHAKEN_ERROR_AS_CREATE_SIH,
+	STIR_SHAKEN_ERROR_AS_SIGN_PASSPORT,
+	STIR_SHAKEN_ERROR_VS_MEM,
 	STIR_SHAKEN_ERROR_UNKNOWN_1,
 	STIR_SHAKEN_ERROR_UNKNOWN_2,
 } stir_shaken_error_t;
-
-struct stir_shaken_service_s;
-struct stir_shaken_context_s;
-typedef stir_shaken_status_t (*stir_shaken_service_f)(struct stir_shaken_service_s *service, void *arg);
-
-// @arg - PASSporT params
-stir_shaken_status_t (*stir_shaken_as_f)(struct stir_shaken_service_s *service, void *arg);
-
-// @arg - PASSporT
-stir_shaken_status_t (*stir_shaken_vs_f)(struct stir_shaken_service_s *service, void *arg);
-
-typedef enum stir_shaken_service_type {
-	STIR_SHAKEN_AUTHENTICATION_SERVICE,
-	STIR_SHAKEN_VERIFICATION_SERVICE
-} stir_shaken_service_type_t;
-
-// Core service
-typedef struct stir_shaken_service_s {
-	stir_shaken_service_type_t		type;
-	stir_shaken_service_f			execute;
-} stir_shaken_service_t;
-
-// Authentication service
-typedef struct stir_shaken_as_s {
-	stir_shaken_service_t			base;
-	stir_shaken_ssl_keys_t			keys;
-	stir_shaken_csr_t				csr;
-	stir_shaken_cert_t				cert;
-} stir_shaken_as_t;
-
-// Verification service
-typedef struct stir_shaken_vs_s {
-	stir_shaken_service_t			base;
-	X509_STORE						*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
-} stir_shaken_vs_t;
-
-stir_shaken_service_t* stir_shaken_as_create(struct stir_shaken_context_s *ss, const char *private_key_full_name, const char *cert_full_name);
-stir_shaken_as_t* stir_shaken_do_as_create(struct stir_shaken_context_s *ss, stir_shaken_ssl_keys_t *keys, stir_shaken_csr_t *csr, stir_shaken_cert_t *cert);
-stir_shaken_service_t* stir_shaken_vs_create(struct stir_shaken_context_s *ss, const char *ca_dir, const char *crl_dir);
-stir_shaken_vs_t* stir_shaken_do_vs_create(struct stir_shaken_context_s *ss, const char *ca_dir, const char *crl_dir);
 
 #define STIR_SHAKEN_HTTP_REQ_404_INVALID "404"
 #define STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND "404"
@@ -852,7 +837,7 @@ stir_shaken_status_t		stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, j
 jwt_t*						stir_shaken_passport_jwt_create_new(stir_shaken_context_t *ss);
 stir_shaken_status_t		stir_shaken_passport_init(stir_shaken_context_t *ss, stir_shaken_passport_t *where, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 stir_shaken_status_t		stir_shaken_passport_jwt_init_from_json(stir_shaken_context_t *ss, jwt_t *jwt, const char *headers_json, const char *grants_json, unsigned char *key, uint32_t keylen);
-stir_shaken_passport_t*	stir_shaken_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
+stir_shaken_passport_t*	stir_shaken_passport_create(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
 void						stir_shaken_passport_destroy(stir_shaken_passport_t *passport);
 stir_shaken_status_t		stir_shaken_passport_sign(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, unsigned char *key, uint32_t keylen, char **out);
 const char*					stir_shaken_passport_get_header(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
@@ -905,8 +890,8 @@ stir_shaken_status_t stir_shaken_passport_validate_iat_against_freshness(stir_sh
 char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, unsigned char *key, uint32_t keylen);
 
 /*
- * Authorize the call, and return used/created PASSporT.
- * Authorize (assert/sign) call identity with cert of Service Provider.
+ * Authenticate the call, and return used/created PASSporT.
+ * Autenticate (assert/sign) call identity with cert of Service Provider.
  * Creates JWT PASSporT from @params, signs it with @key
  * and creates SIP Identity Header from that.
  *
@@ -924,8 +909,8 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 stir_shaken_status_t stir_shaken_jwt_authenticate_keep_passport(stir_shaken_context_t *ss, char **sih, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen, stir_shaken_passport_t *passport);
 
 /*
- * Authorize the call, forget PASSporT (local PASSporT used and destroyed).
- * Authorize (assert/sign) call identity with cert of Service Provider.
+ * Authenticate the call, forget PASSporT (local PASSporT used and destroyed).
+ * Authenticate (assert/sign) call identity with cert of Service Provider.
  * Creates local JWT PASSporT from @params, signs it with @key
  * and creates SIP Identity Header from that, destroys JWT/PASSporT.
  *
@@ -1124,7 +1109,7 @@ stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const cha
 stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, time_t iat_freshness);
 
 
-// Authorization service
+// Authentication service
 
 /**
  * Create JSON token from call @pparams.
@@ -1136,11 +1121,6 @@ void stir_shaken_passport_destroy(stir_shaken_passport_t *passport);
  * Create signatures in @jwt and save intermediate results in @info.
  */
 stir_shaken_status_t stir_shaken_passport_finalise_json(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, EVP_PKEY *pkey);
-
-/**
- * Initialise PASSporT pointed to by @passport using call @params and sign it with @pkey.
- */
-stir_shaken_status_t stir_shaken_passport_create(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, stir_shaken_passport_params_t *params, EVP_PKEY *pkey);
 
 /**
  * Authorize the call and keep PASSporT if the @keep_pasport is true.
@@ -1249,6 +1229,74 @@ void					stir_shaken_error_desc_to_http_error_phrase(const char *error_desc, cha
 
 stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *jwt, unsigned char *key, uint32_t keylen, const char *spc, char *spc_token);
 stir_shaken_status_t stir_shaken_sp_cert_req_ex(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *kid, const char *nonce, X509_REQ *req, const char *nb, const char *na, const char *spc, unsigned char *key, uint32_t keylen, char **json, char *spc_token);
+
+// Services
+
+// Authentication service
+
+typedef struct stir_shaken_as_settings_s {
+	// from user
+	char as_dir[STIR_SHAKEN_BUFLEN];
+	char private_key_name[STIR_SHAKEN_BUFLEN];
+	char cert_name[STIR_SHAKEN_BUFLEN];
+	char cert_install_dir[STIR_SHAKEN_BUFLEN];
+	char cert_public_url[STIR_SHAKEN_BUFLEN];
+	// internal
+	char private_key_full_name[STIR_SHAKEN_BUFLEN];
+	char cert_full_name[STIR_SHAKEN_BUFLEN];
+	char cert_install_full_name[STIR_SHAKEN_BUFLEN];
+} stir_shaken_as_settings_t;
+
+typedef struct stir_shaken_as_s {
+	stir_shaken_ssl_keys_t			keys;
+	stir_shaken_cert_t				cert;
+	stir_shaken_as_settings_t		settings;
+} stir_shaken_as_t;
+
+stir_shaken_as_t* stir_shaken_as_create(struct stir_shaken_context_s *ss);
+void stir_shaken_as_destroy(stir_shaken_as_t *as);
+stir_shaken_status_t stir_shaken_as_set_dir(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *dir);
+stir_shaken_status_t stir_shaken_as_set_private_key_name(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name);
+stir_shaken_status_t stir_shaken_as_set_cert_name(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_name);
+stir_shaken_status_t stir_shaken_as_set_cert_install_dir(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_install_dir);
+stir_shaken_status_t stir_shaken_as_set_cert_public_url(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_public_url);
+stir_shaken_status_t stir_shaken_as_configure(struct stir_shaken_context_s *ss, stir_shaken_as_t *as);
+char* stir_shaken_as_authenticate_to_passport(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out);
+char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out);
+
+// Verification service
+
+typedef struct stir_shaken_vs_settings_s {
+	char vs_path[STIR_SHAKEN_BUFLEN];
+	char ca_dir[STIR_SHAKEN_BUFLEN];
+	char crl_dir[STIR_SHAKEN_BUFLEN];
+
+	// SIP section
+	time_t		sip_date_header_freshness_seconds;
+	uint8_t		sip_date_header_mandatory;
+
+	// PASSporT checks
+	time_t		iat_freshness_seconds;
+	uint8_t 	identity_check;
+} stir_shaken_vs_settings_t;
+
+typedef struct stir_shaken_vs_s {
+	X509_STORE						*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
+	stir_shaken_vs_settings_t		settings;
+} stir_shaken_vs_t;
+
+stir_shaken_vs_t* stir_shaken_vs_create(struct stir_shaken_context_s *ss);
+stir_shaken_status_t stir_shaken_vs_set_ca_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *ca_dir);
+stir_shaken_status_t stir_shaken_vs_set_crl_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *crl_dir);
+
+// @arg - PASSporT params
+stir_shaken_status_t stir_shaken_as_authenticate(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params);
+
+// Verify SIP Identity Header
+stir_shaken_status_t stir_shaken_vs_verify_sih(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *sih);
+
+// Verify PASSporT
+stir_shaken_status_t stir_shaken_vs_verify_passport(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *passport);
 
 // Utility
 

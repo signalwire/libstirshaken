@@ -327,7 +327,7 @@ stir_shaken_status_t stir_shaken_passport_init(stir_shaken_context_t *ss, stir_s
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_passport_t*	stir_shaken_passport_create_new(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
+stir_shaken_passport_t*	stir_shaken_passport_create(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen)
 {
 	stir_shaken_passport_t	*passport = NULL;
 

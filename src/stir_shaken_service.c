@@ -621,3 +621,238 @@ void stir_shaken_error_desc_to_http_error_phrase(const char *error_desc, char *e
 		}
 	}
 }
+
+stir_shaken_as_t* stir_shaken_as_create(struct stir_shaken_context_s *ss)
+{
+	stir_shaken_as_t *as = malloc(sizeof(*as));
+	if (!as) {
+		stir_shaken_set_error(ss, "Out of memory", STIR_SHAKEN_ERROR_AS_MEM);
+		return NULL;
+	}
+	return as;
+}
+
+void stir_shaken_as_destroy(stir_shaken_as_t *as)
+{
+	if (!as) return;
+	stir_shaken_destroy_keys(&as->keys);
+	stir_shaken_destroy_cert(&as->cert);
+}
+
+stir_shaken_status_t stir_shaken_as_set_dir(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *dir)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_0);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) as->settings.as_dir, 0, sizeof(as->settings.as_dir));
+
+	if (!stir_shaken_zstr(dir)) {
+		strncpy(as->settings.as_dir, dir, sizeof(as->settings.as_dir) - 1);
+		as->settings.as_dir[sizeof(as->settings.as_dir) - 1] = '\0';
+	}
+}
+
+stir_shaken_status_t stir_shaken_as_set_private_key_name(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_1);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) as->settings.private_key_name, 0, sizeof(as->settings.private_key_name));
+
+	if (!stir_shaken_zstr(private_key_name)) {
+		strncpy(as->settings.private_key_name, private_key_name, sizeof(as->settings.private_key_name) - 1);
+		as->settings.private_key_name[sizeof(as->settings.private_key_name) - 1] = '\0';
+	}
+}
+
+stir_shaken_status_t stir_shaken_as_set_cert_name(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_name)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_2);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) as->settings.cert_name, 0, sizeof(as->settings.cert_name));
+
+	if (!stir_shaken_zstr(cert_name)) {
+		strncpy(as->settings.cert_name, cert_name, sizeof(as->settings.cert_name) - 1);
+		as->settings.cert_name[sizeof(as->settings.cert_name) - 1] = '\0';
+	}
+}
+
+stir_shaken_status_t stir_shaken_as_set_cert_install_dir(struct stir_shaken_context_s *ss, stir_shaken_as_t *as,  const char *cert_install_dir)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_3);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) as->settings.cert_install_dir, 0, sizeof(as->settings.cert_install_dir));
+
+	if (!stir_shaken_zstr(cert_install_dir)) {
+		strncpy(as->settings.cert_install_dir, cert_install_dir, sizeof(as->settings.cert_install_dir) - 1);
+		as->settings.cert_install_dir[sizeof(as->settings.cert_install_dir) - 1] = '\0';
+	}
+}
+
+stir_shaken_status_t stir_shaken_as_set_cert_public_url(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_public_url)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_4);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) as->settings.cert_public_url, 0, sizeof(as->settings.cert_public_url));
+
+	if (!stir_shaken_zstr(cert_public_url)) {
+		strncpy(as->settings.cert_public_url, cert_public_url, sizeof(as->settings.cert_public_url) - 1);
+		as->settings.cert_public_url[sizeof(as->settings.cert_public_url) - 1] = '\0';
+	}
+}
+
+stir_shaken_status_t stir_shaken_as_configure(struct stir_shaken_context_s *ss, stir_shaken_as_t *as)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_5);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_dir_exists(as->settings.as_dir)) {
+		stir_shaken_set_error(ss, "Authentication service directory does not exist", STIR_SHAKEN_ERROR_AS_DIR_DOES_NOT_EXIST);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	if (!stir_shaken_make_complete_path(as->settings.private_key_full_name, sizeof(as->settings.private_key_full_name), as->settings.as_dir, as->settings.private_key_name, "/")) {
+		stir_shaken_set_error(ss, "Could not create complete file name for private key", STIR_SHAKEN_ERROR_AS_PRIVKEY_FULL_NAME);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (!stir_shaken_make_complete_path(as->settings.cert_full_name, sizeof(as->settings.cert_full_name), as->settings.as_dir, as->settings.cert_name, "/")) {
+		stir_shaken_set_error(ss, "Could not create complete file name for certificate", STIR_SHAKEN_ERROR_AS_CERT_FULL_NAME);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_dir_exists(as->settings.cert_install_dir)) {
+		stir_shaken_set_error(ss, "Certificate installation directory does not exist", STIR_SHAKEN_ERROR_AS_CERTIFICATE_INSTALL_DIR_DOES_NOT_EXIST);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	if (!stir_shaken_make_complete_path(as->settings.cert_install_full_name, sizeof(as->settings.cert_install_full_name), as->settings.cert_install_dir, as->settings.cert_name, "/")) {
+		stir_shaken_set_error(ss, "Could not create complete file name for certificate installation location", STIR_SHAKEN_ERROR_AS_CERT_INSTALL_FULL_NAME);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	// TODO check that can write to installation dir
+
+	if (stir_shaken_zstr(as->settings.cert_public_url)) {
+		stir_shaken_set_error(ss, "Certificate public url not set", STIR_SHAKEN_ERROR_AS_CERTIFICATE_PUBLIC_URL_EMPTY);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(as->settings.private_key_full_name)) {
+		stir_shaken_set_error(ss, "Private key does not exist", STIR_SHAKEN_ERROR_AS_PRIVKEY_DOES_NOT_EXIST);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	as->keys.priv_raw_len = sizeof(as->keys.priv_raw);
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, as->settings.private_key_full_name, as->keys.priv_raw, &as->keys.priv_raw_len)) {
+		stir_shaken_set_error(ss, "Failed to load private key", STIR_SHAKEN_ERROR_AS_LOAD_PRIVKEY);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(as->settings.cert_full_name)) {
+		stir_shaken_set_error(ss, "Certificate does not exist", STIR_SHAKEN_ERROR_AS_CERTIFICATE_DOES_NOT_EXIST);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+	
+	as->cert.x = stir_shaken_load_x509_from_file(ss, as->settings.cert_full_name);
+	if (!as->cert.x) {
+		stir_shaken_set_error(ss, "Failed to load certificate", STIR_SHAKEN_ERROR_AS_LOAD_CERT);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+char* stir_shaken_as_authenticate_to_passport(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out)
+{
+	stir_shaken_passport_t*	passport = NULL;
+	char *encoded = NULL;
+
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_6);
+		return NULL;
+	}
+
+	passport = stir_shaken_passport_create(ss, params, as->keys.priv_raw, as->keys.priv_raw_len);
+	if (!passport) {
+		stir_shaken_set_error(ss, "Failed to create PASSporT", STIR_SHAKEN_ERROR_AS_CREATE_PASSPORT_1);
+		return NULL;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_sign(ss, passport, NULL, 0, &encoded)) {
+		stir_shaken_set_error(ss, "Failed to sign PASSporT", STIR_SHAKEN_ERROR_AS_SIGN_PASSPORT);
+		stir_shaken_passport_destroy(passport);
+		free(passport);
+		return NULL;
+	}
+
+	if (passport_out) {
+		*passport_out = passport;
+	} else {
+		stir_shaken_passport_destroy(passport);
+		free(passport);
+	}
+
+	return encoded;
+}
+
+char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out)
+{
+	stir_shaken_passport_t*	passport = NULL;
+	char *sih = NULL;
+
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_7);
+		return NULL;
+	}
+
+	passport = stir_shaken_passport_create(ss, params, as->keys.priv_raw, as->keys.priv_raw_len);
+	if (!passport) {
+		stir_shaken_set_error(ss, "Failed to create PASSporT", STIR_SHAKEN_ERROR_AS_CREATE_PASSPORT_2);
+		return NULL;
+	}
+
+	sih = stir_shaken_jwt_sip_identity_create(ss, passport, as->keys.priv_raw, as->keys.priv_raw_len);
+	if (!sih) {
+		stir_shaken_set_error(ss, "Failed to create SIP Identity Header", STIR_SHAKEN_ERROR_AS_CREATE_SIH);
+		stir_shaken_passport_destroy(passport);
+		free(passport);
+		return NULL;
+	}
+
+	if (passport_out) {
+		*passport_out = passport;
+	} else {
+		stir_shaken_passport_destroy(passport);
+		free(passport);
+	}
+
+	return sih;
+}
+
+stir_shaken_status_t stir_shaken_as_install_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as)
+{
+	char cert_install_full_name[STIR_SHAKEN_BUFLEN] = { 0 };
+
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_8);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	return stir_shaken_x509_to_disk(ss, as->cert.x, as->settings.cert_install_full_name);
+}
