@@ -640,15 +640,11 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_NID_ATTR,
 	STIR_SHAKEN_ERROR_EXT_BY_NID,
 	STIR_SHAKEN_ERROR_AS_MEM,
-	STIR_SHAKEN_ERROR_AS_MISSING_0,
 	STIR_SHAKEN_ERROR_AS_MISSING_1,
 	STIR_SHAKEN_ERROR_AS_MISSING_2,
 	STIR_SHAKEN_ERROR_AS_MISSING_3,
 	STIR_SHAKEN_ERROR_AS_MISSING_4,
 	STIR_SHAKEN_ERROR_AS_MISSING_5,
-	STIR_SHAKEN_ERROR_AS_MISSING_6,
-	STIR_SHAKEN_ERROR_AS_MISSING_7,
-	STIR_SHAKEN_ERROR_AS_MISSING_8,
 	STIR_SHAKEN_ERROR_AS_DIR_DOES_NOT_EXIST,
 	STIR_SHAKEN_ERROR_AS_PRIVKEY_DOES_NOT_EXIST,
 	STIR_SHAKEN_ERROR_AS_CERTIFICATE_DOES_NOT_EXIST,
@@ -663,6 +659,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_AS_CREATE_PASSPORT_2,
 	STIR_SHAKEN_ERROR_AS_CREATE_SIH,
 	STIR_SHAKEN_ERROR_AS_SIGN_PASSPORT,
+	STIR_SHAKEN_ERROR_VS_MISSING_1,
 	STIR_SHAKEN_ERROR_VS_MEM,
 	STIR_SHAKEN_ERROR_UNKNOWN_1,
 	STIR_SHAKEN_ERROR_UNKNOWN_2,
@@ -1236,14 +1233,8 @@ stir_shaken_status_t stir_shaken_sp_cert_req_ex(stir_shaken_context_t *ss, stir_
 
 typedef struct stir_shaken_as_settings_s {
 	// from user
-	char as_dir[STIR_SHAKEN_BUFLEN];
 	char private_key_name[STIR_SHAKEN_BUFLEN];
 	char cert_name[STIR_SHAKEN_BUFLEN];
-	char cert_install_dir[STIR_SHAKEN_BUFLEN];
-	// internal
-	char private_key_full_name[STIR_SHAKEN_BUFLEN];
-	char cert_full_name[STIR_SHAKEN_BUFLEN];
-	char cert_install_full_name[STIR_SHAKEN_BUFLEN];
 } stir_shaken_as_settings_t;
 
 typedef struct stir_shaken_as_s {
@@ -1254,13 +1245,11 @@ typedef struct stir_shaken_as_s {
 
 stir_shaken_as_t* stir_shaken_as_create(struct stir_shaken_context_s *ss);
 void stir_shaken_as_destroy(stir_shaken_as_t *as);
-stir_shaken_status_t stir_shaken_as_set_dir(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *dir);
-stir_shaken_status_t stir_shaken_as_set_private_key_name(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name);
-stir_shaken_status_t stir_shaken_as_set_cert_name(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_name);
-stir_shaken_status_t stir_shaken_as_set_cert_install_dir(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_install_dir);
-stir_shaken_status_t stir_shaken_as_configure(struct stir_shaken_context_s *ss, stir_shaken_as_t *as);
+stir_shaken_status_t stir_shaken_as_load_private_key(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name);
+stir_shaken_status_t stir_shaken_as_load_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_name);
 char* stir_shaken_as_authenticate_to_passport(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out);
 char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out);
+stir_shaken_status_t stir_shaken_as_install_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *where);
 
 // Verification service
 

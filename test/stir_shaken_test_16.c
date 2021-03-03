@@ -129,29 +129,13 @@ stir_shaken_status_t stir_shaken_unit_test_as_authenticate_to_sih(void)
 
 	stir_shaken_assert(as, "Failed to create Authentication Service");
 
-	status = stir_shaken_as_set_dir(&ss, as, path);
-    if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
-		printf("Error description is: '%s'\n", error_description);
-		printf("Error code is: '%d'\n", error_code);
-	}
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == status, "Failed to set dir");
-
-	status = stir_shaken_as_set_private_key_name(&ss, as, "u16_private_key.pem");
+	status = stir_shaken_as_load_private_key(&ss, as, private_key_name);
     if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
 		printf("Error code is: '%d'\n", error_code);
 	}
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == status, "Failed to set private key");
-
-	status = stir_shaken_as_configure(&ss, as);
-    if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
-		printf("Error description is: '%s'\n", error_description);
-		printf("Error code is: '%d'\n", error_code);
-	}
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == status, "Failed to configure");
 
 	sih = stir_shaken_as_authenticate_to_sih(&ss, as, &params, &passport);
     if (stir_shaken_is_error_set(&ss)) {

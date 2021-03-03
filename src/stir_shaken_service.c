@@ -640,24 +640,24 @@ void stir_shaken_as_destroy(stir_shaken_as_t *as)
 	stir_shaken_destroy_cert(&as->cert);
 }
 
-stir_shaken_status_t stir_shaken_as_set_dir(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *dir)
+stir_shaken_status_t stir_shaken_vs_set_ca_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *ca_dir)
 {
-	if (!as) {
-		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_0);
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_1);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	memset((void*) as->settings.as_dir, 0, sizeof(as->settings.as_dir));
+	memset((void*) vs->settings.ca_dir, 0, sizeof(vs->settings.ca_dir));
 
-	if (!stir_shaken_zstr(dir)) {
-		strncpy(as->settings.as_dir, dir, sizeof(as->settings.as_dir) - 1);
-		as->settings.as_dir[sizeof(as->settings.as_dir) - 1] = '\0';
+	if (!stir_shaken_zstr(ca_dir)) {
+		strncpy(vs->settings.ca_dir, ca_dir, sizeof(vs->settings.ca_dir) - 1);
+		vs->settings.ca_dir[sizeof(vs->settings.ca_dir) - 1] = '\0';
 	}
 
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_as_set_private_key_name(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name)
+stir_shaken_status_t stir_shaken_as_load_private_key(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name)
 {
 	if (!as) {
 		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_1);
@@ -671,13 +671,24 @@ stir_shaken_status_t stir_shaken_as_set_private_key_name(struct stir_shaken_cont
 		as->settings.private_key_name[sizeof(as->settings.private_key_name) - 1] = '\0';
 	}
 
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(as->settings.private_key_name)) {
+		stir_shaken_set_error(ss, "Private key does not exist", STIR_SHAKEN_ERROR_AS_PRIVKEY_DOES_NOT_EXIST);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	as->keys.priv_raw_len = sizeof(as->keys.priv_raw);
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, as->settings.private_key_name, as->keys.priv_raw, &as->keys.priv_raw_len)) {
+		stir_shaken_set_error(ss, "Failed to load private key", STIR_SHAKEN_ERROR_AS_LOAD_PRIVKEY);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_as_set_cert_name(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_name)
+stir_shaken_status_t stir_shaken_as_load_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_name)
 {
 	if (!as) {
-		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_2);
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_4);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
@@ -688,86 +699,17 @@ stir_shaken_status_t stir_shaken_as_set_cert_name(struct stir_shaken_context_s *
 		as->settings.cert_name[sizeof(as->settings.cert_name) - 1] = '\0';
 	}
 
-	return STIR_SHAKEN_STATUS_OK;
-}
-
-stir_shaken_status_t stir_shaken_as_set_cert_install_dir(struct stir_shaken_context_s *ss, stir_shaken_as_t *as,  const char *cert_install_dir)
-{
-	if (!as) {
-		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_3);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
-
-	memset((void*) as->settings.cert_install_dir, 0, sizeof(as->settings.cert_install_dir));
-
-	if (!stir_shaken_zstr(cert_install_dir)) {
-		strncpy(as->settings.cert_install_dir, cert_install_dir, sizeof(as->settings.cert_install_dir) - 1);
-		as->settings.cert_install_dir[sizeof(as->settings.cert_install_dir) - 1] = '\0';
-	}
-
-	return STIR_SHAKEN_STATUS_OK;
-}
-
-stir_shaken_status_t stir_shaken_as_configure(struct stir_shaken_context_s *ss, stir_shaken_as_t *as)
-{
-	if (!as) {
-		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_5);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
-
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_dir_exists(as->settings.as_dir)) {
-		stir_shaken_set_error(ss, "Authentication service directory does not exist", STIR_SHAKEN_ERROR_AS_DIR_DOES_NOT_EXIST);
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(as->settings.cert_name)) {
+		stir_shaken_set_error(ss, "Certificate does not exist", STIR_SHAKEN_ERROR_AS_CERTIFICATE_DOES_NOT_EXIST);
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
-	if (!stir_shaken_make_complete_path(as->settings.private_key_full_name, sizeof(as->settings.private_key_full_name), as->settings.as_dir, as->settings.private_key_name, "/")) {
-		stir_shaken_set_error(ss, "Could not create complete file name for private key", STIR_SHAKEN_ERROR_AS_PRIVKEY_FULL_NAME);
+	stir_shaken_destroy_cert(&as->cert);
+
+	as->cert.x = stir_shaken_load_x509_from_file(ss, as->settings.cert_name);
+	if (!as->cert.x) {
+		stir_shaken_set_error(ss, "Failed to load certificate", STIR_SHAKEN_ERROR_AS_LOAD_CERT);
 		return STIR_SHAKEN_STATUS_FALSE;
-	}
-
-	if (!stir_shaken_zstr(as->settings.cert_name)) {
-		if (!stir_shaken_make_complete_path(as->settings.cert_full_name, sizeof(as->settings.cert_full_name), as->settings.as_dir, as->settings.cert_name, "/")) {
-			stir_shaken_set_error(ss, "Could not create complete file name for certificate", STIR_SHAKEN_ERROR_AS_CERT_FULL_NAME);
-			return STIR_SHAKEN_STATUS_FALSE;
-		}
-	}
-
-	if (!stir_shaken_zstr(as->settings.cert_install_dir)) {
-		if (STIR_SHAKEN_STATUS_OK != stir_shaken_dir_exists(as->settings.cert_install_dir)) {
-			stir_shaken_set_error(ss, "Certificate installation directory does not exist", STIR_SHAKEN_ERROR_AS_CERTIFICATE_INSTALL_DIR_DOES_NOT_EXIST);
-			return STIR_SHAKEN_STATUS_RESTART;
-		}
-
-		if (!stir_shaken_make_complete_path(as->settings.cert_install_full_name, sizeof(as->settings.cert_install_full_name), as->settings.cert_install_dir, as->settings.cert_name, "/")) {
-			stir_shaken_set_error(ss, "Could not create complete file name for certificate installation location", STIR_SHAKEN_ERROR_AS_CERT_INSTALL_FULL_NAME);
-			return STIR_SHAKEN_STATUS_FALSE;
-		}
-
-		// TODO check that can write to installation dir
-	}
-
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(as->settings.private_key_full_name)) {
-		stir_shaken_set_error(ss, "Private key does not exist", STIR_SHAKEN_ERROR_AS_PRIVKEY_DOES_NOT_EXIST);
-		return STIR_SHAKEN_STATUS_RESTART;
-	}
-
-	as->keys.priv_raw_len = sizeof(as->keys.priv_raw);
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, as->settings.private_key_full_name, as->keys.priv_raw, &as->keys.priv_raw_len)) {
-		stir_shaken_set_error(ss, "Failed to load private key", STIR_SHAKEN_ERROR_AS_LOAD_PRIVKEY);
-		return STIR_SHAKEN_STATUS_FALSE;
-	}
-
-	if (!stir_shaken_zstr(as->settings.cert_name)) {
-		if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(as->settings.cert_full_name)) {
-			stir_shaken_set_error(ss, "Certificate does not exist", STIR_SHAKEN_ERROR_AS_CERTIFICATE_DOES_NOT_EXIST);
-			return STIR_SHAKEN_STATUS_RESTART;
-		}
-
-		as->cert.x = stir_shaken_load_x509_from_file(ss, as->settings.cert_full_name);
-		if (!as->cert.x) {
-			stir_shaken_set_error(ss, "Failed to load certificate", STIR_SHAKEN_ERROR_AS_LOAD_CERT);
-			return STIR_SHAKEN_STATUS_FALSE;
-		}
 	}
 
 	return STIR_SHAKEN_STATUS_OK;
@@ -779,7 +721,7 @@ char* stir_shaken_as_authenticate_to_passport(struct stir_shaken_context_s *ss, 
 	char *encoded = NULL;
 
 	if (!as) {
-		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_6);
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_2);
 		return NULL;
 	}
 
@@ -812,7 +754,7 @@ char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_
 	char *sih = NULL;
 
 	if (!as) {
-		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_7);
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_3);
 		return NULL;
 	}
 
@@ -840,12 +782,12 @@ char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_
 	return sih;
 }
 
-stir_shaken_status_t stir_shaken_as_install_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as)
+stir_shaken_status_t stir_shaken_as_install_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *where)
 {
 	if (!as) {
-		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_8);
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_5);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	return stir_shaken_x509_to_disk(ss, as->cert.x, as->settings.cert_install_full_name);
+	return stir_shaken_x509_to_disk(ss, as->cert.x, where);
 }
