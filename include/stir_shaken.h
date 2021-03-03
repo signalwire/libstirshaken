@@ -370,6 +370,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_CERT_COPY,
 	STIR_SHAKEN_ERROR_PUBKEY_GET,
 	STIR_SHAKEN_ERROR_PRIVKEY_MISSING_1,
+	STIR_SHAKEN_ERROR_PRIVKEY_MISSING_2,
+	STIR_SHAKEN_ERROR_PRIVKEY_MISSING_3,
 	STIR_SHAKEN_ERROR_DIGEST_GET,
 	STIR_SHAKEN_ERROR_SIP_403_STALE_DATE,
 	STIR_SHAKEN_ERROR_SIP_428_USE_IDENTITY_HEADER,
@@ -1247,7 +1249,9 @@ stir_shaken_as_t* stir_shaken_as_create(struct stir_shaken_context_s *ss);
 void stir_shaken_as_destroy(stir_shaken_as_t *as);
 stir_shaken_status_t stir_shaken_as_load_private_key(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name);
 stir_shaken_status_t stir_shaken_as_load_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_name);
+char* stir_shaken_authenticate_to_passport_with_key(struct stir_shaken_context_s *ss, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out, unsigned char *key, uint32_t keylen);
 char* stir_shaken_as_authenticate_to_passport(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out);
+char* stir_shaken_authenticate_to_sih_with_key(struct stir_shaken_context_s *ss, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out, unsigned char *key, uint32_t keylen);
 char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out);
 stir_shaken_status_t stir_shaken_as_install_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *where);
 

@@ -102,19 +102,55 @@ int main(void)
 	stir_shaken_passport_destroy(passport);
 	passport = NULL;
 
+	// Use _with_key method to authenticate with specific key
+	encoded = stir_shaken_authenticate_to_passport_with_key(&ss, &params, &passport, priv_raw, priv_raw_len);
+	if (!encoded) {
+		printf("PASSporT has not been created");
+		goto fail;
+	}
+
+	printf("\n3. PASSporT encoded:\n%s\n", encoded);
+	free(encoded);
+	encoded = NULL;
+
+	s = stir_shaken_passport_dump_str(&ss, passport, 1);
+	printf("\n4. PASSporT decoded:\n%s\n", s);
+	stir_shaken_free_jwt_str(s);
+	s = NULL;
+
+	stir_shaken_passport_destroy(passport);
+	passport = NULL;
+
+	// Authenticate using default key (associated with Authentication Service)
 	sih = stir_shaken_as_authenticate_to_sih(&ss, as, &params, &passport);
 	if (!sih) {
 		printf("SIP Identity Header has not been created");
 		goto fail;
 	}
-	printf("\n3. SIP Identity Header:\n%s\n", sih);
+	printf("\n5. SIP Identity Header:\n%s\n", sih);
 	free(sih); sih = NULL;
+	stir_shaken_passport_destroy(passport);
+	passport = NULL;
+
+	// Use _with_key method to authenticate with specific key
+	sih = stir_shaken_authenticate_to_sih_with_key(&ss, &params, &passport, priv_raw, priv_raw_len);
+	if (!sih) {
+		printf("SIP Identity Header has not been created");
+		goto fail;
+	}
+	printf("\n6. SIP Identity Header:\n%s\n", sih);
+	free(sih); sih = NULL;
+
+	s = stir_shaken_passport_dump_str(&ss, passport, 1);
+	printf("\n7. PASSporT decoded:\n%s\n", s);
+	stir_shaken_free_jwt_str(s);
+	s = NULL;
 
 	// Manipulate PASSporT
 
 	// Get plain version of PASSporT (decoded, not signed, with no signature)
 	s = stir_shaken_passport_dump_str(&ss, passport, 1);
-	printf("\n4. PASSporT decoded is:\n%s\n", s);
+	printf("\n8. PASSporT decoded is:\n%s\n", s);
 	stir_shaken_free_jwt_str(s);
 	s = NULL;
 
@@ -124,7 +160,7 @@ int main(void)
 		printf("Cannot sign PASSporT\n");
 		goto fail;
 	}
-	printf("\n5. PASSporT encoded (signed again using default key) is:\n%s\n", s);
+	printf("\n9. PASSporT encoded (signed again using default key) is:\n%s\n", s);
 	stir_shaken_free_jwt_str(s);
 	s = NULL;
 
@@ -134,7 +170,7 @@ int main(void)
 		printf("Cannot sign PASSporT\n");
 		goto fail;
 	}
-	printf("\n6. PASSporT encoded (signed again using specific key) is:\n%s\n", s);
+	printf("\n10. PASSporT encoded (signed again using specific key) is:\n%s\n", s);
 	stir_shaken_free_jwt_str(s);
 	s = NULL;
 

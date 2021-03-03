@@ -715,17 +715,17 @@ stir_shaken_status_t stir_shaken_as_load_cert(struct stir_shaken_context_s *ss, 
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-char* stir_shaken_as_authenticate_to_passport(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out)
+char* stir_shaken_authenticate_to_passport_with_key(struct stir_shaken_context_s *ss, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out, unsigned char *key, uint32_t keylen)
 {
 	stir_shaken_passport_t*	passport = NULL;
 	char *encoded = NULL;
 
-	if (!as) {
-		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_2);
+	if (!key || keylen == 0) {
+		stir_shaken_set_error(ss, "Private key missing", STIR_SHAKEN_ERROR_PRIVKEY_MISSING_2);
 		return NULL;
 	}
 
-	passport = stir_shaken_passport_create(ss, params, as->keys.priv_raw, as->keys.priv_raw_len);
+	passport = stir_shaken_passport_create(ss, params, key, keylen);
 	if (!passport) {
 		stir_shaken_set_error(ss, "Failed to create PASSporT", STIR_SHAKEN_ERROR_AS_CREATE_PASSPORT_1);
 		return NULL;
@@ -748,23 +748,33 @@ char* stir_shaken_as_authenticate_to_passport(struct stir_shaken_context_s *ss, 
 	return encoded;
 }
 
-char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out)
+char* stir_shaken_as_authenticate_to_passport(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_2);
+		return NULL;
+	}
+	return stir_shaken_authenticate_to_passport_with_key(ss, params, passport_out, as->keys.priv_raw, as->keys.priv_raw_len);
+}
+
+char* stir_shaken_authenticate_to_sih_with_key(struct stir_shaken_context_s *ss, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out, unsigned char *key, uint32_t keylen)
 {
 	stir_shaken_passport_t*	passport = NULL;
 	char *sih = NULL;
 
-	if (!as) {
-		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_3);
+
+	if (!key || keylen == 0) {
+		stir_shaken_set_error(ss, "Private key missing", STIR_SHAKEN_ERROR_PRIVKEY_MISSING_3);
 		return NULL;
 	}
 
-	passport = stir_shaken_passport_create(ss, params, as->keys.priv_raw, as->keys.priv_raw_len);
+	passport = stir_shaken_passport_create(ss, params, key, keylen);
 	if (!passport) {
 		stir_shaken_set_error(ss, "Failed to create PASSporT", STIR_SHAKEN_ERROR_AS_CREATE_PASSPORT_2);
 		return NULL;
 	}
 
-	sih = stir_shaken_jwt_sip_identity_create(ss, passport, as->keys.priv_raw, as->keys.priv_raw_len);
+	sih = stir_shaken_jwt_sip_identity_create(ss, passport, NULL, 0);
 	if (!sih) {
 		stir_shaken_set_error(ss, "Failed to create SIP Identity Header", STIR_SHAKEN_ERROR_AS_CREATE_SIH);
 		stir_shaken_passport_destroy(passport);
@@ -780,6 +790,15 @@ char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_
 	}
 
 	return sih;
+}
+
+char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_3);
+		return NULL;
+	}
+	return stir_shaken_authenticate_to_sih_with_key(ss, params, passport_out, as->keys.priv_raw, as->keys.priv_raw_len);
 }
 
 stir_shaken_status_t stir_shaken_as_install_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *where)
