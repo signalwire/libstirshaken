@@ -45,7 +45,7 @@ int main(void)
 	stir_shaken_as_t *as = NULL;
 
 
-	status = stir_shaken_do_init(&ss, NULL, NULL, STIR_SHAKEN_LOGLEVEL_NOTHING);
+	status = stir_shaken_init(&ss, STIR_SHAKEN_LOGLEVEL_NOTHING);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("Cannot init lib\n");
 		goto fail;
@@ -72,6 +72,7 @@ int main(void)
 			goto fail;
 		}
 	}
+
 	as = stir_shaken_as_create(&ss);
 	if (!as) {
 		printf("Cannot create Authentication Service\n");
@@ -180,7 +181,7 @@ int main(void)
 	stir_shaken_passport_destroy(passport);
 	stir_shaken_as_destroy(as);
 	free(as);
-	stir_shaken_do_deinit();
+	stir_shaken_deinit();
 
 	return 0;
 
@@ -199,7 +200,7 @@ fail:
 		stir_shaken_as_destroy(as);
 		free(as);
 	}
-	stir_shaken_do_deinit();
+	stir_shaken_deinit();
 
 	return -1;
 }

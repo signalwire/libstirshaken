@@ -640,23 +640,6 @@ void stir_shaken_as_destroy(stir_shaken_as_t *as)
 	stir_shaken_destroy_cert(&as->cert);
 }
 
-stir_shaken_status_t stir_shaken_vs_set_ca_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *ca_dir)
-{
-	if (!vs) {
-		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_1);
-		return STIR_SHAKEN_STATUS_TERM;
-	}
-
-	memset((void*) vs->settings.ca_dir, 0, sizeof(vs->settings.ca_dir));
-
-	if (!stir_shaken_zstr(ca_dir)) {
-		strncpy(vs->settings.ca_dir, ca_dir, sizeof(vs->settings.ca_dir) - 1);
-		vs->settings.ca_dir[sizeof(vs->settings.ca_dir) - 1] = '\0';
-	}
-
-	return STIR_SHAKEN_STATUS_OK;
-}
-
 stir_shaken_status_t stir_shaken_as_load_private_key(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name)
 {
 	if (!as) {
@@ -809,4 +792,83 @@ stir_shaken_status_t stir_shaken_as_install_cert(struct stir_shaken_context_s *s
 	}
 
 	return stir_shaken_x509_to_disk(ss, as->cert.x, where);
+}
+
+stir_shaken_vs_t* stir_shaken_vs_create(struct stir_shaken_context_s *ss)
+{
+	stir_shaken_vs_t *vs = malloc(sizeof(*vs));
+	if (!vs) {
+		stir_shaken_set_error(ss, "Out of memory", STIR_SHAKEN_ERROR_VS_MEM);
+		return NULL;
+	}
+	memset(vs, 0, sizeof(*vs));
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_init_cert_store(ss, &vs->store)) {
+		stir_shaken_set_error(ss, "Cannot init X509 cert store for CA certs", STIR_SHAKEN_ERROR_X509_CERT_STORE_INIT);
+		stir_shaken_vs_destroy(vs);
+		free(vs);
+		return NULL;
+	}
+
+	return vs;
+}
+
+void stir_shaken_vs_destroy(stir_shaken_vs_t *vs)
+{
+	if (!vs) return;
+	stir_shaken_x509_cert_store_cleanup(&vs->store);
+}
+
+stir_shaken_status_t stir_shaken_vs_load_ca_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *ca_dir)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_1);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) vs->settings.ca_dir, 0, sizeof(vs->settings.ca_dir));
+
+	if (!stir_shaken_zstr(ca_dir)) {
+		strncpy(vs->settings.ca_dir, ca_dir, sizeof(vs->settings.ca_dir) - 1);
+		vs->settings.ca_dir[sizeof(vs->settings.ca_dir) - 1] = '\0';
+	}
+
+	return stir_shaken_x509_load_ca(ss, vs->store, NULL, ca_dir);
+}
+
+stir_shaken_status_t stir_shaken_vs_load_crl_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *crl_dir)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_2);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) vs->settings.crl_dir, 0, sizeof(vs->settings.crl_dir));
+
+	if (!stir_shaken_zstr(crl_dir)) {
+		strncpy(vs->settings.crl_dir, crl_dir, sizeof(vs->settings.crl_dir) - 1);
+		vs->settings.crl_dir[sizeof(vs->settings.crl_dir) - 1] = '\0';
+	}
+
+	return stir_shaken_x509_load_crl(ss, vs->store, NULL, crl_dir);
+}
+
+stir_shaken_status_t stir_shaken_vs_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_3);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	return stir_shaken_x509_verify_jwt_and_check_x509_cert_path(ss, token, cert_out, jwt_out, vs->store);
+}
+
+stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_passport_t *passport, stir_shaken_cert_t **cert_out, time_t iat_freshness)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_4);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	return stir_shaken_x509_sih_verify(ss, sih, passport, cert_out, iat_freshness, vs->store);
 }
