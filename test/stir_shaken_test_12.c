@@ -7,6 +7,9 @@ const char *path = "./test/run";
 
 stir_shaken_ca_t ca;
 stir_shaken_sp_t sp;
+stir_shaken_context_t ss = { 0 };
+const char *error_description = NULL;
+stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
 	if (stir_shaken_is_error_set(&ss)) { \
@@ -19,9 +22,6 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 {
 	EVP_PKEY *pkey = NULL;
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
-	stir_shaken_context_t ss = { 0 };
-	const char *error_description = NULL;
-	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
 	unsigned long hash = 0;
 	char hashstr[100] = { 0 };
 	int hashstrlen = 100;
@@ -128,9 +128,9 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 	}
 
 	/* Test */
-	printf("TEST: verifying end-entity + CA combo cert with X509 cert path verification...\n\n");
+	printf("TEST: verifying end-entity + CA cert with X509 cert path verification...\n\n");
 
-	printf("TEST 1: Checking if X509_verify_cert returns error for SP cert\n");
+	printf("TEST 1: Checking if X509_verify_cert returns error for bad SP cert\n");
 	status = stir_shaken_verify_cert(&ss, &sp.cert);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("X509 cert path verification correctly failed, no CA cert in CA dir yet...\n");
@@ -167,7 +167,7 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 			return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	printf("TEST 2: Checking if X509_verify_cert returns SUCCESS for SP cert\n");
+	printf("TEST 2: Checking if X509_verify_cert returns SUCCESS for good SP cert\n");
 	// Now it should work
 	status = stir_shaken_verify_cert(&ss, &sp.cert);
 	if (STIR_SHAKEN_STATUS_OK != status) {
@@ -190,21 +190,29 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 
 int main(void)
 {
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, CA_DIR, CRL_DIR, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
-
-	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
-
-		if (stir_shaken_dir_create_recursive(path) != STIR_SHAKEN_STATUS_OK) {
-
-			printf("ERR: Cannot create test dir\n");
+	if (stir_shaken_dir_exists(CA_DIR) != STIR_SHAKEN_STATUS_OK) {
+		if (stir_shaken_dir_create_recursive(CA_DIR) != STIR_SHAKEN_STATUS_OK) {
+			printf("ERR: Cannot create test CA dir\n");
 			return -1;
 		}
 	}
 
-	if (stir_shaken_unit_test_x509_cert_path_verification() != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_dir_exists(CRL_DIR) != STIR_SHAKEN_STATUS_OK) {
+		if (stir_shaken_dir_create_recursive(CRL_DIR) != STIR_SHAKEN_STATUS_OK) {
+			printf("ERR: Cannot create test CRL dir\n");
+			return -1;
+		}
+	}
 
-		printf("Fail\n");
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_init(NULL, CA_DIR, CRL_DIR, STIR_SHAKEN_LOGLEVEL_HIGH)) {
+		printf("Cannot init lib");
+		PRINT_SHAKEN_ERROR_IF_SET
 		return -2;
+	}
+
+	if (stir_shaken_unit_test_x509_cert_path_verification() != STIR_SHAKEN_STATUS_OK) {
+		printf("Fail\n");
+		return -3;
 	}
 
 	stir_shaken_do_deinit();

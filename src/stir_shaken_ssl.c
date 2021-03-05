@@ -1500,38 +1500,35 @@ stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, sti
 
 stir_shaken_status_t stir_shaken_x509_init_cert_store(stir_shaken_context_t *ss, X509_STORE **store)
 {
-    char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-
-
 	if (!store) {
-        stir_shaken_set_error(ss, "X509_STORE missing", STIR_SHAKEN_ERROR_X509_STORE_MISSING_1);
-        return STIR_SHAKEN_STATUS_FALSE;
+		stir_shaken_set_error(ss, "X509_STORE missing", STIR_SHAKEN_ERROR_X509_STORE_MISSING_1);
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-    if (*store) {
-        X509_STORE_free(*store);
-        *store = NULL;
-    }
+	if (*store) {
+		X509_STORE_free(*store);
+		*store = NULL;
+	}
 
-    *store = X509_STORE_new();
-    if (!*store) {
-        stir_shaken_set_error(ss, "Failed to create X509_STORE", STIR_SHAKEN_ERROR_X509_STORE);
-        return STIR_SHAKEN_STATUS_FALSE;
-    }
+	*store = X509_STORE_new();
+	if (!*store) {
+		stir_shaken_set_error(ss, "Failed to create X509_STORE", STIR_SHAKEN_ERROR_X509_STORE);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
 
-    X509_STORE_set_verify_cb_func(*store, stir_shaken_verify_callback);
+	X509_STORE_set_verify_cb_func(*store, stir_shaken_verify_callback);
 
-    return STIR_SHAKEN_STATUS_OK;
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 stir_shaken_status_t stir_shaken_x509_load_ca(stir_shaken_context_t *ss, X509_STORE *store, const char *ca_list, const char *ca_dir)
 {
-    char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 
 	if (!store) {
-        stir_shaken_set_error(ss, "X509_STORE missing", STIR_SHAKEN_ERROR_X509_STORE_MISSING_2);
-        return STIR_SHAKEN_STATUS_FALSE;
+		stir_shaken_set_error(ss, "X509_STORE missing", STIR_SHAKEN_ERROR_X509_STORE_MISSING_2);
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
 	if (ca_dir) {
@@ -1540,118 +1537,118 @@ stir_shaken_status_t stir_shaken_x509_load_ca(stir_shaken_context_t *ss, X509_ST
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CA_DIR_DSNT_EXIST_2);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
-    }
+	}
 
-    if (ca_list || ca_dir) {
+	if (ca_list || ca_dir) {
 
-        if (X509_STORE_load_locations(store, ca_list, ca_dir) != 1) {
-            sprintf(err_buf, "Failed to load trusted CAs from: list: %s, dir: %s", ca_list ? ca_list : "", ca_dir ? ca_dir : "");
+		if (X509_STORE_load_locations(store, ca_list, ca_dir) != 1) {
+			sprintf(err_buf, "Failed to load trusted CAs from: list: %s, dir: %s", ca_list ? ca_list : "", ca_dir ? ca_dir : "");
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_LOAD_CA_2);
 			return STIR_SHAKEN_STATUS_FALSE;
-        }
+		}
 
-        if (STIR_SHAKEN_LOAD_CA_FROM_DEFAULT_OS_PATHS && (X509_STORE_set_default_paths(store) != 1)) {
-            stir_shaken_set_error(ss, "Failed to load the system-wide CA certificates", STIR_SHAKEN_ERROR_SET_DEFAULT_PATHS_2);
+		if (STIR_SHAKEN_LOAD_CA_FROM_DEFAULT_OS_PATHS && (X509_STORE_set_default_paths(store) != 1)) {
+			stir_shaken_set_error(ss, "Failed to load the system-wide CA certificates", STIR_SHAKEN_ERROR_SET_DEFAULT_PATHS_2);
 			return STIR_SHAKEN_STATUS_FALSE;
-        }
-    }
+		}
+	}
 
-    return STIR_SHAKEN_STATUS_OK;
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 stir_shaken_status_t stir_shaken_x509_load_crl(stir_shaken_context_t *ss, X509_STORE *store, const char *crl_list, const char *crl_dir)
 {
-    char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 
 	if (!store) {
-        stir_shaken_set_error(ss, "X509_STORE missing", STIR_SHAKEN_ERROR_X509_STORE_MISSING_3);
-        return STIR_SHAKEN_STATUS_FALSE;
+		stir_shaken_set_error(ss, "X509_STORE missing", STIR_SHAKEN_ERROR_X509_STORE_MISSING_3);
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-    if (crl_dir) {
+	if (crl_dir) {
 		if (stir_shaken_dir_exists(crl_dir) != STIR_SHAKEN_STATUS_OK) {
 			sprintf(err_buf, "CRL dir %s does not exist", crl_dir);
 			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CRL_DIR_DSNT_EXIST_2);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
-    }
+	}
 
-    if (crl_list || crl_dir) {
+	if (crl_list || crl_dir) {
 
-        if (X509_STORE_load_locations(store, crl_list, crl_dir) != 1) {
-            sprintf(err_buf, "Failed to load trusted CRLs from: list: %s, dir: %s", crl_list ? crl_list : "", crl_dir ? crl_dir : "");
-            stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_LOAD_CRL_2);
+		if (X509_STORE_load_locations(store, crl_list, crl_dir) != 1) {
+			sprintf(err_buf, "Failed to load trusted CRLs from: list: %s, dir: %s", crl_list ? crl_list : "", crl_dir ? crl_dir : "");
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_LOAD_CRL_2);
 			return STIR_SHAKEN_STATUS_FALSE;
-        }
+		}
 
-        // TODO Probably?
-        X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-    }
+		// TODO Probably?
+		X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+	}
 
-    return STIR_SHAKEN_STATUS_OK;
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 void stir_shaken_x509_cert_store_cleanup(X509_STORE **store)
 {
-    if (store && *store) {
-        X509_STORE_free(*store);
-        *store = NULL;
-    }
+	if (store && *store) {
+		X509_STORE_free(*store);
+		*store = NULL;
+	}
 }
 
 stir_shaken_status_t stir_shaken_x509_verify_cert_path(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, X509_STORE *store)
 {
-    X509            *x = NULL;
-    int rc = 1;
-    char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-    int verify_error = -1;
-    FILE *file = NULL; // set to something if want verification callback to print to it
+	X509            *x = NULL;
+	int rc = 1;
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	int verify_error = -1;
+	FILE *file = NULL; // set to something if want verification callback to print to it
 
 	if (!store) {
-        stir_shaken_set_error(ss, "X509_STORE missing", STIR_SHAKEN_ERROR_X509_STORE_MISSING_2);
-        return STIR_SHAKEN_STATUS_FALSE;
+		stir_shaken_set_error(ss, "X509_STORE missing", STIR_SHAKEN_ERROR_X509_STORE_MISSING_2);
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-    if (!cert) {
-        stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_X509_CERT_MISSING_3);
-        return STIR_SHAKEN_STATUS_TERM;
-    }
+	if (!cert) {
+		stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_X509_CERT_MISSING_3);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
 
-    if (cert->verify_ctx) {
-        X509_STORE_CTX_cleanup(cert->verify_ctx);
-        X509_STORE_CTX_free(cert->verify_ctx);
-        cert->verify_ctx = NULL;
-    }
+	if (cert->verify_ctx) {
+		X509_STORE_CTX_cleanup(cert->verify_ctx);
+		X509_STORE_CTX_free(cert->verify_ctx);
+		cert->verify_ctx = NULL;
+	}
 
-    if (!(cert->verify_ctx = X509_STORE_CTX_new())) {
-        stir_shaken_set_error(ss, "Failed to create X509_STORE_CTX object", STIR_SHAKEN_ERROR_X509_STORE_CTX_NEW);
-        return STIR_SHAKEN_STATUS_TERM;
-    }
+	if (!(cert->verify_ctx = X509_STORE_CTX_new())) {
+		stir_shaken_set_error(ss, "Failed to create X509_STORE_CTX object", STIR_SHAKEN_ERROR_X509_STORE_CTX_NEW);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
 
-    if (X509_STORE_CTX_init(cert->verify_ctx, store, cert->x, cert->xchain) != 1) {
-        X509_STORE_CTX_cleanup(cert->verify_ctx);
-        X509_STORE_CTX_free(cert->verify_ctx);
-        cert->verify_ctx = NULL;
-        stir_shaken_set_error(ss, "Error initializing X509 cert path verification context", STIR_SHAKEN_ERROR_X509_CERT_STORE_CTX_INIT);
-        return STIR_SHAKEN_STATUS_TERM;
-    }
+	if (X509_STORE_CTX_init(cert->verify_ctx, store, cert->x, cert->xchain) != 1) {
+		X509_STORE_CTX_cleanup(cert->verify_ctx);
+		X509_STORE_CTX_free(cert->verify_ctx);
+		cert->verify_ctx = NULL;
+		stir_shaken_set_error(ss, "Error initializing X509 cert path verification context", STIR_SHAKEN_ERROR_X509_CERT_STORE_CTX_INIT);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
 
 	// TODO pass context struct wrapping @file AND @ss (so that verification callback can print errors to @ss) 
-    X509_STORE_CTX_set_ex_data(cert->verify_ctx, 0, file);
+	X509_STORE_CTX_set_ex_data(cert->verify_ctx, 0, file);
 
-    rc = X509_verify_cert(cert->verify_ctx);
-    if (rc != 1) {
-        verify_error = X509_STORE_CTX_get_error(cert->verify_ctx);
-        sprintf(err_buf, "Bad X509 certificate path: SSL reason: %s\n", X509_verify_cert_error_string(verify_error));
-        stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_X509_CERT_PATH_INVALID);
-    }
+	rc = X509_verify_cert(cert->verify_ctx);
+	if (rc != 1) {
+		verify_error = X509_STORE_CTX_get_error(cert->verify_ctx);
+		sprintf(err_buf, "Bad X509 certificate path: SSL reason: %s\n", X509_verify_cert_error_string(verify_error));
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_X509_CERT_PATH_INVALID);
+	}
 
-    X509_STORE_CTX_cleanup(cert->verify_ctx);
-    X509_STORE_CTX_free(cert->verify_ctx);
-    cert->verify_ctx = NULL;
+	X509_STORE_CTX_cleanup(cert->verify_ctx);
+	X509_STORE_CTX_free(cert->verify_ctx);
+	cert->verify_ctx = NULL;
 
-    return rc == 1 ? STIR_SHAKEN_STATUS_OK : STIR_SHAKEN_STATUS_FALSE;
+	return rc == 1 ? STIR_SHAKEN_STATUS_OK : STIR_SHAKEN_STATUS_FALSE;
 }
 
 stir_shaken_status_t stir_shaken_register_tnauthlist_extension(stir_shaken_context_t *ss, int *nidp)
@@ -1852,8 +1849,6 @@ stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x
         stir_shaken_set_error(ss, "Cert file name missing", STIR_SHAKEN_ERROR_X509_CERT_NAME_MISSING_1);
 		goto fail;
 	}
-
-    stir_shaken_clear_error(ss);
 
     if (cert_full_name) {
 

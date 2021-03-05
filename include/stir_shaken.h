@@ -282,6 +282,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_BAD_PARAMS_22,
 	STIR_SHAKEN_ERROR_BAD_PARAMS_23,
 	STIR_SHAKEN_ERROR_BAD_PARAMS_24,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_25,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_26,
 	STIR_SHAKEN_ERROR_SIH_TO_JWT_1,
 	STIR_SHAKEN_ERROR_SIH_TO_JWT_2,
 	STIR_SHAKEN_ERROR_KSJSON,
@@ -689,6 +691,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_VS_MISSING_2,
 	STIR_SHAKEN_ERROR_VS_MISSING_3,
 	STIR_SHAKEN_ERROR_VS_MISSING_4,
+	STIR_SHAKEN_ERROR_VS_MISSING_5,
 	STIR_SHAKEN_ERROR_VS_MEM,
 	STIR_SHAKEN_ERROR_UNKNOWN_1,
 	STIR_SHAKEN_ERROR_UNKNOWN_2,
@@ -1311,6 +1314,7 @@ typedef struct stir_shaken_vs_settings_s {
 
 typedef struct stir_shaken_vs_s {
 	X509_STORE						*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
+	stir_shaken_callback_t			callback;
 	stir_shaken_vs_settings_t		settings;
 } stir_shaken_vs_t;
 
@@ -1318,6 +1322,7 @@ stir_shaken_vs_t* stir_shaken_vs_create(struct stir_shaken_context_s *ss);
 void stir_shaken_vs_destroy(stir_shaken_vs_t *vs);
 stir_shaken_status_t stir_shaken_vs_load_ca_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *ca_dir);
 stir_shaken_status_t stir_shaken_vs_load_crl_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *crl_dir);
+stir_shaken_status_t stir_shaken_vs_set_callback(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, stir_shaken_callback_t callback);
 stir_shaken_status_t stir_shaken_vs_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out);
 stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_passport_t *passport, stir_shaken_cert_t **cert_out, time_t iat_freshness);
 

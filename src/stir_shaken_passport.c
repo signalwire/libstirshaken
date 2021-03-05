@@ -340,12 +340,12 @@ stir_shaken_passport_t*	stir_shaken_passport_create(stir_shaken_context_t *ss, s
 
 	passport->jwt = stir_shaken_passport_jwt_create_new(ss);
 	if (!passport->jwt) {
-		stir_shaken_set_error_if_clear(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_PASSPORT_JWT_CREATE_2);
+		stir_shaken_set_error(ss, "Cannot create JWT", STIR_SHAKEN_ERROR_PASSPORT_JWT_CREATE_2);
 		goto fail;
 	}
 
 	if (stir_shaken_passport_init(ss, passport, params, key, keylen) != STIR_SHAKEN_STATUS_OK) {
-		stir_shaken_set_error_if_clear(ss, "Failed init PASSporT", STIR_SHAKEN_ERROR_PASSPORT_INIT_2);
+		stir_shaken_set_error(ss, "Failed init PASSporT", STIR_SHAKEN_ERROR_PASSPORT_INIT_2);
 		goto fail;
 	}
 

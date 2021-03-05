@@ -171,8 +171,12 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
     const char				*cert_url = NULL;
     jwt_t					*jwt = NULL;
 
-    stir_shaken_clear_error(ss);
     memset(&http_req, 0, sizeof(http_req));
+
+	if (!ss) {
+        stir_shaken_set_error(ss, "Bad params: context missing", STIR_SHAKEN_ERROR_BAD_PARAMS_25);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
 
     if (!token) {
         stir_shaken_set_error(ss, "Bad params: JWT token is missing", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
@@ -327,7 +331,11 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
     unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
     int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
 
-    stir_shaken_clear_error(ss);
+
+	if (!ss) {
+        stir_shaken_set_error(ss, "Bad params: context missing", STIR_SHAKEN_ERROR_BAD_PARAMS_26);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
 
     if (!token) {
         stir_shaken_set_error(ss, "Bad params: JWT token is missing", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
@@ -386,9 +394,11 @@ stir_shaken_status_t stir_shaken_jwt_verify_and_check_x509_cert_path(stir_shaken
     stir_shaken_cert_t		*cert = NULL;
     const char				*cert_url = NULL;
     jwt_t					*jwt = NULL;
+	stir_shaken_context_t	ss_local = { 0 };
 
-    stir_shaken_clear_error(ss);
     memset(&http_req, 0, sizeof(http_req));
+	if (!ss) ss = &ss_local;
+
 
     if (!token) {
         stir_shaken_set_error(ss, "Bad params: JWT token is missing", STIR_SHAKEN_ERROR_BAD_PARAMS_21);
@@ -458,9 +468,11 @@ stir_shaken_status_t stir_shaken_x509_verify_jwt_and_check_x509_cert_path(stir_s
     stir_shaken_cert_t		*cert = NULL;
     const char				*cert_url = NULL;
     jwt_t					*jwt = NULL;
+	stir_shaken_context_t	ss_local = { 0 };
 
-    stir_shaken_clear_error(ss);
     memset(&http_req, 0, sizeof(http_req));
+	if (!ss) ss = &ss_local;
+
 
     if (!token) {
         stir_shaken_set_error(ss, "Bad params: JWT token is missing", STIR_SHAKEN_ERROR_BAD_PARAMS_20);
@@ -764,28 +776,20 @@ stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, st
 
     if (!passport) {
         stir_shaken_set_error(ss, "PASSporT not set", STIR_SHAKEN_ERROR_GENERAL);
-        goto end;
+        return STIR_SHAKEN_STATUS_TERM;
     }
 
     ss_status = stir_shaken_passport_validate_headers_and_grants(ss, passport);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
         stir_shaken_set_error(ss, "PASSporT invalid", STIR_SHAKEN_ERROR_PASSPORT_INVALID);
-        goto end;
+        return ss_status;
     }
 
     ss_status = stir_shaken_passport_validate_iat_against_freshness(ss, passport, iat_freshness);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
         stir_shaken_set_error(ss, "PASSporT expired", STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
-        goto end;
+        return ss_status;
     }
 
     return STIR_SHAKEN_STATUS_OK;
-
-end:
-
-    if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error_if_clear(ss, "Unknown error while verifying PASSporT", STIR_SHAKEN_ERROR_GENERAL);
-    }
-
-    return ss_status;
 }

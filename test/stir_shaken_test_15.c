@@ -169,7 +169,9 @@ stir_shaken_status_t stir_shaken_unit_test_as_authenticate_to_passport(void)
 	}
 	stir_shaken_assert(id, "Failed to get identity");
 	stir_shaken_assert(is_tn == 1, "Wrong tn form returned");
-	stir_shaken_assert(!strcmp(id, origtn_val), "Bad @tn returned");	
+	stir_shaken_assert(!strcmp(id, origtn_val), "Bad @tn returned");
+	free(id);
+	id = NULL;
 
 	status = stir_shaken_passport_sign(&ss, passport, priv_raw, priv_raw_len, &encoded);
     if (stir_shaken_is_error_set(&ss)) {
@@ -190,9 +192,13 @@ stir_shaken_status_t stir_shaken_unit_test_as_authenticate_to_passport(void)
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_headers_and_grants(&ss, passport), "Err, PASSporT validate headers and grants");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_iat_against_freshness(&ss, passport, iat_freshness), "Err, PASSporT validate @iat");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate(&ss, passport, iat_freshness), "Err, PASSporT validate");
+
+	stir_shaken_free_jwt_str(encoded);
+	encoded = NULL;
 	
 	stir_shaken_passport_destroy(passport);
 	free(passport);
+	passport = NULL;
 
 	encoded = stir_shaken_authenticate_to_passport_with_key(&ss, &params, &passport, priv_raw, priv_raw_len);
     if (stir_shaken_is_error_set(&ss)) {
@@ -227,6 +233,8 @@ stir_shaken_status_t stir_shaken_unit_test_as_authenticate_to_passport(void)
 	stir_shaken_assert(id, "Failed to get identity");
 	stir_shaken_assert(is_tn == 1, "Wrong tn form returned");
 	stir_shaken_assert(!strcmp(id, origtn_val), "Bad @tn returned");	
+	free(id);
+	id = NULL;
 
 	status = stir_shaken_passport_sign(&ss, passport, priv_raw, priv_raw_len, &encoded);
     if (stir_shaken_is_error_set(&ss)) {
@@ -247,16 +255,22 @@ stir_shaken_status_t stir_shaken_unit_test_as_authenticate_to_passport(void)
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_headers_and_grants(&ss, passport), "Err, PASSporT validate headers and grants");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_iat_against_freshness(&ss, passport, iat_freshness), "Err, PASSporT validate @iat");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate(&ss, passport, iat_freshness), "Err, PASSporT validate");
-    
+
     printf("OK\n\n");
+
+	if (encoded) {	
+		stir_shaken_free_jwt_str(encoded);
+		encoded = NULL;
+	}
+	if (id) {
+		free(id);
+		id = NULL;
+	}
 	
-	stir_shaken_free_jwt_str(encoded);
-	encoded = NULL;
-	free(id);
-	id = NULL;
-	
-	stir_shaken_passport_destroy(passport);
-	free(passport);
+	if (passport) {
+		stir_shaken_passport_destroy(passport);
+		free(passport);
+	}
 	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
 	stir_shaken_as_destroy(as);
 	free(as);

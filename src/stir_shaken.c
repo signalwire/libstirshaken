@@ -44,7 +44,6 @@ err:
 
 stir_shaken_status_t stir_shaken_init_basic_and_ssl(stir_shaken_context_t *ss, int loglevel)
 {
-    char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
 
 	status = stir_shaken_basic_init(ss, loglevel);

@@ -35,7 +35,7 @@ stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
 	stir_shaken_context_t	ss = { 0 };
 	const char				*error_description = NULL;
 	stir_shaken_error_t		error_code = STIR_SHAKEN_ERROR_GENERAL;
-	stir_shaken_cert_t		cert_cached = { 0 };
+	stir_shaken_cert_t		cache_copy = { 0 };
 
 	switch (arg->action) {
 
@@ -49,17 +49,17 @@ stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
 
 				printf("Supplying certificate from the cache: %s...\n", arg->cert.public_url);
 
-				if (!(cert_cached.x = stir_shaken_load_x509_from_file(&ss, "examples/cache/sp.pem"))) {
+				if (!(cache_copy.x = stir_shaken_load_x509_from_file(&ss, "examples/cache/sp.pem"))) {
 					printf("Cannot load X509 from file\n");
 					goto exit;
 				}
 
-				if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(&ss, &arg->cert, &cert_cached)) {
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(&ss, &arg->cert, &cache_copy)) {
 					printf("Cannot copy certificate\n");
 					goto exit;
 				}
 
-				stir_shaken_destroy_cert(&cert_cached);
+				stir_shaken_destroy_cert(&cache_copy);
 
 				return STIR_SHAKEN_STATUS_HANDLED;
 			}

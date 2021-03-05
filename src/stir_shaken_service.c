@@ -853,22 +853,48 @@ stir_shaken_status_t stir_shaken_vs_load_crl_dir(struct stir_shaken_context_s *s
 	return stir_shaken_x509_load_crl(ss, vs->store, NULL, crl_dir);
 }
 
-stir_shaken_status_t stir_shaken_vs_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
+stir_shaken_status_t stir_shaken_vs_set_callback(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, stir_shaken_callback_t callback)
 {
 	if (!vs) {
 		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_3);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	return stir_shaken_x509_verify_jwt_and_check_x509_cert_path(ss, token, cert_out, jwt_out, vs->store);
+	vs->callback = callback;
+
+	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_passport_t *passport, stir_shaken_cert_t **cert_out, time_t iat_freshness)
+stir_shaken_status_t stir_shaken_vs_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
 {
+	stir_shaken_context_t	ss_local = { 0 };
+
+
+	if (!ss)
+		ss = &ss_local;
+
 	if (!vs) {
 		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_4);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
+	ss->callback = vs->callback;
+	return stir_shaken_x509_verify_jwt_and_check_x509_cert_path(ss, token, cert_out, jwt_out, vs->store);
+}
+
+stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_passport_t *passport, stir_shaken_cert_t **cert_out, time_t iat_freshness)
+{
+	stir_shaken_context_t	ss_local = { 0 };
+
+
+	if (!ss)
+		ss = &ss_local;
+
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_5);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	ss->callback = vs->callback;
 	return stir_shaken_x509_sih_verify(ss, sih, passport, cert_out, iat_freshness, vs->store);
 }

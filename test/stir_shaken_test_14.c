@@ -1,6 +1,7 @@
 #include <stir_shaken.h>
 
 const char *path = "./test/run";
+#define CA_DIR	"./test/ref/ca"
 
 
 stir_shaken_ca_t ca;
@@ -216,7 +217,14 @@ fail:
 
 int main(int argc, char **argv)
 {
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, "test/ref/ca", NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
+	if (stir_shaken_dir_exists(CA_DIR) != STIR_SHAKEN_STATUS_OK) {
+		if (stir_shaken_dir_create_recursive(CA_DIR) != STIR_SHAKEN_STATUS_OK) {
+			printf("ERR: Cannot create test CA dir\n");
+			return -1;
+		}
+	}
+
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, CA_DIR, NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
 
 	if (argc == 1) {
 
