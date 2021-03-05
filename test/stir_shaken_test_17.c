@@ -74,7 +74,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	unsigned long hash = 0;
 	char hashstr[100] = { 0 };
 	int hashstrlen = 100;
-	
+
 	stir_shaken_passport_params_t params = {
 		.x5u = "https://sp.com/sp.pem",
 		.attest = "A",
@@ -133,7 +133,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 
 	status = stir_shaken_generate_csr(&ss, sp.code, &sp.csr.req, sp.keys.private_key, sp.keys.public_key, sp.subject_c, sp.subject_cn);
 	PRINT_SHAKEN_ERROR_IF_SET
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
+		stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
 
 	printf("CA: Create self-signed CA Certificate\n");
 
@@ -143,7 +143,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	ca.expiry_days = 90;
 	ca.cert.x = stir_shaken_generate_x509_self_signed_ca_cert(&ss, ca.keys.private_key, ca.keys.public_key, ca.issuer_c, ca.issuer_cn, ca.serial, ca.expiry_days);
 	PRINT_SHAKEN_ERROR_IF_SET
-	stir_shaken_assert(ca.cert.x, "Err, generating CA cert");
+		stir_shaken_assert(ca.cert.x, "Err, generating CA cert");
 
 	printf("CA: Create end-entity SP Certificate from SP's CSR\n");
 	snprintf(ca.tn_auth_list_uri, STIR_SHAKEN_BUFLEN, "http://ca.com/api");
@@ -153,7 +153,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	//sp.cert.x = stir_shaken_generate_x509_end_entity_cert(&ss, ca.cert.x, ca.keys.private_key, sp.keys.public_key, ca.issuer_c, ca.issuer_cn, sp.subject_c, sp.subject_cn, ca.serial_sp, ca.expiry_days_sp, ca.number_start_sp, ca.number_end_sp);
 	sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(&ss, ca.cert.x, ca.keys.private_key, ca.issuer_c, ca.issuer_cn, sp.csr.req, ca.serial, ca.expiry_days, ca.tn_auth_list_uri);
 	PRINT_SHAKEN_ERROR_IF_SET
-    stir_shaken_assert(sp.cert.x != NULL, "Err, generating Cert");
+		stir_shaken_assert(sp.cert.x != NULL, "Err, generating Cert");
 
 	// SAVE CSR and certificates
 

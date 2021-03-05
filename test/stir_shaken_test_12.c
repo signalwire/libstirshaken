@@ -70,7 +70,7 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 
 	status = stir_shaken_generate_csr(&ss, sp.code, &sp.csr.req, sp.keys.private_key, sp.keys.public_key, sp.subject_c, sp.subject_cn);
 	PRINT_SHAKEN_ERROR_IF_SET
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
+		stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
 
 	// 2
 	// CA creates self-signed cert
@@ -105,7 +105,7 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 	//sp.cert.x = stir_shaken_generate_x509_end_entity_cert(&ss, ca.cert.x, ca.keys.private_key, sp.keys.public_key, ca.issuer_c, ca.issuer_cn, sp.subject_c, sp.subject_cn, ca.serial_sp, ca.expiry_days_sp, ca.number_start_sp, ca.number_end_sp);
 	sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(&ss, ca.cert.x, ca.keys.private_key, ca.issuer_c, ca.issuer_cn, sp.csr.req, ca.serial, ca.expiry_days, ca.tn_auth_list_uri);
 	PRINT_SHAKEN_ERROR_IF_SET
-    stir_shaken_assert(sp.cert.x != NULL, "Err, generating Cert");
+		stir_shaken_assert(sp.cert.x != NULL, "Err, generating Cert");
 
 	// SAVE CSR and certificates
 
@@ -207,7 +207,7 @@ int main(void)
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_init(NULL, CA_DIR, CRL_DIR, STIR_SHAKEN_LOGLEVEL_HIGH)) {
 		printf("Cannot init lib");
 		PRINT_SHAKEN_ERROR_IF_SET
-		return -2;
+			return -2;
 	}
 
 	if (stir_shaken_unit_test_x509_cert_path_verification() != STIR_SHAKEN_STATUS_OK) {

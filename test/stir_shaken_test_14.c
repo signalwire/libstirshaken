@@ -228,19 +228,19 @@ int main(int argc, char **argv)
 
 	if (argc == 1) {
 
-        // MOCK http transfers by default
+		// MOCK http transfers by default
 		printf("Mocking HTTP requests...\n");
-        stir_shaken_make_http_req = stir_shaken_make_http_req_mock;
+		stir_shaken_make_http_req = stir_shaken_make_http_req_mock;
 
-    } else if (argc > 1 && !stir_shaken_zstr(argv[1]) && !strcmp(argv[1], "nomock")) {
+	} else if (argc > 1 && !stir_shaken_zstr(argv[1]) && !strcmp(argv[1], "nomock")) {
 
-        // do not MOCK
+		// do not MOCK
 		printf("Not mocking HTTP requests...\n");
 
-    } else {
-        printf("ERR: this program takes no argument or one argument which must be 'nomock'\n");
-        exit(EXIT_FAILURE);
-    }
+	} else {
+		printf("ERR: this program takes no argument or one argument which must be 'nomock'\n");
+		exit(EXIT_FAILURE);
+	}
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 
