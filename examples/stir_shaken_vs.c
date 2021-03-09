@@ -88,11 +88,10 @@ void run_verification_service(stir_shaken_callback_t callback)
 
 	char *passport_encoded = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.cNI-uIirMOiT19OcQag2UYjHWTgTqtr5jhSk3KxflqSC7FbrrYDr51zCEvzDMoETpge7eQeQ6ASVzb1dhVVhKQ;info=<http://shaken.signalwire.cloud/sp.pem>;alg=ES256;ppt=shaken";
 	char *sip_identity_header = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.cNI-uIirMOiT19OcQag2UYjHWTgTqtr5jhSk3KxflqSC7FbrrYDr51zCEvzDMoETpge7eQeQ6ASVzb1dhVVhKQ;info=<http://shaken.signalwire.cloud/sp.pem>;alg=ES256;ppt=shaken";
-	stir_shaken_passport_t	passport = {0};
+	stir_shaken_passport_t	*passport = NULL;
 	stir_shaken_cert_t		*cert = NULL;
 	int		iat_freshness_seconds = INT_MAX;
 	char	*passport_decoded = NULL;
-	jwt_t	*jwt = NULL;
 
 
 	status = stir_shaken_do_init(&ss, "examples/ca", "examples/crl", STIR_SHAKEN_LOGLEVEL_HIGH);
@@ -101,8 +100,8 @@ void run_verification_service(stir_shaken_callback_t callback)
 		goto exit;
 	}
 
-	// For pure Shaken we would have PASSporT as a JWT
-	status = stir_shaken_jwt_verify_and_check_x509_cert_path(&ss, passport_encoded, &cert, &jwt);
+	// For pure Shaken we would have PASSporT
+	status = stir_shaken_passport_verify_and_check_x509_cert_path(&ss, passport_encoded, &cert, &passport);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("PASSporT failed verification\n");
 		goto exit;
@@ -110,14 +109,7 @@ void run_verification_service(stir_shaken_callback_t callback)
 
 	printf("\nPASSporT Verified.\n\n");
 
-	// Print PASSporT
-	if (!stir_shaken_jwt_move_to_passport(&ss, jwt, &passport)) {
-		printf("Cannot assign JWT to PASSporT\n");
-		goto exit;
-	}
-	jwt = NULL;
-
-	passport_decoded = stir_shaken_passport_dump_str(&ss, &passport, 1);
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport, 1);
 	if (passport_decoded) {
 		printf("PASSporT is:\n%s\n", passport_decoded);
 		stir_shaken_free_jwt_str(passport_decoded);
@@ -156,7 +148,7 @@ exit:
 	if (passport_encoded) {
 
 		// Print PASSporT
-		passport_decoded = stir_shaken_passport_dump_str(&ss, &passport, 1);
+		passport_decoded = stir_shaken_passport_dump_str(&ss, passport, 1);
 		if (passport_decoded) {
 			printf("PASSporT is:\n%s\n", passport_decoded);
 			stir_shaken_free_jwt_str(passport_decoded);
@@ -171,18 +163,13 @@ exit:
 			printf("Certificate is:\n");
 			stir_shaken_print_cert_fields(stdout, cert);
 		}
+		stir_shaken_destroy_cert(cert);
+		free(cert);
+		cert = NULL;
 	}
 
 	stir_shaken_passport_destroy(&passport);
-	stir_shaken_destroy_cert(cert);
-	free(cert);
-	cert = NULL;
 	stir_shaken_do_deinit();
-
-	if (jwt) {
-		jwt_free(jwt);
-		jwt = NULL;
-	}
 }
 
 int main(void)

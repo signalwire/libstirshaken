@@ -82,22 +82,21 @@ exit:
 void run_verification_service(stir_shaken_callback_t callback)
 {
 	const char	*error_description = NULL;
-	stir_shaken_context_t	ss = { .callback = callback};
+	stir_shaken_context_t	ss = { 0 };
 	stir_shaken_error_t		error_code = STIR_SHAKEN_ERROR_GENERAL;
 	stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
 
 	char *passport_encoded = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.cNI-uIirMOiT19OcQag2UYjHWTgTqtr5jhSk3KxflqSC7FbrrYDr51zCEvzDMoETpge7eQeQ6ASVzb1dhVVhKQ;info=<http://shaken.signalwire.cloud/sp.pem>;alg=ES256;ppt=shaken";
 	char *sip_identity_header = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.cNI-uIirMOiT19OcQag2UYjHWTgTqtr5jhSk3KxflqSC7FbrrYDr51zCEvzDMoETpge7eQeQ6ASVzb1dhVVhKQ;info=<http://shaken.signalwire.cloud/sp.pem>;alg=ES256;ppt=shaken";
-	stir_shaken_passport_t	passport = {0};
+	stir_shaken_passport_t	*passport = NULL;
 	stir_shaken_cert_t		*cert = NULL;
 	int		iat_freshness_seconds = INT_MAX;
 	char	*passport_decoded = NULL;
-	jwt_t	*jwt = NULL;
 
 	stir_shaken_vs_t *vs = NULL;
 
 
-	status = stir_shaken_init(&ss, STIR_SHAKEN_LOGLEVEL_NOTHING);
+	status = stir_shaken_init(&ss, STIR_SHAKEN_LOGLEVEL_HIGH);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("Cannot init lib\n");
 		goto exit;
@@ -115,8 +114,12 @@ void run_verification_service(stir_shaken_callback_t callback)
 		goto exit;
 	}
 
-	// For pure Shaken we would have PASSporT as a JWT
-	status = stir_shaken_vs_jwt_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert, &jwt);
+	if (callback) {
+		stir_shaken_vs_set_callback(&ss, vs, callback);
+	}
+
+	// For pure Shaken we would have PASSporT
+	status = stir_shaken_vs_passport_to_passport_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert, &passport);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("PASSporT failed verification\n");
 		goto exit;
@@ -124,14 +127,7 @@ void run_verification_service(stir_shaken_callback_t callback)
 
 	printf("\nPASSporT Verified.\n\n");
 
-	// Print PASSporT
-	if (!stir_shaken_jwt_move_to_passport(&ss, jwt, &passport)) {
-		printf("Cannot assign JWT to PASSporT\n");
-		goto exit;
-	}
-	jwt = NULL;
-
-	passport_decoded = stir_shaken_passport_dump_str(&ss, &passport, 1);
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport, 1);
 	if (passport_decoded) {
 		printf("PASSporT is:\n%s\n", passport_decoded);
 		stir_shaken_free_jwt_str(passport_decoded);
@@ -150,7 +146,7 @@ void run_verification_service(stir_shaken_callback_t callback)
 	cert = NULL;
 
 	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
-	status = stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &passport, &cert, iat_freshness_seconds);
+	status = stir_shaken_vs_sih_to_passport_verify(&ss, vs, sip_identity_header, &passport, &cert, iat_freshness_seconds);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("SIP Identity Header failed verification\n");
 		goto exit;
@@ -170,7 +166,7 @@ exit:
 	if (passport_encoded) {
 
 		// Print PASSporT
-		passport_decoded = stir_shaken_passport_dump_str(&ss, &passport, 1);
+		passport_decoded = stir_shaken_passport_dump_str(&ss, passport, 1);
 		if (passport_decoded) {
 			printf("PASSporT is:\n%s\n", passport_decoded);
 			stir_shaken_free_jwt_str(passport_decoded);
@@ -191,11 +187,6 @@ exit:
 	stir_shaken_destroy_cert(cert);
 	free(cert);
 	cert = NULL;
-
-	if (jwt) {
-		jwt_free(jwt);
-		jwt = NULL;
-	}
 
 	if (vs) {
 		stir_shaken_vs_destroy(vs);

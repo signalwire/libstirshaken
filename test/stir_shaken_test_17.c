@@ -85,7 +85,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 		.origtn_val = "01256789999",
 		.origid = "ref"
 	};
-	stir_shaken_passport_t *passport = NULL, *passport_2 = NULL, passport_out = { 0 };
+	stir_shaken_passport_t *passport = NULL, *passport_2 = NULL, *passport_out = { 0 };
 	char *passport_encoded = NULL, *passport_decoded = NULL, *sip_identity_header = NULL;
 	int iat_freshness_seconds = INT_MAX;
 	stir_shaken_cert_t *cert_out = NULL;
@@ -189,8 +189,8 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_load_ca_dir(&ss, vs, CA_DIR), "Failed to init X509 cert store");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_callback(&ss, vs, cache_callback), "Failed to set cache callback");
 
-	// For pure Shaken we would have PASSporT as a JWT
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_jwt_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT failed verification");
+	// For pure Shaken we would have PASSporT
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT failed verification");
 
 	printf("\nPASSporT Verified.\n");
 	printf("\nPASSporT is:\n%s\n\n", passport_encoded);
@@ -204,11 +204,11 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	jwt_out = NULL;
 
 	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &passport_out, &cert_out, iat_freshness_seconds), "SIP Identity Header failed verification\n");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_to_passport_verify(&ss, vs, sip_identity_header, &passport_out, &cert_out, iat_freshness_seconds), "SIP Identity Header failed verification\n");
 
 	printf("\nSIP Identity Header verified.\n\n");
 
-	passport_decoded = stir_shaken_passport_dump_str(&ss, &passport_out, 1);
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport_out, 1);
 	if (passport_decoded) {
 		printf("PASSporT is:\n%s\n", passport_decoded);
 		stir_shaken_free_jwt_str(passport_decoded);
@@ -234,14 +234,8 @@ fail:
 	if (pkey) EVP_PKEY_free(pkey);
 	if (passport_encoded) free(passport_encoded);
 	stir_shaken_passport_destroy(&passport_out);
-	if (passport) {
-		stir_shaken_passport_destroy(passport);
-		free(passport);
-	}
-	if (passport_2) {
-		stir_shaken_passport_destroy(passport_2);
-		free(passport_2);
-	}
+	stir_shaken_passport_destroy(&passport);
+	stir_shaken_passport_destroy(&passport_2);
 	if (cert_out) {
 		stir_shaken_destroy_cert(cert_out);
 		free(cert_out);

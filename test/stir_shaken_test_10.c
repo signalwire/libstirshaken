@@ -65,7 +65,7 @@ const char *path = "./test/run";
 
 stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 {
-	stir_shaken_passport_t passport = { 0 };
+	stir_shaken_passport_t *passport = NULL;
 	const char *x5u = "https://not.here.org/passport.cer";
 	const char *attest = "B";
 	const char *desttn_key = "uri";
@@ -150,6 +150,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	error_description = stir_shaken_get_error(&ss, &error_code);
 	stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
 	stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
+	stir_shaken_assert(passport, "PASSporT has not been returned");
+	stir_shaken_passport_destroy(&passport);
 
 	printf("SIP Identity Header:\n%s\n\n", sih);
 
@@ -201,8 +203,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	stir_shaken_assert(error_description != NULL, "Err, error description not set");
 	printf("Error description is: '%s'\n", error_description);
 	stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER, "Err, error should be SIP_438_INVALID_IDENTITY_HEADER");
-
-	stir_shaken_passport_destroy(&passport);
+	stir_shaken_assert(!passport, "PASSporT should not be returned");
 
 	// Test 2: Test case: malformed SIP Identity header (wrong signature)
 	printf("=== Testing case [2]: Malformed SIP Identity header (wrong signature)\n");
@@ -229,6 +230,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	stir_shaken_assert(error_description != NULL, "Err, error description not set");
 	printf("Error description is: '%s'\n", error_description);
 	stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER, "Err, error should be SIP_438_INVALID_IDENTITY_HEADER");
+	stir_shaken_assert(!passport, "PASSporT should not be returned");
 
 	X509_REQ_free(csr.req);
 	csr.req = NULL;
@@ -245,7 +247,6 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	sih_malformed = NULL;
 
 	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
-	stir_shaken_passport_destroy(&passport);
 
 	return STIR_SHAKEN_STATUS_OK;
 }

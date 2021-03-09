@@ -85,6 +85,7 @@ int main(void)
 		goto fail;
 	}
 
+	// Authenticate using default key (associated with Authentication Service) and retrieve PASSporT
 	encoded = stir_shaken_as_authenticate_to_passport(&ss, as, &params, &passport);
 	if (!encoded) {
 		printf("PASSporT has not been created");
@@ -100,10 +101,9 @@ int main(void)
 	stir_shaken_free_jwt_str(s);
 	s = NULL;
 
-	stir_shaken_passport_destroy(passport);
-	passport = NULL;
+	stir_shaken_passport_destroy(&passport);
 
-	// Use _with_key method to authenticate with specific key
+	// Use _with_key method to authenticate with specific key and retrieve PASSporT
 	encoded = stir_shaken_authenticate_to_passport_with_key(&ss, &params, &passport, priv_raw, priv_raw_len);
 	if (!encoded) {
 		printf("PASSporT has not been created");
@@ -119,10 +119,9 @@ int main(void)
 	stir_shaken_free_jwt_str(s);
 	s = NULL;
 
-	stir_shaken_passport_destroy(passport);
-	passport = NULL;
+	stir_shaken_passport_destroy(&passport);
 
-	// Authenticate using default key (associated with Authentication Service)
+	// Authenticate using default key (associated with Authentication Service) and retrieve PASSporT
 	sih = stir_shaken_as_authenticate_to_sih(&ss, as, &params, &passport);
 	if (!sih) {
 		printf("SIP Identity Header has not been created");
@@ -130,10 +129,9 @@ int main(void)
 	}
 	printf("\n5. SIP Identity Header:\n%s\n", sih);
 	free(sih); sih = NULL;
-	stir_shaken_passport_destroy(passport);
-	passport = NULL;
+	stir_shaken_passport_destroy(&passport);
 
-	// Use _with_key method to authenticate with specific key
+	// Use _with_key method to authenticate with specific key and retrieve PASSporT
 	sih = stir_shaken_authenticate_to_sih_with_key(&ss, &params, &passport, priv_raw, priv_raw_len);
 	if (!sih) {
 		printf("SIP Identity Header has not been created");
@@ -178,7 +176,7 @@ int main(void)
 	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
 	stir_shaken_file_remove("sp.priv");
 	stir_shaken_file_remove("sp.pub");
-	stir_shaken_passport_destroy(passport);
+	stir_shaken_passport_destroy(&passport);
 	stir_shaken_as_destroy(as);
 	free(as);
 	stir_shaken_deinit();
@@ -195,7 +193,7 @@ fail:
 	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
 	stir_shaken_file_remove("sp.priv");
 	stir_shaken_file_remove("sp.pub");
-	stir_shaken_passport_destroy(passport);
+	stir_shaken_passport_destroy(&passport);
 	if (as) {
 		stir_shaken_as_destroy(as);
 		free(as);

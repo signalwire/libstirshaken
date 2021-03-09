@@ -76,7 +76,7 @@ stir_shaken_status_t stir_shaken_do_init(stir_shaken_context_t *ss, const char *
 	}
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_init_cert_store(ss, NULL, ca_dir, NULL, NULL)) {
-		sprintf(err_buf, "Cannot init x509 cert store (with: CA dir: %s, CRL: %s", ca_dir ? ca_dir : "(null)", crl_dir ? crl_dir : "(null)");
+		snprintf(err_buf, sizeof(err_buf), "Cannot init x509 cert store (with: CA dir: %s, CRL: %s", ca_dir ? ca_dir : "(null)", crl_dir ? crl_dir : "(null)");
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CERT_STORE_1); 
 		// TODO basic and ssl deinit 
 		return STIR_SHAKEN_STATUS_FALSE;
@@ -404,7 +404,7 @@ char* stir_shaken_get_dir_path(const char *path)
 	}
 
 	// TODO use path separator variable, and extend for multichar path separators
-	sprintf(p, "%s/%s/", dname, bname);
+	snprintf(p, len, "%s/%s/", dname, bname);
 
 	free(p1);
 	free(p2);
@@ -459,7 +459,7 @@ void stir_shaken_do_set_error(stir_shaken_context_t *ss, const char *description
 	shift_errors(ss);
 
 	memset(ss->e.err_buf0, 0, STIR_SHAKEN_ERROR_BUF_LEN);
-	sprintf(ss->e.err_buf0, "%s:%d: [error_code: %d] ", file, line, error);
+	snprintf(ss->e.err_buf0, sizeof(ss->e.err_buf0), "%s:%d: [error_code: %d] ", file, line, error);
 	i = strlen(ss->e.err_buf0);
 
 	while ((i < STIR_SHAKEN_ERROR_BUF_LEN - 1) && (description[j] != '\0')) {

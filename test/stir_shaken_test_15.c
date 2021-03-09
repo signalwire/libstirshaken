@@ -196,9 +196,7 @@ stir_shaken_status_t stir_shaken_unit_test_as_authenticate_to_passport(void)
 	stir_shaken_free_jwt_str(encoded);
 	encoded = NULL;
 
-	stir_shaken_passport_destroy(passport);
-	free(passport);
-	passport = NULL;
+	stir_shaken_passport_destroy(&passport);
 
 	encoded = stir_shaken_authenticate_to_passport_with_key(&ss, &params, &passport, priv_raw, priv_raw_len);
 	if (stir_shaken_is_error_set(&ss)) {
@@ -267,10 +265,7 @@ stir_shaken_status_t stir_shaken_unit_test_as_authenticate_to_passport(void)
 		id = NULL;
 	}
 
-	if (passport) {
-		stir_shaken_passport_destroy(passport);
-		free(passport);
-	}
+	stir_shaken_passport_destroy(&passport);
 	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
 	stir_shaken_as_destroy(as);
 	free(as);

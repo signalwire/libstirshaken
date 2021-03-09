@@ -8,7 +8,7 @@ const char *path = "./test/run";
 
 stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void)
 {
-	stir_shaken_passport_t passport = {0};
+	stir_shaken_passport_t *passport = NULL;
 	stir_shaken_status_t status = STIR_SHAKEN_STATUS_OK;
 	stir_shaken_context_t ss = { 0 };
 	const char *error_description = NULL;
@@ -66,7 +66,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
 	stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
 	/* Test */
-	status = stir_shaken_passport_init(&ss, &passport, &params, priv_raw, priv_raw_len);
+	passport = stir_shaken_passport_create(&ss, &params, priv_raw, priv_raw_len);
 	if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -78,15 +78,15 @@ stir_shaken_status_t stir_shaken_unit_test_passport_create_verify_signature(void
 	stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
-	stir_shaken_assert(passport.jwt != NULL, "JWT has not been created");
-	s = stir_shaken_passport_dump_str(&ss, &passport, 1);
+	stir_shaken_assert(passport->jwt != NULL, "JWT has not been created");
+	s = stir_shaken_passport_dump_str(&ss, passport, 1);
 	printf("1. JWT:\n%s\n", s);
 	stir_shaken_free_jwt_str(s); s = NULL;
 
 
 	// Test encoding/decoding with libjwt
 
-	encoded = jwt_encode_str(passport.jwt);
+	encoded = jwt_encode_str(passport->jwt);
 	stir_shaken_assert(encoded, "Ooops, libjwt failed to encode string");
 
 	ret = stir_shaken_pubkey_to_raw(&ss, public_key, pub_raw, &pub_raw_len);

@@ -18,7 +18,7 @@ int main(void)
 	stir_shaken_context_t ss = { 0 };
 	const char *error_description = NULL;
 	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
-	stir_shaken_passport_t passport = {0};
+	stir_shaken_passport_t *passport = NULL;
 	stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
 
 	char *s = NULL, *sih = NULL;
@@ -69,21 +69,21 @@ int main(void)
 		}
 	}
 
-	// Assign parameters to PASSporT
-	status = stir_shaken_passport_init(&ss, &passport, &params, priv_raw, priv_raw_len);
-	if (STIR_SHAKEN_STATUS_OK != status) {
+	// Create PASSporT
+	passport = stir_shaken_passport_create(&ss, &params, priv_raw, priv_raw_len);
+	if (!passport) {
 		printf("Cannot generate PASSporT\n");
 		goto fail;
 	}
 
 	// Get plain version of PASSporT (decoded, not signed, with no signature)
-	s = stir_shaken_passport_dump_str(&ss, &passport, 1);
+	s = stir_shaken_passport_dump_str(&ss, passport, 1);
 	printf("PASSporT is:\n%s\n", s);
 	stir_shaken_free_jwt_str(s);
 	s = NULL;
 
 	// Encode (sign) using default key (key given to stir_shaken_passport_init)
-	status = stir_shaken_passport_sign(&ss, &passport, NULL, 0, &s);
+	status = stir_shaken_passport_sign(&ss, passport, NULL, 0, &s);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("Cannot sign PASSporT\n");
 		goto fail;
@@ -93,7 +93,7 @@ int main(void)
 	s = NULL;
 
 	// Encode (sign) using specific key
-	status = stir_shaken_passport_sign(&ss, &passport, priv_raw, priv_raw_len, &s);
+	status = stir_shaken_passport_sign(&ss, passport, priv_raw, priv_raw_len, &s);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("Cannot sign PASSporT\n");
 		goto fail;
@@ -104,7 +104,7 @@ int main(void)
 
 	// Get PASSporT wrapped into SIP Identity Header
 	priv_raw_len = sizeof(priv_raw);
-	sih = stir_shaken_jwt_sip_identity_create(&ss, &passport, priv_raw, priv_raw_len);
+	sih = stir_shaken_jwt_sip_identity_create(&ss, passport, priv_raw, priv_raw_len);
 	if (!sih) {
 		printf("Failed to create SIP Identity Header from JWT PASSporT\n");
 		goto fail;

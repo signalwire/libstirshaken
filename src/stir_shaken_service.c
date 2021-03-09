@@ -276,7 +276,7 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 
 	if (res != CURLE_OK) {
 
-		sprintf(err_buf, "Error in CURL: %s", curl_easy_strerror(res));
+		snprintf(err_buf, sizeof(err_buf), "Error in CURL: %s", curl_easy_strerror(res));
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CURL); 
 
 		// Do not curl_global_cleanup in case of error, cause otherwise (if also curl_global_cleanup) SSL starts to mulfunction ???? (EVP_get_digestbyname("sha256") in stir_shaken_do_verify_data returns NULL)
@@ -288,7 +288,7 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 
 	curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &http_req->response.code);
 	if (http_req->response.code != 200 && http_req->response.code != 201) {
-		sprintf(http_req->response.error, "%s response code: %ld (%s%s), HTTP response phrase: %s", use_https ? "HTTPS" : "HTTP", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " [Bad URL or API call not handled?]" : "", http_req->response.headers && http_req->response.headers->data ? http_req->response.headers->data : "");
+		snprintf(http_req->response.error, sizeof(http_req->response.error), "%s response code: %ld (%s%s), HTTP response phrase: %s", use_https ? "HTTPS" : "HTTP", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " [Bad URL or API call not handled?]" : "", http_req->response.headers && http_req->response.headers->data ? http_req->response.headers->data : "");
 	}
 	curl_easy_cleanup(curl_handle);
 	curl_global_cleanup();
@@ -716,16 +716,14 @@ char* stir_shaken_authenticate_to_passport_with_key(struct stir_shaken_context_s
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_sign(ss, passport, NULL, 0, &encoded)) {
 		stir_shaken_set_error(ss, "Failed to sign PASSporT", STIR_SHAKEN_ERROR_AS_SIGN_PASSPORT);
-		stir_shaken_passport_destroy(passport);
-		free(passport);
+		stir_shaken_passport_destroy(&passport);
 		return NULL;
 	}
 
 	if (passport_out) {
 		*passport_out = passport;
 	} else {
-		stir_shaken_passport_destroy(passport);
-		free(passport);
+		stir_shaken_passport_destroy(&passport);
 	}
 
 	return encoded;
@@ -760,16 +758,14 @@ char* stir_shaken_authenticate_to_sih_with_key(struct stir_shaken_context_s *ss,
 	sih = stir_shaken_jwt_sip_identity_create(ss, passport, NULL, 0);
 	if (!sih) {
 		stir_shaken_set_error(ss, "Failed to create SIP Identity Header", STIR_SHAKEN_ERROR_AS_CREATE_SIH);
-		stir_shaken_passport_destroy(passport);
-		free(passport);
+		stir_shaken_passport_destroy(&passport);
 		return NULL;
 	}
 
 	if (passport_out) {
 		*passport_out = passport;
 	} else {
-		stir_shaken_passport_destroy(passport);
-		free(passport);
+		stir_shaken_passport_destroy(&passport);
 	}
 
 	return sih;
@@ -865,7 +861,7 @@ stir_shaken_status_t stir_shaken_vs_set_callback(struct stir_shaken_context_s *s
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_vs_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
+stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
 {
 	stir_shaken_context_t	ss_local = { 0 };
 
@@ -879,10 +875,27 @@ stir_shaken_status_t stir_shaken_vs_jwt_verify_and_check_x509_cert_path(stir_sha
 	}
 
 	ss->callback = vs->callback;
-	return stir_shaken_x509_verify_jwt_and_check_x509_cert_path(ss, token, cert_out, jwt_out, vs->store);
+	return stir_shaken_x509_jwt_verify_and_check_x509_cert_path(ss, token, cert_out, jwt_out, vs->store);
 }
 
-stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_passport_t *passport, stir_shaken_cert_t **cert_out, time_t iat_freshness)
+stir_shaken_status_t stir_shaken_vs_passport_to_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
+{
+	stir_shaken_context_t	ss_local = { 0 };
+
+
+	if (!ss)
+		ss = &ss_local;
+
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_6);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	ss->callback = vs->callback;
+	return stir_shaken_x509_passport_verify_and_check_x509_cert_path(ss, token, cert_out, passport_out, vs->store);
+}
+
+stir_shaken_status_t stir_shaken_vs_sih_to_passport_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_passport_t **passport_out, stir_shaken_cert_t **cert_out, time_t iat_freshness)
 {
 	stir_shaken_context_t	ss_local = { 0 };
 
@@ -896,5 +909,5 @@ stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_s
 	}
 
 	ss->callback = vs->callback;
-	return stir_shaken_x509_sih_verify(ss, sih, passport, cert_out, iat_freshness, vs->store);
+	return stir_shaken_x509_sih_verify(ss, sih, passport_out, cert_out, iat_freshness, vs->store);
 }
