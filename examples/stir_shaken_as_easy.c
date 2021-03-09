@@ -177,8 +177,7 @@ int main(void)
 	stir_shaken_file_remove("sp.priv");
 	stir_shaken_file_remove("sp.pub");
 	stir_shaken_passport_destroy(&passport);
-	stir_shaken_as_destroy(as);
-	free(as);
+	stir_shaken_as_destroy(&as);
 	stir_shaken_deinit();
 
 	return 0;
@@ -194,10 +193,7 @@ fail:
 	stir_shaken_file_remove("sp.priv");
 	stir_shaken_file_remove("sp.pub");
 	stir_shaken_passport_destroy(&passport);
-	if (as) {
-		stir_shaken_as_destroy(as);
-		free(as);
-	}
+	stir_shaken_as_destroy(&as);
 	stir_shaken_deinit();
 
 	return -1;

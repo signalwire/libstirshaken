@@ -633,11 +633,13 @@ stir_shaken_as_t* stir_shaken_as_create(struct stir_shaken_context_s *ss)
 	return as;
 }
 
-void stir_shaken_as_destroy(stir_shaken_as_t *as)
+void stir_shaken_as_destroy(stir_shaken_as_t **as)
 {
-	if (!as) return;
-	stir_shaken_destroy_keys(&as->keys);
-	stir_shaken_destroy_cert(&as->cert);
+	if (!as || !(*as)) return;
+	stir_shaken_destroy_keys(&(*as)->keys);
+	stir_shaken_destroy_cert(&(*as)->cert);
+	free(*as);
+	*as = NULL;
 }
 
 stir_shaken_status_t stir_shaken_as_load_private_key(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name)
@@ -801,18 +803,19 @@ stir_shaken_vs_t* stir_shaken_vs_create(struct stir_shaken_context_s *ss)
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_init_cert_store(ss, &vs->store)) {
 		stir_shaken_set_error(ss, "Cannot init X509 cert store for CA certs", STIR_SHAKEN_ERROR_X509_CERT_STORE_INIT);
-		stir_shaken_vs_destroy(vs);
-		free(vs);
+		stir_shaken_vs_destroy(&vs);
 		return NULL;
 	}
 
 	return vs;
 }
 
-void stir_shaken_vs_destroy(stir_shaken_vs_t *vs)
+void stir_shaken_vs_destroy(stir_shaken_vs_t **vs)
 {
-	if (!vs) return;
-	stir_shaken_x509_cert_store_cleanup(&vs->store);
+	if (!vs || !*vs) return;
+	stir_shaken_x509_cert_store_cleanup(&(*vs)->store);
+	free(*vs);
+	*vs = NULL;
 }
 
 stir_shaken_status_t stir_shaken_vs_load_ca_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *ca_dir)

@@ -1302,7 +1302,7 @@ typedef struct stir_shaken_as_s {
 } stir_shaken_as_t;
 
 stir_shaken_as_t* stir_shaken_as_create(struct stir_shaken_context_s *ss);
-void stir_shaken_as_destroy(stir_shaken_as_t *as);
+void stir_shaken_as_destroy(stir_shaken_as_t **as);
 stir_shaken_status_t stir_shaken_as_load_private_key(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name);
 stir_shaken_status_t stir_shaken_as_load_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_name);
 char* stir_shaken_authenticate_to_passport_with_key(struct stir_shaken_context_s *ss, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out, unsigned char *key, uint32_t keylen);
@@ -1333,7 +1333,7 @@ typedef struct stir_shaken_vs_s {
 } stir_shaken_vs_t;
 
 stir_shaken_vs_t* stir_shaken_vs_create(struct stir_shaken_context_s *ss);
-void stir_shaken_vs_destroy(stir_shaken_vs_t *vs);
+void stir_shaken_vs_destroy(stir_shaken_vs_t **vs);
 stir_shaken_status_t stir_shaken_vs_load_ca_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *ca_dir);
 stir_shaken_status_t stir_shaken_vs_load_crl_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *crl_dir);
 stir_shaken_status_t stir_shaken_vs_set_callback(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, stir_shaken_callback_t callback);

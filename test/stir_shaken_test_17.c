@@ -247,10 +247,8 @@ fail:
 		free(sip_identity_header);
 		sip_identity_header = NULL;
 	}
-	stir_shaken_as_destroy(as);
-	free(as);
-	stir_shaken_vs_destroy(vs);
-	free(vs);
+	stir_shaken_as_destroy(&as);
+	stir_shaken_vs_destroy(&vs);
 
 	return status;
 }

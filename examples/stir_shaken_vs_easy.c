@@ -188,10 +188,7 @@ exit:
 	free(cert);
 	cert = NULL;
 
-	if (vs) {
-		stir_shaken_vs_destroy(vs);
-		free(vs);
-	}
+	stir_shaken_vs_destroy(&vs);
 
 	stir_shaken_deinit();
 }
