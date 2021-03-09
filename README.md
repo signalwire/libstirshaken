@@ -16,6 +16,8 @@ libstirshaken was tested for interoperability with other leading Shaken implemen
 
 ## Basic usage
 
+# Authentication
+
 Create PASSporT using Authentication Service interface:
 
 ```
@@ -34,6 +36,7 @@ stir_shaken_passport_t *passport = NULL;
 char *s = NULL, *sih = NULL;
 stir_shaken_as_t *as = NULL;
 
+stir_shaken_init(&ss, STIR_SHAKEN_LOGLEVEL_NOTHING);
 as = stir_shaken_as_create(&ss);
 stir_shaken_as_load_private_key(&ss, as, "sp.priv"); 
 encoded = stir_shaken_as_authenticate_to_passport(&ss, as, &params, &passport);
@@ -87,6 +90,96 @@ printf("\n3. SIP Identity Header:\n%s\n", sih);
 eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9zcC5jb20vc3AucGVtIn0.eyJhdHRlc3QiOiJBIiwiZGVzdCI6eyJ0biI6WyIwMTI1NjUwMDYwMCJdfSwiaWF0IjoxNjE0Nzg3MDk0LCJvcmlnIjp7InRuIjoiMDEyNTY3ODk5OTkifSwib3JpZ2lkIjoicmVmIn0.7PMbuC-Rkvdd4dl57aX1Ym-tEtfAFrou8uTOrT7bKaqnpdUh6leKkyZzMAV3-gRgZA-TaFDv-lAGBY9Ifs1FMA;info=<https://sp.com/sp.pem>;alg=ES256;ppt=shaken
 ```
 
+# Verification
+
+```
+
+char *passport_encoded = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.cNI-uIirMOiT19OcQag2UYjHWTgTqtr5jhSk3KxflqSC7FbrrYDr51zCEvzDMoETpge7eQeQ6ASVzb1dhVVhKQ";
+char *sip_identity_header = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.cNI-uIirMOiT19OcQag2UYjHWTgTqtr5jhSk3KxflqSC7FbrrYDr51zCEvzDMoETpge7eQeQ6ASVzb1dhVVhKQ;info=<http://shaken.signalwire.cloud/sp.pem>;alg=ES256;ppt=shaken";
+stir_shaken_passport_t	*passport_out = NULL;
+stir_shaken_cert_t		*cert_out = NULL;
+int		iat_freshness_seconds = 60;
+
+stir_shaken_init(&ss, STIR_SHAKEN_LOGLEVEL_NOTHING);
+
+vs = stir_shaken_vs_create(&ss);
+stir_shaken_vs_load_ca_dir(&ss, vs, "examples/ca");
+```
+
+Optionally set your own callback to supply certificates from cache
+```
+stir_shaken_vs_set_callback(&ss, vs, cache_callback);
+```
+
+Verify PASSporT
+``` 
+status = stir_shaken_vs_passport_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert_out, &passport_out);
+if (STIR_SHAKEN_STATUS_OK != status) {
+	printf("PASSporT failed verification");
+} else {
+	printf("PASSporT Verified");
+}
+```
+
+Verify SIP Identity Header
+```
+status = stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &passport_out, &cert_out, iat_freshness_seconds);
+if (STIR_SHAKEN_STATUS_OK != status) {
+	printf("SIP Identity Header failed verification");
+} else {
+	printf("SIP Identity Header verified");
+}
+```
+
+Print PASSporT
+```
+passport_decoded = stir_shaken_passport_dump_str(&ss, passport, 1);
+if (passport_decoded) {
+	printf("PASSporT is:\n%s\n", passport_decoded);
+	stir_shaken_free_jwt_str(passport_decoded);
+	passport_decoded = NULL;
+}
+```
+
+```
+PASSporT Verified
+
+PASSporT is:
+
+{
+    "alg": "ES256",
+    "ppt": "shaken",
+    "typ": "passport",
+    "x5u": "http://shaken.signalwire.cloud/sp.pem"
+}
+.
+{
+    "attest": "A",
+    "dest": "{\"tn\":\"01256500600\"}",
+    "iat": 1603458131,
+    "orig": "{\"tn\":\"01256789999\"}",
+    "origid": "ref"
+}
+```
+
+Print the certificate
+```
+if (STIR_SHAKEN_STATUS_OK == stir_shaken_read_cert_fields(&ss, cert)) {
+	printf("Certificate is:\n");
+	stir_shaken_print_cert_fields(stdout, cert);
+}
+```
+
+```
+Certificate is:
+STIR-Shaken: STI Cert: Serial number: 01 1
+STIR-Shaken: STI Cert: Issuer: /C=US/CN=SignalWire STI-CA Test
+STIR-Shaken: STI Cert: Subject: /C=US/CN=SignalWire STI-SP Test
+STIR-Shaken: STI Cert: Valid from: Oct 22 22:14:38 2020 GMT
+STIR-Shaken: STI Cert: Valid to: Mar  8 22:14:38 2048 GMT
+STIR-Shaken: STI Cert: Version: 3
+```
+
 
 ## Folders
 
@@ -98,9 +191,9 @@ eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6
 	util/		- helper programs (stirshaken tool for running multiple commands, see below)
 	test/		- unit tests
 	examples/	- examples:
-						stir_shaken_as_basic_blocks.c - shows how Authentication Service may be constructed from the basic blocks
+						stir_shaken_as_basic.c - shows how Authentication Service may be constructed from the basic blocks
 						stir_shaken_as_easy.c - shows how to use default Authentication Service interface
-						stir_shaken_vs_basic_blocks.c - shows how Verification Service may be constructed from the basic blocks
+						stir_shaken_vs_basic.c - shows how Verification Service may be constructed from the basic blocks
 						stir_shaken_vs_easy.c - shows how to use default Verification Service interface
 						stir_shaken_ca.c - shows how Certificate Authority may be constructed from the basic blocks
 						stir_shaken_cert_req.c - shows how certificate may be requested and downloaded from CA

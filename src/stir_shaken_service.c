@@ -881,7 +881,7 @@ stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify_and_check_x509_cert_p
 	return stir_shaken_x509_jwt_verify_and_check_x509_cert_path(ss, token, cert_out, jwt_out, vs->store);
 }
 
-stir_shaken_status_t stir_shaken_vs_passport_to_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
+stir_shaken_status_t stir_shaken_vs_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
 {
 	stir_shaken_context_t	ss_local = { 0 };
 
@@ -898,7 +898,7 @@ stir_shaken_status_t stir_shaken_vs_passport_to_passport_verify_and_check_x509_c
 	return stir_shaken_x509_passport_verify_and_check_x509_cert_path(ss, token, cert_out, passport_out, vs->store);
 }
 
-stir_shaken_status_t stir_shaken_vs_sih_to_passport_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_passport_t **passport_out, stir_shaken_cert_t **cert_out, time_t iat_freshness)
+stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_passport_t **passport_out, stir_shaken_cert_t **cert_out, time_t iat_freshness)
 {
 	stir_shaken_context_t	ss_local = { 0 };
 
