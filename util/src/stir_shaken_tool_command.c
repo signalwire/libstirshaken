@@ -394,7 +394,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 	char            *jwt_decoded = NULL;
 	stir_shaken_cert_t *cert = NULL;
 	char *p1 = NULL, *p2 = NULL, *sih = NULL;
-	stir_shaken_passport_t passport = {0};
+	stir_shaken_passport_t *passport = NULL;
 
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_init(ss, command == COMMAND_CA ? (ca->ca.use_pa_dir ? ca->ca.pa_dir_name : NULL) : options->ca_dir, options->crl_dir, options->loglevel)) {
@@ -686,9 +686,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 				jwt_free(jwt);
 				jwt = NULL;
-				stir_shaken_destroy_cert(cert);
-				free(cert);
-				cert = NULL;
+				stir_shaken_cert_destroy(&cert);
 			}
 
 			break;
@@ -723,13 +721,13 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				}
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Assigning parameters to PASSporT...\n");
-				status = stir_shaken_passport_init(ss, &passport, &sp->sp.passport_params, options->keys.priv_raw, options->keys.priv_raw_len);
-				if (STIR_SHAKEN_STATUS_OK != status) {
+				passport = stir_shaken_passport_create(ss, &sp->sp.passport_params, options->keys.priv_raw, options->keys.priv_raw_len);
+				if (!passport) {
 					goto fail;
 				}
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Getting plain version of PASSporT (decoded, not signed, with no signature)...\n");
-				p1 = stir_shaken_passport_dump_str(ss, &passport, 1);
+				p1 = stir_shaken_passport_dump_str(ss, passport, 1);
 				if (stir_shaken_zstr(p1)) {
 					goto fail;
 				}
@@ -737,7 +735,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "PASSporT is:\n%s\n", p1);
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Encoding (signing) using submitted key...\n");
-				status = stir_shaken_passport_sign(ss, &passport, NULL, 0, &p2);
+				status = stir_shaken_passport_sign(ss, passport, NULL, 0, &p2);
 				if (STIR_SHAKEN_STATUS_OK != status) {
 					goto fail;
 				}
@@ -746,7 +744,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Getting PASSporT wrapped into SIP Identity Header...\n");
 				options->keys.priv_raw_len = sizeof(options->keys.priv_raw);
-				sih = stir_shaken_jwt_sip_identity_create(ss, &passport, options->keys.priv_raw, options->keys.priv_raw_len);
+				sih = stir_shaken_jwt_sip_identity_create(ss, passport, options->keys.priv_raw, options->keys.priv_raw_len);
 				if (!sih) {
 					goto fail;
 				}

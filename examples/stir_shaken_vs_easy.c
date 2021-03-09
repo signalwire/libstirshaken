@@ -82,7 +82,7 @@ exit:
 void run_verification_service(stir_shaken_callback_t callback)
 {
 	const char	*error_description = NULL;
-	stir_shaken_context_t	ss = { .callback = callback};
+	stir_shaken_context_t	ss = { 0 };
 	stir_shaken_error_t		error_code = STIR_SHAKEN_ERROR_GENERAL;
 	stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
 
@@ -93,15 +93,33 @@ void run_verification_service(stir_shaken_callback_t callback)
 	int		iat_freshness_seconds = INT_MAX;
 	char	*passport_decoded = NULL;
 
+	stir_shaken_vs_t *vs = NULL;
 
-	status = stir_shaken_do_init(&ss, "examples/ca", "examples/crl", STIR_SHAKEN_LOGLEVEL_HIGH);
+
+	status = stir_shaken_init(&ss, STIR_SHAKEN_LOGLEVEL_HIGH);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("Cannot init lib\n");
 		goto exit;
 	}
 
+	vs = stir_shaken_vs_create(&ss);
+	if (!vs) {
+		printf("Cannot create Verification Service\n");
+		goto exit;
+	}
+
+	status = stir_shaken_vs_load_ca_dir(&ss, vs, "examples/ca");
+	if (STIR_SHAKEN_STATUS_OK != status) {
+		printf("Failed to init X509 cert store");
+		goto exit;
+	}
+
+	if (callback) {
+		stir_shaken_vs_set_callback(&ss, vs, callback);
+	}
+
 	// For pure Shaken we would have PASSporT
-	status = stir_shaken_passport_verify_and_check_x509_cert_path(&ss, passport_encoded, &cert, &passport);
+	status = stir_shaken_vs_passport_to_passport_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert, &passport);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("PASSporT failed verification\n");
 		goto exit;
@@ -126,7 +144,7 @@ void run_verification_service(stir_shaken_callback_t callback)
 	stir_shaken_cert_destroy(&cert);
 
 	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
-	status = stir_shaken_sih_verify(&ss, sip_identity_header, &passport, &cert, iat_freshness_seconds);
+	status = stir_shaken_vs_sih_to_passport_verify(&ss, vs, sip_identity_header, &passport, &cert, iat_freshness_seconds);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("SIP Identity Header failed verification\n");
 		goto exit;
@@ -161,11 +179,13 @@ exit:
 			printf("Certificate is:\n");
 			stir_shaken_print_cert_fields(stdout, cert);
 		}
-		stir_shaken_cert_destroy(&cert);
 	}
 
 	stir_shaken_passport_destroy(&passport);
-	stir_shaken_do_deinit();
+	stir_shaken_cert_destroy(&cert);
+	stir_shaken_vs_destroy(&vs);
+
+	stir_shaken_deinit();
 }
 
 int main(void)

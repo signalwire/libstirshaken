@@ -10,7 +10,7 @@ static size_t stir_shaken_curl_write_callback(void *contents, size_t size, size_
 
 	stir_shaken_clear_error(mem->ss);
 
-	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, realsize + mem->size);
+	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, realsize + mem->size);
 
 	m = realloc(mem->mem, mem->size + realsize + 1);
 	if(!m) {
@@ -276,7 +276,7 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 
 	if (res != CURLE_OK) {
 
-		sprintf(err_buf, "Error in CURL: %s", curl_easy_strerror(res));
+		snprintf(err_buf, sizeof(err_buf), "Error in CURL: %s", curl_easy_strerror(res));
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CURL); 
 
 		// Do not curl_global_cleanup in case of error, cause otherwise (if also curl_global_cleanup) SSL starts to mulfunction ???? (EVP_get_digestbyname("sha256") in stir_shaken_do_verify_data returns NULL)
@@ -288,7 +288,7 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 
 	curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &http_req->response.code);
 	if (http_req->response.code != 200 && http_req->response.code != 201) {
-		sprintf(http_req->response.error, "%s response code: %ld (%s%s), HTTP response phrase: %s", use_https ? "HTTPS" : "HTTP", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " [Bad URL or API call not handled?]" : "", http_req->response.headers && http_req->response.headers->data ? http_req->response.headers->data : "");
+		snprintf(http_req->response.error, sizeof(http_req->response.error), "%s response code: %ld (%s%s), HTTP response phrase: %s", use_https ? "HTTPS" : "HTTP", http_req->response.code, curl_easy_strerror(http_req->response.code), (http_req->response.code == 400 || http_req->response.code == 404) ? " [Bad URL or API call not handled?]" : "", http_req->response.headers && http_req->response.headers->data ? http_req->response.headers->data : "");
 	}
 	curl_easy_cleanup(curl_handle);
 	curl_global_cleanup();
@@ -620,4 +620,297 @@ void stir_shaken_error_desc_to_http_error_phrase(const char *error_desc, char *e
 			}
 		}
 	}
+}
+
+stir_shaken_as_t* stir_shaken_as_create(struct stir_shaken_context_s *ss)
+{
+	stir_shaken_as_t *as = malloc(sizeof(*as));
+	if (!as) {
+		stir_shaken_set_error(ss, "Out of memory", STIR_SHAKEN_ERROR_AS_MEM);
+		return NULL;
+	}
+	memset(as, 0, sizeof(*as));
+	return as;
+}
+
+void stir_shaken_as_destroy(stir_shaken_as_t **as)
+{
+	if (!as || !(*as)) return;
+	stir_shaken_destroy_keys(&(*as)->keys);
+	stir_shaken_cert_deinit(&(*as)->cert);
+	free(*as);
+	*as = NULL;
+}
+
+stir_shaken_status_t stir_shaken_as_load_private_key(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *private_key_name)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_1);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) as->settings.private_key_name, 0, sizeof(as->settings.private_key_name));
+
+	if (!stir_shaken_zstr(private_key_name)) {
+		strncpy(as->settings.private_key_name, private_key_name, sizeof(as->settings.private_key_name) - 1);
+		as->settings.private_key_name[sizeof(as->settings.private_key_name) - 1] = '\0';
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(as->settings.private_key_name)) {
+		stir_shaken_set_error(ss, "Private key does not exist", STIR_SHAKEN_ERROR_AS_PRIVKEY_DOES_NOT_EXIST);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	as->keys.priv_raw_len = sizeof(as->keys.priv_raw);
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, as->settings.private_key_name, as->keys.priv_raw, &as->keys.priv_raw_len)) {
+		stir_shaken_set_error(ss, "Failed to load private key", STIR_SHAKEN_ERROR_AS_LOAD_PRIVKEY);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_as_load_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *cert_name)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_4);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) as->settings.cert_name, 0, sizeof(as->settings.cert_name));
+
+	if (!stir_shaken_zstr(cert_name)) {
+		strncpy(as->settings.cert_name, cert_name, sizeof(as->settings.cert_name) - 1);
+		as->settings.cert_name[sizeof(as->settings.cert_name) - 1] = '\0';
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(as->settings.cert_name)) {
+		stir_shaken_set_error(ss, "Certificate does not exist", STIR_SHAKEN_ERROR_AS_CERTIFICATE_DOES_NOT_EXIST);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
+	stir_shaken_cert_deinit(&as->cert);
+
+	as->cert.x = stir_shaken_load_x509_from_file(ss, as->settings.cert_name);
+	if (!as->cert.x) {
+		stir_shaken_set_error(ss, "Failed to load certificate", STIR_SHAKEN_ERROR_AS_LOAD_CERT);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+char* stir_shaken_authenticate_to_passport_with_key(struct stir_shaken_context_s *ss, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out, unsigned char *key, uint32_t keylen)
+{
+	stir_shaken_passport_t*	passport = NULL;
+	char *encoded = NULL;
+
+	if (!key || keylen == 0) {
+		stir_shaken_set_error(ss, "Private key missing", STIR_SHAKEN_ERROR_PRIVKEY_MISSING_2);
+		return NULL;
+	}
+
+	passport = stir_shaken_passport_create(ss, params, key, keylen);
+	if (!passport) {
+		stir_shaken_set_error(ss, "Failed to create PASSporT", STIR_SHAKEN_ERROR_AS_CREATE_PASSPORT_1);
+		return NULL;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_sign(ss, passport, NULL, 0, &encoded)) {
+		stir_shaken_set_error(ss, "Failed to sign PASSporT", STIR_SHAKEN_ERROR_AS_SIGN_PASSPORT);
+		stir_shaken_passport_destroy(&passport);
+		return NULL;
+	}
+
+	if (passport_out) {
+		*passport_out = passport;
+	} else {
+		stir_shaken_passport_destroy(&passport);
+	}
+
+	return encoded;
+}
+
+char* stir_shaken_as_authenticate_to_passport(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_2);
+		return NULL;
+	}
+	return stir_shaken_authenticate_to_passport_with_key(ss, params, passport_out, as->keys.priv_raw, as->keys.priv_raw_len);
+}
+
+char* stir_shaken_authenticate_to_sih_with_key(struct stir_shaken_context_s *ss, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out, unsigned char *key, uint32_t keylen)
+{
+	stir_shaken_passport_t*	passport = NULL;
+	char *sih = NULL;
+
+
+	if (!key || keylen == 0) {
+		stir_shaken_set_error(ss, "Private key missing", STIR_SHAKEN_ERROR_PRIVKEY_MISSING_3);
+		return NULL;
+	}
+
+	passport = stir_shaken_passport_create(ss, params, key, keylen);
+	if (!passport) {
+		stir_shaken_set_error(ss, "Failed to create PASSporT", STIR_SHAKEN_ERROR_AS_CREATE_PASSPORT_2);
+		return NULL;
+	}
+
+	sih = stir_shaken_jwt_sip_identity_create(ss, passport, NULL, 0);
+	if (!sih) {
+		stir_shaken_set_error(ss, "Failed to create SIP Identity Header", STIR_SHAKEN_ERROR_AS_CREATE_SIH);
+		stir_shaken_passport_destroy(&passport);
+		return NULL;
+	}
+
+	if (passport_out) {
+		*passport_out = passport;
+	} else {
+		stir_shaken_passport_destroy(&passport);
+	}
+
+	return sih;
+}
+
+char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params, stir_shaken_passport_t **passport_out)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_3);
+		return NULL;
+	}
+	return stir_shaken_authenticate_to_sih_with_key(ss, params, passport_out, as->keys.priv_raw, as->keys.priv_raw_len);
+}
+
+stir_shaken_status_t stir_shaken_as_install_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *where)
+{
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_5);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	return stir_shaken_x509_to_disk(ss, as->cert.x, where);
+}
+
+stir_shaken_vs_t* stir_shaken_vs_create(struct stir_shaken_context_s *ss)
+{
+	stir_shaken_vs_t *vs = malloc(sizeof(*vs));
+	if (!vs) {
+		stir_shaken_set_error(ss, "Out of memory", STIR_SHAKEN_ERROR_VS_MEM);
+		return NULL;
+	}
+	memset(vs, 0, sizeof(*vs));
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_init_cert_store(ss, &vs->store)) {
+		stir_shaken_set_error(ss, "Cannot init X509 cert store for CA certs", STIR_SHAKEN_ERROR_X509_CERT_STORE_INIT);
+		stir_shaken_vs_destroy(&vs);
+		return NULL;
+	}
+
+	return vs;
+}
+
+void stir_shaken_vs_destroy(stir_shaken_vs_t **vs)
+{
+	if (!vs || !*vs) return;
+	stir_shaken_x509_cert_store_cleanup(&(*vs)->store);
+	free(*vs);
+	*vs = NULL;
+}
+
+stir_shaken_status_t stir_shaken_vs_load_ca_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *ca_dir)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_1);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) vs->settings.ca_dir, 0, sizeof(vs->settings.ca_dir));
+
+	if (!stir_shaken_zstr(ca_dir)) {
+		strncpy(vs->settings.ca_dir, ca_dir, sizeof(vs->settings.ca_dir) - 1);
+		vs->settings.ca_dir[sizeof(vs->settings.ca_dir) - 1] = '\0';
+	}
+
+	return stir_shaken_x509_load_ca(ss, vs->store, NULL, ca_dir);
+}
+
+stir_shaken_status_t stir_shaken_vs_load_crl_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *crl_dir)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_2);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) vs->settings.crl_dir, 0, sizeof(vs->settings.crl_dir));
+
+	if (!stir_shaken_zstr(crl_dir)) {
+		strncpy(vs->settings.crl_dir, crl_dir, sizeof(vs->settings.crl_dir) - 1);
+		vs->settings.crl_dir[sizeof(vs->settings.crl_dir) - 1] = '\0';
+	}
+
+	return stir_shaken_x509_load_crl(ss, vs->store, NULL, crl_dir);
+}
+
+stir_shaken_status_t stir_shaken_vs_set_callback(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, stir_shaken_callback_t callback)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_3);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	vs->callback = callback;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
+{
+	stir_shaken_context_t	ss_local = { 0 };
+
+
+	if (!ss)
+		ss = &ss_local;
+
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_4);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	ss->callback = vs->callback;
+	return stir_shaken_x509_jwt_verify_and_check_x509_cert_path(ss, token, cert_out, jwt_out, vs->store);
+}
+
+stir_shaken_status_t stir_shaken_vs_passport_to_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
+{
+	stir_shaken_context_t	ss_local = { 0 };
+
+
+	if (!ss)
+		ss = &ss_local;
+
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_6);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	ss->callback = vs->callback;
+	return stir_shaken_x509_passport_verify_and_check_x509_cert_path(ss, token, cert_out, passport_out, vs->store);
+}
+
+stir_shaken_status_t stir_shaken_vs_sih_to_passport_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_passport_t **passport_out, stir_shaken_cert_t **cert_out, time_t iat_freshness)
+{
+	stir_shaken_context_t	ss_local = { 0 };
+
+
+	if (!ss)
+		ss = &ss_local;
+
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_5);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	ss->callback = vs->callback;
+	return stir_shaken_x509_sih_verify(ss, sih, passport_out, cert_out, iat_freshness, vs->store);
 }

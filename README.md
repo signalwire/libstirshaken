@@ -3,15 +3,89 @@
 STIR-Shaken is a technology for making secure calls by use of SSL certificates and JSON Web Tokens.
 For a general overview of the framwork please search web for: ATIS, "Signature-based Handling of Asserted Information using Tokens (SHAKEN). Governance Model and Certificate Management",
 (no link provided because spec is actively worked on and updated frequently).
+You can find a list of specs relevant to Shaken at the bottom of this document.
 
 ## libstirshaken
 
 This library provides building blocks for implementing STIR-Shaken authentication and verification services, (STI-SP/AS, STI-SP/VS),
 as well as elements of STI-CA and STI-PA.
 
+## Interoperability
+
 libstirshaken was tested for interoperability with other leading Shaken implementations (e.g. TransNexus).
 
-You can find a list of specs relevant to Shaken at the bottom of this document.
+## Basic usage
+
+Create PASSporT using Authentication Service interface:
+
+```
+stir_shaken_context_t ss = { 0 };
+stir_shaken_passport_params_t params = {
+    .x5u = "https://sp.com/sp.pem",
+    .attest = "A",
+    .desttn_key = "tn",
+     .desttn_val = "01256500600",
+     .iat = time(NULL),
+     .origtn_key = "tn",
+     .origtn_val = "01256789999",
+     .origid = "ref"
+};
+stir_shaken_passport_t *passport = NULL;
+char *s = NULL, *sih = NULL;
+stir_shaken_as_t *as = NULL;
+
+as = stir_shaken_as_create(&ss);
+stir_shaken_as_load_private_key(&ss, as, "sp.priv"); 
+encoded = stir_shaken_as_authenticate_to_passport(&ss, as, &params, &passport);
+```
+
+Print PASSporT in encoded form:
+ 
+```
+printf("\n1. PASSporT encoded:\n%s\n", encoded);
+```
+```
+1. PASSporT encoded:
+eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9zcC5jb20vc3AucGVtIn0.eyJhdHRlc3QiOiJBIiwiZGVzdCI6eyJ0biI6WyIwMTI1NjUwMDYwMCJdfSwiaWF0IjoxNjE0Nzg3MDk0LCJvcmlnIjp7InRuIjoiMDEyNTY3ODk5OTkifSwib3JpZ2lkIjoicmVmIn0.ULDQt5aWDSzVKhoyVDPmKwW7FuXEVaHPp7xuZsuGIeZRPqIsQfBRoVrgwo_UAvXmoFElG5zupafKVzJI0kXoSg
+```
+Print PASSporT in decoded (plain) form:
+```
+s = stir_shaken_passport_dump_str(&ss, passport, 1);
+printf("\n2. PASSporT decoded:\n%s\n", s);
+```
+```
+2. PASSporT decoded:
+
+{
+    "alg": "ES256",
+    "ppt": "shaken",
+    "typ": "passport",
+    "x5u": "https://sp.com/sp.pem"
+}
+.
+{
+    "attest": "A",
+    "dest": {
+        "tn": [
+            "01256500600"
+        ]
+    },
+    "iat": 1614787094,
+    "orig": {
+        "tn": "01256789999"
+    },
+    "origid": "ref"
+}
+```
+Create and print SIP Identity Header
+```
+sih = stir_shaken_as_authenticate_to_sih(&ss, as, &params, &passport);
+printf("\n3. SIP Identity Header:\n%s\n", sih);
+```
+```
+3. SIP Identity Header:
+eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9zcC5jb20vc3AucGVtIn0.eyJhdHRlc3QiOiJBIiwiZGVzdCI6eyJ0biI6WyIwMTI1NjUwMDYwMCJdfSwiaWF0IjoxNjE0Nzg3MDk0LCJvcmlnIjp7InRuIjoiMDEyNTY3ODk5OTkifSwib3JpZ2lkIjoicmVmIn0.7PMbuC-Rkvdd4dl57aX1Ym-tEtfAFrou8uTOrT7bKaqnpdUh6leKkyZzMAV3-gRgZA-TaFDv-lAGBY9Ifs1FMA;info=<https://sp.com/sp.pem>;alg=ES256;ppt=shaken
+```
 
 
 ## Folders
@@ -23,7 +97,13 @@ You can find a list of specs relevant to Shaken at the bottom of this document.
 	include/	- library headers
 	util/		- helper programs (stirshaken tool for running multiple commands, see below)
 	test/		- unit tests
-	examples/	- examples
+	examples/	- examples:
+						stir_shaken_as_basic_blocks.c - shows how Authentication Service may be constructed from the basic blocks
+						stir_shaken_as_easy.c - shows how to use default Authentication Service interface
+						stir_shaken_vs_basic_blocks.c - shows how Verification Service may be constructed from the basic blocks
+						stir_shaken_vs_easy.c - shows how to use default Verification Service interface
+						stir_shaken_ca.c - shows how Certificate Authority may be constructed from the basic blocks
+						stir_shaken_cert_req.c - shows how certificate may be requested and downloaded from CA
 ```
 
 ## Compilation

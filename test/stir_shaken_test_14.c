@@ -1,6 +1,7 @@
 #include <stir_shaken.h>
 
 const char *path = "./test/run";
+#define CA_DIR	"./test/ref/ca"
 
 
 stir_shaken_ca_t ca;
@@ -95,7 +96,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 
 
 	char *passport_encoded = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.G_6hnwPGAeUalviElXbxl4kKR5qenib6fRrCP-cgwKN2hMsSTXYjIFEhl_VqmeTB8dk9fidroDlFe8dPdyPy3g";
-	stir_shaken_passport_t	passport = {0};
+	stir_shaken_passport_t	*passport = NULL;
 	stir_shaken_cert_t		*cert = NULL;
 	int		iat_freshness_seconds = INT_MAX;
 	char	*passport_decoded = NULL;
@@ -104,7 +105,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 
 	// Test 1: callback set to default, should perform download of the certificate
 	ss.callback = stir_shaken_default_callback;
-	status = stir_shaken_jwt_verify_and_check_x509_cert_path(&ss, passport_encoded, &cert, &jwt);
+	status = stir_shaken_passport_verify_and_check_x509_cert_path(&ss, passport_encoded, &cert, &passport);
 	if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is:\n%s\n", error_description);
@@ -113,15 +114,14 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	stir_shaken_assert(http_req_mocked == 1, "HTTP request performed");
 	stir_shaken_assert(http_req_handled_from_cache == 0, "HTTP request handled with cert from cache");
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Wrong status");
-	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error not set");
-
-	stir_shaken_assert(stir_shaken_jwt_move_to_passport(NULL, jwt, &passport) == jwt, "JWT Move to PASSporT failed");
-	jwt = NULL;
+	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error set");
+	stir_shaken_assert(passport, "PASSporT not returned");
+	stir_shaken_assert(passport->jwt, "JWT not returned");
 
 	printf("\nPASSporT Verified.\n\n");
 
 	// Print PASSporT
-	passport_decoded = stir_shaken_passport_dump_str(&ss, &passport, 1);
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport, 1);
 	if (passport_decoded) {
 		printf("PASSporT is:\n%s\n", passport_decoded);
 		stir_shaken_free_jwt_str(passport_decoded);
@@ -138,14 +138,12 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_cert_copy(&ss, &cert_cached, cert), "Cannot cache certificate!");
 
 	stir_shaken_passport_destroy(&passport);
-	stir_shaken_destroy_cert(cert);
-	free(cert);
-	cert = NULL;
+	stir_shaken_cert_destroy(&cert);
 	http_req_mocked = 0;
 
 	// Test 2: callback set to custom function supplying certificates from cache
 	ss.callback = stir_shaken_test_callback;
-	status = stir_shaken_jwt_verify_and_check_x509_cert_path(&ss, passport_encoded, &cert, &jwt);
+	status = stir_shaken_passport_verify_and_check_x509_cert_path(&ss, passport_encoded, &cert, &passport);
 	if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is:\n%s\n", error_description);
@@ -154,15 +152,14 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	stir_shaken_assert(http_req_mocked == 0, "HTTP request performed");
 	stir_shaken_assert(http_req_handled_from_cache == 1, "HTTP request not handled with cert from cache");
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Wrong status");
-	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error not set");
-
-	stir_shaken_assert(stir_shaken_jwt_move_to_passport(NULL, jwt, &passport) == jwt, "JWT Move to PASSporT failed");
-	jwt = NULL;
+	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error set");
+	stir_shaken_assert(passport, "PASSporT not returned");
+	stir_shaken_assert(passport->jwt, "JWT not returned");
 
 	printf("\nPASSporT Verified.\n\n");
 
 	// Print PASSporT
-	passport_decoded = stir_shaken_passport_dump_str(&ss, &passport, 1);
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport, 1);
 	if (passport_decoded) {
 		printf("PASSporT is:\n%s\n", passport_decoded);
 		stir_shaken_free_jwt_str(passport_decoded);
@@ -176,10 +173,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	}
 
 	stir_shaken_passport_destroy(&passport);
-	stir_shaken_destroy_cert(cert);
-	free(cert);
-	cert = NULL;
-	stir_shaken_destroy_cert(&cert_cached);
+	stir_shaken_cert_destroy(&cert);
+	stir_shaken_cert_deinit(&cert_cached);
 
 	return STIR_SHAKEN_STATUS_OK;
 
@@ -192,7 +187,7 @@ fail:
 	}
 
 	// Print PASSporT
-	passport_decoded = stir_shaken_passport_dump_str(&ss, &passport, 1);
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport, 1);
 	if (passport_decoded) {
 		printf("PASSporT is:\n%s\n", passport_decoded);
 		stir_shaken_free_jwt_str(passport_decoded);
@@ -206,9 +201,7 @@ fail:
 	}
 
 	stir_shaken_passport_destroy(&passport);
-	stir_shaken_destroy_cert(cert);
-	free(cert);
-	cert = NULL;
+	stir_shaken_cert_destroy(&cert);
 	stir_shaken_do_deinit();
 
 	return STIR_SHAKEN_STATUS_FALSE;
@@ -216,23 +209,30 @@ fail:
 
 int main(int argc, char **argv)
 {
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, "test/ref/ca", NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
+	if (stir_shaken_dir_exists(CA_DIR) != STIR_SHAKEN_STATUS_OK) {
+		if (stir_shaken_dir_create_recursive(CA_DIR) != STIR_SHAKEN_STATUS_OK) {
+			printf("ERR: Cannot create test CA dir\n");
+			return -1;
+		}
+	}
+
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_do_init(NULL, CA_DIR, NULL, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
 
 	if (argc == 1) {
 
-        // MOCK http transfers by default
+		// MOCK http transfers by default
 		printf("Mocking HTTP requests...\n");
-        stir_shaken_make_http_req = stir_shaken_make_http_req_mock;
+		stir_shaken_make_http_req = stir_shaken_make_http_req_mock;
 
-    } else if (argc > 1 && !stir_shaken_zstr(argv[1]) && !strcmp(argv[1], "nomock")) {
+	} else if (argc > 1 && !stir_shaken_zstr(argv[1]) && !strcmp(argv[1], "nomock")) {
 
-        // do not MOCK
+		// do not MOCK
 		printf("Not mocking HTTP requests...\n");
 
-    } else {
-        printf("ERR: this program takes no argument or one argument which must be 'nomock'\n");
-        exit(EXIT_FAILURE);
-    }
+	} else {
+		printf("ERR: this program takes no argument or one argument which must be 'nomock'\n");
+		exit(EXIT_FAILURE);
+	}
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

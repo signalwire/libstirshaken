@@ -4,12 +4,12 @@ const char *path = "./test/run";
 const char *x5u = "https://not.here.org/passport.cer";
 const char *attest = "B";
 const char *desttn_key = "tn";
-const char *desttn_val = "1122334455";
+const char *desttn_val = "+90 2235";
 int iat = 0;
 int iat_freshness = 60;
-const char *origtn_key = "";
-const char *origtn_val = "99887766";
-const char *origid = "Trump's Office";
+const char *origtn_key = "tn";
+const char *origtn_val = "+80 2234";
+const char *origid = "Just testing";
 
 
 static int test_passport_data(stir_shaken_passport_t *passport)
@@ -77,7 +77,7 @@ static int test_passport_data(stir_shaken_passport_t *passport)
 	return 0;
 }
 
-stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
+stir_shaken_status_t stir_shaken_unit_test_as_authenticate_to_passport(void)
 {
 	stir_shaken_passport_t *passport = NULL;
 	char *p = NULL, *s = NULL, *encoded = NULL;
@@ -85,6 +85,7 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
 	stir_shaken_context_t ss = { 0 };
 	const char *error_description = NULL;
 	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
+	stir_shaken_as_t	*as = NULL;
 
 	stir_shaken_passport_params_t params = { .x5u = x5u, .attest = attest, .desttn_key = desttn_key, .desttn_val = desttn_val, .iat = iat = time(NULL), .origtn_key = origtn_key, .origtn_val = origtn_val, .origid = origid };
 
@@ -101,10 +102,10 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
 	int is_tn = 0;
 
 
-	sprintf(private_key_name, "%s%c%s", path, '/', "u7_private_key.pem");
-	sprintf(public_key_name, "%s%c%s", path, '/', "u7_public_key.pem");
+	sprintf(private_key_name, "%s%c%s", path, '/', "u15_private_key.pem");
+	sprintf(public_key_name, "%s%c%s", path, '/', "u15_public_key.pem");
 
-	printf("=== Unit testing: STIR/Shaken PASSporT data\n\n");
+	printf("=== Unit testing: STIR/Shaken AS authenticate to PASSporT\n\n");
 
 	// Generate new keys for this test
 	status = stir_shaken_generate_keys(&ss, &ec_key, &private_key, &public_key, private_key_name, public_key_name, priv_raw, &priv_raw_len);
@@ -124,7 +125,19 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
 	stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
 	/* Test */
-	passport = stir_shaken_passport_create(&ss, &params, priv_raw, priv_raw_len);
+	as = stir_shaken_as_create(&ss);
+
+	stir_shaken_assert(as, "Failed to create Authentication Service");
+
+	status = stir_shaken_as_load_private_key(&ss, as, private_key_name);
+	if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == status, "Failed to load private key");
+
+	encoded = stir_shaken_as_authenticate_to_passport(&ss, as, &params, &passport);
 	if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is: '%s'\n", error_description);
@@ -135,13 +148,19 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
 	stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
 	stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "PASSporT has not been created");
+	stir_shaken_assert(encoded, "PASSporT has not been created");
+	stir_shaken_assert(passport, "PASSporT has not been returned");
 	stir_shaken_assert(passport->jwt != NULL, "JWT has not been created");
+	printf("\n1. PASSporT encoded:\n%s\n", encoded);
+	free(encoded);
+	encoded = NULL;
+
 	s = stir_shaken_passport_dump_str(&ss, passport, 1);
-	printf("1. JWT:\n%s\n", s);
+	printf("2. PASSporT decoded:\n%s\n", s);
 	stir_shaken_free_jwt_str(s); s = NULL;
 
 	test_passport_data(passport);
+
 	id = stir_shaken_passport_get_identity(&ss, passport, &is_tn);
 	if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
@@ -150,7 +169,9 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
 	}
 	stir_shaken_assert(id, "Failed to get identity");
 	stir_shaken_assert(is_tn == 1, "Wrong tn form returned");
-	stir_shaken_assert(!strcmp(id, origtn_val), "Bad @tn returned");	
+	stir_shaken_assert(!strcmp(id, origtn_val), "Bad @tn returned");
+	free(id);
+	id = NULL;
 
 	status = stir_shaken_passport_sign(&ss, passport, priv_raw, priv_raw_len, &encoded);
 	if (stir_shaken_is_error_set(&ss)) {
@@ -163,23 +184,90 @@ stir_shaken_status_t stir_shaken_unit_test_passport_data(void)
 	error_description = stir_shaken_get_error(&ss, &error_code);
 	stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
 	stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
+	printf("\n3. PASSporT encoded again:\n%s\n", encoded);
 
 	test_passport_data(passport);
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_headers(&ss, passport), "Err, PASSporT validate hedaers");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_headers(&ss, passport), "Err, PASSporT validate headers");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_grants(&ss, passport), "Err, PASSporT validate grants");
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_headers_and_grants(&ss, passport), "Err, PASSporT validate grants");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_headers_and_grants(&ss, passport), "Err, PASSporT validate headers and grants");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_iat_against_freshness(&ss, passport, iat_freshness), "Err, PASSporT validate @iat");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate(&ss, passport, iat_freshness), "Err, PASSporT validate");
+
+	stir_shaken_free_jwt_str(encoded);
+	encoded = NULL;
+
+	stir_shaken_passport_destroy(&passport);
+
+	encoded = stir_shaken_authenticate_to_passport_with_key(&ss, &params, &passport, priv_raw, priv_raw_len);
+	if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
+	stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
+	error_description = stir_shaken_get_error(&ss, &error_code);
+	stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
+	stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
+
+	stir_shaken_assert(encoded, "PASSporT has not been created");
+	stir_shaken_assert(passport, "PASSporT has not been returned");
+	stir_shaken_assert(passport->jwt != NULL, "JWT has not been created");
+	printf("\n4. PASSporT encoded again:\n%s\n", encoded);
+	free(encoded);
+	encoded = NULL;
+
+	s = stir_shaken_passport_dump_str(&ss, passport, 1);
+	printf("5. PASSporT decoded again:\n%s\n", s);
+	stir_shaken_free_jwt_str(s); s = NULL;
+
+	test_passport_data(passport);
+
+	id = stir_shaken_passport_get_identity(&ss, passport, &is_tn);
+	if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
+	stir_shaken_assert(id, "Failed to get identity");
+	stir_shaken_assert(is_tn == 1, "Wrong tn form returned");
+	stir_shaken_assert(!strcmp(id, origtn_val), "Bad @tn returned");	
+	free(id);
+	id = NULL;
+
+	status = stir_shaken_passport_sign(&ss, passport, priv_raw, priv_raw_len, &encoded);
+	if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Failed to sign PASSporT");
+	stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
+	error_description = stir_shaken_get_error(&ss, &error_code);
+	stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
+	stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
+	printf("\n6. PASSporT encoded again:\n%s\n", encoded);
+
+	test_passport_data(passport);
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_headers(&ss, passport), "Err, PASSporT validate headers");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_grants(&ss, passport), "Err, PASSporT validate grants");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_headers_and_grants(&ss, passport), "Err, PASSporT validate headers and grants");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate_iat_against_freshness(&ss, passport, iat_freshness), "Err, PASSporT validate @iat");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_passport_validate(&ss, passport, iat_freshness), "Err, PASSporT validate");
 
 	printf("OK\n\n");
 
-	stir_shaken_free_jwt_str(encoded);
-	encoded = NULL;
-	free(id);
-	id = NULL;
+	if (encoded) {	
+		stir_shaken_free_jwt_str(encoded);
+		encoded = NULL;
+	}
+	if (id) {
+		free(id);
+		id = NULL;
+	}
 
 	stir_shaken_passport_destroy(&passport);
 	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
+	stir_shaken_as_destroy(&as);
 
 	return STIR_SHAKEN_STATUS_OK;
 }
@@ -197,7 +285,7 @@ int main(void)
 		}
 	}
 
-	if (stir_shaken_unit_test_passport_data() != STIR_SHAKEN_STATUS_OK) {
+	if (stir_shaken_unit_test_as_authenticate_to_passport() != STIR_SHAKEN_STATUS_OK) {
 
 		printf("Fail\n");
 		return -2;
