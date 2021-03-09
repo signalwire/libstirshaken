@@ -1131,11 +1131,7 @@ exit:
 		authz_challenge_details = NULL;
 	}
 
-	if (cert) {
-		stir_shaken_destroy_cert(cert);
-		free(cert);
-		cert = NULL;
-	}
+	stir_shaken_cert_destroy(&cert);
 
 	if (spc_token_jwt) {
 		jwt_free(spc_token_jwt);
@@ -1155,11 +1151,7 @@ fail:
 		authz_challenge_details = NULL;
 	}
 
-	if (cert) {
-		stir_shaken_destroy_cert(cert);
-		free(cert);
-		cert = NULL;
-	}
+	stir_shaken_cert_destroy(&cert);
 
 	if (spc_token_jwt) {
 		jwt_free(spc_token_jwt);

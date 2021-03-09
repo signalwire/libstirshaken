@@ -1879,7 +1879,16 @@ fail:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
-void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
+stir_shaken_cert_t* stir_shaken_cert_create(void)
+{
+	stir_shaken_cert_t *cert = malloc(sizeof(stir_shaken_cert_t));
+	if (cert) {
+		memset(cert, 0, sizeof(*cert));
+	}
+	return cert;
+}
+
+void stir_shaken_cert_deinit(stir_shaken_cert_t *cert)
 {
     if (cert) {
         // If X509 gets destroyed then notBefore_ASN1 and notAfter_ASN1 must be NULLED as those are internal pointers to SSL
@@ -1903,6 +1912,15 @@ void stir_shaken_destroy_cert(stir_shaken_cert_t *cert)
             X509_STORE_CTX_free(cert->verify_ctx);
             cert->verify_ctx = NULL;
         }
+    }
+}
+
+void stir_shaken_cert_destroy(stir_shaken_cert_t **cert)
+{
+    if (cert && *cert) {
+        stir_shaken_cert_deinit(*cert);
+		free(*cert);
+		*cert = NULL;
     }
 }
 

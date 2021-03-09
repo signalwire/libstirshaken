@@ -373,6 +373,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_SSL_X962SECG_CURVE,
 	STIR_SHAKEN_ERROR_SSL_ALLOCA_1,
 	STIR_SHAKEN_ERROR_SSL_ALLOCA_2,
+	STIR_SHAKEN_ERROR_CERT_CREATE,
 	STIR_SHAKEN_ERROR_CERT_NOT_SET,
 	STIR_SHAKEN_ERROR_CERT_INIT,
 	STIR_SHAKEN_ERROR_CERT_INVALID,
@@ -1063,7 +1064,9 @@ X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY 
 stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name);
 X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, const char* issuer_c, const char *issuer_cn, X509_REQ *req, int64_t serial, long expiry_days, char *tn_auth_list_uri);
 void stir_shaken_destroy_cert_fields(stir_shaken_cert_t *cert);
-void stir_shaken_destroy_cert(stir_shaken_cert_t *cert);
+stir_shaken_cert_t* stir_shaken_cert_create(void);
+void stir_shaken_cert_deinit(stir_shaken_cert_t *cert);
+void stir_shaken_cert_destroy(stir_shaken_cert_t **cert);
 stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert);
 stir_shaken_status_t stir_shaken_cert_init_validation(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, char *ca_list, char *ca_dir, char *crl_list, char *crl_dir);
 unsigned long stir_shaken_get_cert_name_hashed(stir_shaken_context_t *ss, X509 *x);

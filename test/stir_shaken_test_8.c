@@ -137,7 +137,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
 	stir_shaken_passport_destroy(&passport);
 
 	stir_shaken_destroy_csr(&csr);
-	stir_shaken_destroy_cert(&cert);
+	stir_shaken_cert_deinit(&cert);
 
 	free(sih);
 	sih = NULL;

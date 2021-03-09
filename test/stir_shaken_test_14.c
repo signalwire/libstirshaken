@@ -138,9 +138,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_cert_copy(&ss, &cert_cached, cert), "Cannot cache certificate!");
 
 	stir_shaken_passport_destroy(&passport);
-	stir_shaken_destroy_cert(cert);
-	free(cert);
-	cert = NULL;
+	stir_shaken_cert_destroy(&cert);
 	http_req_mocked = 0;
 
 	// Test 2: callback set to custom function supplying certificates from cache
@@ -175,10 +173,8 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	}
 
 	stir_shaken_passport_destroy(&passport);
-	stir_shaken_destroy_cert(cert);
-	free(cert);
-	cert = NULL;
-	stir_shaken_destroy_cert(&cert_cached);
+	stir_shaken_cert_destroy(&cert);
+	stir_shaken_cert_deinit(&cert_cached);
 
 	return STIR_SHAKEN_STATUS_OK;
 
@@ -205,9 +201,7 @@ fail:
 	}
 
 	stir_shaken_passport_destroy(&passport);
-	stir_shaken_destroy_cert(cert);
-	free(cert);
-	cert = NULL;
+	stir_shaken_cert_destroy(&cert);
 	stir_shaken_do_deinit();
 
 	return STIR_SHAKEN_STATUS_FALSE;

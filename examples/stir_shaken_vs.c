@@ -59,7 +59,7 @@ stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
 					goto exit;
 				}
 
-				stir_shaken_destroy_cert(&cache_copy);
+				stir_shaken_cert_deinit(&cache_copy);
 
 				return STIR_SHAKEN_STATUS_HANDLED;
 			}
@@ -123,9 +123,7 @@ void run_verification_service(stir_shaken_callback_t callback)
 	}
 
 	stir_shaken_passport_destroy(&passport);
-	stir_shaken_destroy_cert(cert);
-	free(cert);
-	cert = NULL;
+	stir_shaken_cert_destroy(&cert);
 
 	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
 	status = stir_shaken_sih_verify(&ss, sip_identity_header, &passport, &cert, iat_freshness_seconds);
@@ -163,9 +161,7 @@ exit:
 			printf("Certificate is:\n");
 			stir_shaken_print_cert_fields(stdout, cert);
 		}
-		stir_shaken_destroy_cert(cert);
-		free(cert);
-		cert = NULL;
+		stir_shaken_cert_destroy(&cert);
 	}
 
 	stir_shaken_passport_destroy(&passport);

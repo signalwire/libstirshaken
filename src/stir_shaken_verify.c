@@ -199,12 +199,11 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 		goto fail;
 	}
 
-	cert = malloc(sizeof(stir_shaken_cert_t));
+	cert = stir_shaken_cert_create();
 	if (!cert) {
-		stir_shaken_set_error(ss, "Cannot allocate cert", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Cannot allocate cert", STIR_SHAKEN_ERROR_CERT_CREATE);
 		goto fail;
 	}
-	memset(cert, 0, sizeof(stir_shaken_cert_t));
 
 	// In order to get the certificate we execute the callback checking if caller wants to perform this verification with local cert,
 	// because for instance, it could have been cached earlier. If the caller doesn't supply cert then we perform standard download over HTTP(S).
@@ -232,7 +231,7 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 			stir_shaken_set_error(ss, "Cannot copy certificate", STIR_SHAKEN_ERROR_CERT_COPY);
 			goto fail;
 		}
-		stir_shaken_destroy_cert(&ss->callback_arg.cert);
+		stir_shaken_cert_deinit(&ss->callback_arg.cert);
 
 	} else {
 
@@ -273,14 +272,8 @@ fail:
 
     stir_shaken_set_error_if_clear(ss, "Unknown error while verifying JWT", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 
-    if (cert) {
-        stir_shaken_destroy_cert(cert);
-        free(cert);
-        cert = NULL;
-    }
-
+	stir_shaken_cert_destroy(&cert);
     if (jwt) jwt_free(jwt);
-
     stir_shaken_destroy_http_request(&http_req);
 
     return STIR_SHAKEN_STATUS_FALSE;
@@ -371,9 +364,7 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
     if (cert_out) {
         *cert_out = cert;
     } else {
-        stir_shaken_destroy_cert(cert);
-        free(cert);
-        cert = NULL;
+        stir_shaken_cert_destroy(&cert);
     }
 
     if (jwt_out) {
@@ -388,10 +379,9 @@ fail:
 
     stir_shaken_set_error_if_clear(ss, "Unknown error while verifying JWT", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 
-    if (cert) {
-        stir_shaken_destroy_cert(cert);
-    }
+	stir_shaken_cert_destroy(&cert);
     if (jwt) jwt_free(jwt);
+
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
@@ -447,26 +437,18 @@ stir_shaken_status_t stir_shaken_jwt_verify_and_check_x509_cert_path(stir_shaken
     }
 
     if (cert_out) {
-
         // Note, cert must be destroyed by caller
         *cert_out = cert;
-
     } else {
-
-        stir_shaken_destroy_cert(cert);
-        free(cert);
-        cert = NULL;
+        stir_shaken_cert_destroy(&cert);
     }
     return STIR_SHAKEN_STATUS_OK;
 
 fail:
 
-    stir_shaken_destroy_cert(cert);
+    stir_shaken_cert_destroy(&cert);
     stir_shaken_destroy_http_request(&http_req);
     if (jwt) jwt_free(jwt);
-    if (cert) {
-        free(cert);
-    }
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
@@ -521,26 +503,20 @@ stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path(stir_s
     }
 
     if (cert_out) {
-
         // Note, cert must be destroyed by caller
         *cert_out = cert;
-
     } else {
-
-        stir_shaken_destroy_cert(cert);
-        free(cert);
-        cert = NULL;
+        stir_shaken_cert_destroy(&cert);
     }
+
     return STIR_SHAKEN_STATUS_OK;
 
 fail:
 
-    stir_shaken_destroy_cert(cert);
+    stir_shaken_cert_destroy(&cert);
     stir_shaken_destroy_http_request(&http_req);
     if (jwt) jwt_free(jwt);
-    if (cert) {
-        free(cert);
-    }
+
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
@@ -854,9 +830,7 @@ end:
 		// Note, cert must be destroyed by caller
 		*cert_out = cert;
 	} else {
-		stir_shaken_destroy_cert(cert);
-		free(cert);
-		cert = NULL;
+		stir_shaken_cert_destroy(&cert);
 	}
 
 	if (passport_out) {

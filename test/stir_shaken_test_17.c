@@ -45,7 +45,7 @@ stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
 					goto exit;
 				}
 
-				stir_shaken_destroy_cert(&cache_copy);
+				stir_shaken_cert_deinit(&cache_copy);
 
 				return STIR_SHAKEN_STATUS_HANDLED;
 			}
@@ -197,9 +197,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 
 	free(passport_encoded);
 	passport_encoded = NULL;
-	stir_shaken_destroy_cert(cert_out);
-	free(cert_out);
-	cert_out = NULL;
+	stir_shaken_cert_destroy(&cert_out);
 	jwt_free(jwt_out);
 	jwt_out = NULL;
 
@@ -225,7 +223,7 @@ fail:
 	}
 
 	// CA cleanup	
-	stir_shaken_destroy_cert(&ca.cert);
+	stir_shaken_cert_deinit(&ca.cert);
 	stir_shaken_destroy_keys_ex(&ca.keys.ec_key, &ca.keys.private_key, &ca.keys.public_key);
 
 	// SP cleanup	
@@ -236,10 +234,7 @@ fail:
 	stir_shaken_passport_destroy(&passport_out);
 	stir_shaken_passport_destroy(&passport);
 	stir_shaken_passport_destroy(&passport_2);
-	if (cert_out) {
-		stir_shaken_destroy_cert(cert_out);
-		free(cert_out);
-	}
+	stir_shaken_cert_destroy(&cert_out);
 	if (jwt_out) {
 		jwt_free(jwt_out);
 	}

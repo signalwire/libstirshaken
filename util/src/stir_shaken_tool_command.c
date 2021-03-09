@@ -686,9 +686,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 				jwt_free(jwt);
 				jwt = NULL;
-				stir_shaken_destroy_cert(cert);
-				free(cert);
-				cert = NULL;
+				stir_shaken_cert_destroy(&cert);
 			}
 
 			break;

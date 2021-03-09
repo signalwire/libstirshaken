@@ -544,7 +544,7 @@ const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t
 void stir_shaken_destroy_callback_arg(stir_shaken_callback_arg_t *arg)
 {
 	if (!arg) return;
-	stir_shaken_destroy_cert(&arg->cert);
+	stir_shaken_cert_deinit(&arg->cert);
 	memset(arg, 0, sizeof(*arg));
 }
 

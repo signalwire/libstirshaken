@@ -235,7 +235,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify_response(void)
 	X509_REQ_free(csr.req);
 	csr.req = NULL;
 
-	stir_shaken_destroy_cert(&cert);
+	stir_shaken_cert_deinit(&cert);
 
 	free(sih);
 	sih = NULL;

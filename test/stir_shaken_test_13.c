@@ -244,9 +244,7 @@ stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, s
 
 						stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_jwt_verify(&ca.ss, spc_token, &cert, &spc_token_verified_jwt), "SPC token did not pass verification");
 						stir_shaken_assert(cert, "Could not get PA cert");
-						stir_shaken_destroy_cert(cert);
-						free(cert);
-						cert = NULL;
+						stir_shaken_cert_destroy(&cert);
 						jwt_free(spc_token_jwt);
 						spc_token_jwt = NULL;
 

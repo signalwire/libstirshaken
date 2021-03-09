@@ -267,8 +267,7 @@ stir_shaken_status_t stir_shaken_unit_test_as_authenticate_to_passport(void)
 
 	stir_shaken_passport_destroy(&passport);
 	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
-	stir_shaken_as_destroy(as);
-	free(as);
+	stir_shaken_as_destroy(&as);
 
 	return STIR_SHAKEN_STATUS_OK;
 }

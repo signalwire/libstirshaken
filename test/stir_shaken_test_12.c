@@ -177,7 +177,7 @@ stir_shaken_status_t stir_shaken_unit_test_x509_cert_path_verification(void)
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == status, "Error, status should be OK");
 
 	// CA cleanup	
-	stir_shaken_destroy_cert(&ca.cert);
+	stir_shaken_cert_deinit(&ca.cert);
 	stir_shaken_destroy_keys_ex(&ca.keys.ec_key, &ca.keys.private_key, &ca.keys.public_key);
 
 	// SP cleanup	

@@ -637,7 +637,7 @@ void stir_shaken_as_destroy(stir_shaken_as_t **as)
 {
 	if (!as || !(*as)) return;
 	stir_shaken_destroy_keys(&(*as)->keys);
-	stir_shaken_destroy_cert(&(*as)->cert);
+	stir_shaken_cert_deinit(&(*as)->cert);
 	free(*as);
 	*as = NULL;
 }
@@ -689,7 +689,7 @@ stir_shaken_status_t stir_shaken_as_load_cert(struct stir_shaken_context_s *ss, 
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
-	stir_shaken_destroy_cert(&as->cert);
+	stir_shaken_cert_deinit(&as->cert);
 
 	as->cert.x = stir_shaken_load_x509_from_file(ss, as->settings.cert_name);
 	if (!as->cert.x) {

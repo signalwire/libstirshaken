@@ -149,7 +149,7 @@ stir_shaken_status_t stir_shaken_unit_test_jwt_authenticate_keep_passport(void)
 	passport_tx = NULL;
 
 	stir_shaken_destroy_csr(&csr);
-	stir_shaken_destroy_cert(&cert);
+	stir_shaken_cert_deinit(&cert);
 	stir_shaken_destroy_keys_ex(&ec_key, &private_key, &public_key);
 
 	return status;
