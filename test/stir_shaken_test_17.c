@@ -85,7 +85,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 		.origtn_val = "01256789999",
 		.origid = "ref"
 	};
-	stir_shaken_passport_t *passport = NULL, *passport_2 = NULL, *passport_out = { 0 };
+	stir_shaken_passport_t *passport = NULL, *passport_2 = NULL, *passport_out = NULL;
 	char *passport_encoded = NULL, *passport_decoded = NULL, *sip_identity_header = NULL;
 	int iat_freshness_seconds = INT_MAX;
 	stir_shaken_cert_t *cert_out = NULL;
@@ -153,7 +153,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	//sp.cert.x = stir_shaken_generate_x509_end_entity_cert(&ss, ca.cert.x, ca.keys.private_key, sp.keys.public_key, ca.issuer_c, ca.issuer_cn, sp.subject_c, sp.subject_cn, ca.serial_sp, ca.expiry_days_sp, ca.number_start_sp, ca.number_end_sp);
 	sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(&ss, ca.cert.x, ca.keys.private_key, ca.issuer_c, ca.issuer_cn, sp.csr.req, ca.serial, ca.expiry_days, ca.tn_auth_list_uri);
 	PRINT_SHAKEN_ERROR_IF_SET
-		stir_shaken_assert(sp.cert.x != NULL, "Err, generating Cert");
+	stir_shaken_assert(sp.cert.x != NULL, "Err, generating Cert");
 
 	// SAVE CSR and certificates
 
@@ -190,19 +190,26 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_callback(&ss, vs, cache_callback), "Failed to set cache callback");
 
 	// For pure Shaken we would have PASSporT
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT failed verification");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT verification failed");
+	stir_shaken_assert(jwt_out, "jwt not returned");
+	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_cert_destroy(&cert_out);
+	jwt_free(jwt_out);
+	jwt_out = NULL;
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert_out, &passport_out), "PASSporT verification failed");
+	stir_shaken_assert(passport_out, "PASSporT not returned");
+	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
 
 	printf("\nPASSporT Verified.\n");
 	printf("\nPASSporT is:\n%s\n\n", passport_encoded);
 
 	free(passport_encoded);
 	passport_encoded = NULL;
-	stir_shaken_cert_destroy(&cert_out);
-	jwt_free(jwt_out);
-	jwt_out = NULL;
 
 	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_to_passport_verify(&ss, vs, sip_identity_header, &passport_out, &cert_out, iat_freshness_seconds), "SIP Identity Header failed verification\n");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &passport_out, &cert_out, iat_freshness_seconds), "SIP Identity Header failed verification\n");
 
 	printf("\nSIP Identity Header verified.\n\n");
 
