@@ -401,7 +401,7 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 {
     char *sih = NULL;
 	char *token = NULL;
-	const char *info = NULL, *alg = NULL, *ppt = NULL;
+	const char *x5u = NULL, *alg = NULL, *ppt = NULL;
     size_t len = 0;
 
 	stir_shaken_clear_error(ss);
@@ -416,8 +416,8 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 		return NULL;
 	}
 
-	info = stir_shaken_passport_get_header(ss, passport, "x5u");
-	if (stir_shaken_zstr(info)) {
+	x5u = stir_shaken_passport_get_header(ss, passport, "x5u");
+	if (stir_shaken_zstr(x5u)) {
 		stir_shaken_set_error(ss, "SIP Identity create: @x5u missing", STIR_SHAKEN_ERROR_PASSPORT_X5U);
 		return NULL;
 	}
@@ -435,7 +435,7 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 	}
 
     // extra length of 15 for info=<> alg= ppt=
-    len = strlen(token) + 3 + strlen(info) + 1 + strlen(alg) + 1 + strlen(ppt) + 1 + 15;
+    len = strlen(token) + 3 + strlen(x5u) + 1 + strlen(alg) + 1 + strlen(ppt) + 1 + 15;
     sih = malloc(len);
     if (!sih) {
 		jwt_free_str(token);
@@ -443,7 +443,7 @@ char* stir_shaken_jwt_sip_identity_create(stir_shaken_context_t *ss, stir_shaken
 		return NULL;
 	}
 	memset(sih, 0, len);
-    snprintf(sih, len, "%s;info=<%s>;alg=%s;ppt=%s", token, info, alg, ppt);
+    snprintf(sih, len, "%s;info=<%s>;alg=%s;ppt=%s", token, x5u, alg, ppt);
 
 	jwt_free_str(token);
 

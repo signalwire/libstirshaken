@@ -126,7 +126,7 @@ void run_verification_service(stir_shaken_callback_t callback)
 	stir_shaken_cert_destroy(&cert);
 
 	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
-	status = stir_shaken_sih_verify(&ss, sip_identity_header, &passport, &cert, iat_freshness_seconds);
+	status = stir_shaken_sih_verify(&ss, sip_identity_header, &cert, &passport, iat_freshness_seconds);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("SIP Identity Header failed verification\n");
 		goto exit;

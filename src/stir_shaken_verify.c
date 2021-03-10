@@ -142,7 +142,7 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_s
     }
 
     if (stir_shaken_zstr(http_req->url)) {
-        stir_shaken_set_error(ss, "URL not set. Set URL on HTTP request?", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+        stir_shaken_set_error(ss, "URL not set. Set URL on HTTP request?", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO_1);
         return STIR_SHAKEN_STATUS_TERM;
     }
 
@@ -179,12 +179,12 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 	}
 
     if (!token) {
-        stir_shaken_set_error(ss, "Bad params: JWT token is missing", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+        stir_shaken_set_error(ss, "Bad params: JWT token is missing", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO_2);
         goto fail;
     }
 
     if (!cert_out) {
-        stir_shaken_set_error(ss, "Bad params: Pointer to result cert is NULL", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+        stir_shaken_set_error(ss, "Bad params: Pointer to result cert is NULL", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO_3);
         goto fail;
     }
 
@@ -232,6 +232,7 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 			goto fail;
 		}
 		stir_shaken_cert_deinit(&ss->callback_arg.cert);
+		ss->cert_fetched_from_cache = 1;
 
 	} else {
 
@@ -243,7 +244,7 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 
 		ss_status = stir_shaken_download_cert(ss, &http_req);
 		if (STIR_SHAKEN_STATUS_OK != ss_status) {
-			stir_shaken_set_error(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+			stir_shaken_set_error(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO_4);
 			goto fail;
 		}
 
@@ -279,22 +280,23 @@ fail:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t **passport_out)
+stir_shaken_status_t stir_shaken_sih_verify_with_key(stir_shaken_context_t *ss, const char *identity_header, unsigned char *key, int key_len, stir_shaken_passport_t **passport_out)
 {
-    unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
     unsigned char jwt_encoded[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-    int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
     jwt_t *jwt = NULL;
 
-    if (!identity_header || !cert) return STIR_SHAKEN_STATUS_TERM;
+    if (!identity_header) {
+		stir_shaken_set_error(ss, "Bad params (SIH missing)", STIR_SHAKEN_ERROR_BAD_PARAMS_27);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (!key || !key_len) {
+		stir_shaken_set_error(ss, "Bad params (key missing)", STIR_SHAKEN_ERROR_BAD_PARAMS_28);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
 
     if (stir_shaken_jwt_sih_to_jwt_encoded(ss, identity_header, &jwt_encoded[0], STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN) != STIR_SHAKEN_STATUS_OK) {
-        stir_shaken_set_error(ss, "Failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
-        return STIR_SHAKEN_STATUS_FALSE;
-    }
-
-    if (stir_shaken_get_pubkey_raw_from_cert(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
-        stir_shaken_set_error_if_clear(ss, "Failed to get public key in raw format from remote STI-SP certificate", STIR_SHAKEN_ERROR_SSL_3);
+        stir_shaken_set_error(ss, "Failed to parse SIP Identity Header into encoded JWT", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO_5);
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
@@ -325,6 +327,24 @@ stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss,
     return STIR_SHAKEN_STATUS_OK;
 }
 
+stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss, const char *identity_header, stir_shaken_cert_t *cert, stir_shaken_passport_t **passport_out)
+{
+    unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+    int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
+
+    if (!cert) {
+		stir_shaken_set_error(ss, "Bad params (cert missing)", STIR_SHAKEN_ERROR_BAD_PARAMS_29);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+    if (stir_shaken_get_pubkey_raw_from_cert(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {
+        stir_shaken_set_error_if_clear(ss, "Failed to get public key in raw format from remote STI-SP certificate", STIR_SHAKEN_ERROR_GET_PUBKEY_RAW_FROM_CERT);
+        return STIR_SHAKEN_STATUS_FALSE;
+    }
+
+    return stir_shaken_sih_verify_with_key(ss, identity_header, key, key_len, passport_out);
+}
+
 stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
 {
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
@@ -341,7 +361,7 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
 	}
 
     if (!token) {
-        stir_shaken_set_error(ss, "Bad params: JWT token is missing", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO);
+        stir_shaken_set_error(ss, "Bad params: JWT token is missing", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO_6);
         goto fail;
     }
 
@@ -696,7 +716,7 @@ stir_shaken_status_t stir_shaken_check_authority_over_number(stir_shaken_context
 // STIR_SHAKEN_ERROR_PASSPORT_INVALID							- Bad Identity Header, specifically: PASSporT is missing some mandatory fields
 // STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO					- Cannot download referenced certificate
 //
-stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_passport_t **passport_out, stir_shaken_cert_t **cert_out, time_t iat_freshness)
+stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const char *sih,  stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness)
 {
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
     stir_shaken_http_req_t	http_req = { 0 };
@@ -767,7 +787,7 @@ end:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_x509_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_passport_t **passport_out, stir_shaken_cert_t **cert_out, time_t iat_freshness, X509_STORE *store)
+stir_shaken_status_t stir_shaken_x509_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness, X509_STORE *store)
 {
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	stir_shaken_http_req_t	http_req = { 0 };

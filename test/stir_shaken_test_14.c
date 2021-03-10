@@ -113,6 +113,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	}
 	stir_shaken_assert(http_req_mocked == 1, "HTTP request performed");
 	stir_shaken_assert(http_req_handled_from_cache == 0, "HTTP request handled with cert from cache");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 0, "Cert fetched from cache should not be set");
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Wrong status");
 	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error set");
 	stir_shaken_assert(passport, "PASSporT not returned");
@@ -151,6 +152,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	}
 	stir_shaken_assert(http_req_mocked == 0, "HTTP request performed");
 	stir_shaken_assert(http_req_handled_from_cache == 1, "HTTP request not handled with cert from cache");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
 	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Wrong status");
 	stir_shaken_assert(!stir_shaken_is_error_set(&ss), "Error set");
 	stir_shaken_assert(passport, "PASSporT not returned");
