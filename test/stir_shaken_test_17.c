@@ -193,6 +193,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT verification failed");
 	stir_shaken_assert(jwt_out, "jwt not returned");
 	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
 	stir_shaken_cert_destroy(&cert_out);
 	jwt_free(jwt_out);
 	jwt_out = NULL;
@@ -208,8 +209,10 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	free(passport_encoded);
 	passport_encoded = NULL;
 
+	stir_shaken_clear_error(&ss);
+
 	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &passport_out, &cert_out, iat_freshness_seconds), "SIP Identity Header failed verification\n");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &cert_out, &passport_out, iat_freshness_seconds), "SIP Identity Header failed verification\n");
 
 	printf("\nSIP Identity Header verified.\n\n");
 
@@ -219,6 +222,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 		stir_shaken_free_jwt_str(passport_decoded);
 		passport_decoded = NULL;
 	}
+	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
 
 
 fail:
