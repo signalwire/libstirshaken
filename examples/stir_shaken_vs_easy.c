@@ -118,8 +118,10 @@ void run_verification_service(stir_shaken_callback_t callback)
 		stir_shaken_vs_set_callback(&ss, vs, callback);
 	}
 
+	stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 1);
+
 	// For pure Shaken we would have PASSporT
-	status = stir_shaken_vs_passport_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert, &passport);
+	status = stir_shaken_vs_passport_verify(&ss, vs, passport_encoded, &cert, &passport);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("PASSporT failed verification\n");
 		goto exit;

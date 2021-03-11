@@ -8,6 +8,7 @@ const char *path = "./test/run";
 stir_shaken_ca_t ca;
 stir_shaken_sp_t sp;
 stir_shaken_context_t ss;
+int cache_callback_called;
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
 	if (stir_shaken_is_error_set(&ss)) { \
@@ -22,6 +23,8 @@ stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
 	const char				*error_description = NULL;
 	stir_shaken_error_t		error_code = STIR_SHAKEN_ERROR_GENERAL;
 	stir_shaken_cert_t		cache_copy = { 0 };
+
+	cache_callback_called++;
 
 	switch (arg->action) {
 
@@ -183,21 +186,26 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(&ss, ca.cert.x, ca.cert_name_hashed)) { // "Failed to write CA certificate to CA dir");
 		PRINT_SHAKEN_ERROR_IF_SET
 	}
+	cache_callback_called = 0;
 
 	/* Test */
 	stir_shaken_assert(vs = stir_shaken_vs_create(&ss), "Cannot create Verification Service\n");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_load_ca_dir(&ss, vs, CA_DIR), "Failed to init X509 cert store");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_callback(&ss, vs, cache_callback), "Failed to set cache callback");
 
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 1), "Failed to turn on x509 cert path check");
+
 	// For pure Shaken we would have PASSporT
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT verification failed");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT verification failed");
 	stir_shaken_assert(jwt_out, "jwt not returned");
 	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_assert(cache_callback_called == 1, "Cache callback not called");
 	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
+	stir_shaken_assert(ss.x509_cert_path_check == 1, "X509 cert path check should be executed");
 	stir_shaken_cert_destroy(&cert_out);
 	jwt_free(jwt_out);
 	jwt_out = NULL;
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert_out, &passport_out), "PASSporT verification failed");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_verify(&ss, vs, passport_encoded, &cert_out, &passport_out), "PASSporT verification failed");
 	stir_shaken_assert(passport_out, "PASSporT not returned");
 	stir_shaken_assert(cert_out, "Cert not returned");
 	stir_shaken_passport_destroy(&passport_out);
@@ -209,7 +217,8 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	free(passport_encoded);
 	passport_encoded = NULL;
 
-	stir_shaken_clear_error(&ss);
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
 
 	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &cert_out, &passport_out, iat_freshness_seconds), "SIP Identity Header failed verification\n");
@@ -222,8 +231,34 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 		stir_shaken_free_jwt_str(passport_decoded);
 		passport_decoded = NULL;
 	}
+	stir_shaken_assert(cache_callback_called == 1, "Cache callback not called");
 	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
+	stir_shaken_assert(ss.x509_cert_path_check == 1, "X509 cert path check should be executed");
 
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+
+	// Test without X509 cert path verification
+
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 0), "Failed to turn off x509 cert path check");
+
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
+
+	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &cert_out, &passport_out, iat_freshness_seconds), "SIP Identity Header failed verification\n");
+
+	printf("\nSIP Identity Header verified.\n\n");
+
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport_out, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+	stir_shaken_assert(cache_callback_called == 1, "Cache callback should be called");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
+	stir_shaken_assert(ss.x509_cert_path_check == 0, "X509 cert path check should not be executed");
 
 fail:
 

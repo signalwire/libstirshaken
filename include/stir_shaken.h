@@ -425,6 +425,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_JWT_DECODE,
 	STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_1,
 	STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_2,
+	STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_3,
 	STIR_SHAKEN_ERROR_JWT_ADD_HDR_PPT,
 	STIR_SHAKEN_ERROR_JWT_ADD_HDR_TYP,
 	STIR_SHAKEN_ERROR_JWT_ADD_HDR_X5U,
@@ -714,6 +715,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_VS_MISSING_4,
 	STIR_SHAKEN_ERROR_VS_MISSING_5,
 	STIR_SHAKEN_ERROR_VS_MISSING_6,
+	STIR_SHAKEN_ERROR_VS_MISSING_7,
 	STIR_SHAKEN_ERROR_VS_MEM,
 	STIR_SHAKEN_ERROR_UNKNOWN_1,
 	STIR_SHAKEN_ERROR_UNKNOWN_2,
@@ -760,6 +762,7 @@ typedef struct stir_shaken_context_s {
 	stir_shaken_callback_t		callback;
 	stir_shaken_callback_arg_t	callback_arg;
 	uint8_t cert_fetched_from_cache;
+	uint8_t x509_cert_path_check;
 } stir_shaken_context_t;
 
 void stir_shaken_destroy_context(stir_shaken_context_t *ss);
@@ -1156,9 +1159,11 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
  * Optionally get cert and/or JWT out of the method.
  */
 stir_shaken_status_t stir_shaken_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out);
+stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, X509_STORE *store, uint8_t check_x509_cert_path);
 stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, X509_STORE *store);
 
 stir_shaken_status_t stir_shaken_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out);
+stir_shaken_status_t stir_shaken_x509_passport_verify_and_check_x509_cert_path_ex(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store, uint8_t check_x509_cert_path);
 stir_shaken_status_t stir_shaken_x509_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store);
 
 /**
@@ -1171,6 +1176,7 @@ stir_shaken_status_t stir_shaken_x509_passport_verify_and_check_x509_cert_path(s
  * NOTE: @passport_out and  *@cert_out may be NULL (will be malloced then and it is caller's responsibility to free it).
  */
 stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const char *sih,  stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness);
+stir_shaken_status_t stir_shaken_x509_sih_verify_ex(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness, X509_STORE *store, uint8_t check_x509_cert_path);
 stir_shaken_status_t stir_shaken_x509_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness, X509_STORE *store);
 
 /**
@@ -1343,6 +1349,7 @@ typedef struct stir_shaken_vs_settings_s {
 typedef struct stir_shaken_vs_s {
 	X509_STORE						*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
 	stir_shaken_callback_t			callback;
+	uint8_t							x509_cert_path_check;
 	stir_shaken_vs_settings_t		settings;
 } stir_shaken_vs_t;
 
@@ -1351,8 +1358,9 @@ void stir_shaken_vs_destroy(stir_shaken_vs_t **vs);
 stir_shaken_status_t stir_shaken_vs_load_ca_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *ca_dir);
 stir_shaken_status_t stir_shaken_vs_load_crl_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *crl_dir);
 stir_shaken_status_t stir_shaken_vs_set_callback(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, stir_shaken_callback_t callback);
-stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out);
-stir_shaken_status_t stir_shaken_vs_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out);
+stir_shaken_status_t stir_shaken_vs_set_x509_cert_path_check(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, uint8_t x);
+stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out);
+stir_shaken_status_t stir_shaken_vs_passport_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out);
 stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness);
 
 // @arg - PASSporT params

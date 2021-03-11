@@ -864,7 +864,19 @@ stir_shaken_status_t stir_shaken_vs_set_callback(struct stir_shaken_context_s *s
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
+stir_shaken_status_t stir_shaken_vs_set_x509_cert_path_check(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, uint8_t x)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_7);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	vs->x509_cert_path_check = x;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
 {
 	stir_shaken_context_t	ss_local = { 0 };
 
@@ -878,10 +890,10 @@ stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify_and_check_x509_cert_p
 	}
 
 	ss->callback = vs->callback;
-	return stir_shaken_x509_jwt_verify_and_check_x509_cert_path(ss, token, cert_out, jwt_out, vs->store);
+	return stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(ss, token, cert_out, jwt_out, vs->store, vs->x509_cert_path_check);
 }
 
-stir_shaken_status_t stir_shaken_vs_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
+stir_shaken_status_t stir_shaken_vs_passport_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
 {
 	stir_shaken_context_t	ss_local = { 0 };
 
@@ -895,7 +907,7 @@ stir_shaken_status_t stir_shaken_vs_passport_verify_and_check_x509_cert_path(sti
 	}
 
 	ss->callback = vs->callback;
-	return stir_shaken_x509_passport_verify_and_check_x509_cert_path(ss, token, cert_out, passport_out, vs->store);
+	return stir_shaken_x509_passport_verify_and_check_x509_cert_path_ex(ss, token, cert_out, passport_out, vs->store, vs->x509_cert_path_check);
 }
 
 stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness)
@@ -912,5 +924,5 @@ stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_s
 	}
 
 	ss->callback = vs->callback;
-	return stir_shaken_x509_sih_verify(ss, sih, cert_out, passport_out, iat_freshness, vs->store);
+	return stir_shaken_x509_sih_verify_ex(ss, sih, cert_out, passport_out, iat_freshness, vs->store, vs->x509_cert_path_check);
 }
