@@ -427,7 +427,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_and_check_x509_cert_path(stir_shaken
 
     ss_status = stir_shaken_jwt_verify(ss, token, &cert, &jwt);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_JWT_VERIFY_2);
+        stir_shaken_set_error(ss, "JWT did not pass signature check", STIR_SHAKEN_ERROR_JWT_VERIFY_2);
         goto fail;
     }
 
@@ -472,7 +472,7 @@ fail:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, X509_STORE *store)
+stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, X509_STORE *store, uint8_t check_x509_cert_path)
 {
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
     stir_shaken_http_req_t	http_req = { 0 };
@@ -493,27 +493,34 @@ stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path(stir_s
 
     ss_status = stir_shaken_jwt_verify(ss, token, &cert, &jwt);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_JWT_VERIFY_1);
+        stir_shaken_set_error(ss, "JWT did not pass signature check", STIR_SHAKEN_ERROR_JWT_VERIFY_1);
         goto fail;
     }
 
-    ss_status = stir_shaken_read_cert_fields(ss, cert);
-    if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Error parsing certificate", STIR_SHAKEN_ERROR_JWT_CERT_MALFORMED_1);
-        goto fail;
-    }
+	if (check_x509_cert_path) {
 
-    ss_status = stir_shaken_basic_cert_check(ss, cert);
-    if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Cert did not pass basic check (wrong version or expired)", STIR_SHAKEN_ERROR_JWT_CERT_INVALID_1);
-        goto fail;
-    }
+		if (ss) {
+			ss->x509_cert_path_check = 1;
+		}
 
-    ss_status = stir_shaken_x509_verify_cert_path(ss, cert, store);
-    if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_JWT_CERT_X509_PATH_INVALID_1);
-        goto fail;
-    }
+		ss_status = stir_shaken_read_cert_fields(ss, cert);
+		if (STIR_SHAKEN_STATUS_OK != ss_status) {
+			stir_shaken_set_error(ss, "Error parsing certificate", STIR_SHAKEN_ERROR_JWT_CERT_MALFORMED_1);
+			goto fail;
+		}
+
+		ss_status = stir_shaken_basic_cert_check(ss, cert);
+		if (STIR_SHAKEN_STATUS_OK != ss_status) {
+			stir_shaken_set_error(ss, "Cert did not pass basic check (wrong version or expired)", STIR_SHAKEN_ERROR_JWT_CERT_INVALID_1);
+			goto fail;
+		}
+
+		ss_status = stir_shaken_x509_verify_cert_path(ss, cert, store);
+		if (STIR_SHAKEN_STATUS_OK != ss_status) {
+			stir_shaken_set_error(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_JWT_CERT_X509_PATH_INVALID_1);
+			goto fail;
+		}
+	}
 
     if (jwt_out) {
         *jwt_out = jwt;
@@ -538,6 +545,11 @@ fail:
     if (jwt) jwt_free(jwt);
 
     return STIR_SHAKEN_STATUS_FALSE;
+}
+
+stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, X509_STORE *store)
+{
+	return stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(ss, token, cert_out, jwt_out, store, 1);
 }
 
 stir_shaken_status_t stir_shaken_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
@@ -579,7 +591,7 @@ end:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_x509_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store)
+stir_shaken_status_t stir_shaken_x509_passport_verify_and_check_x509_cert_path_ex(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store, uint8_t check_x509_cert_path)
 {
 	jwt_t	*jwt = NULL;
 	stir_shaken_passport_t *passport = NULL;
@@ -587,7 +599,7 @@ stir_shaken_status_t stir_shaken_x509_passport_verify_and_check_x509_cert_path(s
 
 	ss_status = stir_shaken_x509_jwt_verify_and_check_x509_cert_path(ss, token, cert_out, &jwt, store);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error(ss, "PASSporT failed verification", STIR_SHAKEN_ERROR_PASSPORT_INVALID_4);
+		stir_shaken_set_error(ss, "JWT failed verification with X509 cert path check", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_3);
 		goto end;
 	}
 
@@ -616,6 +628,11 @@ end:
 	if (jwt) jwt_free(jwt);
 
 	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+stir_shaken_status_t stir_shaken_x509_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store)
+{
+	return stir_shaken_x509_passport_verify_and_check_x509_cert_path_ex(ss, token, cert_out, passport_out, store, 1);
 }
 
 stir_shaken_status_t stir_shaken_check_authority_over_number(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport)
@@ -744,7 +761,7 @@ stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const cha
 
     ss_status = stir_shaken_jwt_verify_and_check_x509_cert_path(ss, (char *) jwt_encoded, cert_out, &jwt);
     if (ss_status != STIR_SHAKEN_STATUS_OK) {
-        stir_shaken_set_error(ss, "JWT verification with X509 cert path check unsuccessful", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_1);
+        stir_shaken_set_error(ss, "JWT failed verification with X509 cert path check", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_1);
         goto end;
     }
 
@@ -787,7 +804,7 @@ end:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_x509_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness, X509_STORE *store)
+stir_shaken_status_t stir_shaken_x509_sih_verify_ex(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness, X509_STORE *store, uint8_t check_x509_cert_path)
 {
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	stir_shaken_http_req_t	http_req = { 0 };
@@ -813,9 +830,9 @@ stir_shaken_status_t stir_shaken_x509_sih_verify(stir_shaken_context_t *ss, cons
 		goto end;
 	}
 
-	ss_status = stir_shaken_x509_jwt_verify_and_check_x509_cert_path(ss, (char *) jwt_encoded, &cert, &jwt, store);
+	ss_status = stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(ss, (char *) jwt_encoded, &cert, &jwt, store, check_x509_cert_path);
 	if (ss_status != STIR_SHAKEN_STATUS_OK) {
-		stir_shaken_set_error(ss, "JWT verification with X509 cert path check unsuccessful", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_2);
+		stir_shaken_set_error(ss, "JWT failed verification", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_2);
 		goto end;
 	}
 
@@ -861,6 +878,11 @@ end:
 	}
 
 	return ss_status;
+}
+
+stir_shaken_status_t stir_shaken_x509_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness, X509_STORE *store)
+{
+	return stir_shaken_x509_sih_verify_ex(ss, sih, cert_out, passport_out, iat_freshness, store, 1);
 }
 
 stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, time_t iat_freshness)
