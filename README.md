@@ -23,14 +23,14 @@ Create PASSporT using Authentication Service interface:
 ```
 stir_shaken_context_t ss = { 0 };
 stir_shaken_passport_params_t params = {
-    .x5u = "https://sp.com/sp.pem",
-    .attest = "A",
-    .desttn_key = "tn",
-     .desttn_val = "01256500600",
-     .iat = time(NULL),
-     .origtn_key = "tn",
-     .origtn_val = "01256789999",
-     .origid = "ref"
+	.x5u = "https://sp.com/sp.pem",
+	.attest = "A",
+	.desttn_key = "tn",
+	.desttn_val = "01256500600",
+	.iat = time(NULL),
+	.origtn_key = "tn",
+	.origtn_val = "01256789999",
+	.origid = "ref"
 };
 stir_shaken_passport_t *passport = NULL;
 char *s = NULL, *sih = NULL;
@@ -104,6 +104,11 @@ stir_shaken_vs_t *vs = NULL;
 stir_shaken_init(&ss, STIR_SHAKEN_LOGLEVEL_NOTHING);
 
 vs = stir_shaken_vs_create(&ss);
+```
+
+Optionally enable complete check on PASSporT involving X509 certificate path verification (and configure CA dir containing trusted CA root certificates)
+```
+stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 1);
 stir_shaken_vs_load_ca_dir(&ss, vs, "path/to/ca/dir");
 ```
 
