@@ -189,7 +189,7 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
     }
 
     if (0 != jwt_decode(&jwt, token, NULL, 0)) {
-        stir_shaken_set_error(ss, "Token is not JWT", STIR_SHAKEN_ERROR_JWT);
+        stir_shaken_set_error(ss, "JWT did not pass signature check", STIR_SHAKEN_ERROR_JWT_DECODE_1);
         goto fail;
     }
 
@@ -301,7 +301,7 @@ stir_shaken_status_t stir_shaken_sih_verify_with_key(stir_shaken_context_t *ss, 
     }
 
     if (jwt_decode(&jwt, (const char*) jwt_encoded, key, key_len)) {
-        stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
+        stir_shaken_set_error(ss, "JWT did not pass signature check", STIR_SHAKEN_ERROR_JWT_DECODE_3);
         jwt_free(jwt);
         return STIR_SHAKEN_STATUS_FALSE;
     }
@@ -377,7 +377,7 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
     }
 
     if (jwt_decode(&jwt, token, key, key_len)) {
-        stir_shaken_set_error(ss, "JWT cannot be decoded", STIR_SHAKEN_ERROR_JWT_DECODE);
+        stir_shaken_set_error(ss, "JWT did not pass signature check", STIR_SHAKEN_ERROR_JWT_DECODE_4);
         goto fail;
     }
 
@@ -493,7 +493,7 @@ stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(sti
 
     ss_status = stir_shaken_jwt_verify(ss, token, &cert, &jwt);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "JWT did not pass signature check", STIR_SHAKEN_ERROR_JWT_VERIFY_1);
+        stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_JWT_VERIFY_1);
         goto fail;
     }
 
@@ -560,7 +560,7 @@ stir_shaken_status_t stir_shaken_passport_verify_and_check_x509_cert_path(stir_s
 
 	ss_status = stir_shaken_jwt_verify_and_check_x509_cert_path(ss, token, cert_out, &jwt);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error(ss, "PASSporT failed verification", STIR_SHAKEN_ERROR_PASSPORT_INVALID_1);
+		stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_4);
 		goto end;
 	}
 
