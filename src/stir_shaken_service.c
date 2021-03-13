@@ -910,7 +910,7 @@ stir_shaken_status_t stir_shaken_vs_passport_verify(stir_shaken_context_t *ss, s
 	return stir_shaken_x509_passport_verify_and_check_x509_cert_path_ex(ss, token, cert_out, passport_out, vs->store, vs->x509_cert_path_check);
 }
 
-stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness)
+stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
 {
 	stir_shaken_context_t	ss_local = { 0 };
 
@@ -924,5 +924,5 @@ stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_s
 	}
 
 	ss->callback = vs->callback;
-	return stir_shaken_x509_sih_verify_ex(ss, sih, cert_out, passport_out, iat_freshness, vs->store, vs->x509_cert_path_check);
+	return stir_shaken_x509_sih_verify_ex(ss, sih, cert_out, passport_out, vs->store, vs->x509_cert_path_check);
 }

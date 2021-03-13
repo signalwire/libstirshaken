@@ -189,7 +189,7 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
     }
 
     if (0 != jwt_decode(&jwt, token, NULL, 0)) {
-        stir_shaken_set_error(ss, "JWT did not pass signature check", STIR_SHAKEN_ERROR_JWT_DECODE_1);
+        stir_shaken_set_error(ss, "Not a valid JWT (cannot be parsed into JSON)", STIR_SHAKEN_ERROR_JWT_INVALID_1);
         goto fail;
     }
 
@@ -733,7 +733,7 @@ stir_shaken_status_t stir_shaken_check_authority_over_number(stir_shaken_context
 // STIR_SHAKEN_ERROR_PASSPORT_INVALID							- Bad Identity Header, specifically: PASSporT is missing some mandatory fields
 // STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO					- Cannot download referenced certificate
 //
-stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const char *sih,  stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness)
+stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const char *sih,  stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
 {
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
     stir_shaken_http_req_t	http_req = { 0 };
@@ -804,7 +804,7 @@ end:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_x509_sih_verify_ex(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness, X509_STORE *store, uint8_t check_x509_cert_path)
+stir_shaken_status_t stir_shaken_x509_sih_verify_ex(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store, uint8_t check_x509_cert_path)
 {
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	stir_shaken_http_req_t	http_req = { 0 };
@@ -880,12 +880,12 @@ end:
 	return ss_status;
 }
 
-stir_shaken_status_t stir_shaken_x509_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness, X509_STORE *store)
+stir_shaken_status_t stir_shaken_x509_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store)
 {
-	return stir_shaken_x509_sih_verify_ex(ss, sih, cert_out, passport_out, iat_freshness, store, 1);
+	return stir_shaken_x509_sih_verify_ex(ss, sih, cert_out, passport_out, store, 1);
 }
 
-stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, time_t iat_freshness)
+stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, uint32_t iat_freshness)
 {
     stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_OK;
 
@@ -903,7 +903,7 @@ stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, st
 
     ss_status = stir_shaken_passport_validate_iat_against_freshness(ss, passport, iat_freshness);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "PASSporT expired", STIR_SHAKEN_ERROR_SIP_403_STALE_DATE);
+        stir_shaken_set_error(ss, "PASSporT expired", STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_2);
         return ss_status;
     }
 

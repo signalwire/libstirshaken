@@ -77,20 +77,20 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	unsigned long hash = 0;
 	char hashstr[100] = { 0 };
 	int hashstrlen = 100;
+	uint32_t iat = 0, iat_freshness_seconds = 60;
 
 	stir_shaken_passport_params_t params = {
 		.x5u = "https://sp.com/sp.pem",
 		.attest = "A",
 		.desttn_key = "tn",
 		.desttn_val = "01256500600",
-		.iat = time(NULL),
+		.iat = iat = time(NULL) + 120,
 		.origtn_key = "tn",
 		.origtn_val = "01256789999",
 		.origid = "ref"
 	};
 	stir_shaken_passport_t *passport = NULL, *passport_2 = NULL, *passport_out = NULL;
 	char *passport_encoded = NULL, *passport_decoded = NULL, *sip_identity_header = NULL;
-	int iat_freshness_seconds = INT_MAX;
 	stir_shaken_cert_t *cert_out = NULL;
 	jwt_t *jwt_out = NULL;
 
@@ -221,7 +221,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	cache_callback_called = 0;
 
 	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &cert_out, &passport_out, iat_freshness_seconds), "SIP Identity Header failed verification\n");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &cert_out, &passport_out), "SIP Identity Header failed verification\n");
 
 	printf("\nSIP Identity Header verified.\n\n");
 
@@ -246,7 +246,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	cache_callback_called = 0;
 
 	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &cert_out, &passport_out, iat_freshness_seconds), "SIP Identity Header failed verification\n");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &cert_out, &passport_out), "SIP Identity Header failed verification\n");
 
 	printf("\nSIP Identity Header verified.\n\n");
 

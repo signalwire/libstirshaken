@@ -439,6 +439,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_JWT_ADD_HEADERS_JSON,
 	STIR_SHAKEN_ERROR_JWT_ADD_GRANTS_JSON,
 	STIR_SHAKEN_ERROR_JWT_ENCODE,
+	STIR_SHAKEN_ERROR_JWT_INVALID_1,
 	STIR_SHAKEN_ERROR_JSON,
 	STIR_SHAKEN_ERROR_ACME,
 	STIR_SHAKEN_ERROR_ACME_URI,
@@ -623,7 +624,8 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID_TYP,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID_X5U,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT,
-	STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_1,
+	STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_2,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID_ORIGID,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID_ATTEST,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID_ORIG,
@@ -845,7 +847,7 @@ typedef struct stir_shaken_passport_params_s {
 	const char  *attest;
 	const char  *desttn_key;
 	const char  *desttn_val;
-	int         iat;
+	uint32_t	iat;
 	const char  *origtn_key;
 	const char  *origtn_val;
 	const char  *origid;
@@ -929,9 +931,9 @@ stir_shaken_status_t stir_shaken_passport_validate_grants(stir_shaken_context_t 
 stir_shaken_status_t stir_shaken_passport_validate_headers_and_grants(stir_shaken_context_t *ss, stir_shaken_passport_t *passport);
 
 /**
- * Validate that the PASSporT is fresh (has not expired yet, according to it's value of @iat and local policy for @iat_freshenss).
+ * Validate that the PASSporT applies to the current moment in time (is already active and has not expired yet).
  */
-stir_shaken_status_t stir_shaken_passport_validate_iat_against_freshness(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, time_t iat_freshness);
+stir_shaken_status_t stir_shaken_passport_validate_iat_against_freshness(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, uint32_t iat_freshness);
 
 /*
  * Sign the call with @passport and @key.
@@ -1179,14 +1181,14 @@ stir_shaken_status_t stir_shaken_x509_passport_verify_and_check_x509_cert_path(s
  *
  * NOTE: @passport_out and  *@cert_out may be NULL (will be malloced then and it is caller's responsibility to free it).
  */
-stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const char *sih,  stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness);
-stir_shaken_status_t stir_shaken_x509_sih_verify_ex(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness, X509_STORE *store, uint8_t check_x509_cert_path);
-stir_shaken_status_t stir_shaken_x509_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness, X509_STORE *store);
+stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const char *sih,  stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out);
+stir_shaken_status_t stir_shaken_x509_sih_verify_ex(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store, uint8_t check_x509_cert_path);
+stir_shaken_status_t stir_shaken_x509_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store);
 
 /**
- * Check PASSporT is technically correct and validate it's expiry.
+ * Check PASSporT is technically correct and applies to the current moment in time (according to value of @iat grant and @iat_freshness).
  */
-stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, time_t iat_freshness);
+stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, uint32_t iat_freshness);
 
 
 // Authentication service
@@ -1365,7 +1367,7 @@ stir_shaken_status_t stir_shaken_vs_set_callback(struct stir_shaken_context_s *s
 stir_shaken_status_t stir_shaken_vs_set_x509_cert_path_check(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, uint8_t x);
 stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out);
 stir_shaken_status_t stir_shaken_vs_passport_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out);
-stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness);
+stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out);
 
 // @arg - PASSporT params
 stir_shaken_status_t stir_shaken_as_authenticate(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params);
