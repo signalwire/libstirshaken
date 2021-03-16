@@ -91,6 +91,7 @@ void run_verification_service(stir_shaken_callback_t callback)
 	stir_shaken_passport_t *passport = NULL;
 	stir_shaken_cert_t *cert = NULL;
 	uint32_t iat_freshness_seconds = UINT_MAX;
+	unsigned long connect_timeout_s = 3;
 	char *passport_decoded = NULL;
 
 
@@ -120,6 +121,7 @@ void run_verification_service(stir_shaken_callback_t callback)
 	}
 
 	stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 1);
+	stir_shaken_vs_set_connect_timeout(&ss, vs, connect_timeout_s);
 
 	// For pure Shaken we would have PASSporT
 	status = stir_shaken_vs_passport_verify(&ss, vs, passport_encoded, &cert, &passport);

@@ -99,6 +99,7 @@ char *sip_identity_header = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InB
 stir_shaken_passport_t *passport_out = NULL;
 stir_shaken_cert_t *cert_out = NULL;
 int iat_freshness_seconds = 60;
+unsigned long connect_timeout_s = 5;
 stir_shaken_vs_t *vs = NULL;
 
 stir_shaken_init(&ss, STIR_SHAKEN_LOGLEVEL_NOTHING);
@@ -115,6 +116,11 @@ stir_shaken_vs_load_ca_dir(&ss, vs, "path/to/ca/dir");
 Optionally set your own callback to supply certificates from cache
 ```
 stir_shaken_vs_set_callback(&ss, vs, cache_callback);
+```
+
+Optionally set timeout on connect (default is 2 seconds)
+```
+stir_shaken_vs_set_connect_timeout(&ss, vs, connect_timeout_s);
 ```
 
 Verify PASSporT's signature (involves certificate downloading or fetching from cache, and X509 cert path check if turned on), input is PASSporT encoded, output is status and optionally certificate and PASSporT used during verification

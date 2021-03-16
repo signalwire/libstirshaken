@@ -159,10 +159,7 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_s
     return STIR_SHAKEN_STATUS_OK;
 }
 
-/*
- * cert - (in/out)
- */
-stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
+stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, unsigned long connect_timeout_s)
 {
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
     stir_shaken_http_req_t	http_req = { 0 };
@@ -238,6 +235,7 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 
 		// Download cert if it has not been supplied by the caller
 		http_req.url = strdup(cert_url);
+		http_req.connect_timeout_s = connect_timeout_s;
 
 		jwt_free(jwt);
 		jwt = NULL;
@@ -345,7 +343,7 @@ stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss,
     return stir_shaken_sih_verify_with_key(ss, identity_header, key, key_len, passport_out);
 }
 
-stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
+stir_shaken_status_t stir_shaken_jwt_check_signature(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, unsigned long connect_timeout_s)
 {
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
     long					res = CURLE_OK;
@@ -365,7 +363,7 @@ stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const cha
         goto fail;
     }
 
-    ss_status = stir_shaken_jwt_fetch_or_download_cert(ss, token, &cert, NULL);
+    ss_status = stir_shaken_jwt_fetch_or_download_cert(ss, token, &cert, NULL, connect_timeout_s);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
         stir_shaken_set_error(ss, "Failed to fetch or download certificate", STIR_SHAKEN_ERROR_CERT_FETCH_OR_DOWNLOAD);
         goto fail;
@@ -405,74 +403,7 @@ fail:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
-// DEPRECATED
-stir_shaken_status_t stir_shaken_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
-{
-    stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
-    stir_shaken_http_req_t	http_req = { 0 };
-    long					res = CURLE_OK;
-    stir_shaken_cert_t		*cert = NULL;
-    const char				*cert_url = NULL;
-    jwt_t					*jwt = NULL;
-	stir_shaken_context_t	ss_local = { 0 };
-
-    memset(&http_req, 0, sizeof(http_req));
-	if (!ss) ss = &ss_local;
-
-
-    if (!token) {
-        stir_shaken_set_error(ss, "Bad params: JWT token is missing", STIR_SHAKEN_ERROR_BAD_PARAMS_21);
-        goto fail;
-    }
-
-    ss_status = stir_shaken_jwt_verify(ss, token, &cert, &jwt);
-    if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "JWT did not pass signature check", STIR_SHAKEN_ERROR_JWT_VERIFY_2);
-        goto fail;
-    }
-
-    ss_status = stir_shaken_read_cert_fields(ss, cert);
-    if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Error parsing certificate", STIR_SHAKEN_ERROR_JWT_CERT_MALFORMED_2);
-        goto fail;
-    }
-
-    ss_status = stir_shaken_basic_cert_check(ss, cert);
-    if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Cert did not pass basic check (wrong version or expired)", STIR_SHAKEN_ERROR_JWT_CERT_INVALID_2);
-        goto fail;
-    }
-
-    ss_status = stir_shaken_verify_cert_path(ss, cert);
-    if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_JWT_CERT_X509_PATH_INVALID_2);
-        goto fail;
-    }
-
-    if (jwt_out) {
-        *jwt_out = jwt;
-    } else {
-        jwt_free(jwt);
-        jwt = NULL;
-    }
-
-    if (cert_out) {
-        // Note, cert must be destroyed by caller
-        *cert_out = cert;
-    } else {
-        stir_shaken_cert_destroy(&cert);
-    }
-    return STIR_SHAKEN_STATUS_OK;
-
-fail:
-
-    stir_shaken_cert_destroy(&cert);
-    stir_shaken_destroy_http_request(&http_req);
-    if (jwt) jwt_free(jwt);
-    return STIR_SHAKEN_STATUS_FALSE;
-}
-
-stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, X509_STORE *store, uint8_t check_x509_cert_path)
+stir_shaken_status_t stir_shaken_jwt_verify_ex(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, X509_STORE *store, uint8_t check_x509_cert_path, unsigned long connect_timeout_s)
 {
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
     stir_shaken_http_req_t	http_req = { 0 };
@@ -491,7 +422,7 @@ stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(sti
         goto fail;
     }
 
-    ss_status = stir_shaken_jwt_verify(ss, token, &cert, &jwt);
+    ss_status = stir_shaken_jwt_check_signature(ss, token, &cert, &jwt, connect_timeout_s);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
         stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_JWT_VERIFY_1);
         goto fail;
@@ -500,7 +431,7 @@ stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(sti
 	if (check_x509_cert_path) {
 
 		if (ss) {
-			ss->x509_cert_path_check = 1;
+			ss->x509_cert_path_checked = 1;
 		}
 
 		ss_status = stir_shaken_read_cert_fields(ss, cert);
@@ -515,7 +446,7 @@ stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(sti
 			goto fail;
 		}
 
-		ss_status = stir_shaken_x509_verify_cert_path(ss, cert, store);
+		ss_status = stir_shaken_verify_cert_path(ss, cert, store);
 		if (STIR_SHAKEN_STATUS_OK != ss_status) {
 			stir_shaken_set_error(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_JWT_CERT_X509_PATH_INVALID_1);
 			goto fail;
@@ -547,57 +478,18 @@ fail:
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_x509_jwt_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, X509_STORE *store)
+stir_shaken_status_t stir_shaken_jwt_verify(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, unsigned long connect_timeout_s)
 {
-	return stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(ss, token, cert_out, jwt_out, store, 1);
+	return stir_shaken_jwt_verify_ex(ss, token, cert_out, jwt_out, stir_shaken_globals.store, 1, connect_timeout_s);
 }
 
-stir_shaken_status_t stir_shaken_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
+stir_shaken_status_t stir_shaken_passport_verify_ex(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store, uint8_t check_x509_cert_path, unsigned long connect_timeout_s)
 {
 	jwt_t	*jwt = NULL;
 	stir_shaken_passport_t *passport = NULL;
     stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 
-	ss_status = stir_shaken_jwt_verify_and_check_x509_cert_path(ss, token, cert_out, &jwt);
-	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_4);
-		goto end;
-	}
-
-	if (passport_out) {
-
-		passport = stir_shaken_passport_create(ss, NULL, NULL, 0);
-		if (!passport) {
-			stir_shaken_set_error(ss, "Failed to create PASSporT", STIR_SHAKEN_ERROR_PASSPORT_CREATE_5);
-			goto end;
-		}
-
-		if (!stir_shaken_jwt_move_to_passport(ss, jwt, passport)) {
-			stir_shaken_set_error(ss, "Failed to assign JWT to PASSporT", STIR_SHAKEN_ERROR_SIH_JWT_MOVE_TO_PASSPORT_4);
-			jwt_free(jwt);
-			stir_shaken_passport_destroy(&passport);
-			goto end;
-		}
-		jwt = NULL;
-
-		*passport_out = passport;
-	}
-
-	return ss_status;
-
-end:
-	if (jwt) jwt_free(jwt);
-
-	return STIR_SHAKEN_STATUS_FALSE;
-}
-
-stir_shaken_status_t stir_shaken_x509_passport_verify_and_check_x509_cert_path_ex(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store, uint8_t check_x509_cert_path)
-{
-	jwt_t	*jwt = NULL;
-	stir_shaken_passport_t *passport = NULL;
-    stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
-
-	ss_status = stir_shaken_x509_jwt_verify_and_check_x509_cert_path(ss, token, cert_out, &jwt, store);
+	ss_status = stir_shaken_jwt_verify_ex(ss, token, cert_out, &jwt, store, check_x509_cert_path, connect_timeout_s);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "JWT failed verification with X509 cert path check", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_3);
 		goto end;
@@ -630,9 +522,9 @@ end:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
-stir_shaken_status_t stir_shaken_x509_passport_verify_and_check_x509_cert_path(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store)
+stir_shaken_status_t stir_shaken_passport_verify(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, unsigned long connect_timeout_s)
 {
-	return stir_shaken_x509_passport_verify_and_check_x509_cert_path_ex(ss, token, cert_out, passport_out, store, 1);
+	return stir_shaken_passport_verify_ex(ss, token, cert_out, passport_out, stir_shaken_globals.store, 1, connect_timeout_s);
 }
 
 stir_shaken_status_t stir_shaken_check_authority_over_number(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, stir_shaken_passport_t *passport)
@@ -665,146 +557,7 @@ stir_shaken_status_t stir_shaken_check_authority_over_number(stir_shaken_context
     return STIR_SHAKEN_STATUS_OK;
 }
 
-// DEPRECATED
-
-// 5.3.1 PASSporT & Identity Header Verification
-// The certificate referenced in the info parameter of the Identity header field shall be validated by performing the
-// following:
-// - Check the certificate's validity using the Basic Path Validation algorithm defined in the X.509
-// certificate standard (RFC 5280).
-// - Check that the certificate is not revoked using CRLs and/or OCSP.
-// The verifier validates that the PASSporT token provided in the Identity header of the INVITE includes all of the
-// baseline claims, as well as the SHAKEN extension claims. The verifier shall also follow the draft-ietf-stir-
-// rfc4474bis-defined verification procedures to check the corresponding date, originating identity (i.e., the
-// originating telephone number) and destination identities (i.e., the terminating telephone numbers).
-// The orig claim and dest claim shall be of type tn.
-//
-// The orig claim tn value validation shall be performed as follows:
-// - The P-Asserted-Identity header field value shall be checked as the telephone identity to be validated if
-// present, otherwise the From header field value shall also be checked.
-// - If there are two P-Asserted-Identity values, the verification service shall check each of them until it finds
-// one that is valid.
-// NOTE: As discussed in draft-ietf-stir-rfc4474bis, call features such as call forwarding can cause calls to reach a
-// destination different from the number in the To header field. The problem of determining whether or not these call
-// features or other B2BUA functions have been used legitimately is out of scope of STIR. It is expected that future
-// SHAKEN documents will address these use cases.
-//
-// Return: 
-// 	STIR_SHAKEN_STATUS_OK - passed
-// 	STIR_SHAKEN_STATUS_FALSE - failed
-//
-// ERRORS
-// ======
-// There are five main procedural errors defined in draft-ietf-stir-rfc4474bis that can identify issues with the validation
-// of the Identity header field. The error conditions and their associated response codes and reason phrases are as
-// follows:
-// 403 Stale Date - Sent when the verification service receives a request with a Date header field value
-// that is older than the local policy 3 for freshness permits. The same response may be used when the "iat"
-// has a value older than the local policy for freshness permits.
-// 428 'Use Identity Header' is not recommended for SHAKEN until a point where all calls on the VoIP
-// network are mandated to be signed either by local or global policy.
-// 436 'Bad-Identity-Info' - The URI in the info parameter cannot be dereferenced (i.e., the request times
-// out or receives a 4xx or 5xx error).
-// 437 'Unsupported credential' - This error occurs when a credential is supplied by the info parameter
-// but the verifier doesntt support it or it doesn't contain the proper certificate chain in order to trust the
-// credentials.
-// 438 Invalid Identity Header -  This occurs if the signature verification fails.
-// If any of the above error conditions are detected, the terminating network shall convey the response code and
-// reason phrase back to the originating network, indicating which one of the five error scenarios has occurred. How
-// this error information is signaled to the originating network depends on the disposition of the call as a result of the
-// error. If local policy dictates that the call should not proceed due to the error, then the terminating network shall
-// include the error response code and reason phrase in the status line of a final 4xx error response sent to the
-// originating network. On the other hand, if local policy dictates that the call should continue, then the terminating
-// network shall include the error response code and reason phrase in a Reason header field (defined in [RFC
-// 3326]) in the next provisional or final response sent to the originating network as a result of normal terminating
-// call processing.
-// Example of Reason header field:
-// Reason: SIP ;cause=436 ;text="Bad Identity Info"
-// In addition, if any of the base claims or SHAKEN extension claims are missing from the PASSporT token claims,
-// the verification service shall treat this as a 438 Invalid Identity Header error and proceed as defined above.
-// 
-//
-// Errors:
-//
-// STIR_SHAKEN_ERROR_CERT_INIT									- Cannot instantiate verification context (CA list / Revocation list wrong or missing)
-// STIR_SHAKEN_ERROR_CERT_INVALID								- Certificate did not pass X509 path validation against CA list and CRL
-// STIR_SHAKEN_ERROR_TNAUTHLIST									- TNAuthList extension wrong or missing
-// STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER			- Bad Identity Header, missing fields, malformed content, didn't pass the signature check, etc.
-// STIR_SHAKEN_ERROR_PASSPORT_INVALID							- Bad Identity Header, specifically: PASSporT is missing some mandatory fields
-// STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO					- Cannot download referenced certificate
-//
-stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const char *sih,  stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
-{
-    stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
-    stir_shaken_http_req_t	http_req = { 0 };
-    long					res = CURLE_OK;
-    stir_shaken_cert_t		*cert = NULL;
-
-    unsigned char jwt_encoded[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-    jwt_t *jwt = NULL;
-
-    stir_shaken_clear_error(ss);
-    memset(&http_req, 0, sizeof(http_req));
-	stir_shaken_passport_t *passport = NULL;
-
-	
-	if (!sih) {
-		stir_shaken_set_error(ss, "SIP Identity Header not set", STIR_SHAKEN_ERROR_BAD_PARAMS_24);
-		goto end;
-	}
-	
-    ss_status = stir_shaken_jwt_sih_to_jwt_encoded(ss, sih, &jwt_encoded[0], STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN);
-    if (ss_status != STIR_SHAKEN_STATUS_OK) {
-        stir_shaken_set_error(ss, "Failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_SIH_TO_JWT_1);
-        goto end;
-    }
-
-    ss_status = stir_shaken_jwt_verify_and_check_x509_cert_path(ss, (char *) jwt_encoded, cert_out, &jwt);
-    if (ss_status != STIR_SHAKEN_STATUS_OK) {
-        stir_shaken_set_error(ss, "JWT failed verification with X509 cert path check", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_1);
-        goto end;
-    }
-
-	if (passport_out) {
-
-		passport = stir_shaken_passport_create(ss, NULL, NULL, 0);
-		if (!passport) {
-			stir_shaken_set_error(ss, "Failed to create PASSporT", STIR_SHAKEN_ERROR_PASSPORT_CREATE_4);
-			goto end;
-		}
-
-		if (!stir_shaken_jwt_move_to_passport(ss, jwt, passport)) {
-			stir_shaken_set_error(ss, "Failed to assign JWT to PASSporT", STIR_SHAKEN_ERROR_SIH_JWT_MOVE_TO_PASSPORT_2);
-			stir_shaken_passport_destroy(&passport);
-			goto end;
-		}
-		jwt = NULL;
-
-		*passport_out = passport;
-	}
-
-    // TODO move it outside as an optional check
-#if STIR_SHAKEN_CHECK_AUTHORITY_OVER_NUMBER
-
-    ss_status = stir_shaken_check_authority_over_number(ss, cert, passport);
-    if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "Caller has no authority over the call origin", STIR_SHAKEN_ERROR_AUTHORITY_CHECK_1);
-        goto end;
-    }
-
-#endif
-
-end:
-
-	if (jwt) {
-		jwt_free(jwt);
-		jwt = NULL;
-	}
-
-    return STIR_SHAKEN_STATUS_FALSE;
-}
-
-stir_shaken_status_t stir_shaken_x509_sih_verify_ex(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store, uint8_t check_x509_cert_path)
+stir_shaken_status_t stir_shaken_sih_verify_ex(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store, uint8_t check_x509_cert_path, unsigned long connect_timeout_s)
 {
 	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
 	stir_shaken_http_req_t	http_req = { 0 };
@@ -830,7 +583,7 @@ stir_shaken_status_t stir_shaken_x509_sih_verify_ex(stir_shaken_context_t *ss, c
 		goto end;
 	}
 
-	ss_status = stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(ss, (char *) jwt_encoded, &cert, &jwt, store, check_x509_cert_path);
+	ss_status = stir_shaken_jwt_verify_ex(ss, (char *) jwt_encoded, &cert, &jwt, store, check_x509_cert_path, connect_timeout_s);
 	if (ss_status != STIR_SHAKEN_STATUS_OK) {
 		stir_shaken_set_error(ss, "JWT failed verification", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_2);
 		goto end;
@@ -880,9 +633,9 @@ end:
 	return ss_status;
 }
 
-stir_shaken_status_t stir_shaken_x509_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store)
+stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, unsigned long connect_timeout_s)
 {
-	return stir_shaken_x509_sih_verify_ex(ss, sih, cert_out, passport_out, store, 1);
+	return stir_shaken_sih_verify_ex(ss, sih, cert_out, passport_out, stir_shaken_globals.store, 1, connect_timeout_s);
 }
 
 stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, uint32_t iat_freshness)

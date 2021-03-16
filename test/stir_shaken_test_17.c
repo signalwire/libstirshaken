@@ -78,6 +78,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	char hashstr[100] = { 0 };
 	int hashstrlen = 100;
 	uint32_t iat = 0, iat_freshness_seconds = 60;
+	unsigned long connect_timeout_s = 3;
 
 	stir_shaken_passport_params_t params = {
 		.x5u = "https://sp.com/sp.pem",
@@ -114,7 +115,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	ca.keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
 	status = stir_shaken_generate_keys(&ss, &ca.keys.ec_key, &ca.keys.private_key, &ca.keys.public_key, ca.private_key_name, ca.public_key_name, ca.keys.priv_raw, &ca.keys.priv_raw_len);
 	PRINT_SHAKEN_ERROR_IF_SET
-		stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
 	stir_shaken_assert(ca.keys.ec_key != NULL, "Err, failed to generate EC key\n\n");
 	stir_shaken_assert(ca.keys.private_key != NULL, "Err, failed to generate private key");
 	stir_shaken_assert(ca.keys.public_key != NULL, "Err, failed to generate public key");
@@ -124,7 +125,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	sp.keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
 	status = stir_shaken_generate_keys(&ss, &sp.keys.ec_key, &sp.keys.private_key, &sp.keys.public_key, sp.private_key_name, sp.public_key_name, sp.keys.priv_raw, &sp.keys.priv_raw_len);
 	PRINT_SHAKEN_ERROR_IF_SET
-		stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
 	stir_shaken_assert(sp.keys.ec_key != NULL, "Err, failed to generate EC key\n\n");
 	stir_shaken_assert(sp.keys.private_key != NULL, "Err, failed to generate private key");
 	stir_shaken_assert(sp.keys.public_key != NULL, "Err, failed to generate public key");
@@ -136,7 +137,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 
 	status = stir_shaken_generate_csr(&ss, sp.code, &sp.csr.req, sp.keys.private_key, sp.keys.public_key, sp.subject_c, sp.subject_cn);
 	PRINT_SHAKEN_ERROR_IF_SET
-		stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
 
 	printf("CA: Create self-signed CA Certificate\n");
 
@@ -146,7 +147,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	ca.expiry_days = 90;
 	ca.cert.x = stir_shaken_generate_x509_self_signed_ca_cert(&ss, ca.keys.private_key, ca.keys.public_key, ca.issuer_c, ca.issuer_cn, ca.serial, ca.expiry_days);
 	PRINT_SHAKEN_ERROR_IF_SET
-		stir_shaken_assert(ca.cert.x, "Err, generating CA cert");
+	stir_shaken_assert(ca.cert.x, "Err, generating CA cert");
 
 	printf("CA: Create end-entity SP Certificate from SP's CSR\n");
 	snprintf(ca.tn_auth_list_uri, STIR_SHAKEN_BUFLEN, "http://ca.com/api");
@@ -192,7 +193,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	stir_shaken_assert(vs = stir_shaken_vs_create(&ss), "Cannot create Verification Service\n");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_load_ca_dir(&ss, vs, CA_DIR), "Failed to init X509 cert store");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_callback(&ss, vs, cache_callback), "Failed to set cache callback");
-
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_connect_timeout(&ss, vs, connect_timeout_s), "Failed to set connect timeout");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 1), "Failed to turn on x509 cert path check");
 
 	// For pure Shaken we would have PASSporT
@@ -201,7 +202,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	stir_shaken_assert(cert_out, "Cert not returned");
 	stir_shaken_assert(cache_callback_called == 1, "Cache callback not called");
 	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
-	stir_shaken_assert(ss.x509_cert_path_check == 1, "X509 cert path check should be executed");
+	stir_shaken_assert(ss.x509_cert_path_checked == 1, "X509 cert path check should be executed");
 	stir_shaken_cert_destroy(&cert_out);
 	jwt_free(jwt_out);
 	jwt_out = NULL;
@@ -233,7 +234,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	}
 	stir_shaken_assert(cache_callback_called == 1, "Cache callback not called");
 	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
-	stir_shaken_assert(ss.x509_cert_path_check == 1, "X509 cert path check should be executed");
+	stir_shaken_assert(ss.x509_cert_path_checked == 1, "X509 cert path check should be executed");
 
 	stir_shaken_passport_destroy(&passport_out);
 	stir_shaken_cert_destroy(&cert_out);
@@ -258,7 +259,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	}
 	stir_shaken_assert(cache_callback_called == 1, "Cache callback should be called");
 	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
-	stir_shaken_assert(ss.x509_cert_path_check == 0, "X509 cert path check should not be executed");
+	stir_shaken_assert(ss.x509_cert_path_checked == 0, "X509 cert path check should not be executed");
 
 fail:
 

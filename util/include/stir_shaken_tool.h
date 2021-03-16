@@ -68,10 +68,11 @@
 #define OPTION_DESTTN		25
 #define OPTION_ORIGID		26
 #define OPTION_ATTEST		27
-#define OPTION_V			28
-#define OPTION_VV			29
-#define OPTION_VVV			30
-#define OPTION_MAX			31
+#define OPTION_CONNECT_TIMEOUT		28
+#define OPTION_V			29
+#define OPTION_VV			30
+#define OPTION_VVV			31
+#define OPTION_MAX			32
 
 #define OPTION_NAME_PUBKEY		"pubkey"
 #define OPTION_NAME_PRIVKEY		"privkey"
@@ -103,6 +104,7 @@
 #define OPTION_NAME_DESTTN		"desttn"
 #define OPTION_NAME_ORIGID		"origid"
 #define OPTION_NAME_ATTEST		"attest"
+#define OPTION_NAME_CONNECT_TIMEOUT		"timeout"
 #define OPTION_NAME_V			"v"
 #define OPTION_NAME_VV			"vv"
 #define OPTION_NAME_VVV			"vvv"
@@ -218,6 +220,7 @@ struct options {
 	char pa_cert[STIR_SHAKEN_BUFLEN];
 	char pa_dir_name[STIR_SHAKEN_BUFLEN];
 	stir_shaken_passport_params_t passport_params;
+	unsigned long connect_timeout_s;
 } options;
 
 void stirshaken_range_error(char arg, unsigned long val);

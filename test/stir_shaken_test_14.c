@@ -99,13 +99,14 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 	stir_shaken_passport_t	*passport = NULL;
 	stir_shaken_cert_t		*cert = NULL;
 	int		iat_freshness_seconds = INT_MAX;
+	unsigned long connect_timeout_s = 3;
 	char	*passport_decoded = NULL;
 	jwt_t	*jwt = NULL;
 
 
 	// Test 1: callback set to default, should perform download of the certificate
 	ss.callback = stir_shaken_default_callback;
-	status = stir_shaken_passport_verify_and_check_x509_cert_path(&ss, passport_encoded, &cert, &passport);
+	status = stir_shaken_passport_verify(&ss, passport_encoded, &cert, &passport, connect_timeout_s);
 	if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is:\n%s\n", error_description);
@@ -144,7 +145,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 
 	// Test 2: callback set to custom function supplying certificates from cache
 	ss.callback = stir_shaken_test_callback;
-	status = stir_shaken_passport_verify_and_check_x509_cert_path(&ss, passport_encoded, &cert, &passport);
+	status = stir_shaken_passport_verify(&ss, passport_encoded, &cert, &passport, connect_timeout_s);
 	if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
 		printf("Error description is:\n%s\n", error_description);

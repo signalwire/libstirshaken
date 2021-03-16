@@ -91,6 +91,7 @@ void run_verification_service(stir_shaken_callback_t callback)
 	stir_shaken_passport_t *passport = NULL;
 	stir_shaken_cert_t *cert = NULL;
 	uint32_t iat_freshness_seconds = UINT_MAX;
+	unsigned long connect_timeout_s = 3;
 	char *passport_decoded = NULL;
 
 
@@ -101,7 +102,7 @@ void run_verification_service(stir_shaken_callback_t callback)
 	}
 
 	// For pure Shaken we would have PASSporT
-	status = stir_shaken_passport_verify_and_check_x509_cert_path(&ss, passport_encoded, &cert, &passport);
+	status = stir_shaken_passport_verify(&ss, passport_encoded, &cert, &passport, connect_timeout_s);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("PASSporT failed verification\n");
 		goto exit;
@@ -143,7 +144,7 @@ void run_verification_service(stir_shaken_callback_t callback)
 	stir_shaken_cert_destroy(&cert);
 
 	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
-	status = stir_shaken_sih_verify(&ss, sip_identity_header, &cert, &passport);
+	status = stir_shaken_sih_verify(&ss, sip_identity_header, &cert, &passport, connect_timeout_s);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("SIP Identity Header failed verification\n");
 		goto exit;
