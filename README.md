@@ -18,7 +18,7 @@ libstirshaken was tested for interoperability with other leading Shaken implemen
 
 # Authentication
 
-Create PASSporT using Authentication Service interface:
+Create PASSporT using Authentication Service interface
 
 ```
 stir_shaken_context_t ss = { 0 };
@@ -42,7 +42,7 @@ stir_shaken_as_load_private_key(&ss, as, "sp.priv");
 encoded = stir_shaken_as_authenticate_to_passport(&ss, as, &params, &passport);
 ```
 
-Print PASSporT in encoded form:
+Print PASSporT in encoded form
  
 ```
 printf("\n1. PASSporT encoded:\n%s\n", encoded);
@@ -51,7 +51,7 @@ printf("\n1. PASSporT encoded:\n%s\n", encoded);
 1. PASSporT encoded:
 eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9zcC5jb20vc3AucGVtIn0.eyJhdHRlc3QiOiJBIiwiZGVzdCI6eyJ0biI6WyIwMTI1NjUwMDYwMCJdfSwiaWF0IjoxNjE0Nzg3MDk0LCJvcmlnIjp7InRuIjoiMDEyNTY3ODk5OTkifSwib3JpZ2lkIjoicmVmIn0.ULDQt5aWDSzVKhoyVDPmKwW7FuXEVaHPp7xuZsuGIeZRPqIsQfBRoVrgwo_UAvXmoFElG5zupafKVzJI0kXoSg
 ```
-Print PASSporT in decoded (plain) form:
+Print PASSporT in decoded (plain) form
 ```
 s = stir_shaken_passport_dump_str(&ss, passport, 1);
 printf("\n2. PASSporT decoded:\n%s\n", s);
@@ -99,6 +99,7 @@ char *sip_identity_header = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InB
 stir_shaken_passport_t *passport_out = NULL;
 stir_shaken_cert_t *cert_out = NULL;
 int iat_freshness_seconds = 60;
+unsigned long connect_timeout_s = 5;
 stir_shaken_vs_t *vs = NULL;
 
 stir_shaken_init(&ss, STIR_SHAKEN_LOGLEVEL_NOTHING);
@@ -106,7 +107,7 @@ stir_shaken_init(&ss, STIR_SHAKEN_LOGLEVEL_NOTHING);
 vs = stir_shaken_vs_create(&ss);
 ```
 
-Optionally enable complete check on PASSporT involving X509 certificate path verification (and configure CA dir containing trusted CA root certificates)
+Optionally turn on X509 certificate path verification (and configure CA dir containing trusted CA root certificates)
 ```
 stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 1);
 stir_shaken_vs_load_ca_dir(&ss, vs, "path/to/ca/dir");
@@ -117,9 +118,14 @@ Optionally set your own callback to supply certificates from cache
 stir_shaken_vs_set_callback(&ss, vs, cache_callback);
 ```
 
-Verify PASSporT
+Optionally set timeout on connect (default is 2 seconds)
+```
+stir_shaken_vs_set_connect_timeout(&ss, vs, connect_timeout_s);
+```
+
+Verify PASSporT's signature (involves certificate downloading or fetching from cache, and X509 cert path check if turned on), input is PASSporT encoded, output is status and optionally certificate and PASSporT used during verification
 ``` 
-status = stir_shaken_vs_passport_verify_and_check_x509_cert_path(&ss, vs, passport_encoded, &cert_out, &passport_out);
+status = stir_shaken_vs_passport_verify(&ss, vs, passport_encoded, &cert_out, &passport_out);
 if (STIR_SHAKEN_STATUS_OK != status) {
 	printf("PASSporT failed verification");
 } else {
@@ -127,13 +133,31 @@ if (STIR_SHAKEN_STATUS_OK != status) {
 }
 ```
 
-Verify SIP Identity Header
+Same as before, but input is PASSporT wrapped into SIP Identity Header
 ```
-status = stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &passport_out, &cert_out, iat_freshness_seconds);
+status = stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &cert_out, &passport_out);
 if (STIR_SHAKEN_STATUS_OK != status) {
 	printf("SIP Identity Header failed verification");
 } else {
 	printf("SIP Identity Header verified");
+}
+```
+
+Check that PASSporT applies to the current moment in time
+```
+if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_validate_iat_against_freshness(&ss, passport_out, iat_freshness_seconds)) {
+	error_description = stir_shaken_get_error(&ss, &error_code);
+	if (error_code == STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_FUTURE) {
+		printf("PASSporT not valid yet\n");
+	} else if (error_code == STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_EXPIRED) {
+		printf("PASSporT expired\n");
+	} else if (error_code = STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT) {
+		printf("PASSporT is missing @iat grant\n");
+	} else {
+		printf("You called this method with NULL PASSporT\n");
+	}
+	printf("PASSporT doesn't apply to the current moment in time\n");
+	printf("Error description is:\n%s\n", error_description);
 }
 ```
 

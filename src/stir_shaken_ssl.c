@@ -1432,72 +1432,6 @@ void stir_shaken_cert_store_cleanup(void)
     }
 }
 
-stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
-{
-    X509            *x = NULL;
-    stir_shaken_globals_t *g = &stir_shaken_globals; 
-    int rc = 1;
-    char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-    int verify_error = -1;
-    FILE *file = NULL; // set to something if want verification callback to print to it
-
-    stir_shaken_clear_error(ss);
-
-    if (!cert) {
-        stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_X509_CERT_MISSING_3);
-        return STIR_SHAKEN_STATUS_TERM;
-    }
-
-    if (!g->store) {
-        stir_shaken_set_error(ss, "Cert store not set", STIR_SHAKEN_ERROR_CERT_STORE_2);
-        return STIR_SHAKEN_STATUS_TERM;
-    }
-
-    if (cert->verify_ctx) {
-        X509_STORE_CTX_cleanup(cert->verify_ctx);
-        X509_STORE_CTX_free(cert->verify_ctx);
-        cert->verify_ctx = NULL;
-    }
-
-    if (!(cert->verify_ctx = X509_STORE_CTX_new())) {
-        stir_shaken_set_error(ss, "Failed to create X509_STORE_CTX object", STIR_SHAKEN_ERROR_X509_STORE_CTX_NEW);
-        return STIR_SHAKEN_STATUS_TERM;
-    }
-
-    pthread_mutex_lock(&g->mutex); // Can use X509_STORE_lock(g->store) for more fine grained locking later
-
-    if (X509_STORE_CTX_init(cert->verify_ctx, g->store, cert->x, cert->xchain) != 1) {
-
-        X509_STORE_CTX_cleanup(cert->verify_ctx);
-        X509_STORE_CTX_free(cert->verify_ctx);
-        cert->verify_ctx = NULL;
-        stir_shaken_set_error(ss, "Error initializing X509 cert path verification context", STIR_SHAKEN_ERROR_X509_CERT_STORE_CTX_INIT);
-
-        // Can use X509_STORE_unlock(g->store); for more fine grained locking later
-        pthread_mutex_unlock(&g->mutex);
-        return STIR_SHAKEN_STATUS_TERM;
-    }
-
-	// TODO pass context struct wrapping @file AND @ss (so that verification callback can print errors to @ss) 
-    X509_STORE_CTX_set_ex_data(cert->verify_ctx, 0, file);
-
-    rc = X509_verify_cert(cert->verify_ctx);
-    if (rc != 1) {
-        // TODO double check if it's a good idea to read verification error from ctx here, outside of verification callback
-        verify_error = X509_STORE_CTX_get_error(cert->verify_ctx);
-        snprintf(err_buf, sizeof(err_buf), "Bad X509 certificate path: SSL reason: %s\n", X509_verify_cert_error_string(verify_error));
-        stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_X509_CERT_PATH_INVALID);
-    }
-
-    X509_STORE_CTX_cleanup(cert->verify_ctx);
-    X509_STORE_CTX_free(cert->verify_ctx);
-    cert->verify_ctx = NULL;
-
-    // Can use X509_STORE_unlock(g->store); for more fine grained locking later
-    pthread_mutex_unlock(&g->mutex);
-    return rc == 1 ? STIR_SHAKEN_STATUS_OK : STIR_SHAKEN_STATUS_FALSE;
-}
-
 stir_shaken_status_t stir_shaken_x509_init_cert_store(stir_shaken_context_t *ss, X509_STORE **store)
 {
 	if (!store) {
@@ -1597,7 +1531,7 @@ void stir_shaken_x509_cert_store_cleanup(X509_STORE **store)
 	}
 }
 
-stir_shaken_status_t stir_shaken_x509_verify_cert_path(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, X509_STORE *store)
+stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, X509_STORE *store)
 {
 	X509            *x = NULL;
 	int rc = 1;
@@ -1625,6 +1559,9 @@ stir_shaken_status_t stir_shaken_x509_verify_cert_path(stir_shaken_context_t *ss
 		stir_shaken_set_error(ss, "Failed to create X509_STORE_CTX object", STIR_SHAKEN_ERROR_X509_STORE_CTX_NEW);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
+
+	// TODO lock
+	/// pthread_mutex_lock(&cert->mutex); // Can use X509_STORE_lock(g->store) for more fine grained locking later
 
 	if (X509_STORE_CTX_init(cert->verify_ctx, store, cert->x, cert->xchain) != 1) {
 		X509_STORE_CTX_cleanup(cert->verify_ctx);
@@ -1696,7 +1633,7 @@ stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_c
     return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
+stir_shaken_status_t stir_shaken_verify_cert_ex(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, X509_STORE *store)
 {
     X509            *x = NULL;
 
@@ -1713,12 +1650,17 @@ stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_sha
     }
 
     if (!STIR_SHAKEN_MOCK_VERIFY_CERT_CHAIN 
-            && (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_path(ss, cert))) {
+            && (STIR_SHAKEN_STATUS_OK != stir_shaken_verify_cert_path(ss, cert, store))) {
         stir_shaken_set_error(ss, "Cert did not pass X509 path validation against trusted CA roots and CRL", STIR_SHAKEN_ERROR_CERT_INVALID);
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
     return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_verify_cert(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
+{
+	return stir_shaken_verify_cert_ex(ss, cert, stir_shaken_globals.store);
 }
 
 char* stir_shaken_cert_get_serialHex(stir_shaken_cert_t *cert)

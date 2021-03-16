@@ -44,7 +44,7 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 		const char *attest = params->attest;
 		const char *desttn_key = params->desttn_key;
 		const char *desttn_val = params->desttn_val;
-		int iat = params->iat;
+		uint32_t iat = params->iat;
 		const char *origtn_key = params->origtn_key;
 		const char *origtn_val = params->origtn_val;
 		const char *origid = params->origid;
@@ -718,7 +718,7 @@ stir_shaken_status_t stir_shaken_passport_validate_grants(stir_shaken_context_t 
 {
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	const char *h = NULL;
-	long int iat = -1;
+	uint32_t iat = 0;
 
 	if (!passport) return STIR_SHAKEN_STATUS_TERM;
 
@@ -731,7 +731,7 @@ stir_shaken_status_t stir_shaken_passport_validate_grants(stir_shaken_context_t 
 
 	if (iat == 0 ) {
 		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT Invalid. @iat is 0");  
-		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_1);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -796,7 +796,7 @@ stir_shaken_status_t stir_shaken_passport_validate_headers_and_grants(stir_shake
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_passport_validate_iat_against_freshness(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, time_t iat_freshness)
+stir_shaken_status_t stir_shaken_passport_validate_iat_against_freshness(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, uint32_t iat_freshness)
 {
 	char	err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	time_t	iat = 0;
@@ -810,13 +810,9 @@ stir_shaken_status_t stir_shaken_passport_validate_iat_against_freshness(stir_sh
         return -1;
 	}
 
-	if (iat_freshness >= now_s) {
-		return STIR_SHAKEN_STATUS_OK;
-	}
-
 	iat = stir_shaken_passport_get_grant_int(ss, passport, "iat");
 	if (errno == ENOENT || iat == 0) {
-		stir_shaken_set_error(ss, "PASSporT must have @iat param (application should reply with SIP 438 INVALID IDENTITY HEADER error)\n", STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT);
+		stir_shaken_set_error(ss, "PASSporT is missing @iat grant\n", STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 

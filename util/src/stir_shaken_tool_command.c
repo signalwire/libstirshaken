@@ -662,7 +662,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				int cert_raw_len = STIR_SHAKEN_BUFLEN;
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT...\n");
-				if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(ss, options->jwt, &cert, &jwt)) {
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(ss, options->jwt, &cert, &jwt, options->connect_timeout_s)) {
 					stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
 					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT failed verification against referenced certificate\n");
 					goto fail;

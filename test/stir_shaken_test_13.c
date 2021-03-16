@@ -35,6 +35,7 @@ stir_shaken_sp_t sp;
 stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
 	(void) ss;
+	unsigned long connect_timeout_s = 3;
 
 	printf("\n\nShakening surprise\n\n");
 	stir_shaken_assert(http_req != NULL, "http_req is NULL!");
@@ -242,7 +243,7 @@ stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, s
 						stir_shaken_assert(spc_token, "Failed to get SPC token");
 						stir_shaken_assert(spc_token_jwt, "Failed to get SPC token JWT");
 
-						stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_jwt_verify(&ca.ss, spc_token, &cert, &spc_token_verified_jwt), "SPC token did not pass verification");
+						stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_jwt_verify_ex(&ca.ss, spc_token, &cert, &spc_token_verified_jwt, NULL, 0, connect_timeout_s), "SPC token did not pass verification");
 						stir_shaken_assert(cert, "Could not get PA cert");
 						stir_shaken_cert_destroy(&cert);
 						jwt_free(spc_token_jwt);

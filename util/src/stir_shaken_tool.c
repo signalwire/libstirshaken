@@ -15,7 +15,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s -f certName\n", COMMAND_NAME_HASH_CERT);
 	fprintf(stderr, "\t\t %s --%s key --%s x5u_URL --%s CODE --%s CN -f spc_token_file_name\n", COMMAND_NAME_SPC_TOKEN, OPTION_NAME_PRIVKEY, OPTION_NAME_URL, OPTION_NAME_SPC, OPTION_NAME_ISSUER_CN);
 	fprintf(stderr, "\t\t %s --%s token --%s key\n", COMMAND_NAME_JWT_KEY_CHECK, OPTION_NAME_JWT, OPTION_NAME_PUBKEY);
-	fprintf(stderr, "\t\t %s --%s token\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_JWT);
+	fprintf(stderr, "\t\t %s --%s token --%s timeout_in_seconds\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_JWT, OPTION_NAME_CONNECT_TIMEOUT);
 	fprintf(stderr, "\t\t %s --%s token\n", COMMAND_NAME_JWT_DUMP, OPTION_NAME_JWT);
 	fprintf(stderr, "\t\t %s --%s 80 --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY --%s ca.pem --%s TNAuthList(URI) --%s pa.pem --%s padir\n", COMMAND_NAME_CA, OPTION_NAME_PORT, OPTION_NAME_PRIVKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY, OPTION_NAME_CA_CERT, OPTION_NAME_TN_AUTH_LIST_URI, OPTION_NAME_PA_CERT, OPTION_NAME_PA_DIR);
 	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
@@ -101,6 +101,7 @@ int main(int argc, char *argv[])
 		{ OPTION_NAME_DESTTN, required_argument, 0, OPTION_DESTTN },
 		{ OPTION_NAME_ORIGID, required_argument, 0, OPTION_ORIGID },
 		{ OPTION_NAME_ATTEST, required_argument, 0, OPTION_ATTEST },
+		{ OPTION_NAME_CONNECT_TIMEOUT, required_argument, 0, OPTION_CONNECT_TIMEOUT },
 		{ OPTION_NAME_V, no_argument, 0, OPTION_V },
 		{ OPTION_NAME_VV, no_argument, 0, OPTION_VV },
 		{ OPTION_NAME_VVV, no_argument, 0, OPTION_VVV },
@@ -310,6 +311,13 @@ int main(int argc, char *argv[])
 				STIR_SHAKEN_CHECK_OPTARG
 				options.passport_params.attest = strdup(optarg);
 				fprintf(stderr, "attestation level is: %s\n", options.passport_params.attest);
+				break;
+
+			case OPTION_CONNECT_TIMEOUT:
+				helper = strtoul(optarg, &pCh, 10);
+				STIR_SHAKEN_CHECK_CONVERSION
+				options.connect_timeout_s = (unsigned long) helper;
+				fprintf(stderr, "Connection timeout is: %lus\n", options.connect_timeout_s);
 				break;
 
 			case OPTION_V:

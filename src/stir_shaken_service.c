@@ -137,7 +137,7 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 	char			user_agent[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 	if (!http_req) {
-		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_GENERAL);
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS_30);
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
@@ -181,7 +181,6 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 #endif
 
-	// Shared stuff
 	curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, stir_shaken_curl_write_callback);
 	curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *) http_req);
 	curl_easy_setopt(curl_handle, CURLOPT_HEADERFUNCTION, stir_shaken_curl_header_callback);
@@ -200,14 +199,23 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 	if (http_req->remote_port == 0) {
 		if (use_https) {
 			http_req->remote_port = STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT_HTTPS;
-			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to DEFAULT_HTTPS %u cause port not set\n", http_req->remote_port);
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to default %u cause port not set\n", http_req->remote_port);
 		} else {
 			http_req->remote_port = STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT;
-			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to DEFAULT %u cause port not set\n", http_req->remote_port);
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to default %u cause port not set\n", http_req->remote_port);
 		}
 	}
 
 	curl_easy_setopt(curl_handle, CURLOPT_PORT, http_req->remote_port);
+
+	if (http_req->connect_timeout_s == 0) {
+		http_req->connect_timeout_s = STIR_SHAKEN_HTTP_DEFAULT_CONNECT_TIMEOUT_S;
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing connection timeout to default %lus cause timeout not set\n", http_req->connect_timeout_s);
+	} else {
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: connection timeout of %lus\n", http_req->connect_timeout_s);
+	}
+
+	curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, http_req->connect_timeout_s);
 
 	// Some pple say, some servers don't like requests that are made without a user-agent field, so we provide one.
 	snprintf(user_agent, STIR_SHAKEN_ERROR_BUF_LEN, "freeswitch-stir-shaken/%s", STIR_SHAKEN_VERSION);
@@ -871,7 +879,19 @@ stir_shaken_status_t stir_shaken_vs_set_x509_cert_path_check(struct stir_shaken_
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	vs->x509_cert_path_check = x;
+	vs->settings.x509_cert_path_check = x;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_vs_set_connect_timeout(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, unsigned long timeout_s)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_8);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	vs->settings.connect_timeout_s = timeout_s;
 
 	return STIR_SHAKEN_STATUS_OK;
 }
@@ -890,7 +910,7 @@ stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify(stir_shaken_context_t
 	}
 
 	ss->callback = vs->callback;
-	return stir_shaken_x509_jwt_verify_and_check_x509_cert_path_ex(ss, token, cert_out, jwt_out, vs->store, vs->x509_cert_path_check);
+	return stir_shaken_jwt_verify_ex(ss, token, cert_out, jwt_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
 }
 
 stir_shaken_status_t stir_shaken_vs_passport_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
@@ -907,10 +927,10 @@ stir_shaken_status_t stir_shaken_vs_passport_verify(stir_shaken_context_t *ss, s
 	}
 
 	ss->callback = vs->callback;
-	return stir_shaken_x509_passport_verify_and_check_x509_cert_path_ex(ss, token, cert_out, passport_out, vs->store, vs->x509_cert_path_check);
+	return stir_shaken_passport_verify_ex(ss, token, cert_out, passport_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
 }
 
-stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, time_t iat_freshness)
+stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out)
 {
 	stir_shaken_context_t	ss_local = { 0 };
 
@@ -924,5 +944,5 @@ stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_s
 	}
 
 	ss->callback = vs->callback;
-	return stir_shaken_x509_sih_verify_ex(ss, sih, cert_out, passport_out, iat_freshness, vs->store, vs->x509_cert_path_check);
+	return stir_shaken_sih_verify_ex(ss, sih, cert_out, passport_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
 }

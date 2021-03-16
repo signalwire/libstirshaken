@@ -88,10 +88,11 @@ void run_verification_service(stir_shaken_callback_t callback)
 
 	char *passport_encoded = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.cNI-uIirMOiT19OcQag2UYjHWTgTqtr5jhSk3KxflqSC7FbrrYDr51zCEvzDMoETpge7eQeQ6ASVzb1dhVVhKQ";
 	char *sip_identity_header = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.cNI-uIirMOiT19OcQag2UYjHWTgTqtr5jhSk3KxflqSC7FbrrYDr51zCEvzDMoETpge7eQeQ6ASVzb1dhVVhKQ;info=<http://shaken.signalwire.cloud/sp.pem>;alg=ES256;ppt=shaken";
-	stir_shaken_passport_t	*passport = NULL;
-	stir_shaken_cert_t		*cert = NULL;
-	int		iat_freshness_seconds = INT_MAX;
-	char	*passport_decoded = NULL;
+	stir_shaken_passport_t *passport = NULL;
+	stir_shaken_cert_t *cert = NULL;
+	uint32_t iat_freshness_seconds = UINT_MAX;
+	unsigned long connect_timeout_s = 3;
+	char *passport_decoded = NULL;
 
 
 	status = stir_shaken_do_init(&ss, "examples/ca", "examples/crl", STIR_SHAKEN_LOGLEVEL_HIGH);
@@ -101,13 +102,30 @@ void run_verification_service(stir_shaken_callback_t callback)
 	}
 
 	// For pure Shaken we would have PASSporT
-	status = stir_shaken_passport_verify_and_check_x509_cert_path(&ss, passport_encoded, &cert, &passport);
+	status = stir_shaken_passport_verify(&ss, passport_encoded, &cert, &passport, connect_timeout_s);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("PASSporT failed verification\n");
 		goto exit;
 	}
 
 	printf("\nPASSporT Verified.\n\n");
+
+	// Check that PASSporT applies to the current moment in time
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_validate_iat_against_freshness(&ss, passport, iat_freshness_seconds)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		if (error_code == STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_FUTURE) {
+			printf("PASSporT not valid yet\n");
+		} else if (error_code == STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_EXPIRED) {
+			printf("PASSporT expired\n");
+		} else if (error_code = STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT) {
+			printf("PASSporT is missing @iat grant\n");
+		} else {
+			printf("You called this method with NULL PASSporT\n");
+		}
+		printf("PASSporT doesn't apply to the current moment in time\n");
+		printf("Error description is:\n%s\n", error_description);
+		goto exit;
+	}
 
 	passport_decoded = stir_shaken_passport_dump_str(&ss, passport, 1);
 	if (passport_decoded) {
@@ -126,13 +144,30 @@ void run_verification_service(stir_shaken_callback_t callback)
 	stir_shaken_cert_destroy(&cert);
 
 	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
-	status = stir_shaken_sih_verify(&ss, sip_identity_header, &cert, &passport, iat_freshness_seconds);
+	status = stir_shaken_sih_verify(&ss, sip_identity_header, &cert, &passport, connect_timeout_s);
 	if (STIR_SHAKEN_STATUS_OK != status) {
 		printf("SIP Identity Header failed verification\n");
 		goto exit;
 	}
 
 	printf("\nSIP Identity Header verified.\n\n");
+
+	// Check that PASSporT applies to the current moment in time
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_validate_iat_against_freshness(&ss, passport, iat_freshness_seconds)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		if (error_code == STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_FUTURE) {
+			printf("PASSporT not valid yet\n");
+		} else if (error_code == STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_EXPIRED) {
+			printf("PASSporT expired\n");
+		} else if (error_code = STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT) {
+			printf("PASSporT is missing @iat grant\n");
+		} else {
+			printf("You called this method with NULL PASSporT\n");
+		}
+		printf("PASSporT doesn't apply to the current moment in time\n");
+		printf("Error description is:\n%s\n", error_description);
+		goto exit;
+	}
 
 
 exit:
