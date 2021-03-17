@@ -213,7 +213,12 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	stir_shaken_cert_destroy(&cert_out);
 
 	printf("\nPASSporT Verified.\n");
-	printf("\nPASSporT is:\n%s\n\n", passport_encoded);
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport_out, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
 
 	free(passport_encoded);
 	passport_encoded = NULL;
