@@ -258,11 +258,6 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 				goto fail;
 			}
 
-			if (!stir_shaken_zstr(options->ca_dir)) {
-				fprintf(stderr, "ERROR: CA dir set but this command takes only PA dir name\n");
-				goto fail;
-			}
-
 			if (ca->ca.use_trusted_pa_hash ^ !stir_shaken_zstr(ca->ca.trusted_pa_cert_name)) {
 				fprintf(stderr, "ERROR: trusted PA certificate is missing\n");
 				goto fail;
@@ -314,6 +309,16 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 		case COMMAND_JWT_CHECK:
 
 			if (stir_shaken_zstr(options->jwt)) {
+				goto fail;
+			}
+
+			if (stir_shaken_zstr(options->ca_dir_name)) {
+				fprintf(stderr, "ERROR: CA dir missing\n");
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_dir_exists(options->ca_dir_name)) {
+				fprintf(stderr, "ERROR: Directory %s does not exist\n", options->ca_dir_name);
 				goto fail;
 			}
 			break;
@@ -395,9 +400,10 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 	stir_shaken_cert_t *cert = NULL;
 	char *p1 = NULL, *p2 = NULL, *sih = NULL;
 	stir_shaken_passport_t *passport = NULL;
+	stir_shaken_vs_t *vs = NULL;
 
 
-	if (STIR_SHAKEN_STATUS_OK != stir_shaken_do_init(ss, command == COMMAND_CA ? (ca->ca.use_pa_dir ? ca->ca.pa_dir_name : NULL) : options->ca_dir, options->crl_dir, options->loglevel)) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_init(ss, options->loglevel)) {
 		goto fail;
 	}
 
@@ -660,13 +666,38 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 				unsigned char cert_raw[STIR_SHAKEN_BUFLEN] = { 0 };
 				int cert_raw_len = STIR_SHAKEN_BUFLEN;
+				char *passport_decoded = NULL;
 
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Verifying JWT...\n");
-				if (STIR_SHAKEN_STATUS_OK != stir_shaken_jwt_verify(ss, options->jwt, &cert, &jwt, options->connect_timeout_s)) {
-					stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_SIP_438_INVALID_IDENTITY_HEADER);
-					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "JWT failed verification against referenced certificate\n");
+
+				vs = stir_shaken_vs_create(ss);
+				if (!vs) {
+					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Cannot create Verification Service\n");
 					goto fail;
 				}
+
+				status = stir_shaken_vs_load_ca_dir(ss, vs, options->ca_dir_name);
+				if (STIR_SHAKEN_STATUS_OK != status) {
+					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Failed to init X509 cert store");
+					goto fail;
+				}
+
+				stir_shaken_vs_set_x509_cert_path_check(ss, vs, 1);
+				stir_shaken_vs_set_connect_timeout(ss, vs, options->connect_timeout_s);
+
+				// For pure Shaken we would have PASSporT
+				status = stir_shaken_vs_passport_verify(ss, vs, options->jwt, &cert, &passport);
+				if (STIR_SHAKEN_STATUS_OK != status) {
+					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "PASSporT failed verification\n");
+					goto fail;
+				}
+
+				passport_decoded = stir_shaken_passport_dump_str(ss, passport, 1);
+				if (passport_decoded) {
+					printf("\nPASSporT is:\n%s\n", passport_decoded);
+					stir_shaken_free_jwt_str(passport_decoded);
+					passport_decoded = NULL;
+				}
+
 
 				if (STIR_SHAKEN_STATUS_OK != stir_shaken_get_x509_raw(ss, cert->x, cert_raw, &cert_raw_len)) {
 					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Cannot read certificate\n");
@@ -684,9 +715,8 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				stir_shaken_print_cert_fields(stderr, cert);
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nVerified. JWT matches the referenced certificate\n");
 
-				jwt_free(jwt);
-				jwt = NULL;
 				stir_shaken_cert_destroy(&cert);
+				stir_shaken_vs_destroy(&vs);
 			}
 
 			break;
@@ -809,6 +839,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 		jwt = NULL;
 	}
 	stir_shaken_passport_params_destroy(&sp->sp.passport_params);
+	stir_shaken_deinit();
 
 	return STIR_SHAKEN_STATUS_OK;
 
@@ -840,5 +871,9 @@ fail:
 	}
 	stir_shaken_passport_destroy(&passport);
 	stir_shaken_passport_params_destroy(&sp->sp.passport_params);
+	stir_shaken_cert_destroy(&cert);
+	stir_shaken_vs_destroy(&vs);
+	stir_shaken_deinit();
+
 	return STIR_SHAKEN_STATUS_FALSE;
 }

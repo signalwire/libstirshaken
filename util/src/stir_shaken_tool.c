@@ -15,7 +15,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s -f certName\n", COMMAND_NAME_HASH_CERT);
 	fprintf(stderr, "\t\t %s --%s key --%s x5u_URL --%s CODE --%s CN -f spc_token_file_name\n", COMMAND_NAME_SPC_TOKEN, OPTION_NAME_PRIVKEY, OPTION_NAME_URL, OPTION_NAME_SPC, OPTION_NAME_ISSUER_CN);
 	fprintf(stderr, "\t\t %s --%s token --%s key\n", COMMAND_NAME_JWT_KEY_CHECK, OPTION_NAME_JWT, OPTION_NAME_PUBKEY);
-	fprintf(stderr, "\t\t %s --%s token --%s timeout_in_seconds\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_JWT, OPTION_NAME_CONNECT_TIMEOUT);
+	fprintf(stderr, "\t\t %s --%s token --%s ca_dir --%s timeout_in_seconds\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_JWT, OPTION_NAME_CA_DIR, OPTION_NAME_CONNECT_TIMEOUT);
 	fprintf(stderr, "\t\t %s --%s token\n", COMMAND_NAME_JWT_DUMP, OPTION_NAME_JWT);
 	fprintf(stderr, "\t\t %s --%s 80 --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY --%s ca.pem --%s TNAuthList(URI) --%s pa.pem --%s padir\n", COMMAND_NAME_CA, OPTION_NAME_PORT, OPTION_NAME_PRIVKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY, OPTION_NAME_CA_CERT, OPTION_NAME_TN_AUTH_LIST_URI, OPTION_NAME_PA_CERT, OPTION_NAME_PA_DIR);
 	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
@@ -87,6 +87,7 @@ int main(int argc, char *argv[])
 		{ OPTION_NAME_SPC, required_argument, 0, OPTION_SPC },
 		{ OPTION_NAME_SPC_TOKEN, required_argument, 0, OPTION_SPC_TOKEN },
 		{ OPTION_NAME_CA_CERT, required_argument, 0, OPTION_CA_CERT },
+		{ OPTION_NAME_CA_DIR, required_argument, 0, OPTION_CA_DIR },
 		{ OPTION_NAME_CSR, required_argument, 0, OPTION_CSR },
 		{ OPTION_NAME_TN_AUTH_LIST_URI, required_argument, 0, OPTION_TN_AUTH_LIST_URI },
 		{ OPTION_NAME_PORT, required_argument, 0, OPTION_PORT },
@@ -227,6 +228,12 @@ int main(int argc, char *argv[])
 				STIR_SHAKEN_CHECK_OPTARG
 				strncpy(options.ca_cert, optarg, STIR_SHAKEN_BUFLEN);
 				fprintf(stderr, "CA certificate is: %s\n", options.ca_cert);
+				break;
+
+			case OPTION_CA_DIR:
+				STIR_SHAKEN_CHECK_OPTARG
+				strncpy(options.ca_dir_name, optarg, STIR_SHAKEN_BUFLEN);
+				fprintf(stderr, "CA dir is: %s\n", options.ca_dir_name);
 				break;
 
 			case OPTION_CSR:

@@ -69,10 +69,11 @@
 #define OPTION_ORIGID		26
 #define OPTION_ATTEST		27
 #define OPTION_CONNECT_TIMEOUT		28
-#define OPTION_V			29
-#define OPTION_VV			30
-#define OPTION_VVV			31
-#define OPTION_MAX			32
+#define OPTION_CA_DIR		29
+#define OPTION_V			30
+#define OPTION_VV			31
+#define OPTION_VVV			32
+#define OPTION_MAX			33
 
 #define OPTION_NAME_PUBKEY		"pubkey"
 #define OPTION_NAME_PRIVKEY		"privkey"
@@ -105,6 +106,7 @@
 #define OPTION_NAME_ORIGID		"origid"
 #define OPTION_NAME_ATTEST		"attest"
 #define OPTION_NAME_CONNECT_TIMEOUT		"timeout"
+#define OPTION_NAME_CA_DIR		"ca_dir"
 #define OPTION_NAME_V			"v"
 #define OPTION_NAME_VV			"vv"
 #define OPTION_NAME_VVV			"vvv"
@@ -203,7 +205,8 @@ struct options {
 	char subject_cn[STIR_SHAKEN_BUFLEN];
 	char issuer_c[STIR_SHAKEN_BUFLEN];
 	char issuer_cn[STIR_SHAKEN_BUFLEN];
-	const char *ca_dir;
+	char ca_dir_name[STIR_SHAKEN_BUFLEN];
+	char pa_dir_name[STIR_SHAKEN_BUFLEN];
 	const char *crl_dir;
 	int64_t serial;
 	long expiry_days;
@@ -218,7 +221,6 @@ struct options {
 	char ssl_cert_name[STIR_SHAKEN_BUFLEN];
 	char ssl_key_name[STIR_SHAKEN_BUFLEN];
 	char pa_cert[STIR_SHAKEN_BUFLEN];
-	char pa_dir_name[STIR_SHAKEN_BUFLEN];
 	stir_shaken_passport_params_t passport_params;
 	unsigned long connect_timeout_s;
 } options;
