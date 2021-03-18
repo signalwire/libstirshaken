@@ -760,7 +760,11 @@ typedef struct stir_shaken_context_error_s {
 	char err_buf3[STIR_SHAKEN_ERROR_BUF_LEN];
 	char err_buf4[STIR_SHAKEN_ERROR_BUF_LEN];
 	char err_buf5[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err[6*STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf6[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf7[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf8[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf9[STIR_SHAKEN_ERROR_BUF_LEN];
+	char err[10*STIR_SHAKEN_ERROR_BUF_LEN];
 	stir_shaken_error_t error;
 	uint8_t got_error;
 } stir_shaken_context_error_t;
