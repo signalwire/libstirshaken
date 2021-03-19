@@ -1,4 +1,4 @@
-AC_INIT([libstirshaken], [1.0.0], [https://github.com/signalwire/libstirshaken], [libstirshaken], [dataandsignal.com])
+AC_INIT([libstirshaken], [m4_esyscmd_s([git rev-parse HEAD])], [https://github.com/signalwire/libstirshaken], [libstirshaken], [signalwire.com])
 
 AM_INIT_AUTOMAKE([subdir-objects -Wall -Werror foreign])
 

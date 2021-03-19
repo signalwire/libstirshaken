@@ -443,6 +443,10 @@ int stir_shaken_zstr(const char *str)
 
 static void shift_errors(stir_shaken_context_t *ss) {
 	if (!ss) return;
+	strncpy(ss->e.err_buf9, ss->e.err_buf8, STIR_SHAKEN_ERROR_BUF_LEN);
+	strncpy(ss->e.err_buf8, ss->e.err_buf7, STIR_SHAKEN_ERROR_BUF_LEN);
+	strncpy(ss->e.err_buf7, ss->e.err_buf6, STIR_SHAKEN_ERROR_BUF_LEN);
+	strncpy(ss->e.err_buf6, ss->e.err_buf5, STIR_SHAKEN_ERROR_BUF_LEN);
 	strncpy(ss->e.err_buf5, ss->e.err_buf4, STIR_SHAKEN_ERROR_BUF_LEN);
 	strncpy(ss->e.err_buf4, ss->e.err_buf3, STIR_SHAKEN_ERROR_BUF_LEN);
 	strncpy(ss->e.err_buf3, ss->e.err_buf2, STIR_SHAKEN_ERROR_BUF_LEN);
@@ -501,16 +505,24 @@ static const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
 
 	if (stir_shaken_is_error_set(ss)) {
 
-		if (!stir_shaken_zstr(ss->e.err_buf5)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, ss->e.err_buf5);
+		if (!stir_shaken_zstr(ss->e.err_buf9)) {
+			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n[ERR 6] %s\n[ERR 7] %s\n[ERR 8] %s\n[ERR 9] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, ss->e.err_buf5, ss->e.err_buf6, ss->e.err_buf7, ss->e.err_buf8, ss->e.err_buf9, stir_shaken_get_git_version());
+		} else if (!stir_shaken_zstr(ss->e.err_buf8)) {
+			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n[ERR 6] %s\n[ERR 7] %s\n[ERR 8] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, ss->e.err_buf5, ss->e.err_buf6, ss->e.err_buf7, ss->e.err_buf8, stir_shaken_get_git_version());
+		} else if (!stir_shaken_zstr(ss->e.err_buf7)) {
+			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n[ERR 6] %s\n[ERR 7] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, ss->e.err_buf5, ss->e.err_buf6, ss->e.err_buf7, stir_shaken_get_git_version());
+		} else if (!stir_shaken_zstr(ss->e.err_buf6)) {
+			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n[ERR 6] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, ss->e.err_buf5, ss->e.err_buf6, stir_shaken_get_git_version());
+		} else if (!stir_shaken_zstr(ss->e.err_buf5)) {
+			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, ss->e.err_buf5, stir_shaken_get_git_version());
 		} else if (!stir_shaken_zstr(ss->e.err_buf4)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4);
+			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, stir_shaken_get_git_version());
 		} else if (!stir_shaken_zstr(ss->e.err_buf3)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3);
+			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, stir_shaken_get_git_version());
 		} else if (!stir_shaken_zstr(ss->e.err_buf2)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2);
+			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, stir_shaken_get_git_version());
 		} else if (!stir_shaken_zstr(ss->e.err_buf1)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom), outermost first - deepest last:\n[ERR 0] %s\n[ERR 1] %s\n", ss->e.err_buf0, ss->e.err_buf1);
+			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom), outermost first - deepest last:\n[ERR 0] %s\n[ERR 1] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, stir_shaken_get_git_version());
 		} else {
 			snprintf(ss->e.err, sizeof(ss->e.err), "[ERR 0] %s\n", ss->e.err_buf0);
 		}
