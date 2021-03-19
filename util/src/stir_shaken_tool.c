@@ -22,6 +22,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s --%s URL --%s port\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s --%s URL --%s port --%s key --%s key --%s csr.pem --%s CODE --%s SPC_TOKEN -f CERT_NAME\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_URL, OPTION_NAME_PORT, OPTION_NAME_PRIVKEY, OPTION_NAME_PUBKEY, OPTION_NAME_CSR, OPTION_NAME_SPC, OPTION_NAME_SPC_TOKEN);
 	fprintf(stderr, "\t\t %s --%s key --%s x5u_URL --%s attestation_level --%s origtn --%s desttn --%s origid -f passport_file_name\n", COMMAND_NAME_PASSPORT_CREATE, OPTION_NAME_PRIVKEY, OPTION_NAME_URL, OPTION_NAME_ATTEST, OPTION_NAME_ORIGTN, OPTION_NAME_DESTTN, OPTION_NAME_ORIGID);
+	fprintf(stderr, "\t\t %s\n", COMMAND_NAME_VERSION);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "\t\t Each command accepts setting print/logging verbosity level:\n");
 	fprintf(stderr, "\t\t --v\t\tbasic logging\n");

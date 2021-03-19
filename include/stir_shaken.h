@@ -1544,11 +1544,14 @@ void stir_shaken_sp_destroy(stir_shaken_sp_t *sp);
 #define STI_CA_ACME_NEW_ACCOUNT_URL		"/sti-ca/acme/account"
 #define STI_CA_AUTHORITY_CHECK_URL		"/sti-ca/authority-over-the-number-check"
 
+const char* stir_shaken_get_git_version();
+
 // TEST
 
 stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, int line);
 
 /* Exit from calling location if test fails. */
 #define stir_shaken_assert(x, m) if (!(x)) return stir_shaken_test_die((m), __FILE__, __LINE__);
+
 
 #endif // __STIR_SHAKEN

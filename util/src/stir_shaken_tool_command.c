@@ -126,6 +126,9 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		//strncpy(sp->sp.passport_params.origid, options->passport_params.origid, STIR_SHAKEN_BUFLEN);
 		return COMMAND_PASSPORT_CREATE;
 
+	} else if (!strcmp(command_name, COMMAND_NAME_VERSION)) {
+		return COMMAND_VERSION;
+
 	} else {
 
 		stir_shaken_set_error(ss, "Unknown command", STIR_SHAKEN_ERROR_GENERAL);
@@ -372,6 +375,9 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", options->file);
 				goto fail;
 			}
+			break;
+
+		case COMMAND_VERSION:
 			break;
 
 		case COMMAND_CERT:
@@ -819,6 +825,11 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 				stir_shaken_passport_destroy(&passport);
 			}
+			break;
+
+		case COMMAND_VERSION:
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "libstirshaken git version is: %s\n", stir_shaken_get_git_version());
 			break;
 
 		case COMMAND_UNKNOWN:
