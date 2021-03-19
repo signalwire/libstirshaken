@@ -315,15 +315,18 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 				goto fail;
 			}
 
-			if (stir_shaken_zstr(options->ca_dir_name)) {
-				fprintf(stderr, "ERROR: CA dir missing\n");
-				goto fail;
+			if (options->x509_cert_path_check) {
+				if (stir_shaken_zstr(options->ca_dir_name)) {
+					fprintf(stderr, "ERROR: X509 cert path check is turned on but CA dir missing. Add --%s?\n", OPTION_NAME_CA_DIR);
+					goto fail;
+				}
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_dir_exists(options->ca_dir_name)) {
+					fprintf(stderr, "ERROR: Directory %s does not exist\n", options->ca_dir_name);
+					goto fail;
+				}
 			}
 
-			if (STIR_SHAKEN_STATUS_OK != stir_shaken_dir_exists(options->ca_dir_name)) {
-				fprintf(stderr, "ERROR: Directory %s does not exist\n", options->ca_dir_name);
-				goto fail;
-			}
 			break;
 
 		case COMMAND_JWT_DUMP:
@@ -681,14 +684,16 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 					goto fail;
 				}
 
-				status = stir_shaken_vs_load_ca_dir(ss, vs, options->ca_dir_name);
-				if (STIR_SHAKEN_STATUS_OK != status) {
-					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Failed to init X509 cert store");
-					goto fail;
-				}
-
-				stir_shaken_vs_set_x509_cert_path_check(ss, vs, 1);
 				stir_shaken_vs_set_connect_timeout(ss, vs, options->connect_timeout_s);
+				stir_shaken_vs_set_x509_cert_path_check(ss, vs, options->x509_cert_path_check);
+
+				if (options->x509_cert_path_check) {
+					status = stir_shaken_vs_load_ca_dir(ss, vs, options->ca_dir_name);
+					if (STIR_SHAKEN_STATUS_OK != status) {
+						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Failed to init X509 cert store");
+						goto fail;
+					}
+				}
 
 				// For pure Shaken we would have PASSporT
 				status = stir_shaken_vs_passport_verify(ss, vs, options->jwt, &cert, &passport);
@@ -719,7 +724,7 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Certificate summary (for details: openssl x509 -in cert.pem -noout -text):\n\n");
 				stir_shaken_print_cert_fields(stderr, cert);
-				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nVerified. JWT matches the referenced certificate\n");
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nVerified (%s X509 cert path check). JWT matches the referenced certificate by signature check, %s.\n", options->x509_cert_path_check ? "with" : "without", options->x509_cert_path_check ? "certificate is trusted (derived from trusted CA roots)" : "certificate may not be trusted (because it hasn't been checked with X509 cert path check)");
 
 				stir_shaken_cert_destroy(&cert);
 				stir_shaken_vs_destroy(&vs);

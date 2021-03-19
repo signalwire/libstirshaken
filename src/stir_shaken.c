@@ -524,7 +524,7 @@ static const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
 		} else if (!stir_shaken_zstr(ss->e.err_buf1)) {
 			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom), outermost first - deepest last:\n[ERR 0] %s\n[ERR 1] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, stir_shaken_get_git_version());
 		} else {
-			snprintf(ss->e.err, sizeof(ss->e.err), "[ERR 0] %s\n", ss->e.err_buf0);
+			snprintf(ss->e.err, sizeof(ss->e.err), "[ERR 0] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, stir_shaken_get_git_version());
 		}
 
 		return ss->e.err;
