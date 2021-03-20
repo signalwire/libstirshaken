@@ -15,7 +15,7 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s -f certName\n", COMMAND_NAME_HASH_CERT);
 	fprintf(stderr, "\t\t %s --%s key --%s x5u_URL --%s CODE --%s CN -f spc_token_file_name\n", COMMAND_NAME_SPC_TOKEN, OPTION_NAME_PRIVKEY, OPTION_NAME_URL, OPTION_NAME_SPC, OPTION_NAME_ISSUER_CN);
 	fprintf(stderr, "\t\t %s --%s token --%s key\n", COMMAND_NAME_JWT_KEY_CHECK, OPTION_NAME_JWT, OPTION_NAME_PUBKEY);
-	fprintf(stderr, "\t\t %s --%s token --%s ca_dir --%s timeout_in_seconds\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_JWT, OPTION_NAME_CA_DIR, OPTION_NAME_CONNECT_TIMEOUT);
+	fprintf(stderr, "\t\t %s --%s token [--%s --%s ca_dir] [--%s timeout_in_seconds]\n", COMMAND_NAME_JWT_CHECK, OPTION_NAME_JWT, OPTION_NAME_X509_CERT_PATH_CHECK, OPTION_NAME_CA_DIR, OPTION_NAME_CONNECT_TIMEOUT);
 	fprintf(stderr, "\t\t %s --%s token\n", COMMAND_NAME_JWT_DUMP, OPTION_NAME_JWT);
 	fprintf(stderr, "\t\t %s --%s 80 --%s key --%s C --%s CN --%s SERIAL --%s EXPIRY --%s ca.pem --%s TNAuthList(URI) --%s pa.pem --%s padir\n", COMMAND_NAME_CA, OPTION_NAME_PORT, OPTION_NAME_PRIVKEY, OPTION_NAME_ISSUER_C, OPTION_NAME_ISSUER_CN, OPTION_NAME_SERIAL, OPTION_NAME_EXPIRY, OPTION_NAME_CA_CERT, OPTION_NAME_TN_AUTH_LIST_URI, OPTION_NAME_PA_CERT, OPTION_NAME_PA_DIR);
 	fprintf(stderr, "\t\t %s --%s 80\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
@@ -44,7 +44,8 @@ static void stirshaken_usage(const char *name)
 	fprintf(stderr, "\t\t %s			: run PA service on port given to --%s\n", COMMAND_NAME_PA, OPTION_NAME_PORT);
 	fprintf(stderr, "\t\t %s		: request SP Code token from PA at url given to --%s\n", COMMAND_NAME_SP_SPC_REQ, OPTION_NAME_URL);
 	fprintf(stderr, "\t\t %s		: request SP certificate for Service Provider identified by number given to --%s from CA at url given to --%s on port given to --%s\n", COMMAND_NAME_SP_CERT_REQ, OPTION_NAME_SPC, OPTION_NAME_URL, OPTION_NAME_PORT);
-	fprintf(stderr, "\t\t %s	: generate PASSporT with x5u pointing to given URL, with given attestation level, origination and destination telephone numbers and with given reference, and sign it using specified private key\n\n", COMMAND_NAME_PASSPORT_CREATE);
+	fprintf(stderr, "\t\t %s	: generate PASSporT with x5u pointing to given URL, with given attestation level, origination and destination telephone numbers and with given reference, and sign it using specified private key\n", COMMAND_NAME_PASSPORT_CREATE);
+	fprintf(stderr, "\t\t %s		: print the library version (git hash of the most recent commit)\n\n", COMMAND_NAME_VERSION);
 	fprintf(stderr, "\n");
 }
 
@@ -104,6 +105,7 @@ int main(int argc, char *argv[])
 		{ OPTION_NAME_ORIGID, required_argument, 0, OPTION_ORIGID },
 		{ OPTION_NAME_ATTEST, required_argument, 0, OPTION_ATTEST },
 		{ OPTION_NAME_CONNECT_TIMEOUT, required_argument, 0, OPTION_CONNECT_TIMEOUT },
+		{ OPTION_NAME_X509_CERT_PATH_CHECK, no_argument, 0, OPTION_X509_CERT_PATH_CHECK },
 		{ OPTION_NAME_V, no_argument, 0, OPTION_V },
 		{ OPTION_NAME_VV, no_argument, 0, OPTION_VV },
 		{ OPTION_NAME_VVV, no_argument, 0, OPTION_VVV },
@@ -270,17 +272,17 @@ int main(int argc, char *argv[])
 
 			case OPTION_SSL:	
 				options.use_ssl = 1;	
-				fprintf(stderr, "Using SSL (HTTPS)\n\n");	
+				fprintf(stderr, "Using SSL (HTTPS)\n");	
 				break;	
 
 			case OPTION_SSL_CERT:	
 				strncpy(options.ssl_cert_name, optarg, STIR_SHAKEN_BUFLEN);	
-				fprintf(stderr, "SSL cert is: %s\n\n", options.ssl_cert_name);	
+				fprintf(stderr, "SSL cert is: %s\n", options.ssl_cert_name);	
 				break;	
 
 			case OPTION_SSL_KEY:	
 				strncpy(options.ssl_key_name, optarg, STIR_SHAKEN_BUFLEN);	
-				fprintf(stderr, "SSL key is: %s\n\n", options.ssl_key_name);	
+				fprintf(stderr, "SSL key is: %s\n", options.ssl_key_name);	
 				break;
 
 			case OPTION_PA_CERT:
@@ -328,19 +330,24 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "Connection timeout is: %lus\n", options.connect_timeout_s);
 				break;
 
+			case OPTION_X509_CERT_PATH_CHECK:	
+				options.x509_cert_path_check = 1;	
+				fprintf(stderr, "With X509 cert path check\n");	
+				break;	
+
 			case OPTION_V:
 				options.loglevel = STIR_SHAKEN_LOGLEVEL_BASIC;
-				fprintf(stderr, "Loglevel is: %d\n\n", options.loglevel);
+				fprintf(stderr, "Loglevel is: %d\n", options.loglevel);
 				break;
 
 			case OPTION_VV:
 				options.loglevel = STIR_SHAKEN_LOGLEVEL_MEDIUM;
-				fprintf(stderr, "Loglevel is: %d\n\n", options.loglevel);
+				fprintf(stderr, "Loglevel is: %d\n", options.loglevel);
 				break;
 
 			case OPTION_VVV:
 				options.loglevel = STIR_SHAKEN_LOGLEVEL_HIGH;
-				fprintf(stderr, "Loglevel is: %d\n\n", options.loglevel);
+				fprintf(stderr, "Loglevel is: %d\n", options.loglevel);
 				break;
 
 			case '?':
