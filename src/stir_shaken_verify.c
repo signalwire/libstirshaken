@@ -424,7 +424,8 @@ stir_shaken_status_t stir_shaken_jwt_verify_ex(stir_shaken_context_t *ss, const 
 
     ss_status = stir_shaken_jwt_check_signature(ss, token, &cert, &jwt, connect_timeout_s);
     if (STIR_SHAKEN_STATUS_OK != ss_status) {
-        stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_JWT_VERIFY_1);
+        stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_JWT_CHECK_SIGNATURE);
+		ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_PASSPORT;
         goto fail;
     }
 
@@ -437,19 +438,19 @@ stir_shaken_status_t stir_shaken_jwt_verify_ex(stir_shaken_context_t *ss, const 
 		ss_status = stir_shaken_read_cert_fields(ss, cert);
 		if (STIR_SHAKEN_STATUS_OK != ss_status) {
 			stir_shaken_set_error(ss, "Error parsing certificate", STIR_SHAKEN_ERROR_JWT_CERT_MALFORMED_1);
-			goto fail;
+			goto fail_x509_cert_path_check;
 		}
 
 		ss_status = stir_shaken_basic_cert_check(ss, cert);
 		if (STIR_SHAKEN_STATUS_OK != ss_status) {
 			stir_shaken_set_error(ss, "Cert did not pass basic check (wrong version or expired)", STIR_SHAKEN_ERROR_JWT_CERT_INVALID_1);
-			goto fail;
+			goto fail_x509_cert_path_check;
 		}
 
 		ss_status = stir_shaken_verify_cert_path(ss, cert, store);
 		if (STIR_SHAKEN_STATUS_OK != ss_status) {
 			stir_shaken_set_error(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_JWT_CERT_X509_PATH_INVALID_1);
-			goto fail;
+			goto fail_x509_cert_path_check;
 		}
 	}
 
@@ -468,6 +469,10 @@ stir_shaken_status_t stir_shaken_jwt_verify_ex(stir_shaken_context_t *ss, const 
     }
 
     return STIR_SHAKEN_STATUS_OK;
+
+fail_x509_cert_path_check:
+
+	ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_CERTIFICATE;
 
 fail:
 
@@ -574,12 +579,14 @@ stir_shaken_status_t stir_shaken_sih_verify_ex(stir_shaken_context_t *ss, const 
 
 	if (!sih) {
 		stir_shaken_set_error(ss, "SIP Identity Header not set", STIR_SHAKEN_ERROR_BAD_PARAMS_23);
+		ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_IDENTITY_HDR;
 		goto end;
 	}
 
 	ss_status = stir_shaken_jwt_sih_to_jwt_encoded(ss, sih, &jwt_encoded[0], STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN);
 	if (ss_status != STIR_SHAKEN_STATUS_OK) {
 		stir_shaken_set_error(ss, "Failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_SIH_TO_JWT_2);
+		ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_IDENTITY_HDR;
 		goto end;
 	}
 
