@@ -23,14 +23,14 @@ Create PASSporT using Authentication Service interface
 ```
 stir_shaken_context_t ss = { 0 };
 stir_shaken_passport_params_t params = {
-	.x5u = "https://sp.com/sp.pem",
-	.attest = "A",
+	.x5u = "https://shaken.signalwire.cloud/sp.pem"",
+	.attest = "B",
 	.desttn_key = "tn",
-	.desttn_val = "01256500600",
+	.desttn_val = "01256700800",
 	.iat = time(NULL),
 	.origtn_key = "tn",
-	.origtn_val = "01256789999",
-	.origid = "ref"
+	.origtn_val = "01256500600",
+	.origid = "e32f4189-cb86-460f-bb92-bd3acb89f29c"
 };
 stir_shaken_passport_t *passport = NULL;
 char *s = NULL, *sih = NULL;
@@ -49,7 +49,7 @@ printf("\n1. PASSporT encoded:\n%s\n", encoded);
 ```
 ```
 1. PASSporT encoded:
-eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9zcC5jb20vc3AucGVtIn0.eyJhdHRlc3QiOiJBIiwiZGVzdCI6eyJ0biI6WyIwMTI1NjUwMDYwMCJdfSwiaWF0IjoxNjE0Nzg3MDk0LCJvcmlnIjp7InRuIjoiMDEyNTY3ODk5OTkifSwib3JpZ2lkIjoicmVmIn0.ULDQt5aWDSzVKhoyVDPmKwW7FuXEVaHPp7xuZsuGIeZRPqIsQfBRoVrgwo_UAvXmoFElG5zupafKVzJI0kXoSg
+eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9zaGFrZW4uc2lnbmFsd2lyZS5jbG91ZC9zcC5wZW0ifQ.eyJhdHRlc3QiOiJCIiwiZGVzdCI6eyJ0biI6WyIwMTI1NjcwMDgwMCJdfSwiaWF0IjoxNjE2NDQyNTIzLCJvcmlnIjp7InRuIjoiMDEyNTY1MDA2MDAifSwib3JpZ2lkIjoiZTMyZjQxODktY2I4Ni00NjBmLWJiOTItYmQzYWNiODlmMjljIn0.VT_KOQtrCS3WctNBFT7PKcUowTqHI1cZU3XhBaYEji8eH07XE5rYxomns1EnnePpw96zUF7cr-mBBro-wP65jg
 ```
 Print PASSporT in decoded (plain) form
 ```
@@ -63,22 +63,23 @@ printf("\n2. PASSporT decoded:\n%s\n", s);
     "alg": "ES256",
     "ppt": "shaken",
     "typ": "passport",
-    "x5u": "https://sp.com/sp.pem"
+    "x5u": "https://shaken.signalwire.cloud/sp.pem"
 }
 .
 {
-    "attest": "A",
+    "attest": "B",
     "dest": {
         "tn": [
-            "01256500600"
+            "01256700800"
         ]
     },
-    "iat": 1614787094,
+    "iat": 1616442523,
     "orig": {
-        "tn": "01256789999"
+        "tn": "01256500600"
     },
-    "origid": "ref"
+    "origid": "e32f4189-cb86-460f-bb92-bd3acb89f29c"
 }
+
 ```
 Create and print SIP Identity Header
 ```
@@ -87,15 +88,15 @@ printf("\n3. SIP Identity Header:\n%s\n", sih);
 ```
 ```
 3. SIP Identity Header:
-eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9zcC5jb20vc3AucGVtIn0.eyJhdHRlc3QiOiJBIiwiZGVzdCI6eyJ0biI6WyIwMTI1NjUwMDYwMCJdfSwiaWF0IjoxNjE0Nzg3MDk0LCJvcmlnIjp7InRuIjoiMDEyNTY3ODk5OTkifSwib3JpZ2lkIjoicmVmIn0.7PMbuC-Rkvdd4dl57aX1Ym-tEtfAFrou8uTOrT7bKaqnpdUh6leKkyZzMAV3-gRgZA-TaFDv-lAGBY9Ifs1FMA;info=<https://sp.com/sp.pem>;alg=ES256;ppt=shaken
+eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9zaGFrZW4uc2lnbmFsd2lyZS5jbG91ZC9zcC5wZW0ifQ.eyJhdHRlc3QiOiJCIiwiZGVzdCI6eyJ0biI6WyIwMTI1NjcwMDgwMCJdfSwiaWF0IjoxNjE2NDQyNTIzLCJvcmlnIjp7InRuIjoiMDEyNTY1MDA2MDAifSwib3JpZ2lkIjoiZTMyZjQxODktY2I4Ni00NjBmLWJiOTItYmQzYWNiODlmMjljIn0.rN3n-2qjP9eVPMViBbK6sVUmN3tMRbI-8ffVs1M7J9KL0q0hMKtdZNBWj_TS5RkvakiDUoSErkDsahh2nRGD8Q;info=<https://shaken.signalwire.cloud/sp.pem>;alg=ES256;ppt=shaken
 ```
 
 # Verification
 
 ```
 
-char *passport_encoded = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.cNI-uIirMOiT19OcQag2UYjHWTgTqtr5jhSk3KxflqSC7FbrrYDr51zCEvzDMoETpge7eQeQ6ASVzb1dhVVhKQ";
-char *sip_identity_header = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.cNI-uIirMOiT19OcQag2UYjHWTgTqtr5jhSk3KxflqSC7FbrrYDr51zCEvzDMoETpge7eQeQ6ASVzb1dhVVhKQ;info=<http://shaken.signalwire.cloud/sp.pem>;alg=ES256;ppt=shaken";
+char *passport_encoded = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9zaGFrZW4uc2lnbmFsd2lyZS5jbG91ZC9zcC5wZW0ifQ.eyJhdHRlc3QiOiJCIiwiZGVzdCI6eyJ0biI6WyIwMTI1NjcwMDgwMCJdfSwiaWF0IjoxNjE2NDQyNTIzLCJvcmlnIjp7InRuIjoiMDEyNTY1MDA2MDAifSwib3JpZ2lkIjoiZTMyZjQxODktY2I4Ni00NjBmLWJiOTItYmQzYWNiODlmMjljIn0.VT_KOQtrCS3WctNBFT7PKcUowTqHI1cZU3XhBaYEji8eH07XE5rYxomns1EnnePpw96zUF7cr-mBBro-wP65jg";
+char *sip_identity_header = "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9zaGFrZW4uc2lnbmFsd2lyZS5jbG91ZC9zcC5wZW0ifQ.eyJhdHRlc3QiOiJCIiwiZGVzdCI6eyJ0biI6WyIwMTI1NjcwMDgwMCJdfSwiaWF0IjoxNjE2NDQyNTIzLCJvcmlnIjp7InRuIjoiMDEyNTY1MDA2MDAifSwib3JpZ2lkIjoiZTMyZjQxODktY2I4Ni00NjBmLWJiOTItYmQzYWNiODlmMjljIn0.rN3n-2qjP9eVPMViBbK6sVUmN3tMRbI-8ffVs1M7J9KL0q0hMKtdZNBWj_TS5RkvakiDUoSErkDsahh2nRGD8Q;info=<https://shaken.signalwire.cloud/sp.pem>;alg=ES256;ppt=shaken";
 stir_shaken_passport_t *passport_out = NULL;
 stir_shaken_cert_t *cert_out = NULL;
 int iat_freshness_seconds = 60;
@@ -180,16 +181,23 @@ PASSporT is:
     "alg": "ES256",
     "ppt": "shaken",
     "typ": "passport",
-    "x5u": "http://shaken.signalwire.cloud/sp.pem"
+    "x5u": "https://shaken.signalwire.cloud/sp.pem"
 }
 .
 {
-    "attest": "A",
-    "dest": "{\"tn\":\"01256500600\"}",
-    "iat": 1603458131,
-    "orig": "{\"tn\":\"01256789999\"}",
-    "origid": "ref"
+    "attest": "B",
+    "dest": {
+        "tn": [
+            "01256700800"
+        ]
+    },
+    "iat": 1616442523,
+    "orig": {
+        "tn": "01256500600"
+    },
+    "origid": "e32f4189-cb86-460f-bb92-bd3acb89f29c"
 }
+
 ```
 
 Print the certificate
@@ -205,8 +213,8 @@ Certificate is:
 STIR-Shaken: STI Cert: Serial number: 01 1
 STIR-Shaken: STI Cert: Issuer: /C=US/CN=SignalWire STI-CA Test
 STIR-Shaken: STI Cert: Subject: /C=US/CN=SignalWire STI-SP Test
-STIR-Shaken: STI Cert: Valid from: Oct 22 22:14:38 2020 GMT
-STIR-Shaken: STI Cert: Valid to: Mar  8 22:14:38 2048 GMT
+STIR-Shaken: STI Cert: Valid from: Aug  1 00:37:19 2020 GMT
+STIR-Shaken: STI Cert: Valid to: Dec 17 00:37:19 2047 GMT
 STIR-Shaken: STI Cert: Version: 3
 ```
 
@@ -304,7 +312,7 @@ You can find very compressed and useful examples of library usages in 'examples'
 Simply run ./stirshaken to start:
 
 ```
-root@piotr-deb9:~/projects/libstirshaken# ./stirshaken
+root@deb9:~/projects/libstirshaken# ./stirshaken
 
 usage:	 /root/projects/libstirshaken/.libs/stirshaken command
 
@@ -312,45 +320,46 @@ usage:	 /root/projects/libstirshaken/.libs/stirshaken command
 
 Where command is one of:
 
-		keys --pubkey pub.pem --privkey priv.pem
-		csr --privkey key --pubkey key --subject_c C --subject_cn CN --spc CODE -f csrName
-		cert --type CA --privkey key --pubkey key --issuer_c C --issuer_cn CN --serial SERIAL --expiry EXPIRY -f certName
-		cert --type SP --privkey key --pubkey key --issuer_c C --issuer_cn CN --serial SERIAL --expiry EXPIRY --ca_cert ca.pem --csr csr.pem --uri TNAuthList(URI) -f certName
-		hash -f certName
-		spc-token --privkey key --url x5u_URL --spc CODE --issuer_cn CN -f spc_token_file_name
-		jwt-key-check --jwt token --pubkey key
-		jwt-check --jwt token
-		jwt-dump --jwt token
-		ca --port 80 --privkey key --issuer_c C --issuer_cn CN --serial SERIAL --expiry EXPIRY --ca_cert ca.pem --uri TNAuthList(URI) --pa_cert pa.pem --pa_dir padir
-		pa --port 80
-		sp-spc-req --url URL --port port
-		sp-cert-req --url URL --port port --privkey key --pubkey key --csr csr.pem --spc CODE --spc_token SPC_TOKEN -f CERT_NAME
-		passport-create --privkey key --url x5u_URL --attest attestation_level --origtn origtn --desttn desttn --origid origid -f passport_file_name
+		 keys --pubkey pub.pem --privkey priv.pem
+		 csr --privkey key --pubkey key --subject_c C --subject_cn CN --spc CODE -f csrName
+		 cert --type CA --privkey key --pubkey key --issuer_c C --issuer_cn CN --serial SERIAL --expiry EXPIRY -f certName
+		 cert --type SP --privkey key --pubkey key --issuer_c C --issuer_cn CN --serial SERIAL --expiry EXPIRY --ca_cert ca.pem --csr csr.pem --uri TNAuthList(URI) -f certName
+		 hash -f certName
+		 spc-token --privkey key --url x5u_URL --spc CODE --issuer_cn CN -f spc_token_file_name
+		 jwt-key-check --jwt token --pubkey key
+		 jwt-check --jwt token [--cert_path_check --ca_dir ca_dir] [--timeout timeout_in_seconds]
+		 jwt-dump --jwt token
+		 ca --port 80 --privkey key --issuer_c C --issuer_cn CN --serial SERIAL --expiry EXPIRY --ca_cert ca.pem --uri TNAuthList(URI) --pa_cert pa.pem --pa_dir padir
+		 pa --port 80
+		 sp-spc-req --url URL --port port
+		 sp-cert-req --url URL --port port --privkey key --pubkey key --csr csr.pem --spc CODE --spc_token SPC_TOKEN -f CERT_NAME
+		 passport-create --privkey key --url x5u_URL --attest attestation_level --origtn origtn --desttn desttn --origid origid -f passport_file_name
+		 version
 
-		Each command accepts setting print/logging verbosity level:
-		--v		basic logging
-		--vv		medium logging
-		--vvv		high logging
+		 Each command accepts setting print/logging verbosity level:
+		 --v		basic logging
+		 --vv		medium logging
+		 --vvv		high logging
 
-		CA can be configured with HTTPS by setting up SSL cert and key with:
-			--ssl --ssl_cert cert.pem --ssl_key key.pem
+		 CA can be configured with HTTPS by setting up SSL cert and key with:
+			 --ssl --ssl_cert cert.pem --ssl_key key.pem
 
-		SSL/HTTPS is supported, simply use 'https://' instead of 'http://' whenever you need encryption (default port for HTTPS is 443)
+		 SSL/HTTPS is supported, simply use 'https://' instead of 'http://' whenever you need encryption (default port for HTTPS is 443)
 
-		keys			: generate key pair
-		csr			: generate X509 certificate request for SP identified by SP Code given to --spc
-		cert			: generate X509 certificate (end entity for --type SP and self-signed for --type CA)
-		hash			: save CA certificate under hashed name (in this form it can be put into CA dir)
-		spc-token		: generate SPC token for SP identified by SP Code given to --spc (set token's PA issuer to name given as --issuer_cn, and token's x5u URL of the PA certificate to URL given as --url)
-		jwt-key-check		: decode JWT and verify signature using public key given to --pubkey
-		jwt-check		: decode JWT and verify signature using certificate referenced in 'x5u' header (involves HTTP(S) GET request)
-		jwt-dump		: decode JWT and print it (do not verify signature)
-		ca			: run CA service on port given to --port and accepting tokens issued by trusted PAs (trusted PAs are ones that match public key embedded in cert given to --pa_cert or those whose certificate can be linked to trusted PA roots by X509 cert path check procedure using certs from the folder given to --pa_dir, options --pa_cert and --pa_dir are independent). Use "--ssl --ssl_cert cert.pem --ssl_key key.pem" for HTTPS
-		pa			: run PA service on port given to --port
-		sp-spc-req		: request SP Code token from PA at url given to --url
-		sp-cert-req		: request SP certificate for Service Provider identified by number given to --spc from CA at url given to --url on port given to --port
-		passport-create	: generate PASSporT with x5u pointing to given URL, with given attestation level, origination and destination telephone numbers and with given reference, and sign it using specified private key
-
+		 keys			: generate key pair
+		 csr			: generate X509 certificate request for SP identified by SP Code given to --spc
+		 cert			: generate X509 certificate (end entity for --type SP and self-signed for --type CA)
+		 hash			: save CA certificate under hashed name (in this form it can be put into CA dir)
+		 spc-token		: generate SPC token for SP identified by SP Code given to --spc (set token's PA issuer to name given as --issuer_cn, and token's x5u URL of the PA certificate to URL given as --url)
+		 jwt-key-check		: decode JWT and verify signature using public key given to --pubkey
+		 jwt-check		: decode JWT and verify signature using certificate referenced in 'x5u' header (involves HTTP(S) GET request), optionally execute X509 certificate path check against trusted root CA certificates
+		 jwt-dump		: decode JWT and print it (do not verify signature)
+		 ca			: run CA service on port given to --port and accepting tokens issued by trusted PAs (trusted PAs are ones that match public key embedded in cert given to --pa_cert or those whose certificate can be linked to trusted PA roots by X509 cert path check procedure using certs from the folder given to --pa_dir, options --pa_cert and --pa_dir are independent). Use "--ssl --ssl_cert cert.pem --ssl_key key.pem" for HTTPS
+		 pa			: run PA service on port given to --port
+		 sp-spc-req		: request SP Code token from PA at url given to --url
+		 sp-cert-req		: request SP certificate for Service Provider identified by number given to --spc from CA at url given to --url on port given to --port
+		 passport-create	: generate PASSporT with x5u pointing to given URL, with given attestation level, origination and destination telephone numbers and with given reference, and sign it using specified private key
+		 version		: print the library version (git hash of the most recent commit)
 ```
 
 ### Helpful commands from SSL
