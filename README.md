@@ -152,7 +152,7 @@ if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_validate_iat_against_freshness
 		printf("PASSporT not valid yet\n");
 	} else if (error_code == STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_EXPIRED) {
 		printf("PASSporT expired\n");
-	} else if (error_code = STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT) {
+	} else if (error_code == STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT) {
 		printf("PASSporT is missing @iat grant\n");
 	} else {
 		printf("You called this method with NULL PASSporT\n");
