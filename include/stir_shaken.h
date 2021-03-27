@@ -91,6 +91,12 @@ typedef enum stir_shaken_status {
 	STIR_SHAKEN_STATUS_NOT_HANDLED,
 } stir_shaken_status_t;
 
+typedef enum stir_shaken_verification_status {
+	STIR_SHAKEN_VERIFICATION_STATUS_BAD_IDENTITY_HDR,
+	STIR_SHAKEN_VERIFICATION_STATUS_BAD_PASSPORT,
+	STIR_SHAKEN_VERIFICATION_STATUS_BAD_CERTIFICATE,
+} stir_shaken_verification_status_t;
+
 typedef enum stir_shaken_http_response_status {
 	STIR_SHAKEN_HTTP_RESPONSE_STATUS_COULDNT_RESOLVE_PROXY = 5,
 	STIR_SHAKEN_HTTP_RESPONSE_STATUS_COULDNT_RESOLVE_HOST = 6,
@@ -415,8 +421,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_HTTPS_CERT,
 	STIR_SHAKEN_ERROR_HTTPS_KEY,
 	STIR_SHAKEN_ERROR_JWT,
-	STIR_SHAKEN_ERROR_JWT_VERIFY_1,
-	STIR_SHAKEN_ERROR_JWT_VERIFY_2,
+	STIR_SHAKEN_ERROR_JWT_CHECK_SIGNATURE,
 	STIR_SHAKEN_ERROR_JWT_CERT_MALFORMED_1,
 	STIR_SHAKEN_ERROR_JWT_CERT_MALFORMED_2,
 	STIR_SHAKEN_ERROR_JWT_CERT_INVALID_1,
@@ -775,6 +780,7 @@ typedef struct stir_shaken_context_s {
 	stir_shaken_callback_arg_t	callback_arg;
 	uint8_t cert_fetched_from_cache;
 	uint8_t x509_cert_path_checked;
+	stir_shaken_verification_status_t verification_status;
 } stir_shaken_context_t;
 
 void stir_shaken_destroy_context(stir_shaken_context_t *ss);

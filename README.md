@@ -2,8 +2,10 @@
 
 STIR-Shaken is a technology for making secure calls by use of SSL certificates and JSON Web Tokens.
 For a general overview of the framwork please search web for: ATIS, "Signature-based Handling of Asserted Information using Tokens (SHAKEN). Governance Model and Certificate Management",
-(no link provided because spec is actively worked on and updated frequently).
-You can find a list of specs relevant to Shaken at the bottom of this document.
+
+This library implements STIR (Secure Telephony Identity Revisited) and SHAKEN (Signature-based Handling of Asserted information using toKENs) (RFC8224, RFC8588), with X509 certificate path check (ATIS "Signature-based Handling of Asserted information using toKENs (SHAKEN)", RFC5280 "6. Certification Path Validation").
+
+You can find a comprehensive list of specs relevant to Shaken at the bottom of this document.
 
 ## libstirshaken
 
@@ -152,7 +154,7 @@ if (STIR_SHAKEN_STATUS_OK != stir_shaken_passport_validate_iat_against_freshness
 		printf("PASSporT not valid yet\n");
 	} else if (error_code == STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_EXPIRED) {
 		printf("PASSporT expired\n");
-	} else if (error_code = STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT) {
+	} else if (error_code == STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT) {
 		printf("PASSporT is missing @iat grant\n");
 	} else {
 		printf("You called this method with NULL PASSporT\n");
