@@ -889,9 +889,14 @@ stir_shaken_status_t stir_shaken_add_cert_trusted_from_file(stir_shaken_context_
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_default_callback(stir_shaken_callback_arg_t *arg)
+stir_shaken_status_t stir_shaken_default_callback(stir_shaken_context_t *ss)
 {
-	if (!arg) return STIR_SHAKEN_STATUS_TERM;
+	stir_shaken_callback_arg_t *arg = NULL;
+
+	if (!ss)
+		return STIR_SHAKEN_STATUS_TERM;
+
+	arg = &ss->callback_arg;
 
 	switch (arg->action) {
 

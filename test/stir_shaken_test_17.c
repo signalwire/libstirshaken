@@ -17,14 +17,17 @@ int cache_callback_called;
 		printf("Error code is: '%d'\n", error_code); \
 	}
 
-stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
+stir_shaken_status_t cache_callback(stir_shaken_context_t *ss)
 {
-	stir_shaken_context_t	ss = { 0 };
+	stir_shaken_callback_arg_t *arg = NULL;
 	const char				*error_description = NULL;
 	stir_shaken_error_t		error_code = STIR_SHAKEN_ERROR_GENERAL;
 	stir_shaken_cert_t		cache_copy = { 0 };
 
-	cache_callback_called++;
+	stir_shaken_assert(ss->user_data = &cache_callback_called, "Pointer to user data invalid");
+	(*((int*)(ss->user_data)))++;
+
+	arg = &ss->callback_arg;
 
 	switch (arg->action) {
 
@@ -38,12 +41,12 @@ stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
 
 				printf("Supplying certificate from the cache: %s...\n", arg->cert.public_url);
 
-				if (!(cache_copy.x = stir_shaken_load_x509_from_file(&ss, sp.cert_name))) {
+				if (!(cache_copy.x = stir_shaken_load_x509_from_file(ss, sp.cert_name))) {
 					printf("Cannot load X509 from file\n");
 					goto exit;
 				}
 
-				if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(&ss, &arg->cert, &cache_copy)) {
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(ss, &arg->cert, &cache_copy)) {
 					printf("Cannot copy certificate\n");
 					goto exit;
 				}
@@ -59,8 +62,8 @@ stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
 
 exit:
 
-	if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
+	if (stir_shaken_is_error_set(ss)) {
+		error_description = stir_shaken_get_error(ss, &error_code);
 		printf("Error description is:\n%s\n", error_description);
 		printf("Error code is: %d\n", error_code);
 	}
@@ -115,7 +118,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	ca.keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
 	status = stir_shaken_generate_keys(&ss, &ca.keys.ec_key, &ca.keys.private_key, &ca.keys.public_key, ca.private_key_name, ca.public_key_name, ca.keys.priv_raw, &ca.keys.priv_raw_len);
 	PRINT_SHAKEN_ERROR_IF_SET
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
+		stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
 	stir_shaken_assert(ca.keys.ec_key != NULL, "Err, failed to generate EC key\n\n");
 	stir_shaken_assert(ca.keys.private_key != NULL, "Err, failed to generate private key");
 	stir_shaken_assert(ca.keys.public_key != NULL, "Err, failed to generate public key");
@@ -125,7 +128,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	sp.keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
 	status = stir_shaken_generate_keys(&ss, &sp.keys.ec_key, &sp.keys.private_key, &sp.keys.public_key, sp.private_key_name, sp.public_key_name, sp.keys.priv_raw, &sp.keys.priv_raw_len);
 	PRINT_SHAKEN_ERROR_IF_SET
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
+		stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
 	stir_shaken_assert(sp.keys.ec_key != NULL, "Err, failed to generate EC key\n\n");
 	stir_shaken_assert(sp.keys.private_key != NULL, "Err, failed to generate private key");
 	stir_shaken_assert(sp.keys.public_key != NULL, "Err, failed to generate public key");
@@ -137,7 +140,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 
 	status = stir_shaken_generate_csr(&ss, sp.code, &sp.csr.req, sp.keys.private_key, sp.keys.public_key, sp.subject_c, sp.subject_cn);
 	PRINT_SHAKEN_ERROR_IF_SET
-	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
+		stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, generating CSR");
 
 	printf("CA: Create self-signed CA Certificate\n");
 
@@ -147,7 +150,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	ca.expiry_days = 90;
 	ca.cert.x = stir_shaken_generate_x509_self_signed_ca_cert(&ss, ca.keys.private_key, ca.keys.public_key, ca.issuer_c, ca.issuer_cn, ca.serial, ca.expiry_days);
 	PRINT_SHAKEN_ERROR_IF_SET
-	stir_shaken_assert(ca.cert.x, "Err, generating CA cert");
+		stir_shaken_assert(ca.cert.x, "Err, generating CA cert");
 
 	printf("CA: Create end-entity SP Certificate from SP's CSR\n");
 	snprintf(ca.tn_auth_list_uri, STIR_SHAKEN_BUFLEN, "http://ca.com/api");
@@ -157,7 +160,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	//sp.cert.x = stir_shaken_generate_x509_end_entity_cert(&ss, ca.cert.x, ca.keys.private_key, sp.keys.public_key, ca.issuer_c, ca.issuer_cn, sp.subject_c, sp.subject_cn, ca.serial_sp, ca.expiry_days_sp, ca.number_start_sp, ca.number_end_sp);
 	sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(&ss, ca.cert.x, ca.keys.private_key, ca.issuer_c, ca.issuer_cn, sp.csr.req, ca.serial, ca.expiry_days, ca.tn_auth_list_uri);
 	PRINT_SHAKEN_ERROR_IF_SET
-	stir_shaken_assert(sp.cert.x != NULL, "Err, generating Cert");
+		stir_shaken_assert(sp.cert.x != NULL, "Err, generating Cert");
 
 	// SAVE CSR and certificates
 
@@ -193,6 +196,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	stir_shaken_assert(vs = stir_shaken_vs_create(&ss), "Cannot create Verification Service\n");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_load_ca_dir(&ss, vs, CA_DIR), "Failed to init X509 cert store");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_callback(&ss, vs, cache_callback), "Failed to set cache callback");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_callback_user_data(&ss, vs, &cache_callback_called), "Failed to set cache callback user data");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_connect_timeout(&ss, vs, connect_timeout_s), "Failed to set connect timeout");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 1), "Failed to turn on x509 cert path check");
 

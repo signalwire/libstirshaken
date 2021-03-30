@@ -30,12 +30,20 @@
  * eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cDovL3NoYWtlbi5zaWduYWx3aXJlLmNsb3VkL3NwLnBlbSJ9.eyJhdHRlc3QiOiJBIiwiZGVzdCI6IntcInRuXCI6XCIwMTI1NjUwMDYwMFwifSIsImlhdCI6MTYwMzQ1ODEzMSwib3JpZyI6IntcInRuXCI6XCIwMTI1Njc4OTk5OVwifSIsIm9yaWdpZCI6InJlZiJ9.cNI-uIirMOiT19OcQag2UYjHWTgTqtr5jhSk3KxflqSC7FbrrYDr51zCEvzDMoETpge7eQeQ6ASVzb1dhVVhKQ;info=<http://shaken.signalwire.cloud/sp.pem>;alg=ES256;ppt=shaken
  **/
 
-stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
+stir_shaken_status_t cache_callback(stir_shaken_context_t *ss)
 {
-	stir_shaken_context_t	ss = { 0 };
-	const char				*error_description = NULL;
-	stir_shaken_error_t		error_code = STIR_SHAKEN_ERROR_GENERAL;
-	stir_shaken_cert_t		cache_copy = { 0 };
+	stir_shaken_callback_arg_t *arg = NULL;
+	const char *error_description = NULL;
+	stir_shaken_error_t error_code = STIR_SHAKEN_ERROR_GENERAL;
+	stir_shaken_cert_t cache_copy = { 0 };
+	int *user_data = NULL;
+
+	if (!ss)
+		return STIR_SHAKEN_STATUS_NOT_HANDLED;
+
+	arg = &ss->callback_arg;
+	user_data = (int*) ss->user_data;
+	printf("We could do something with our data in callback: %d...\n", *user_data);
 
 	switch (arg->action) {
 
@@ -49,12 +57,12 @@ stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
 
 				printf("Supplying certificate from the cache: %s...\n", arg->cert.public_url);
 
-				if (!(cache_copy.x = stir_shaken_load_x509_from_file(&ss, "examples/cache/sp.pem"))) {
+				if (!(cache_copy.x = stir_shaken_load_x509_from_file(ss, "examples/cache/sp.pem"))) {
 					printf("Cannot load X509 from file\n");
 					goto exit;
 				}
 
-				if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(&ss, &arg->cert, &cache_copy)) {
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(ss, &arg->cert, &cache_copy)) {
 					printf("Cannot copy certificate\n");
 					goto exit;
 				}
@@ -70,8 +78,8 @@ stir_shaken_status_t cache_callback(stir_shaken_callback_arg_t *arg)
 
 exit:
 
-	if (stir_shaken_is_error_set(&ss)) {
-		error_description = stir_shaken_get_error(&ss, &error_code);
+	if (stir_shaken_is_error_set(ss)) {
+		error_description = stir_shaken_get_error(ss, &error_code);
 		printf("Error description is:\n%s\n", error_description);
 		printf("Error code is: %d\n", error_code);
 	}
@@ -81,8 +89,9 @@ exit:
 
 void run_verification_service(stir_shaken_callback_t callback)
 {
+	int user_data = 600800;
 	const char	*error_description = NULL;
-	stir_shaken_context_t	ss = { .callback = callback};
+	stir_shaken_context_t	ss = { .callback = callback, .user_data = &user_data };
 	stir_shaken_error_t		error_code = STIR_SHAKEN_ERROR_GENERAL;
 	stir_shaken_status_t	status = STIR_SHAKEN_STATUS_FALSE;
 

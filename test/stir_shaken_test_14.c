@@ -57,10 +57,15 @@ stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, s
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_test_callback(stir_shaken_callback_arg_t *arg)
+stir_shaken_status_t stir_shaken_test_callback(stir_shaken_context_t *ss)
 {
-	stir_shaken_assert(arg, "Callback argument missing");
+	stir_shaken_callback_arg_t *arg = NULL;
+
+	stir_shaken_assert(ss, "Callback argument missing");
+
+	arg = &ss->callback_arg;
 	stir_shaken_assert(STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY == arg->action, "Wrong action");
+	stir_shaken_assert(ss->user_data = &http_req_handled_from_cache, "Pointer to user data invalid");
 
 	switch (arg->action) {
 
@@ -73,9 +78,9 @@ stir_shaken_status_t stir_shaken_test_callback(stir_shaken_callback_arg_t *arg)
 			printf("Supplying certificate from the cache...\n");
 
 			stir_shaken_assert(!strcmp("http://shaken.signalwire.cloud/sp.pem", arg->cert.public_url), "Wrong cert location");
-			stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_cert_copy(&ss, &arg->cert, &cert_cached), "Cannot copy certificate");
+			stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_cert_copy(ss, &arg->cert, &cert_cached), "Cannot copy certificate");
 
-			http_req_handled_from_cache = 1;
+			*((int*)(ss->user_data)) = 1;
 
 			return STIR_SHAKEN_STATUS_HANDLED;
 
@@ -145,6 +150,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 
 	// Test 2: callback set to custom function supplying certificates from cache
 	ss.callback = stir_shaken_test_callback;
+	ss.user_data = &http_req_handled_from_cache;
 	status = stir_shaken_passport_verify(&ss, passport_encoded, &cert, &passport, connect_timeout_s);
 	if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);

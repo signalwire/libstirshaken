@@ -729,6 +729,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_VS_MISSING_6,
 	STIR_SHAKEN_ERROR_VS_MISSING_7,
 	STIR_SHAKEN_ERROR_VS_MISSING_8,
+	STIR_SHAKEN_ERROR_VS_MISSING_9,
 	STIR_SHAKEN_ERROR_VS_MEM,
 	STIR_SHAKEN_ERROR_UNKNOWN_1,
 	STIR_SHAKEN_ERROR_UNKNOWN_2,
@@ -754,9 +755,9 @@ typedef struct stir_shaken_callback_arg_s {
 } stir_shaken_callback_arg_t;
 
 void stir_shaken_destroy_callback_arg(stir_shaken_callback_arg_t *callback_arg);
-
-typedef stir_shaken_status_t (*stir_shaken_callback_t)(stir_shaken_callback_arg_t *);
-stir_shaken_status_t stir_shaken_default_callback(stir_shaken_callback_arg_t *arg);
+struct stir_shaken_context_s;
+typedef stir_shaken_status_t (*stir_shaken_callback_t)(struct stir_shaken_context_s *);
+stir_shaken_status_t stir_shaken_default_callback(struct stir_shaken_context_s *);
 
 typedef struct stir_shaken_context_error_s {
 	char err_buf0[STIR_SHAKEN_ERROR_BUF_LEN];
@@ -781,9 +782,14 @@ typedef struct stir_shaken_context_s {
 	uint8_t cert_fetched_from_cache;
 	uint8_t x509_cert_path_checked;
 	stir_shaken_verification_status_t verification_status;
+	void *user_data;
 } stir_shaken_context_t;
 
 void stir_shaken_destroy_context(stir_shaken_context_t *ss);
+
+void stir_shaken_destroy_callback_arg(stir_shaken_callback_arg_t *callback_arg);
+typedef stir_shaken_status_t (*stir_shaken_callback_t)(stir_shaken_context_t *);
+stir_shaken_status_t stir_shaken_default_callback(stir_shaken_context_t *);
 
 typedef struct mem_chunk_s {
 	char    *mem;
@@ -1360,6 +1366,7 @@ typedef struct stir_shaken_vs_settings_s {
 typedef struct stir_shaken_vs_s {
 	X509_STORE						*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
 	stir_shaken_callback_t			callback;
+	void							*user_data;
 	stir_shaken_vs_settings_t		settings;
 } stir_shaken_vs_t;
 
@@ -1368,6 +1375,7 @@ void stir_shaken_vs_destroy(stir_shaken_vs_t **vs);
 stir_shaken_status_t stir_shaken_vs_load_ca_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *ca_dir);
 stir_shaken_status_t stir_shaken_vs_load_crl_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *crl_dir);
 stir_shaken_status_t stir_shaken_vs_set_callback(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, stir_shaken_callback_t callback);
+stir_shaken_status_t stir_shaken_vs_set_callback_user_data(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, void *user_data);
 stir_shaken_status_t stir_shaken_vs_set_x509_cert_path_check(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, uint8_t x);
 stir_shaken_status_t stir_shaken_vs_set_connect_timeout(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, unsigned long timeout_s);
 stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out);

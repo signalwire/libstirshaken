@@ -121,6 +121,11 @@ Optionally set your own callback to supply certificates from cache
 stir_shaken_vs_set_callback(&ss, vs, cache_callback);
 ```
 
+Optionally pass your own data to the callback
+```
+stir_shaken_vs_set_callback_user_data(&ss, vs, &user_data);
+```
+
 Optionally set timeout on connect (default is 2 seconds)
 ```
 stir_shaken_vs_set_connect_timeout(&ss, vs, connect_timeout_s);

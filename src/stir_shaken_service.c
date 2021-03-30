@@ -872,6 +872,18 @@ stir_shaken_status_t stir_shaken_vs_set_callback(struct stir_shaken_context_s *s
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+stir_shaken_status_t stir_shaken_vs_set_callback_user_data(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, void *user_data)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_9);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	vs->user_data = user_data;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 stir_shaken_status_t stir_shaken_vs_set_x509_cert_path_check(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, uint8_t x)
 {
 	if (!vs) {
@@ -910,6 +922,7 @@ stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify(stir_shaken_context_t
 	}
 
 	ss->callback = vs->callback;
+	ss->user_data = vs->user_data;
 	return stir_shaken_jwt_verify_ex(ss, token, cert_out, jwt_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
 }
 
@@ -927,6 +940,7 @@ stir_shaken_status_t stir_shaken_vs_passport_verify(stir_shaken_context_t *ss, s
 	}
 
 	ss->callback = vs->callback;
+	ss->user_data = vs->user_data;
 	return stir_shaken_passport_verify_ex(ss, token, cert_out, passport_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
 }
 
@@ -944,5 +958,6 @@ stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_s
 	}
 
 	ss->callback = vs->callback;
+	ss->user_data = vs->user_data;
 	return stir_shaken_sih_verify_ex(ss, sih, cert_out, passport_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
 }
