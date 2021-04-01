@@ -908,6 +908,47 @@ stir_shaken_status_t stir_shaken_vs_set_connect_timeout(struct stir_shaken_conte
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+stir_shaken_status_t stir_shaken_vs_set_cert_cache(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, uint8_t x)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_11);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	vs->settings.cache_certificates = x;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_vs_set_cache_expire_seconds(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, unsigned long cache_expire_s)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_12);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	vs->settings.cache_expire_s = cache_expire_s;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_vs_set_cache_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *cache_dir)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_10);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) vs->settings.cache_dir, 0, sizeof(vs->settings.cache_dir));
+
+	if (!stir_shaken_zstr(cache_dir)) {
+		strncpy(vs->settings.cache_dir, cache_dir, sizeof(vs->settings.cache_dir) - 1);
+		vs->settings.cache_dir[sizeof(vs->settings.cache_dir) - 1] = '\0';
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
 {
 	stir_shaken_context_t	ss_local = { 0 };
@@ -921,8 +962,14 @@ stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify(stir_shaken_context_t
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	ss->callback = vs->callback;
-	ss->user_data = vs->user_data;
+	if (vs->settings.cache_certificates) {
+		ss->callback = stir_shaken_default_callback;
+		ss->user_data = vs;
+	} else {
+		ss->callback = vs->callback;
+		ss->user_data = vs->user_data;
+	}
+
 	return stir_shaken_jwt_verify_ex(ss, token, cert_out, jwt_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
 }
 
@@ -939,8 +986,14 @@ stir_shaken_status_t stir_shaken_vs_passport_verify(stir_shaken_context_t *ss, s
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	ss->callback = vs->callback;
-	ss->user_data = vs->user_data;
+	if (vs->settings.cache_certificates) {
+		ss->callback = stir_shaken_default_callback;
+		ss->user_data = vs;
+	} else {
+		ss->callback = vs->callback;
+		ss->user_data = vs->user_data;
+	}
+
 	return stir_shaken_passport_verify_ex(ss, token, cert_out, passport_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
 }
 
@@ -957,7 +1010,13 @@ stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_s
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	ss->callback = vs->callback;
-	ss->user_data = vs->user_data;
+	if (vs->settings.cache_certificates) {
+		ss->callback = stir_shaken_default_callback;
+		ss->user_data = vs;
+	} else {
+		ss->callback = vs->callback;
+		ss->user_data = vs->user_data;
+	}
+
 	return stir_shaken_sih_verify_ex(ss, sih, cert_out, passport_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
 }

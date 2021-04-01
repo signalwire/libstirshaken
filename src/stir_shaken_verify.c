@@ -225,7 +225,7 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 		}
 
 		if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(ss, cert, &ss->callback_arg.cert)) {
-			stir_shaken_set_error(ss, "Cannot copy certificate", STIR_SHAKEN_ERROR_CERT_COPY);
+			stir_shaken_set_error(ss, "Cannot copy certificate", STIR_SHAKEN_ERROR_CERT_COPY_1);
 			goto fail;
 		}
 		stir_shaken_cert_deinit(&ss->callback_arg.cert);
