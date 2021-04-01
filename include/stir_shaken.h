@@ -295,6 +295,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_BAD_PARAMS_29,
 	STIR_SHAKEN_ERROR_BAD_PARAMS_30,
 	STIR_SHAKEN_ERROR_BAD_PARAMS_31,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_32,
 	STIR_SHAKEN_ERROR_SIH_TO_JWT_1,
 	STIR_SHAKEN_ERROR_SIH_TO_JWT_2,
 	STIR_SHAKEN_ERROR_KSJSON,
@@ -397,7 +398,11 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_CERT_FETCH_OR_DOWNLOAD,
 	STIR_SHAKEN_ERROR_CERT_COPY_1,
 	STIR_SHAKEN_ERROR_CERT_COPY_2,
-	STIR_SHAKEN_ERROR_CERT_CREATE_NAME_HASHED,
+	STIR_SHAKEN_ERROR_CERT_COPY_3,
+	STIR_SHAKEN_ERROR_CERT_CREATE_NAME_HASHED_1,
+	STIR_SHAKEN_ERROR_CERT_CREATE_NAME_HASHED_2,
+	STIR_SHAKEN_ERROR_CERT_REMOVE,
+	STIR_SHAKEN_ERROR_CERT_SAVE,
 	STIR_SHAKEN_ERROR_GET_PUBKEY_RAW_FROM_CERT,
 	STIR_SHAKEN_ERROR_PUBKEY_GET,
 	STIR_SHAKEN_ERROR_PRIVKEY_MISSING_1,
@@ -667,7 +672,9 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_PASSPORT_JWT_INIT,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_FUTURE,
 	STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_EXPIRED,
-	STIR_SHAKEN_ERROR_PASSPORT_X5U,
+	STIR_SHAKEN_ERROR_PASSPORT_X5U_1,
+	STIR_SHAKEN_ERROR_PASSPORT_X5U_2,
+	STIR_SHAKEN_ERROR_PASSPORT_X5U_3,
 	STIR_SHAKEN_ERROR_PASSPORT_ALG,
 	STIR_SHAKEN_ERROR_PASSPORT_PPT,
 	STIR_SHAKEN_ERROR_SIH_CREATE,
@@ -695,8 +702,12 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_BUFFER_3,
 	STIR_SHAKEN_ERROR_BUFFER_4,
 	STIR_SHAKEN_ERROR_EVP_PKEY_TO_RAW,
-	STIR_SHAKEN_ERROR_CALLBACK_NOT_SET,
+	STIR_SHAKEN_ERROR_CALLBACK_NOT_SET_1,
+	STIR_SHAKEN_ERROR_CALLBACK_NOT_SET_2,
 	STIR_SHAKEN_ERROR_CALLBACK_ACTION_CERT_FETCH_ENQUIRY,
+	STIR_SHAKEN_ERROR_CALLBACK_ACTION_CERT_FETCHED,
+	STIR_SHAKEN_ERROR_CALLBACK_X5U_MISSING,
+	STIR_SHAKEN_ERROR_CACHE_DIR,
 	STIR_SHAKEN_ERROR_MEM_REALLOC,
 	STIR_SHAKEN_ERROR_MEM_SIH,
 	STIR_SHAKEN_ERROR_MEM_PASSPORT,
@@ -737,6 +748,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_VS_MISSING_10,
 	STIR_SHAKEN_ERROR_VS_MISSING_11,
 	STIR_SHAKEN_ERROR_VS_MISSING_12,
+	STIR_SHAKEN_ERROR_VS_MISSING_13,
 	STIR_SHAKEN_ERROR_VS_MEM,
 	STIR_SHAKEN_ERROR_STAT,
 	STIR_SHAKEN_ERROR_MAKE_COMPLETE_PATH,
@@ -756,6 +768,7 @@ typedef enum stir_shaken_http_req_type {
 
 typedef enum stir_shaken_callback_action {
 	STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY,
+	STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCHED,
 } stir_shaken_callback_action_t;
 
 typedef struct stir_shaken_callback_arg_s {
@@ -766,7 +779,6 @@ typedef struct stir_shaken_callback_arg_s {
 void stir_shaken_destroy_callback_arg(stir_shaken_callback_arg_t *callback_arg);
 struct stir_shaken_context_s;
 typedef stir_shaken_status_t (*stir_shaken_callback_t)(struct stir_shaken_context_s *);
-stir_shaken_status_t stir_shaken_default_callback(struct stir_shaken_context_s *);
 
 typedef struct stir_shaken_context_error_s {
 	char err_buf0[STIR_SHAKEN_ERROR_BUF_LEN];
@@ -792,13 +804,13 @@ typedef struct stir_shaken_context_s {
 	uint8_t x509_cert_path_checked;
 	stir_shaken_verification_status_t verification_status;
 	void *user_data;
+	const char *cache_dir;
 } stir_shaken_context_t;
 
 void stir_shaken_destroy_context(stir_shaken_context_t *ss);
 
 void stir_shaken_destroy_callback_arg(stir_shaken_callback_arg_t *callback_arg);
 typedef stir_shaken_status_t (*stir_shaken_callback_t)(stir_shaken_context_t *);
-stir_shaken_status_t stir_shaken_default_callback(stir_shaken_context_t *);
 
 typedef struct mem_chunk_s {
 	char    *mem;
@@ -1370,7 +1382,7 @@ typedef struct stir_shaken_vs_settings_s {
 	unsigned long connect_timeout_s;
 
 	// Certificate cache
-	uint8_t cache_certificates;
+	uint8_t default_cert_caching;
 	unsigned long cache_expire_s;
 	char cache_dir[STIR_SHAKEN_BUFLEN];
 
@@ -1391,12 +1403,13 @@ stir_shaken_status_t stir_shaken_vs_set_callback(struct stir_shaken_context_s *s
 stir_shaken_status_t stir_shaken_vs_set_callback_user_data(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, void *user_data);
 stir_shaken_status_t stir_shaken_vs_set_x509_cert_path_check(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, uint8_t x);
 stir_shaken_status_t stir_shaken_vs_set_connect_timeout(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, unsigned long timeout_s);
-stir_shaken_status_t stir_shaken_vs_set_cert_cache(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, uint8_t x);
+stir_shaken_status_t stir_shaken_vs_set_default_cert_caching(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, uint8_t x);
 stir_shaken_status_t stir_shaken_vs_set_cache_expire_seconds(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, unsigned long cache_expire_s);
 stir_shaken_status_t stir_shaken_vs_set_cache_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *cache_dir);
 stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out);
 stir_shaken_status_t stir_shaken_vs_passport_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out);
 stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out);
+stir_shaken_status_t stir_shaken_vs_default_callback(struct stir_shaken_context_s *);
 
 // @arg - PASSporT params
 stir_shaken_status_t stir_shaken_as_authenticate(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_passport_params_t *params);

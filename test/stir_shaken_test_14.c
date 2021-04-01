@@ -64,7 +64,6 @@ stir_shaken_status_t stir_shaken_test_callback(stir_shaken_context_t *ss)
 	stir_shaken_assert(ss, "Callback argument missing");
 
 	arg = &ss->callback_arg;
-	stir_shaken_assert(STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY == arg->action, "Wrong action");
 	stir_shaken_assert(ss->user_data = &http_req_handled_from_cache, "Pointer to user data invalid");
 
 	switch (arg->action) {
@@ -83,6 +82,11 @@ stir_shaken_status_t stir_shaken_test_callback(stir_shaken_context_t *ss)
 			*((int*)(ss->user_data)) = 1;
 
 			return STIR_SHAKEN_STATUS_HANDLED;
+
+	case STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCHED:
+
+			printf("Saving certificate to cache not handled...\n");
+			return STIR_SHAKEN_STATUS_NOT_HANDLED;
 
 		default:
 			return STIR_SHAKEN_STATUS_NOT_HANDLED;
@@ -110,7 +114,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 
 
 	// Test 1: callback set to default, should perform download of the certificate
-	ss.callback = stir_shaken_default_callback;
+	ss.callback = NULL;
 	status = stir_shaken_passport_verify(&ss, passport_encoded, &cert, &passport, connect_timeout_s);
 	if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);

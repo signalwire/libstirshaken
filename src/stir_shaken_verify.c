@@ -205,15 +205,11 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 	// In order to get the certificate we execute the callback checking if caller wants to perform this verification with local cert,
 	// because for instance, it could have been cached earlier. If the caller doesn't supply cert then we perform standard download over HTTP(S).
 
-	if (!ss->callback) {
-		ss->callback = stir_shaken_default_callback;
-	}
-
 	ss->callback_arg.action = STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY;
 	strncpy(ss->callback_arg.cert.public_url, cert_url, STIR_SHAKEN_BUFLEN);
 	ss->callback_arg.cert.public_url[STIR_SHAKEN_BUFLEN - 1] = '\0';
 
-	if (STIR_SHAKEN_STATUS_HANDLED == (ss->callback)(ss)) {
+	if (ss->callback && (STIR_SHAKEN_STATUS_HANDLED == (ss->callback)(ss))) {
 
 		// Maybe fetched cert supplied by the caller
 
@@ -236,9 +232,6 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 		// Download cert if it has not been supplied by the caller
 		http_req.url = strdup(cert_url);
 		http_req.connect_timeout_s = connect_timeout_s;
-
-		jwt_free(jwt);
-		jwt = NULL;
 
 		ss_status = stir_shaken_download_cert(ss, &http_req);
 		if (STIR_SHAKEN_STATUS_OK != ss_status) {
@@ -264,6 +257,8 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 	}
 
 	stir_shaken_destroy_http_request(&http_req);
+
+anyway:
 
 	return STIR_SHAKEN_STATUS_OK;
 
@@ -363,10 +358,42 @@ stir_shaken_status_t stir_shaken_jwt_check_signature(stir_shaken_context_t *ss, 
 		goto fail;
 	}
 
-	ss_status = stir_shaken_jwt_fetch_or_download_cert(ss, token, &cert, NULL, connect_timeout_s);
+	ss_status = stir_shaken_jwt_fetch_or_download_cert(ss, token, &cert, &jwt, connect_timeout_s);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "Failed to fetch or download certificate", STIR_SHAKEN_ERROR_CERT_FETCH_OR_DOWNLOAD);
 		goto fail;
+	}
+
+	if (ss->callback) {
+
+		// Execute the callback indicating caller a possibility to cache downloaded certificate
+
+		const char *x5u = jwt_get_header(jwt, "x5u");
+
+		if (stir_shaken_zstr(x5u)) {
+
+			// This should never happen as stir_shaken_sih_verify returns error in such case
+			stir_shaken_set_error(ss, "Cannot handle cert caching: PASSporT has no x5u", STIR_SHAKEN_ERROR_PASSPORT_X5U_2);
+			goto fail;
+		}
+
+		ss->callback_arg.action = STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCHED;
+		strncpy(ss->callback_arg.cert.public_url, x5u, STIR_SHAKEN_BUFLEN);
+		ss->callback_arg.cert.public_url[STIR_SHAKEN_BUFLEN - 1] = '\0';
+
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(ss, &ss->callback_arg.cert, cert)) {
+			stir_shaken_set_error(ss, "Cannot copy certificate", STIR_SHAKEN_ERROR_CERT_COPY_3);
+			goto fail;
+		}
+
+		ss->callback(ss);
+
+		stir_shaken_cert_deinit(&ss->callback_arg.cert);
+	}
+
+	if (jwt) {
+		jwt_free(jwt);
+		jwt = NULL;
 	}
 
 	if (stir_shaken_get_pubkey_raw_from_cert(ss, cert, key, &key_len) != STIR_SHAKEN_STATUS_OK) {

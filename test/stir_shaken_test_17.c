@@ -56,6 +56,11 @@ stir_shaken_status_t cache_callback(stir_shaken_context_t *ss)
 				return STIR_SHAKEN_STATUS_HANDLED;
 			}
 
+		case STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCHED:
+
+			printf("Callback's action STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCHED not handled...\n");
+			return STIR_SHAKEN_STATUS_NOT_HANDLED;
+
 		default:
 			return STIR_SHAKEN_STATUS_NOT_HANDLED;
 	}
@@ -204,7 +209,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT verification failed");
 	stir_shaken_assert(jwt_out, "jwt not returned");
 	stir_shaken_assert(cert_out, "Cert not returned");
-	stir_shaken_assert(cache_callback_called == 1, "Cache callback not called");
+	stir_shaken_assert(cache_callback_called == 2, "Cache callback not called");
 	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
 	stir_shaken_assert(ss.x509_cert_path_checked == 1, "X509 cert path check should be executed");
 	stir_shaken_cert_destroy(&cert_out);
@@ -241,7 +246,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 		stir_shaken_free_jwt_str(passport_decoded);
 		passport_decoded = NULL;
 	}
-	stir_shaken_assert(cache_callback_called == 1, "Cache callback not called");
+	stir_shaken_assert(cache_callback_called == 2, "Cache callback not called");
 	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
 	stir_shaken_assert(ss.x509_cert_path_checked == 1, "X509 cert path check should be executed");
 
@@ -266,7 +271,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 		stir_shaken_free_jwt_str(passport_decoded);
 		passport_decoded = NULL;
 	}
-	stir_shaken_assert(cache_callback_called == 1, "Cache callback should be called");
+	stir_shaken_assert(cache_callback_called == 2, "Cache callback should be called");
 	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
 	stir_shaken_assert(ss.x509_cert_path_checked == 0, "X509 cert path check should not be executed");
 

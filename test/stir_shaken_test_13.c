@@ -3,7 +3,7 @@
 
 const char *path = "./test/run";
 
-stir_shaken_ca_t ca = { .ss = { .callback = stir_shaken_default_callback }, .cert_name = "test/ref/ca/ca.pem", .private_key_name = "test/ref/ca/ca.priv", .issuer_c = "US", .issuer_cn = "TEST CA", .serial = 1, .expiry_days = 9999, .tn_auth_list_uri = "https://test-ca.com/auth-list-check" };
+stir_shaken_ca_t ca = { .ss = { .callback = NULL }, .cert_name = "test/ref/ca/ca.pem", .private_key_name = "test/ref/ca/ca.priv", .issuer_c = "US", .issuer_cn = "TEST CA", .serial = 1, .expiry_days = 9999, .tn_auth_list_uri = "https://test-ca.com/auth-list-check" };
 int polling;
 int ca_verifying_spc_token;
 const char *pa_pem = "-----BEGIN CERTIFICATE-----\n"
