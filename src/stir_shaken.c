@@ -195,6 +195,21 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
+int static nftw_unlink_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
+{
+    int rv = remove(fpath);
+
+    if (rv)
+        perror(fpath);
+
+    return rv;
+}
+
+stir_shaken_status_t stir_shaken_dir_remove(const char *path)
+{
+    return nftw(path, nftw_unlink_cb, 1000, FTW_DEPTH | FTW_PHYS) ? STIR_SHAKEN_STATUS_FALSE : STIR_SHAKEN_STATUS_OK;
+}
+
 stir_shaken_status_t stir_shaken_file_exists(const char *path)
 {
 	struct stat sb;

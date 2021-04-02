@@ -224,6 +224,11 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 			stir_shaken_set_error(ss, "Cannot copy certificate", STIR_SHAKEN_ERROR_CERT_COPY_1);
 			goto fail;
 		}
+
+		// Make sure x5u did not change...
+		strncpy(cert->public_url, cert_url, STIR_SHAKEN_BUFLEN);
+		cert->public_url[STIR_SHAKEN_BUFLEN - 1] = '\0';
+		
 		stir_shaken_cert_deinit(&ss->callback_arg.cert);
 		ss->cert_fetched_from_cache = 1;
 
@@ -377,16 +382,18 @@ stir_shaken_status_t stir_shaken_jwt_check_signature(stir_shaken_context_t *ss, 
 			goto fail;
 		}
 
-		ss->callback_arg.action = STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCHED;
-		strncpy(ss->callback_arg.cert.public_url, x5u, STIR_SHAKEN_BUFLEN);
-		ss->callback_arg.cert.public_url[STIR_SHAKEN_BUFLEN - 1] = '\0';
-
 		if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(ss, &ss->callback_arg.cert, cert)) {
 			stir_shaken_set_error(ss, "Cannot copy certificate", STIR_SHAKEN_ERROR_CERT_COPY_3);
 			goto fail;
 		}
 
-		ss->callback(ss);
+		ss->callback_arg.action = STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCHED;
+		strncpy(ss->callback_arg.cert.public_url, x5u, STIR_SHAKEN_BUFLEN);
+		ss->callback_arg.cert.public_url[STIR_SHAKEN_BUFLEN - 1] = '\0';
+
+		if (STIR_SHAKEN_STATUS_HANDLED == ss->callback(ss)) {
+			ss->cert_saved_in_cache = 1;
+		}
 
 		stir_shaken_cert_deinit(&ss->callback_arg.cert);
 	}

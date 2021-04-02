@@ -2414,7 +2414,7 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
     EVP_MD_CTX      *mdctx = NULL;
     int             i = 0;
     char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-    unsigned char	*tmpsig = NULL;
+    unsigned char	*tmpsig = NULL, *tmpsig_save = NULL;
     size_t			tmpsig_len = 0;
     ECDSA_SIG		*ec_sig = NULL;
 
@@ -2456,11 +2456,13 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
     }
 
     /* Allocate memory for signature based on returned size */
-    tmpsig = alloca(tmpsig_len);
+    tmpsig = malloc(tmpsig_len);
     if (!tmpsig) {
         stir_shaken_set_error(ss, "Cannot allocate memory for signature", STIR_SHAKEN_ERROR_SSL_ALLOCA_1);
         goto err;
     }
+	memset(tmpsig, 0, tmpsig_len);
+	tmpsig_save = tmpsig;
 
     i = EVP_DigestSignFinal(mdctx, tmpsig, &tmpsig_len);
     if (i != 1 || (tmpsig_len >= PBUF_LEN - 1)) {
@@ -2479,6 +2481,7 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
         EC_KEY			*ec_key = NULL;
         const BIGNUM	*ec_sig_r = NULL;
         const BIGNUM	*ec_sig_s = NULL;
+		const unsigned char **tmpsig_p = (const unsigned char **) &tmpsig;
 
         /* For EC we need to convert to a raw format of R/S. */
 
@@ -2500,7 +2503,7 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
         EC_KEY_free(ec_key);
 
         /* Get the sig from the DER encoded version. */
-        ec_sig = d2i_ECDSA_SIG(NULL, (const unsigned char **) &tmpsig, tmpsig_len);
+        ec_sig = d2i_ECDSA_SIG(NULL, tmpsig_p, tmpsig_len);
         if (ec_sig == NULL) {
             stir_shaken_set_error(ss, "Cannot get signature from DER", STIR_SHAKEN_ERROR_SSL_D2I_ECDSA_SIGNATURE);
             goto err;
@@ -2516,19 +2519,19 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
         }
 
         buf_len = 2 * bn_len;
-        raw_buf = alloca(buf_len);
+        raw_buf = malloc(buf_len);
         if (raw_buf == NULL) {
             stir_shaken_set_error(ss, "Out of mem", STIR_SHAKEN_ERROR_GENERAL);
             goto err;
         }
+		memset(raw_buf, 0, buf_len);
 
-        /* Pad the bignums with leading zeroes. */
-        memset(raw_buf, 0, buf_len);
         BN_bn2bin(ec_sig_r, raw_buf + bn_len - r_len);
         BN_bn2bin(ec_sig_s, raw_buf + buf_len - s_len);
 
         if (buf_len > *outlen) {
             stir_shaken_set_error(ss, "Output buffer too short", STIR_SHAKEN_ERROR_BUFFER_4);
+			free(raw_buf);
             goto err;
         }
 
@@ -2537,9 +2540,11 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
             ec_sig = NULL;
         }
 
-        memcpy(out, raw_buf, buf_len);
-        *outlen = buf_len;
-    }
+		memcpy(out, raw_buf, buf_len);
+		*outlen = buf_len;
+
+		free(raw_buf);
+	}
 
     if (mdctx) {
         EVP_MD_CTX_destroy(mdctx);
@@ -2549,6 +2554,10 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
         ECDSA_SIG_free(ec_sig);
         ec_sig = NULL;
     }
+	if (tmpsig_save) {
+		free(tmpsig_save);
+		tmpsig_save = NULL;
+	}
     ERR_free_strings();
     EVP_cleanup();
     CRYPTO_cleanup_all_ex_data();
@@ -2565,6 +2574,10 @@ err:
         EVP_MD_CTX_destroy(mdctx);
         mdctx = NULL;
     }
+	if (tmpsig_save) {
+		free(tmpsig_save);
+		tmpsig_save = NULL;
+	}
     ERR_free_strings();
     EVP_cleanup();
     CRYPTO_cleanup_all_ex_data();
@@ -2645,11 +2658,12 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
         ECDSA_SIG_set0(ec_sig, ec_sig_r, ec_sig_s);
 
         tmpsig_len = i2d_ECDSA_SIG(ec_sig, NULL);
-        tmpsig = alloca(tmpsig_len);
+        tmpsig = malloc(tmpsig_len);
         if (tmpsig == NULL) {
             stir_shaken_set_error(ss, "Out of mem", STIR_SHAKEN_ERROR_SSL_ALLOCA_2);
             goto err;
         }
+		memset(tmpsig, 0, tmpsig_len);
 
         p = tmpsig;
         tmpsig_len = i2d_ECDSA_SIG(ec_sig, &p);
@@ -2715,6 +2729,10 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
         ECDSA_SIG_free(ec_sig);
         ec_sig = NULL;
     }
+	if (tmpsig) {
+		free(tmpsig);
+		tmpsig = NULL;
+	}
     ERR_free_strings();
     EVP_cleanup();
     CRYPTO_cleanup_all_ex_data();
@@ -2734,6 +2752,10 @@ err:
         ECDSA_SIG_free(ec_sig);
         ec_sig = NULL;
     }
+	if (tmpsig) {
+		free(tmpsig);
+		tmpsig = NULL;
+	}
     ERR_free_strings();
     EVP_cleanup();
     CRYPTO_cleanup_all_ex_data();

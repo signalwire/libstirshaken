@@ -4,11 +4,13 @@ const char *path = "./test/run";
 
 #define CA_DIR	"./test/run/ca"
 #define CRL_DIR	"./test/run/crl"
+#define CACHE_DIR "./test/run/cache"
 
 stir_shaken_ca_t ca;
 stir_shaken_sp_t sp;
 stir_shaken_context_t ss;
 int cache_callback_called;
+int http_req_mocked;
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
 	if (stir_shaken_is_error_set(&ss)) { \
@@ -76,6 +78,33 @@ exit:
 	return STIR_SHAKEN_STATUS_NOT_HANDLED;
 }
 
+/*
+ * Mock HTTP transfers in this test.
+ */
+stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
+{
+	unsigned char raw[STIR_SHAKEN_BUFLEN] = { 0 };
+	int raw_len = STIR_SHAKEN_BUFLEN;
+
+	printf("\n\nShakening surprise\n\n");
+	stir_shaken_assert(http_req != NULL, "http_req is NULL!");
+
+	printf("MOCK HTTP response code to 200 OK\n");
+	http_req->response.code = 200;
+
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_get_x509_raw(ss, sp.cert.x, raw, &raw_len), "Failed to read cert from X509 to PEM");
+
+	stir_shaken_assert(http_req->response.mem.mem = malloc(raw_len + 1), "Malloc failed");
+	memset(http_req->response.mem.mem, 0, raw_len + 1);
+
+	memcpy(http_req->response.mem.mem, raw, raw_len);
+	http_req->response.mem.size = raw_len + 1;
+
+	http_req_mocked = 1;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 {
 	EVP_PKEY *pkey = NULL;
@@ -124,7 +153,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	status = stir_shaken_generate_keys(&ss, &ca.keys.ec_key, &ca.keys.private_key, &ca.keys.public_key, ca.private_key_name, ca.public_key_name, ca.keys.priv_raw, &ca.keys.priv_raw_len);
 	PRINT_SHAKEN_ERROR_IF_SET
 		stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, failed to generate keys...");
-	stir_shaken_assert(ca.keys.ec_key != NULL, "Err, failed to generate EC key\n\n");
+	stir_shaken_assert(ca.keys.ec_key != NULL, "Err, failed to generate EC key");
 	stir_shaken_assert(ca.keys.private_key != NULL, "Err, failed to generate private key");
 	stir_shaken_assert(ca.keys.public_key != NULL, "Err, failed to generate public key");
 
@@ -197,21 +226,26 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	}
 	cache_callback_called = 0;
 
-	/* Test */
+	/*
+	 * 1. Test with:
+	 *
+	 *	- callback - OFF
+	 *	- X509 - OFF
+	 *	- cache - OFF
+	*/
+
+	memset(&ss, 0, sizeof(ss));
 	stir_shaken_assert(vs = stir_shaken_vs_create(&ss), "Cannot create Verification Service\n");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_load_ca_dir(&ss, vs, CA_DIR), "Failed to init X509 cert store");
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_callback(&ss, vs, cache_callback), "Failed to set cache callback");
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_callback_user_data(&ss, vs, &cache_callback_called), "Failed to set cache callback user data");
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_connect_timeout(&ss, vs, connect_timeout_s), "Failed to set connect timeout");
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 1), "Failed to turn on x509 cert path check");
 
 	// For pure Shaken we would have PASSporT
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT verification failed");
 	stir_shaken_assert(jwt_out, "jwt not returned");
 	stir_shaken_assert(cert_out, "Cert not returned");
-	stir_shaken_assert(cache_callback_called == 2, "Cache callback not called");
-	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
-	stir_shaken_assert(ss.x509_cert_path_checked == 1, "X509 cert path check should be executed");
+	stir_shaken_assert(cache_callback_called == 0, "Cache callback called");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 0, "Cert fetched from cache should be not set");
+	stir_shaken_assert(ss.x509_cert_path_checked == 0, "X509 cert path check should have not been executed");
 	stir_shaken_cert_destroy(&cert_out);
 	jwt_free(jwt_out);
 	jwt_out = NULL;
@@ -229,9 +263,295 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 		passport_decoded = NULL;
 	}
 
-	free(passport_encoded);
-	passport_encoded = NULL;
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+	http_req_mocked = 0;
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
 
+	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &cert_out, &passport_out), "SIP Identity Header failed verification\n");
+
+	printf("\nSIP Identity Header verified.\n\n");
+
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport_out, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+	stir_shaken_assert(cache_callback_called == 0, "Cache callback called");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 0, "Cert fetched from cache should be not set");
+	stir_shaken_assert(ss.x509_cert_path_checked == 0, "X509 cert path check should have not been executed");
+
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+	stir_shaken_vs_destroy(&vs);
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
+
+	/*
+	 * 2. Test with:
+	 *
+	 *	- callback - OFF
+	 *	- X509 - OFF
+	 *	- cache - ON
+	*/
+
+	/* 2.1 First, without cert cached yet (lib should cache it) */
+
+	if (stir_shaken_dir_exists(CACHE_DIR) == STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_assert(stir_shaken_dir_remove(CACHE_DIR) == STIR_SHAKEN_STATUS_OK, "Cache dir is cumbersome");
+	}
+	stir_shaken_assert(stir_shaken_dir_create(CACHE_DIR) == STIR_SHAKEN_STATUS_OK, "Cache dir, why you're doing this to me");
+
+
+	stir_shaken_assert(vs = stir_shaken_vs_create(&ss), "Cannot create Verification Service\n");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_load_ca_dir(&ss, vs, CA_DIR), "Failed to init X509 cert store");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_connect_timeout(&ss, vs, connect_timeout_s), "Failed to set connect timeout");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_default_cert_caching(&ss, vs, 1), "Failed to set default cert caching");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_cache_dir(&ss, vs, CACHE_DIR), "Failed to set cache dir");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_cache_expire_seconds(&ss, vs, 60), "Failed to set cache expire seconds");
+
+	// For pure Shaken we would have PASSporT
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT verification failed");
+	stir_shaken_assert(jwt_out, "jwt not returned");
+	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_assert(cache_callback_called == 0, "Cache callback called");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 0, "Cert fetched from cache should be not set");
+	stir_shaken_assert(ss.cert_saved_in_cache == 1, "Cert saved in cache should be set");
+	stir_shaken_assert(http_req_mocked == 1, "HTTP GET should be mocked");
+	stir_shaken_assert(ss.x509_cert_path_checked == 0, "X509 cert path check should have not been executed");
+	stir_shaken_cert_destroy(&cert_out);
+	jwt_free(jwt_out);
+	jwt_out = NULL;
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_verify(&ss, vs, passport_encoded, &cert_out, &passport_out), "PASSporT verification failed");
+	stir_shaken_assert(passport_out, "PASSporT not returned");
+	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+
+	printf("\nPASSporT Verified.\n");
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport_out, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+	http_req_mocked = 0;
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
+
+	stir_shaken_assert(stir_shaken_dir_remove(CACHE_DIR) == STIR_SHAKEN_STATUS_OK, "Cache dir is cumbersome");
+	stir_shaken_assert(stir_shaken_dir_create(CACHE_DIR) == STIR_SHAKEN_STATUS_OK, "Cache dir, why you're doing this to me");
+
+	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &cert_out, &passport_out), "SIP Identity Header failed verification\n");
+
+	printf("\nSIP Identity Header verified.\n\n");
+
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport_out, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+	stir_shaken_assert(cache_callback_called == 0, "Cache callback called");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 0, "Cert fetched from cache should be not set");
+	stir_shaken_assert(ss.cert_saved_in_cache == 1, "Cert saved in cache should be set");
+	stir_shaken_assert(http_req_mocked == 1, "HTTP GET should be mocked");
+	stir_shaken_assert(ss.x509_cert_path_checked == 0, "X509 cert path check should have not been executed");
+
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+	stir_shaken_vs_destroy(&vs);
+	http_req_mocked = 0;
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
+	
+	/* 2.2 Second, with cert already cached (lib has cached it) */
+
+	stir_shaken_assert(stir_shaken_dir_exists(CACHE_DIR) == STIR_SHAKEN_STATUS_OK, "Cache dir doesn't exist");
+
+	stir_shaken_assert(vs = stir_shaken_vs_create(&ss), "Cannot create Verification Service\n");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_load_ca_dir(&ss, vs, CA_DIR), "Failed to init X509 cert store");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_connect_timeout(&ss, vs, connect_timeout_s), "Failed to set connect timeout");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_default_cert_caching(&ss, vs, 1), "Failed to set default cert caching");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_cache_dir(&ss, vs, CACHE_DIR), "Failed to set cache dir");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_cache_expire_seconds(&ss, vs, 60), "Failed to set cache expire seconds");
+
+	// For pure Shaken we would have PASSporT
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT verification failed");
+	stir_shaken_assert(jwt_out, "jwt not returned");
+	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_assert(cache_callback_called == 0, "Cache callback called");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
+	stir_shaken_assert(ss.cert_saved_in_cache == 0, "Cert saved in cache should not be set"); // if it's fetched from cache is never saved in cache (by default cert caching implementation)
+	stir_shaken_assert(http_req_mocked == 0, "HTTP GET should not be executed");
+	stir_shaken_assert(ss.x509_cert_path_checked == 0, "X509 cert path check should have not been executed");
+	stir_shaken_cert_destroy(&cert_out);
+	jwt_free(jwt_out);
+	jwt_out = NULL;
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_verify(&ss, vs, passport_encoded, &cert_out, &passport_out), "PASSporT verification failed");
+	stir_shaken_assert(passport_out, "PASSporT not returned");
+	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+
+	printf("\nPASSporT Verified.\n");
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport_out, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+	http_req_mocked = 0;
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
+
+	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &cert_out, &passport_out), "SIP Identity Header failed verification\n");
+
+	printf("\nSIP Identity Header verified.\n\n");
+
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport_out, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+	stir_shaken_assert(cache_callback_called == 0, "Cache callback called");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
+	stir_shaken_assert(ss.cert_saved_in_cache == 0, "Cert saved in cache should not be set"); // if it's fetched from cache is never saved in cache (by default cert caching implementation)
+	stir_shaken_assert(http_req_mocked == 0, "HTTP GET should not be executed");
+	stir_shaken_assert(ss.x509_cert_path_checked == 0, "X509 cert path check should have not been executed");
+
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+	stir_shaken_vs_destroy(&vs);
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
+	http_req_mocked = 0;
+
+	stir_shaken_assert(stir_shaken_dir_remove(CACHE_DIR) == STIR_SHAKEN_STATUS_OK, "Cache dir is cumbersome");
+
+	/*
+	 * 3. Test with:
+	 *
+	 *	- callback - OFF
+	 *	- X509 - ON
+	 *	- cache - OFF
+	*/
+
+	stir_shaken_assert(vs = stir_shaken_vs_create(&ss), "Cannot create Verification Service\n");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_load_ca_dir(&ss, vs, CA_DIR), "Failed to init X509 cert store");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_connect_timeout(&ss, vs, connect_timeout_s), "Failed to set connect timeout");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 1), "Failed to turn on x509 cert path check");
+
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
+
+	// For pure Shaken we would have PASSporT
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT verification failed");
+	stir_shaken_assert(jwt_out, "jwt not returned");
+	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_assert(cache_callback_called == 0, "Cache callback called");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 0, "Cert fetched from cache should be not set");
+	stir_shaken_assert(http_req_mocked == 1, "HTTP GET should be executed");
+	stir_shaken_assert(ss.x509_cert_path_checked == 1, "X509 cert path check should have been executed");
+	stir_shaken_cert_destroy(&cert_out);
+	jwt_free(jwt_out);
+	jwt_out = NULL;
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_verify(&ss, vs, passport_encoded, &cert_out, &passport_out), "PASSporT verification failed");
+	stir_shaken_assert(passport_out, "PASSporT not returned");
+	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+
+	printf("\nPASSporT Verified.\n");
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport_out, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+	http_req_mocked = 0;
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
+
+	// For Shaken over SIP we would have PASSporT wrapped into SIP Identity Header
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_sih_verify(&ss, vs, sip_identity_header, &cert_out, &passport_out), "SIP Identity Header failed verification\n");
+
+	printf("\nSIP Identity Header verified.\n\n");
+
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport_out, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+	stir_shaken_assert(cache_callback_called == 0, "Cache callback called");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 0, "Cert fetched from cache should be not set");
+	stir_shaken_assert(http_req_mocked == 1, "HTTP GET should be executed");
+	stir_shaken_assert(ss.x509_cert_path_checked == 1, "X509 cert path check should have been executed");
+
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+	stir_shaken_vs_destroy(&vs);
+	http_req_mocked = 0;
+	memset(&ss, 0, sizeof(ss));
+
+	/*
+	 * Test with:
+	 *
+	 *	- callback - ON
+	 *	- X509 - OFF
+	 *	- cache - OFF
+	*/
+
+	stir_shaken_assert(vs = stir_shaken_vs_create(&ss), "Cannot create Verification Service\n");
+	//stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_load_ca_dir(&ss, vs, CA_DIR), "Failed to init X509 cert store");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_callback(&ss, vs, cache_callback), "Failed to set cache callback");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_callback_user_data(&ss, vs, &cache_callback_called), "Failed to set cache callback user data");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_connect_timeout(&ss, vs, connect_timeout_s), "Failed to set connect timeout");
+
+	// For pure Shaken we would have PASSporT
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT verification failed");
+	stir_shaken_assert(jwt_out, "jwt not returned");
+	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_assert(cache_callback_called == 2, "Cache callback not called");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
+	stir_shaken_assert(http_req_mocked == 0, "HTTP GET should not be executed");
+	stir_shaken_assert(ss.x509_cert_path_checked == 0, "X509 cert path check should have not been executed");
+	stir_shaken_cert_destroy(&cert_out);
+	jwt_free(jwt_out);
+	jwt_out = NULL;
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_verify(&ss, vs, passport_encoded, &cert_out, &passport_out), "PASSporT verification failed");
+	stir_shaken_assert(passport_out, "PASSporT not returned");
+	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+
+	printf("\nPASSporT Verified.\n");
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport_out, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+	http_req_mocked = 0;
 	memset(&ss, 0, sizeof(ss));
 	cache_callback_called = 0;
 
@@ -248,15 +568,59 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	}
 	stir_shaken_assert(cache_callback_called == 2, "Cache callback not called");
 	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
-	stir_shaken_assert(ss.x509_cert_path_checked == 1, "X509 cert path check should be executed");
+	stir_shaken_assert(http_req_mocked == 0, "HTTP GET should not be executed");
+	stir_shaken_assert(ss.x509_cert_path_checked == 0, "X509 cert path check should have not been executed");
 
 	stir_shaken_passport_destroy(&passport_out);
 	stir_shaken_cert_destroy(&cert_out);
+	stir_shaken_vs_destroy(&vs);
+	http_req_mocked = 0;
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
 
-	// Test without X509 cert path verification
+	/*
+	 * Test with:
+	 *
+	 *	- callback - ON
+	 *	- X509 - ON
+	 *	- cache - ON
+	*/
 
-	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 0), "Failed to turn off x509 cert path check");
+	stir_shaken_assert(vs = stir_shaken_vs_create(&ss), "Cannot create Verification Service\n");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_load_ca_dir(&ss, vs, CA_DIR), "Failed to init X509 cert store");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_callback(&ss, vs, cache_callback), "Failed to set cache callback");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_callback_user_data(&ss, vs, &cache_callback_called), "Failed to set cache callback user data");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_connect_timeout(&ss, vs, connect_timeout_s), "Failed to set connect timeout");
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 1), "Failed to turn on x509 cert path check");
 
+	// For pure Shaken we would have PASSporT
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_to_jwt_verify(&ss, vs, passport_encoded, &cert_out, &jwt_out), "PASSporT verification failed");
+	stir_shaken_assert(jwt_out, "jwt not returned");
+	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_assert(cache_callback_called == 2, "Cache callback not called");
+	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
+	stir_shaken_assert(http_req_mocked == 0, "HTTP GET should not be executed");
+	stir_shaken_assert(ss.x509_cert_path_checked == 1, "X509 cert path check should have been executed");
+	stir_shaken_cert_destroy(&cert_out);
+	jwt_free(jwt_out);
+	jwt_out = NULL;
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_passport_verify(&ss, vs, passport_encoded, &cert_out, &passport_out), "PASSporT verification failed");
+	stir_shaken_assert(passport_out, "PASSporT not returned");
+	stir_shaken_assert(cert_out, "Cert not returned");
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+
+	printf("\nPASSporT Verified.\n");
+	passport_decoded = stir_shaken_passport_dump_str(&ss, passport_out, 1);
+	if (passport_decoded) {
+		printf("PASSporT is:\n%s\n", passport_decoded);
+		stir_shaken_free_jwt_str(passport_decoded);
+		passport_decoded = NULL;
+	}
+
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+	http_req_mocked = 0;
 	memset(&ss, 0, sizeof(ss));
 	cache_callback_called = 0;
 
@@ -271,9 +635,42 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 		stir_shaken_free_jwt_str(passport_decoded);
 		passport_decoded = NULL;
 	}
-	stir_shaken_assert(cache_callback_called == 2, "Cache callback should be called");
+	stir_shaken_assert(cache_callback_called == 2, "Cache callback not called");
 	stir_shaken_assert(ss.cert_fetched_from_cache == 1, "Cert fetched from cache should be set");
-	stir_shaken_assert(ss.x509_cert_path_checked == 0, "X509 cert path check should not be executed");
+	stir_shaken_assert(http_req_mocked == 0, "HTTP GET should not be executed");
+	stir_shaken_assert(ss.x509_cert_path_checked == 1, "X509 cert path check should have been executed");
+
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_cert_destroy(&cert_out);
+	stir_shaken_vs_destroy(&vs);
+	http_req_mocked = 0;
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
+
+	// CA cleanup	
+	stir_shaken_cert_deinit(&ca.cert);
+	stir_shaken_destroy_keys_ex(&ca.keys.ec_key, &ca.keys.private_key, &ca.keys.public_key);
+
+	// SP cleanup	
+	stir_shaken_sp_destroy(&sp);
+
+	if (pkey) EVP_PKEY_free(pkey);
+	if (passport_encoded) free(passport_encoded);
+	stir_shaken_passport_destroy(&passport_out);
+	stir_shaken_passport_destroy(&passport);
+	stir_shaken_passport_destroy(&passport_2);
+	stir_shaken_cert_destroy(&cert_out);
+	if (jwt_out) {
+		jwt_free(jwt_out);
+	}
+	if (sip_identity_header) {
+		free(sip_identity_header);
+		sip_identity_header = NULL;
+	}
+	stir_shaken_as_destroy(&as);
+	stir_shaken_vs_destroy(&vs);
+
+	return STIR_SHAKEN_STATUS_OK;
 
 fail:
 
@@ -306,7 +703,7 @@ fail:
 	stir_shaken_as_destroy(&as);
 	stir_shaken_vs_destroy(&vs);
 
-	return status;
+	return STIR_SHAKEN_STATUS_FALSE;
 }
 
 int main(void)
@@ -326,6 +723,10 @@ int main(void)
 	}
 
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_init(&ss, STIR_SHAKEN_LOGLEVEL_HIGH), "Cannot init lib");
+
+	// MOCK http transfers
+	printf("Mocking HTTP requests...\n");
+	stir_shaken_make_http_req = stir_shaken_make_http_req_mock;
 
 	if (stir_shaken_dir_exists(path) != STIR_SHAKEN_STATUS_OK) {
 

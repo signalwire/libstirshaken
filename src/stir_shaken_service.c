@@ -1201,8 +1201,10 @@ stir_shaken_status_t stir_shaken_vs_default_callback(stir_shaken_context_t *ss)
 	stir_shaken_callback_arg_t *arg = NULL;
 	stir_shaken_vs_t *vs = NULL;
 
-	if (!ss || !ss->user_data)
+	if (!ss || !ss->user_data) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS_33);
 		return STIR_SHAKEN_STATUS_TERM;
+	}
 
 	arg = &ss->callback_arg;
 	vs = (stir_shaken_vs_t *) ss->user_data;
@@ -1243,7 +1245,9 @@ stir_shaken_status_t stir_shaken_vs_default_callback(stir_shaken_context_t *ss)
 				}
 
 			} else {
+
 				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "Certificate was fetched from cache, so skipping saving it\n");
+				return STIR_SHAKEN_STATUS_NOT_HANDLED;
 			}
 
 			return STIR_SHAKEN_STATUS_HANDLED; 

@@ -1,12 +1,15 @@
 #ifndef __STIR_SHAKEN
 #define __STIR_SHAKEN
 
+#define _XOPEN_SOURCE 500
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <ftw.h>
 
 #include <libks/ks.h>
 
@@ -296,6 +299,7 @@ typedef enum stir_shaken_error {
 	STIR_SHAKEN_ERROR_BAD_PARAMS_30,
 	STIR_SHAKEN_ERROR_BAD_PARAMS_31,
 	STIR_SHAKEN_ERROR_BAD_PARAMS_32,
+	STIR_SHAKEN_ERROR_BAD_PARAMS_33,
 	STIR_SHAKEN_ERROR_SIH_TO_JWT_1,
 	STIR_SHAKEN_ERROR_SIH_TO_JWT_2,
 	STIR_SHAKEN_ERROR_KSJSON,
@@ -801,6 +805,7 @@ typedef struct stir_shaken_context_s {
 	stir_shaken_callback_t		callback;
 	stir_shaken_callback_arg_t	callback_arg;
 	uint8_t cert_fetched_from_cache;
+	uint8_t cert_saved_in_cache;
 	uint8_t x509_cert_path_checked;
 	stir_shaken_verification_status_t verification_status;
 	void *user_data;
@@ -1425,6 +1430,7 @@ stir_shaken_status_t stir_shaken_as_authenticate(struct stir_shaken_context_s *s
 stir_shaken_status_t stir_shaken_dir_exists(const char *path);
 stir_shaken_status_t stir_shaken_dir_create(const char *path);
 stir_shaken_status_t stir_shaken_dir_create_recursive(const char *path);
+stir_shaken_status_t stir_shaken_dir_remove(const char *path);
 stir_shaken_status_t stir_shaken_file_exists(const char *path);
 stir_shaken_status_t stir_shaken_file_remove(const char *path);
 stir_shaken_status_t stir_shaken_save_to_file(stir_shaken_context_t *ss, const char *data, const char *name);
