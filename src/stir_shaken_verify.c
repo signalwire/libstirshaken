@@ -279,8 +279,6 @@ end:
 
 	stir_shaken_destroy_http_request(&http_req);
 
-anyway:
-
 	return STIR_SHAKEN_STATUS_OK;
 
 fail:
