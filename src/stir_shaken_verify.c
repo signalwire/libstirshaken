@@ -209,47 +209,63 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 	strncpy(ss->callback_arg.cert.public_url, cert_url, STIR_SHAKEN_BUFLEN);
 	ss->callback_arg.cert.public_url[STIR_SHAKEN_BUFLEN - 1] = '\0';
 
-	if (ss->callback && (STIR_SHAKEN_STATUS_HANDLED == (ss->callback)(ss))) {
+	if (ss->callback) {
 
-		// Maybe fetched cert supplied by the caller
+		ss_status = (ss->callback)(ss);
 
-		if (!ss->callback_arg.cert.x) {
-			stir_shaken_set_error(ss, "Caller returned STATUS_HANDLED for callback action STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY but no certificate. "
-					"Return STATUS_NOT_HANDLED for callback action STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY if certificate should be downloaded, "
-					"or return STATUS_HANDLED and load cert to callback's argument if pre-cached cert should be used", STIR_SHAKEN_ERROR_CALLBACK_ACTION_CERT_FETCH_ENQUIRY);
-			goto fail;
-		}
+		switch (ss_status) {
 
-		if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(ss, cert, &ss->callback_arg.cert)) {
-			stir_shaken_set_error(ss, "Cannot copy certificate", STIR_SHAKEN_ERROR_CERT_COPY_1);
-			goto fail;
-		}
+			case STIR_SHAKEN_STATUS_ACTION_HANDLED:
 
-		// Make sure x5u did not change...
-		strncpy(cert->public_url, cert_url, STIR_SHAKEN_BUFLEN);
-		cert->public_url[STIR_SHAKEN_BUFLEN - 1] = '\0';
-		
-		stir_shaken_cert_deinit(&ss->callback_arg.cert);
-		ss->cert_fetched_from_cache = 1;
+				// Maybe fetched cert supplied by the caller
 
-	} else {
+				if (!ss->callback_arg.cert.x) {
+					stir_shaken_set_error(ss, "Caller returned STATUS_HANDLED for callback action STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY but no certificate. "
+							"Return STATUS_NOT_HANDLED for callback action STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY if certificate should be downloaded, "
+							"or return STATUS_HANDLED and load cert to callback's argument if pre-cached cert should be used", STIR_SHAKEN_ERROR_CALLBACK_ACTION_CERT_FETCH_ENQUIRY);
+					goto fail;
+				}
 
-		// Download cert if it has not been supplied by the caller
-		http_req.url = strdup(cert_url);
-		http_req.connect_timeout_s = connect_timeout_s;
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(ss, cert, &ss->callback_arg.cert)) {
+					stir_shaken_set_error(ss, "Cannot copy certificate", STIR_SHAKEN_ERROR_CERT_COPY_1);
+					goto fail;
+				}
 
-		ss_status = stir_shaken_download_cert(ss, &http_req);
-		if (STIR_SHAKEN_STATUS_OK != ss_status) {
-			stir_shaken_set_error(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO_4);
-			goto fail;
-		}
+				// Make sure x5u did not change...
+				strncpy(cert->public_url, cert_url, STIR_SHAKEN_BUFLEN);
+				cert->public_url[STIR_SHAKEN_BUFLEN - 1] = '\0';
 
-		ss_status = stir_shaken_load_x509_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem);
-		if (STIR_SHAKEN_STATUS_OK != ss_status) {
-			stir_shaken_set_error(ss, "Error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
-			goto fail;
+				stir_shaken_cert_deinit(&ss->callback_arg.cert);
+				ss->cert_fetched_from_cache = 1;
+				goto end;
+
+			case STIR_SHAKEN_STATUS_ACTION_NOT_HANDLED:
+				break;
+
+			case STIR_SHAKEN_STATUS_ACTION_ERROR:
+			default:
+				stir_shaken_set_error(ss, "User callback failed for action %u", STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY);
+				goto fail;
 		}
 	}
+
+	// Download cert if it has not been supplied by the caller
+	http_req.url = strdup(cert_url);
+	http_req.connect_timeout_s = connect_timeout_s;
+
+	ss_status = stir_shaken_download_cert(ss, &http_req);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+		stir_shaken_set_error(ss, "Cannot download certificate", STIR_SHAKEN_ERROR_SIP_436_BAD_IDENTITY_INFO_4);
+		goto fail;
+	}
+
+	ss_status = stir_shaken_load_x509_from_mem(ss, &cert->x, &cert->xchain, http_req.response.mem.mem);
+	if (STIR_SHAKEN_STATUS_OK != ss_status) {
+		stir_shaken_set_error(ss, "Error while loading cert from memory", STIR_SHAKEN_ERROR_GENERAL);
+		goto fail;
+	}
+
+end:
 
 	// Note, cert must be destroyed by caller
 	*cert_out = cert;
@@ -391,8 +407,21 @@ stir_shaken_status_t stir_shaken_jwt_check_signature(stir_shaken_context_t *ss, 
 		strncpy(ss->callback_arg.cert.public_url, x5u, STIR_SHAKEN_BUFLEN);
 		ss->callback_arg.cert.public_url[STIR_SHAKEN_BUFLEN - 1] = '\0';
 
-		if (STIR_SHAKEN_STATUS_HANDLED == ss->callback(ss)) {
-			ss->cert_saved_in_cache = 1;
+		ss_status = ss->callback(ss);
+
+		switch (ss_status) {
+
+			case STIR_SHAKEN_STATUS_ACTION_HANDLED:
+				ss->cert_saved_in_cache = 1;
+				break;
+
+			case STIR_SHAKEN_STATUS_ACTION_NOT_HANDLED:
+				break;
+
+			case STIR_SHAKEN_STATUS_ACTION_ERROR:
+			default:
+				stir_shaken_set_error(ss, "User callback failed for action %u", STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCHED);
+				goto fail;
 		}
 
 		stir_shaken_cert_deinit(&ss->callback_arg.cert);

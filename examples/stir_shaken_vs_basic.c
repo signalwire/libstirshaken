@@ -39,7 +39,7 @@ stir_shaken_status_t cache_callback(stir_shaken_context_t *ss)
 	int *user_data = NULL;
 
 	if (!ss)
-		return STIR_SHAKEN_STATUS_NOT_HANDLED;
+		return STIR_SHAKEN_STATUS_ACTION_NOT_HANDLED;
 
 	arg = &ss->callback_arg;
 	user_data = (int*) ss->user_data;
@@ -51,7 +51,7 @@ stir_shaken_status_t cache_callback(stir_shaken_context_t *ss)
 
 			// Default behaviour for certificate fetch enquiry is to request downloading, but in some cases it would be useful to avoid that and use pre-cached certificate.
 			// Here, we supply libstirshaken with certificate we cached earlier, avoiding HTTP(S) download.
-			// We must return STIR_SHAKEN_STATUS_HANDLED to signal this to the library, otherwise it would execute HTTP(S) download
+			// We must return STIR_SHAKEN_STATUS_ACTION_HANDLED to signal this to the library, otherwise it would execute HTTP(S) download
 
 			if (!strcmp("http://shaken.signalwire.cloud/sp.pem", arg->cert.public_url)) {
 
@@ -69,11 +69,11 @@ stir_shaken_status_t cache_callback(stir_shaken_context_t *ss)
 
 				stir_shaken_cert_deinit(&cache_copy);
 
-				return STIR_SHAKEN_STATUS_HANDLED;
+				return STIR_SHAKEN_STATUS_ACTION_HANDLED;
 			}
 
 		default:
-			return STIR_SHAKEN_STATUS_NOT_HANDLED;
+			return STIR_SHAKEN_STATUS_ACTION_NOT_HANDLED;
 	}
 
 exit:
@@ -84,7 +84,7 @@ exit:
 		printf("Error code is: %d\n", error_code);
 	}
 
-	return STIR_SHAKEN_STATUS_NOT_HANDLED;
+	return STIR_SHAKEN_STATUS_ACTION_NOT_HANDLED;
 }
 
 void run_verification_service(stir_shaken_callback_t callback)
