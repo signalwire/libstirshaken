@@ -1038,40 +1038,45 @@ stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_s
 	return stir_shaken_sih_verify_ex(ss, sih, cert_out, passport_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
 }
 
-static unsigned long hash_to_long(const char *str)
+static stir_shaken_status_t stir_shaken_cert_name_hash(stir_shaken_context_t *ss, const char *url, char *buf, int buf_len)
 {
-	unsigned long hash = 5381;
-	int c;
+	unsigned char url_hash[STIR_SHAKEN_BUFLEN] = { 0 };
 
-	while ((c = *str++))
-		hash = ((hash << 5) + hash) + c;
-
-	return hash;
-}
-
-static void hash_to_string(const char *url, char *buf, int buf_len)
-{
-	unsigned long hash_long = hash_to_long(url);
-	snprintf(buf, buf_len, "%lu.pem", hash_long);
-}
-
-static int get_cert_name_hashed(stir_shaken_context_t *ss, const char *name, char *cache_dir, char *buf, int buf_len)
-{
-	char cert_hash[64] = { 0 };
-
-	if (!name || !cache_dir || !buf) {
-		stir_shaken_set_error(ss, "Cannot create cert name hashed\n", STIR_SHAKEN_ERROR_BAD_PARAMS_31);
-		return -1;
+	if (!url || !buf) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS_34);
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	hash_to_string(name, cert_hash, sizeof(cert_hash));
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_b64_encode((unsigned char*) url, strlen(url), url_hash, sizeof(url_hash))) {
+		stir_shaken_set_error(ss, "Cannot encode cert name into b64", STIR_SHAKEN_ERROR_BASE64_ENCODE_2);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	snprintf(buf, buf_len, "%s.pem", url_hash);
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+static stir_shaken_status_t stir_shaken_cert_name_complete_hash(stir_shaken_context_t *ss, const char *name, char *cache_dir, char *buf, int buf_len)
+{
+	char cert_hash[STIR_SHAKEN_BUFLEN] = { 0 };
+
+	if (!name || !cache_dir || !buf) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS_31);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_name_hash(ss, name, cert_hash, sizeof(cert_hash))) {
+		stir_shaken_set_error(ss, "Cannot hash cert name", STIR_SHAKEN_ERROR_CERT_CREATE_NAME_HASHED_3);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
 
 	if (!stir_shaken_make_complete_path(buf, buf_len, cache_dir, cert_hash, "/")) {
 		stir_shaken_set_error(ss, "Cannot create complete path name for cert name hashed\n", STIR_SHAKEN_ERROR_MAKE_COMPLETE_PATH);
-		return -1;
+		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
-	return 0;
+	return STIR_SHAKEN_STATUS_OK;
 }
 
 static stir_shaken_status_t stir_shaken_vs_default_fetching(stir_shaken_context_t *ss, stir_shaken_vs_t *vs)
@@ -1092,7 +1097,7 @@ static stir_shaken_status_t stir_shaken_vs_default_fetching(stir_shaken_context_
 
 	arg = &ss->callback_arg;
 
-	if (-1 == get_cert_name_hashed(ss, arg->cert.public_url, vs->settings.cache_dir, cert_full_path, STIR_SHAKEN_BUFLEN)) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_name_complete_hash(ss, arg->cert.public_url, vs->settings.cache_dir, cert_full_path, STIR_SHAKEN_BUFLEN)) {
 		stir_shaken_set_error(ss, "Cannot create cert name hashed", STIR_SHAKEN_ERROR_CERT_CREATE_NAME_HASHED_1);
 		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Error. Cannot get cert's hashed name\n");
 		return STIR_SHAKEN_STATUS_ACTION_ERROR;
@@ -1184,7 +1189,7 @@ static stir_shaken_status_t stir_shaken_vs_default_caching(stir_shaken_context_t
 
 	// save certificate to cache with url as a key 
 
-	if (-1 == get_cert_name_hashed(ss, x5u, vs->settings.cache_dir, cert_full_path, STIR_SHAKEN_BUFLEN)) {
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_name_complete_hash(ss, x5u, vs->settings.cache_dir, cert_full_path, STIR_SHAKEN_BUFLEN)) {
 		stir_shaken_set_error(ss, "Cannot get cert name hashed", STIR_SHAKEN_ERROR_CERT_CREATE_NAME_HASHED_2);
 		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default caching) Error. Cannot get cert's hashed name\n");
 		return STIR_SHAKEN_STATUS_ACTION_ERROR;
@@ -1270,7 +1275,7 @@ stir_shaken_status_t stir_shaken_vs_default_callback(stir_shaken_context_t *ss)
 			}
 
 			if (ss->cert_fetched_from_cache) {
-				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "Certificate was fetched from cache, so skipping saving it\n");
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(VS default callback) Certificate was fetched from cache, so skipping saving it\n");
 				goto exit;
 			}
 
