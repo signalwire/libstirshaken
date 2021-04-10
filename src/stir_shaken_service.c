@@ -867,7 +867,31 @@ stir_shaken_status_t stir_shaken_vs_set_callback(struct stir_shaken_context_s *s
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
+	if (vs->settings.default_cert_caching) {
+		stir_shaken_set_error(ss, "Callback set when default certificate caching behaviuor is turned on (use either callback or default cert caching)", STIR_SHAKEN_ERROR_VS_INVALID_SETTINGS);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
 	vs->callback = callback;
+
+	// Note: this implies vs->settings.default_cert_caching = 0;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_vs_set_callback_user_data(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, void *user_data)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_9);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (vs->settings.default_cert_caching) {
+		stir_shaken_set_error(ss, "Callback set when default certificate caching behaviuor is turned on (use either callback or default cert caching)", STIR_SHAKEN_ERROR_VS_INVALID_SETTINGS);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	vs->user_data = user_data;
 
 	return STIR_SHAKEN_STATUS_OK;
 }
@@ -896,6 +920,52 @@ stir_shaken_status_t stir_shaken_vs_set_connect_timeout(struct stir_shaken_conte
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+stir_shaken_status_t stir_shaken_vs_set_default_cert_caching(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, uint8_t x)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_11);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (vs->callback) {
+		stir_shaken_set_error(ss, "Callback set when default certificate caching behaviuor is turned on (use either callback or default cert caching)", STIR_SHAKEN_ERROR_VS_INVALID_SETTINGS);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	vs->settings.default_cert_caching = x;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_vs_set_cache_expire_seconds(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, unsigned long cache_expire_s)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_12);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	vs->settings.cache_expire_s = cache_expire_s;
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_vs_set_cache_dir(struct stir_shaken_context_s *ss, stir_shaken_vs_t *vs, const char *cache_dir)
+{
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_10);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	memset((void*) vs->settings.cache_dir, 0, sizeof(vs->settings.cache_dir));
+
+	if (!stir_shaken_zstr(cache_dir)) {
+		strncpy(vs->settings.cache_dir, cache_dir, sizeof(vs->settings.cache_dir) - 1);
+		vs->settings.cache_dir[sizeof(vs->settings.cache_dir) - 1] = '\0';
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
 stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out)
 {
 	stir_shaken_context_t	ss_local = { 0 };
@@ -909,7 +979,14 @@ stir_shaken_status_t stir_shaken_vs_passport_to_jwt_verify(stir_shaken_context_t
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	ss->callback = vs->callback;
+	if (vs->settings.default_cert_caching) {
+		ss->callback = stir_shaken_vs_default_callback;
+		ss->user_data = vs;
+	} else {
+		ss->callback = vs->callback;
+		ss->user_data = vs->user_data;
+	}
+
 	return stir_shaken_jwt_verify_ex(ss, token, cert_out, jwt_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
 }
 
@@ -926,7 +1003,14 @@ stir_shaken_status_t stir_shaken_vs_passport_verify(stir_shaken_context_t *ss, s
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	ss->callback = vs->callback;
+	if (vs->settings.default_cert_caching) {
+		ss->callback = stir_shaken_vs_default_callback;
+		ss->user_data = vs;
+	} else {
+		ss->callback = vs->callback;
+		ss->user_data = vs->user_data;
+	}
+
 	return stir_shaken_passport_verify_ex(ss, token, cert_out, passport_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
 }
 
@@ -943,6 +1027,285 @@ stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_s
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-	ss->callback = vs->callback;
+	if (vs->settings.default_cert_caching) {
+		ss->callback = stir_shaken_vs_default_callback;
+		ss->user_data = vs;
+	} else {
+		ss->callback = vs->callback;
+		ss->user_data = vs->user_data;
+	}
+
 	return stir_shaken_sih_verify_ex(ss, sih, cert_out, passport_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
+}
+
+static stir_shaken_status_t stir_shaken_cert_name_hash(stir_shaken_context_t *ss, const char *url, char *buf, int buf_len)
+{
+	unsigned char url_hash[STIR_SHAKEN_BUFLEN] = { 0 };
+
+	if (!url || !buf) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS_34);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_b64_encode((unsigned char*) url, strlen(url), url_hash, sizeof(url_hash))) {
+		stir_shaken_set_error(ss, "Cannot encode cert name into b64", STIR_SHAKEN_ERROR_BASE64_ENCODE_2);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	snprintf(buf, buf_len, "%s.pem", url_hash);
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+static stir_shaken_status_t stir_shaken_cert_name_complete_hash(stir_shaken_context_t *ss, const char *name, char *cache_dir, char *buf, int buf_len)
+{
+	char cert_hash[STIR_SHAKEN_BUFLEN] = { 0 };
+
+	if (!name || !cache_dir || !buf) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS_31);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_name_hash(ss, name, cert_hash, sizeof(cert_hash))) {
+		stir_shaken_set_error(ss, "Cannot hash cert name", STIR_SHAKEN_ERROR_CERT_CREATE_NAME_HASHED_3);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	if (!stir_shaken_make_complete_path(buf, buf_len, cache_dir, cert_hash, "/")) {
+		stir_shaken_set_error(ss, "Cannot create complete path name for cert name hashed\n", STIR_SHAKEN_ERROR_MAKE_COMPLETE_PATH);
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+static stir_shaken_status_t stir_shaken_vs_default_fetching(stir_shaken_context_t *ss, stir_shaken_vs_t *vs)
+{
+	stir_shaken_cert_t cache_copy = { 0 };
+	char cert_full_path[STIR_SHAKEN_BUFLEN] = { 0 };
+	stir_shaken_callback_arg_t *arg = NULL;
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+
+	if (!ss)
+		return STIR_SHAKEN_STATUS_ACTION_ERROR;
+
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_13);
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Error. VS missing\n");
+		return STIR_SHAKEN_STATUS_ACTION_ERROR;
+	}
+
+	arg = &ss->callback_arg;
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_name_complete_hash(ss, arg->cert.public_url, vs->settings.cache_dir, cert_full_path, STIR_SHAKEN_BUFLEN)) {
+		stir_shaken_set_error(ss, "Cannot create cert name hashed", STIR_SHAKEN_ERROR_CERT_CREATE_NAME_HASHED_1);
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Error. Cannot get cert's hashed name\n");
+		return STIR_SHAKEN_STATUS_ACTION_ERROR;
+	}
+
+	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(VS default fetching) Checking for certificate %s in cache (looking for name: %s)\n", arg->cert.public_url, cert_full_path);
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(cert_full_path)) {
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Certificate %s not found in cache\n", arg->cert.public_url);
+		return STIR_SHAKEN_STATUS_ACTION_NOT_HANDLED;
+	}
+
+	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Certificate %s found in cache\n", arg->cert.public_url);
+
+	if (vs->settings.cache_expire_s) {
+
+		struct stat attr = { 0 };
+		time_t now_s = time(NULL), diff = 0;
+
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Checking cached certificate against expiration setting of %zus\n", vs->settings.cache_expire_s);
+
+		if (-1 == stat(cert_full_path, &attr)) {
+			snprintf(err_buf, sizeof(err_buf), "Cannot get modification timestamp on certificate %s. Errno code is %d (%s)", cert_full_path, errno, strerror(errno));
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_STAT);
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Error. Cannot get modification timestamp on certificate %s. Errno code is %d (%s)", cert_full_path, errno, strerror(errno));
+			return STIR_SHAKEN_STATUS_ACTION_ERROR;
+		}
+
+		if (now_s < attr.st_mtime) {
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Modification timestamp on certificate %s is invalid\n", cert_full_path);
+			return STIR_SHAKEN_STATUS_ACTION_NOT_HANDLED;
+		}
+
+		diff = now_s - attr.st_mtime;
+
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Checking cached certificate against expiration setting of %zus (now is: %zu, file modification timestamp is: %zu, difference is: %zu)\n", vs->settings.cache_expire_s, now_s, attr.st_mtime, diff);
+
+		if (diff > vs->settings.cache_expire_s) {
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Cached certificate %s is behind expiration threshold (%zu > %zu). Need to download new certificate...\n", cert_full_path, diff, vs->settings.cache_expire_s);
+			return STIR_SHAKEN_STATUS_ACTION_NOT_HANDLED;
+		} else {
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Cached certificate %s is valid for next %zus\n", cert_full_path, vs->settings.cache_expire_s - diff);
+		}
+	}
+
+	if (!(cache_copy.x = stir_shaken_load_x509_from_file(ss, cert_full_path))) {
+		snprintf(err_buf, sizeof(err_buf), "Cannot load X509 from file %s", cert_full_path);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_LOAD_X509_2);
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Error. Cannot load X509 from file %s", cert_full_path);
+		return STIR_SHAKEN_STATUS_ACTION_ERROR;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_copy(ss, &arg->cert, &cache_copy)) {
+		snprintf(err_buf, sizeof(err_buf), "Cannot copy certificate %s", cert_full_path);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CERT_COPY_2);
+		stir_shaken_cert_deinit(&cache_copy);
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default fetching) Error. Cannot copy X509 from file %s", cert_full_path);
+		return STIR_SHAKEN_STATUS_ACTION_ERROR;
+	}
+
+	stir_shaken_cert_deinit(&cache_copy);
+	return STIR_SHAKEN_STATUS_ACTION_HANDLED;
+}
+
+static stir_shaken_status_t stir_shaken_vs_default_caching(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *x5u, stir_shaken_cert_t *cert)
+{
+	char cert_full_path[STIR_SHAKEN_BUFLEN] = { 0 };
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+
+	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(VS default caching) Handling certificate cache...\n");
+
+	if (!vs || !x5u || !cert) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS_32);
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default caching) Error. Bad params\n");
+		return STIR_SHAKEN_STATUS_ACTION_ERROR;
+	}
+
+	if (stir_shaken_zstr(vs->settings.cache_dir)) {
+		stir_shaken_set_error(ss, "Cache dir not set", STIR_SHAKEN_ERROR_CACHE_DIR);
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default caching) Error. Cache dir not set\n");
+		return STIR_SHAKEN_STATUS_ACTION_ERROR;
+	}
+
+	if (stir_shaken_zstr(x5u)) {
+		stir_shaken_set_error(ss, "x5u not set", STIR_SHAKEN_ERROR_PASSPORT_X5U_3);
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default caching) Error. x5u not set\n");
+		return STIR_SHAKEN_STATUS_ACTION_ERROR;
+	}
+
+	// save certificate to cache with url as a key 
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_cert_name_complete_hash(ss, x5u, vs->settings.cache_dir, cert_full_path, STIR_SHAKEN_BUFLEN)) {
+		stir_shaken_set_error(ss, "Cannot get cert name hashed", STIR_SHAKEN_ERROR_CERT_CREATE_NAME_HASHED_2);
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default caching) Error. Cannot get cert's hashed name\n");
+		return STIR_SHAKEN_STATUS_ACTION_ERROR;
+	}
+
+	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default caching) Checking for presence of expired version of freshly downloaded certificate %s in cache (looking for name: %s)\n", x5u, cert_full_path);
+
+	if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(cert_full_path)) {
+
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default caching) Expired version of certificate %s found in cache (with name: %s). Removing it...\n", x5u, cert_full_path);
+
+		if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_remove(cert_full_path)) {
+			snprintf(err_buf, sizeof(err_buf), "Couldn't remove certificate %s from cache", cert_full_path);
+			stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CERT_REMOVE);
+			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default caching) Couldn't remove certificate %s from cache\n", cert_full_path);
+			return STIR_SHAKEN_STATUS_ACTION_ERROR;
+		}
+	}
+
+	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default caching) Saving fresh certificate %s in cache (with name: %s)...\n", x5u, cert_full_path);
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(ss, cert->x, cert_full_path)) {
+		snprintf(err_buf, sizeof(err_buf), "Failed to write cert %s to disk (as: %s)", x5u, cert_full_path);
+		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_CERT_SAVE);
+		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "(VS default caching) Failed to write cert %s to disk (as: %s)\n", x5u, cert_full_path);
+		return STIR_SHAKEN_STATUS_ACTION_ERROR;
+	}
+
+	return STIR_SHAKEN_STATUS_ACTION_HANDLED;
+}
+
+stir_shaken_status_t stir_shaken_vs_default_callback(stir_shaken_context_t *ss)
+{
+	stir_shaken_callback_arg_t *arg = NULL;
+	stir_shaken_vs_t *vs = NULL;
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_ACTION_NOT_HANDLED;
+
+
+	if (!ss || !ss->user_data) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS_33);
+		goto exit;
+	}
+
+	arg = &ss->callback_arg;
+	vs = (stir_shaken_vs_t *) ss->user_data;
+
+
+	fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(VS default callback) Action %u\n", arg->action);
+
+	switch (arg->action) {
+
+		case STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY:
+
+			// Default behaviour for certificate fetch enquiry action is to request downloading unless default certificate caching is turned on
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(VS default callback) Handling STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY action\n");
+
+			if (!vs->settings.default_cert_caching) {
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(VS default callback) Skipping cause default cert caching is turned off\n");
+				goto exit;
+			}
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(VS default callback) Executing default cert fetching behaviour\n");
+
+			ss_status = stir_shaken_vs_default_fetching(ss, vs);
+
+			if (STIR_SHAKEN_STATUS_ACTION_ERROR == ss_status) {
+				stir_shaken_set_error(ss, "Default handler for certificate fetching failed", STIR_SHAKEN_ERROR_CALLBACK_ACTION_CERT_FETCH_ENQUIRY);
+				return STIR_SHAKEN_STATUS_ACTION_ERROR;
+			}
+
+			return ss_status;
+
+		case STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCHED:
+
+			// Default behaviour for certificate fetched action is to ignore it unless default certificate caching is turned on
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(VS default callback) Handling STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCHED action\n");
+
+			if (!vs->settings.default_cert_caching) {
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(VS default callback) Skipping cause default cert caching is turned off\n");
+				goto exit;
+			}
+
+			if (ss->cert_fetched_from_cache) {
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(VS default callback) Certificate was fetched from cache, so skipping saving it\n");
+				goto exit;
+			}
+
+			fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "(VS default callback) Executing default cert cacching behaviour\n");
+
+			{
+				const char *x5u = arg->cert.public_url;
+
+				if (stir_shaken_zstr(x5u)) {
+
+					// This should never happen
+					stir_shaken_set_error(ss, "Cannot handle cert caching: x5u missing", STIR_SHAKEN_ERROR_CALLBACK_X5U_MISSING);
+					return STIR_SHAKEN_STATUS_ACTION_ERROR;
+				}
+
+				ss_status = stir_shaken_vs_default_caching(ss, vs, x5u, &arg->cert);
+				if (STIR_SHAKEN_STATUS_ACTION_ERROR == ss_status) {
+					stir_shaken_set_error(ss, "Default handler for certificate caching failed", STIR_SHAKEN_ERROR_CALLBACK_ACTION_CERT_FETCHED);
+					return STIR_SHAKEN_STATUS_ACTION_ERROR;
+				}
+
+				return ss_status;
+			}
+
+
+		default:
+			goto exit;
+	}
+
+exit:
+
+	return STIR_SHAKEN_STATUS_ACTION_NOT_HANDLED;
 }

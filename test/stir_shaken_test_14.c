@@ -57,10 +57,14 @@ stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, s
 	return STIR_SHAKEN_STATUS_OK;
 }
 
-stir_shaken_status_t stir_shaken_test_callback(stir_shaken_callback_arg_t *arg)
+stir_shaken_status_t stir_shaken_test_callback(stir_shaken_context_t *ss)
 {
-	stir_shaken_assert(arg, "Callback argument missing");
-	stir_shaken_assert(STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY == arg->action, "Wrong action");
+	stir_shaken_callback_arg_t *arg = NULL;
+
+	stir_shaken_assert(ss, "Callback argument missing");
+
+	arg = &ss->callback_arg;
+	stir_shaken_assert(ss->user_data = &http_req_handled_from_cache, "Pointer to user data invalid");
 
 	switch (arg->action) {
 
@@ -68,23 +72,28 @@ stir_shaken_status_t stir_shaken_test_callback(stir_shaken_callback_arg_t *arg)
 
 			// Default behaviour for certificate fetch enquiry is to request downloading, but in some cases it would be useful to avoid that and use pre-cached certificate.
 			// Here, we supply libstirshaken with certificate we cached earlier, avoiding HTTP(S) download.
-			// We must return STIR_SHAKEN_STATUS_HANDLED to signal this to the library, otherwise it would execute HTTP(S) download
+			// We must return STIR_SHAKEN_STATUS_ACTION_HANDLED to signal this to the library, otherwise it would execute HTTP(S) download
 
 			printf("Supplying certificate from the cache...\n");
 
 			stir_shaken_assert(!strcmp("http://shaken.signalwire.cloud/sp.pem", arg->cert.public_url), "Wrong cert location");
-			stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_cert_copy(&ss, &arg->cert, &cert_cached), "Cannot copy certificate");
+			stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_cert_copy(ss, &arg->cert, &cert_cached), "Cannot copy certificate");
 
-			http_req_handled_from_cache = 1;
+			*((int*)(ss->user_data)) = 1;
 
-			return STIR_SHAKEN_STATUS_HANDLED;
+			return STIR_SHAKEN_STATUS_ACTION_HANDLED;
+
+	case STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCHED:
+
+			printf("Saving certificate to cache not handled...\n");
+			return STIR_SHAKEN_STATUS_ACTION_NOT_HANDLED;
 
 		default:
-			return STIR_SHAKEN_STATUS_NOT_HANDLED;
+			return STIR_SHAKEN_STATUS_ACTION_NOT_HANDLED;
 	}
 
 exit:
-	return STIR_SHAKEN_STATUS_NOT_HANDLED;
+	return STIR_SHAKEN_STATUS_ACTION_ERROR;
 }
 
 stir_shaken_status_t stir_shaken_unit_test_verify(void)
@@ -105,7 +114,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 
 
 	// Test 1: callback set to default, should perform download of the certificate
-	ss.callback = stir_shaken_default_callback;
+	ss.callback = NULL;
 	status = stir_shaken_passport_verify(&ss, passport_encoded, &cert, &passport, connect_timeout_s);
 	if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);
@@ -145,6 +154,7 @@ stir_shaken_status_t stir_shaken_unit_test_verify(void)
 
 	// Test 2: callback set to custom function supplying certificates from cache
 	ss.callback = stir_shaken_test_callback;
+	ss.user_data = &http_req_handled_from_cache;
 	status = stir_shaken_passport_verify(&ss, passport_encoded, &cert, &passport, connect_timeout_s);
 	if (stir_shaken_is_error_set(&ss)) {
 		error_description = stir_shaken_get_error(&ss, &error_code);

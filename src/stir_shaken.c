@@ -195,6 +195,21 @@ fail:
 	return STIR_SHAKEN_STATUS_FALSE;
 }
 
+int static nftw_unlink_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
+{
+    int rv = remove(fpath);
+
+    if (rv)
+        perror(fpath);
+
+    return rv;
+}
+
+stir_shaken_status_t stir_shaken_dir_remove(const char *path)
+{
+    return nftw(path, nftw_unlink_cb, 1000, FTW_DEPTH | FTW_PHYS) ? STIR_SHAKEN_STATUS_FALSE : STIR_SHAKEN_STATUS_OK;
+}
+
 stir_shaken_status_t stir_shaken_file_exists(const char *path)
 {
 	struct stat sb;
@@ -874,7 +889,7 @@ stir_shaken_status_t stir_shaken_add_cert_trusted_from_file(stir_shaken_context_
 
 	x = stir_shaken_load_x509_from_file(ss, file_name);
 	if (!x) {
-		stir_shaken_set_error(ss, "Can't load X509 from file", STIR_SHAKEN_ERROR_LOAD_X509);
+		stir_shaken_set_error(ss, "Can't load X509 from file", STIR_SHAKEN_ERROR_LOAD_X509_1);
 		return STIR_SHAKEN_STATUS_ERR;
 	}
 
@@ -887,23 +902,6 @@ stir_shaken_status_t stir_shaken_add_cert_trusted_from_file(stir_shaken_context_
 	X509_free(x);
 
 	return STIR_SHAKEN_STATUS_OK;
-}
-
-stir_shaken_status_t stir_shaken_default_callback(stir_shaken_callback_arg_t *arg)
-{
-	if (!arg) return STIR_SHAKEN_STATUS_TERM;
-
-	switch (arg->action) {
-
-		case STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY:
-			// Default behaviour for certificate fetch enquiry is to request downloading
-			return STIR_SHAKEN_STATUS_NOT_HANDLED;
-
-		default:
-			return STIR_SHAKEN_STATUS_NOT_HANDLED;
-	}
-
-	return STIR_SHAKEN_STATUS_NOT_HANDLED;
 }
 
 time_t stir_shaken_time_elapsed_s(time_t ts, time_t now)

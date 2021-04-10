@@ -10,7 +10,7 @@ You can find a comprehensive list of specs relevant to Shaken at the bottom of t
 ## libstirshaken
 
 This library provides building blocks for implementing STIR-Shaken authentication and verification services, (STI-SP/AS, STI-SP/VS),
-as well as elements of STI-CA and STI-PA.
+as well as elements of STI-CA and STI-PA. It supports HHTPs and SSL. Certificates can be cached and served from cache (user may implement custom callback or use default caching mechanism).
 
 ## Interoperability
 
@@ -119,6 +119,22 @@ stir_shaken_vs_load_ca_dir(&ss, vs, "path/to/ca/dir");
 Optionally set your own callback to supply certificates from cache
 ```
 stir_shaken_vs_set_callback(&ss, vs, cache_callback);
+```
+
+Optionally pass your own data to the callback
+```
+stir_shaken_vs_set_callback_user_data(&ss, vs, &user_data);
+```
+
+Alternatively, instead of own callback, use built in support for caching
+```
+stir_shaken_vs_set_cache_dir(&ss, vs, CACHE_DIR);
+stir_shaken_vs_set_default_cert_caching(&ss, vs, 1);
+```
+
+Optionally set certificate expiration threshold (in seconds)
+```
+stir_shaken_vs_set_cache_expire_seconds(&ss, vs, 60);
 ```
 
 Optionally set timeout on connect (default is 2 seconds)
