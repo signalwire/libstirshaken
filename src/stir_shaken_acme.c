@@ -18,7 +18,7 @@
 char* stir_shaken_acme_generate_auth_challenge(stir_shaken_context_t *ss, char *status, char *expires, char *csr, char *nb, char *na, char *authz_url)
 {
     char *printed = NULL;
-    ks_json_t *json = NULL, *arr = NULL, *obj = NULL, *s = NULL;
+    ks_json_t *json = NULL, *arr = NULL, *s = NULL;
 
     if (stir_shaken_zstr(status)) {
         stir_shaken_set_error(ss, "Cannot create JSON, 'status' is missing", STIR_SHAKEN_ERROR_ACME);
@@ -577,9 +577,6 @@ stir_shaken_status_t stir_shaken_acme_retrieve_auth_challenge_details(stir_shake
  */
 stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, char **polling_url, uint16_t remote_port)
 {
-    stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
-    const char				*error_description = NULL;
-    stir_shaken_error_t		error_code = 0;
     ks_json_t *json = NULL, *auth_status = NULL, *challenges_arr = NULL;
     stir_shaken_http_req_t http_req = { 0 };
 
@@ -626,13 +623,13 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 
     } else {
 
-        ks_json_t	*challenge_item = NULL;
-        ks_json_t	*url_item = NULL;
-        const char	*challenge_url = NULL;
+        ks_json_t *challenge_item = NULL;
+        ks_json_t *url_item = NULL;
+        const char *challenge_url = NULL;
         char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
-        char *kid = NULL, *nonce = NULL, *url = NULL;
-        char *jwt_encoded = NULL, *jwt_decoded = NULL;
+        char *kid = NULL, *nonce = NULL;
+        char *jwt_encoded = NULL;
 
         if (strcmp("pending", ks_json_value_string(auth_status)) != 0) {
             snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')", ks_json_value_string(auth_status));
@@ -1325,10 +1322,6 @@ stir_shaken_status_t stir_shaken_acme_api_uri_parse(stir_shaken_context_t *ss, c
     args = p;
 
     if ((p = strchr(p, '/'))) {
-
-        char *pCh = NULL;
-        unsigned long long  val;
-
         // maybe 2 args
 
         *p = '\0';

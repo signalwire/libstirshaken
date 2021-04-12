@@ -92,7 +92,7 @@ stir_shaken_status_t stir_shaken_init(stir_shaken_context_t *ss, int loglevel)
 
 void stir_shaken_deinit(void)
 {
-	return stir_shaken_do_deinit();
+	stir_shaken_do_deinit();
 }
 
 void stir_shaken_do_deinit(void)
@@ -377,7 +377,7 @@ char* stir_shaken_remove_multiple_adjacent(char *in, char what)
 
 char* stir_shaken_get_dir_path(const char *path)
 {
-	char *p = NULL, *res = NULL, *p1 = NULL, *p2 = NULL;
+	char *p = NULL, *p1 = NULL, *p2 = NULL;
 	const char *dname = NULL;
 	const char *bname = NULL;
 	int len = 0;
@@ -441,38 +441,11 @@ int stir_shaken_zstr(const char *str)
 	return 0;
 }
 
-static void shift_errors(stir_shaken_context_t *ss) {
-	if (!ss) return;
-	strncpy(ss->e.err_buf9, ss->e.err_buf8, STIR_SHAKEN_ERROR_BUF_LEN);
-	strncpy(ss->e.err_buf8, ss->e.err_buf7, STIR_SHAKEN_ERROR_BUF_LEN);
-	strncpy(ss->e.err_buf7, ss->e.err_buf6, STIR_SHAKEN_ERROR_BUF_LEN);
-	strncpy(ss->e.err_buf6, ss->e.err_buf5, STIR_SHAKEN_ERROR_BUF_LEN);
-	strncpy(ss->e.err_buf5, ss->e.err_buf4, STIR_SHAKEN_ERROR_BUF_LEN);
-	strncpy(ss->e.err_buf4, ss->e.err_buf3, STIR_SHAKEN_ERROR_BUF_LEN);
-	strncpy(ss->e.err_buf3, ss->e.err_buf2, STIR_SHAKEN_ERROR_BUF_LEN);
-	strncpy(ss->e.err_buf2, ss->e.err_buf1, STIR_SHAKEN_ERROR_BUF_LEN);
-	strncpy(ss->e.err_buf1, ss->e.err_buf0, STIR_SHAKEN_ERROR_BUF_LEN);
-}
-
 void stir_shaken_do_set_error(stir_shaken_context_t *ss, const char *description, stir_shaken_error_t error, char *file, int line)
 {
-	int i = 0, j = 0;
-
 	if (!ss) return;
 
-	shift_errors(ss);
-
-	memset(ss->e.err_buf0, 0, STIR_SHAKEN_ERROR_BUF_LEN);
-	snprintf(ss->e.err_buf0, sizeof(ss->e.err_buf0), "%s:%d: [error_code: %d] ", file, line, error);
-	i = strlen(ss->e.err_buf0);
-
-	while ((i < STIR_SHAKEN_ERROR_BUF_LEN - 1) && (description[j] != '\0')) {
-		ss->e.err_buf0[i] = description[j];
-		++i;
-		++j;
-	}
-
-	ss->e.err_buf0[i] = '\0';
+	snprintf(ss->e.err_buf, sizeof(ss->e.err_buf), "%s:%d: [error_code: %d] ", file, line, error);
 	ss->e.error = error;
 	ss->e.got_error = 1;
 }
@@ -504,33 +477,9 @@ static const char* stir_shaken_get_error_string(stir_shaken_context_t *ss)
 	if (!ss) return NULL;
 
 	if (stir_shaken_is_error_set(ss)) {
-
-		if (!stir_shaken_zstr(ss->e.err_buf9)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n[ERR 6] %s\n[ERR 7] %s\n[ERR 8] %s\n[ERR 9] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, ss->e.err_buf5, ss->e.err_buf6, ss->e.err_buf7, ss->e.err_buf8, ss->e.err_buf9, stir_shaken_get_git_version());
-		} else if (!stir_shaken_zstr(ss->e.err_buf8)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n[ERR 6] %s\n[ERR 7] %s\n[ERR 8] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, ss->e.err_buf5, ss->e.err_buf6, ss->e.err_buf7, ss->e.err_buf8, stir_shaken_get_git_version());
-		} else if (!stir_shaken_zstr(ss->e.err_buf7)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n[ERR 6] %s\n[ERR 7] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, ss->e.err_buf5, ss->e.err_buf6, ss->e.err_buf7, stir_shaken_get_git_version());
-		} else if (!stir_shaken_zstr(ss->e.err_buf6)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n[ERR 6] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, ss->e.err_buf5, ss->e.err_buf6, stir_shaken_get_git_version());
-		} else if (!stir_shaken_zstr(ss->e.err_buf5)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[ERR 5] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, ss->e.err_buf5, stir_shaken_get_git_version());
-		} else if (!stir_shaken_zstr(ss->e.err_buf4)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[ERR 4] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, ss->e.err_buf4, stir_shaken_get_git_version());
-		} else if (!stir_shaken_zstr(ss->e.err_buf3)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[ERR 3] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, ss->e.err_buf3, stir_shaken_get_git_version());
-		} else if (!stir_shaken_zstr(ss->e.err_buf2)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom, outermost first - deepest last):\n[ERR 0] %s\n[ERR 1] %s\n[ERR 2] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, ss->e.err_buf2, stir_shaken_get_git_version());
-		} else if (!stir_shaken_zstr(ss->e.err_buf1)) {
-			snprintf(ss->e.err, sizeof(ss->e.err), "Error stack (top to bottom), outermost first - deepest last:\n[ERR 0] %s\n[ERR 1] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, ss->e.err_buf1, stir_shaken_get_git_version());
-		} else {
-			snprintf(ss->e.err, sizeof(ss->e.err), "[ERR 0] %s\n[libstirshaken git version: %s]\n", ss->e.err_buf0, stir_shaken_get_git_version());
-		}
-
-		return ss->e.err;
+		return ss->e.err_buf;
 	}
-
-	return "No description provided";
+	return "";
 }
 
 stir_shaken_error_t stir_shaken_get_error_code(stir_shaken_context_t *ss)
@@ -592,7 +541,7 @@ stir_shaken_hash_entry_t* stir_shaken_hash_entry_find(stir_shaken_hash_entry_t *
 	return NULL;
 }
 
-stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, int datalen, void *dctor, int hash_copy_type)
+stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, int datalen, stir_shaken_hash_entry_destructor dctor, int hash_copy_type)
 {
 	stir_shaken_hash_entry_t *entry = NULL;
 
@@ -742,12 +691,11 @@ stir_shaken_status_t stir_shaken_is_key_trusted(stir_shaken_context_t *ss, EVP_P
 {
 	stir_shaken_hash_entry_t *e = NULL;
 	EVP_PKEY *candidate_pkey = NULL;
-	size_t i = 0;
 	size_t hash = 0;
-	unsigned char	candidate_pub_raw[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-	int				candidate_pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
-	unsigned char	pub_raw[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
-	int				pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
+	unsigned char candidate_pub_raw[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+	int candidate_pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
+	unsigned char pub_raw[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+	int pub_raw_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
 
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_pubkey_to_raw(ss, pkey, pub_raw, &pub_raw_len)) {
@@ -784,8 +732,7 @@ stir_shaken_status_t stir_shaken_is_key_trusted(stir_shaken_context_t *ss, EVP_P
 
 stir_shaken_status_t stir_shaken_is_cert_trusted(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, stir_shaken_hash_entry_t **trusted_keys, size_t hashsize)
 {
-	X509		*x = NULL;
-	EVP_PKEY	*pkey = NULL;
+	EVP_PKEY *pkey = NULL;
 
 	if (!cert || !cert->x) {
 		stir_shaken_set_error(ss, "X509 missing", STIR_SHAKEN_ERROR_X509_MISSING_7);

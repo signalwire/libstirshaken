@@ -68,8 +68,8 @@
 #define STIR_SHAKEN_HTTPS_SKIP_HOSTNAME_VERIFICATION 0
 
 typedef struct stir_shaken_acme_nonce_s {
-	size_t	timestamp;
-	char	*response;
+	size_t timestamp;
+	char *response;
 } stir_shaken_acme_nonce_t;
 
 
@@ -105,8 +105,8 @@ typedef enum stir_shaken_http_response_status {
 } stir_shaken_http_response_status_t;
 
 typedef struct stir_shaken_csr_s {
-	X509_REQ    *req;
-	char		*pem;
+	X509_REQ *req;
+	char *pem;
 } stir_shaken_csr_t;
 
 // Note:
@@ -116,20 +116,20 @@ typedef struct stir_shaken_csr_s {
 //
 // serialDec and serialHex must be freed with OPENSSL_free
 typedef struct stir_shaken_cert_s {
-	X509			*x;						// X509 end-entity Certificate
-	STACK_OF(X509)	*xchain;				// Certificate chain
-	X509_STORE_CTX	*verify_ctx;			// Verification SSL context using @store to validate cert chain against CA list and CRL
-	char        *body;
-	uint8_t     is_fresh;
-	char		install_dir[STIR_SHAKEN_BUFLEN];			// folder, where cert must be put to be accessible with @public_url for other SPs
-	char		install_url[STIR_SHAKEN_BUFLEN];			// directory part of the publicly accessible URL
-	char		public_url[STIR_SHAKEN_BUFLEN];				// publicly accessible URL which can be used to download the certificate, this is concatenated from @install_url and cert's @name and is put into PASSporT as @x5u and @params.info
-	EC_KEY              *ec_key;
-	EVP_PKEY            *private_key;
+	X509 *x; // X509 end-entity Certificate
+	STACK_OF(X509) *xchain; // Certificate chain
+	X509_STORE_CTX *verify_ctx; // Verification SSL context using @store to validate cert chain against CA list and CRL
+	char *body;
+	uint8_t is_fresh;
+	char install_dir[STIR_SHAKEN_BUFLEN]; // folder, where cert must be put to be accessible with @public_url for other SPs
+	char install_url[STIR_SHAKEN_BUFLEN]; // directory part of the publicly accessible URL
+	char public_url[STIR_SHAKEN_BUFLEN]; // publicly accessible URL which can be used to download the certificate, this is concatenated from @install_url and cert's @name and is put into PASSporT as @x5u and @params.info
+	EC_KEY *ec_key;
+	EVP_PKEY *private_key;
 
-	unsigned long	hash;							// hash of cert name
-	char			hashstr[STIR_SHAKEN_BUFLEN];	// hashed name as string
-	char			cert_name_hashed[STIR_SHAKEN_BUFLEN];	// hashed name with .0 appended - ready to save in CA dir for usage with X509 cert path validation check
+	unsigned long hash; // hash of cert name
+	char hashstr[STIR_SHAKEN_BUFLEN]; // hashed name as string
+	char cert_name_hashed[STIR_SHAKEN_BUFLEN + 2]; // hashed name with .0 appended - ready to save in CA dir for usage with X509 cert path validation check
 
 	// Cert info retrieved with stir_shaken_read_cert
 	char *serialHex;
@@ -146,13 +146,13 @@ typedef struct stir_shaken_cert_s {
 
 // ACME credentials
 typedef struct stir_shaken_ssl_keys {
-	EC_KEY		*ec_key;
-	EVP_PKEY	*private_key;
-	EVP_PKEY	*public_key;
-	unsigned char	priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
-	uint32_t		priv_raw_len;
-	unsigned char	pub_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
-	uint32_t		pub_raw_len;
+	EC_KEY *ec_key;
+	EVP_PKEY *private_key;
+	EVP_PKEY *public_key;
+	unsigned char priv_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
+	uint32_t priv_raw_len;
+	unsigned char pub_raw[STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN];
+	uint32_t pub_raw_len;
 } stir_shaken_ssl_keys_t;
 
 typedef struct curl_slist curl_slist_t;
@@ -749,8 +749,8 @@ typedef enum stir_shaken_callback_action {
 } stir_shaken_callback_action_t;
 
 typedef struct stir_shaken_callback_arg_s {
-	stir_shaken_callback_action_t	action;
-	stir_shaken_cert_t				cert;
+	stir_shaken_callback_action_t action;
+	stir_shaken_cert_t cert;
 } stir_shaken_callback_arg_t;
 
 void stir_shaken_destroy_callback_arg(stir_shaken_callback_arg_t *callback_arg);
@@ -759,25 +759,15 @@ typedef stir_shaken_status_t (*stir_shaken_callback_t)(stir_shaken_callback_arg_
 stir_shaken_status_t stir_shaken_default_callback(stir_shaken_callback_arg_t *arg);
 
 typedef struct stir_shaken_context_error_s {
-	char err_buf0[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err_buf1[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err_buf2[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err_buf3[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err_buf4[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err_buf5[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err_buf6[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err_buf7[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err_buf8[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err_buf9[STIR_SHAKEN_ERROR_BUF_LEN];
-	char err[10*STIR_SHAKEN_ERROR_BUF_LEN];
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN];
 	stir_shaken_error_t error;
 	uint8_t got_error;
 } stir_shaken_context_error_t;
 
 typedef struct stir_shaken_context_s {
-	stir_shaken_context_error_t	e;
-	stir_shaken_callback_t		callback;
-	stir_shaken_callback_arg_t	callback_arg;
+	stir_shaken_context_error_t e;
+	stir_shaken_callback_t callback;
+	stir_shaken_callback_arg_t callback_arg;
 	uint8_t cert_fetched_from_cache;
 	uint8_t x509_cert_path_checked;
 	stir_shaken_verification_status_t verification_status;
@@ -799,10 +789,10 @@ typedef enum stir_shaken_http_req_content_type {
 } stir_shaken_http_req_content_type_t;
 
 typedef struct stir_shaken_http_response_s {
-	long			code;
-	char			error[STIR_SHAKEN_BUFLEN];
-	mem_chunk_t		mem;
-	curl_slist_t	*headers;
+	long code;
+	char error[STIR_SHAKEN_BUFLEN];
+	mem_chunk_t mem;
+	curl_slist_t *headers;
 } stir_shaken_http_response_t;
 
 #define STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT 80u
@@ -819,15 +809,15 @@ typedef enum stir_shaken_action_type {
 } stir_shaken_action_type_t;
 
 typedef struct stir_shaken_http_req_s {
-	const char					*url;
-	uint16_t                    remote_port;
-	unsigned long				connect_timeout_s;
+	const char *url;
+	uint16_t remote_port;
+	unsigned long connect_timeout_s;
 	stir_shaken_http_req_type_t	type;
-	const char					*data;
-	curl_slist_t				*tx_headers;
+	const char *data;
+	curl_slist_t *tx_headers;
 	stir_shaken_http_req_content_type_t content_type;
-	stir_shaken_http_response_t	response;
-	stir_shaken_action_type_t   action;
+	stir_shaken_http_response_t response;
+	stir_shaken_action_type_t action;
 } stir_shaken_http_req_t;
 
 
@@ -857,15 +847,15 @@ typedef struct stir_shaken_http_req_s {
  * @ppt_ignore - true if ppt field should not be included
  */ 
 typedef struct stir_shaken_passport_params_s {
-	const char  *x5u;
-	const char  *attest;
-	const char  *desttn_key;
-	const char  *desttn_val;
-	uint32_t	iat;
-	const char  *origtn_key;
-	const char  *origtn_val;
-	const char  *origid;
-	uint8_t     ppt_ignore;     // Should skip ppt field?
+	const char *x5u;
+	const char *attest;
+	const char *desttn_key;
+	const char *desttn_val;
+	uint32_t iat;
+	const char *origtn_key;
+	const char *origtn_val;
+	const char *origid;
+	uint8_t ppt_ignore; // Should skip ppt field?
 } stir_shaken_passport_params_t;
 
 void stir_shaken_passport_params_destroy(stir_shaken_passport_params_t *params);
@@ -905,29 +895,29 @@ void stir_shaken_passport_params_destroy(stir_shaken_passport_params_t *params);
  * }
  */
 typedef struct stir_shaken_passport {
-	jwt_t *jwt;			// PASSport JSON Web Token
+	jwt_t *jwt; // PASSport JSON Web Token
 } stir_shaken_passport_t;
 
-stir_shaken_status_t		stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
-jwt_t*						stir_shaken_passport_jwt_create_new(stir_shaken_context_t *ss);
-stir_shaken_status_t		stir_shaken_passport_init(stir_shaken_context_t *ss, stir_shaken_passport_t *where, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
-stir_shaken_status_t		stir_shaken_passport_jwt_init_from_json(stir_shaken_context_t *ss, jwt_t *jwt, const char *headers_json, const char *grants_json, unsigned char *key, uint32_t keylen);
-stir_shaken_passport_t*	stir_shaken_passport_create(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
-void						stir_shaken_passport_destroy(stir_shaken_passport_t **passport);
-stir_shaken_status_t		stir_shaken_passport_sign(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, unsigned char *key, uint32_t keylen, char **out);
-const char*					stir_shaken_passport_get_header(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
+stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jwt_t *jwt, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
+jwt_t* stir_shaken_passport_jwt_create_new(stir_shaken_context_t *ss);
+stir_shaken_status_t stir_shaken_passport_init(stir_shaken_context_t *ss, stir_shaken_passport_t *where, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
+stir_shaken_status_t stir_shaken_passport_jwt_init_from_json(stir_shaken_context_t *ss, jwt_t *jwt, const char *headers_json, const char *grants_json, unsigned char *key, uint32_t keylen);
+stir_shaken_passport_t* stir_shaken_passport_create(stir_shaken_context_t *ss, stir_shaken_passport_params_t *params, unsigned char *key, uint32_t keylen);
+void stir_shaken_passport_destroy(stir_shaken_passport_t **passport);
+stir_shaken_status_t stir_shaken_passport_sign(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, unsigned char *key, uint32_t keylen, char **out);
+const char* stir_shaken_passport_get_header(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
 
 // Returns headers in JSON. Must be freed by caller.
-char*						stir_shaken_passport_get_headers_json(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
+char* stir_shaken_passport_get_headers_json(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
 
-const char*					stir_shaken_passport_get_grant(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
-long int					stir_shaken_passport_get_grant_int(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
+const char* stir_shaken_passport_get_grant(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
+long int stir_shaken_passport_get_grant_int(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
 
 // Returns grants in JSON. Must be freed by caller.
-char*						stir_shaken_passport_get_grants_json(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
+char* stir_shaken_passport_get_grants_json(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, const char* key);
 
-char*						stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, int *is_tn);
-void						stir_shaken_http_add_header(stir_shaken_http_req_t *http_req, const char *h);
+char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, int *is_tn);
+void stir_shaken_http_add_header(stir_shaken_http_req_t *http_req, const char *h);
 
 /**
  * Validate that the PASSporT includes all of the baseline claims.
@@ -1008,22 +998,22 @@ jwt_t* stir_shaken_jwt_move_to_passport(stir_shaken_context_t *ss, jwt_t *jwt, s
 /* Global Values */
 typedef struct stir_shaken_globals_s {
 
-	pthread_mutexattr_t		attr;	
-	pthread_mutex_t			mutex;	
-	uint8_t					initialised;
+	pthread_mutexattr_t attr;
+	pthread_mutex_t mutex;
+	uint8_t initialised;
 
 	/** SSL */
-	const SSL_METHOD    *ssl_method;
-	SSL_CTX             *ssl_ctx;
-	SSL                 *ssl;
-	int                 curve_nid;                  // id of the curve in OpenSSL
-	int					tn_authlist_nid;			// OID for ext-tnAuthList
-	//ASN1_OBJECT				*tn_authlist_obj;
+	const SSL_METHOD *ssl_method;
+	SSL_CTX *ssl_ctx;
+	SSL *ssl;
+	int curve_nid; // id of the curve in OpenSSL
+	int tn_authlist_nid; // OID for ext-tnAuthList
+	//ASN1_OBJECT *tn_authlist_obj;
 
 // DEPRECATED
-	X509_STORE			*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
+	X509_STORE *store; // Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
 
-	int					loglevel;
+	int loglevel;
 } stir_shaken_globals_t;
 
 extern stir_shaken_globals_t stir_shaken_globals;
@@ -1061,8 +1051,8 @@ stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_
 stir_shaken_status_t stir_shaken_csr_to_disk(stir_shaken_context_t *ss, X509_REQ *csr_req, const char *csr_full_name);
 void stir_shaken_destroy_csr_req(X509_REQ **csr_req);
 void stir_shaken_destroy_csr(stir_shaken_csr_t *csr);
-void*					stir_shaken_x509_req_get_tn_authlist_extension(stir_shaken_context_t *ss, X509_REQ *req);
-const unsigned char*	stir_shaken_x509_req_get_tn_authlist_extension_value(stir_shaken_context_t *ss, X509_REQ *req);
+void* stir_shaken_x509_req_get_tn_authlist_extension(stir_shaken_context_t *ss, X509_REQ *req);
+const unsigned char* stir_shaken_x509_req_get_tn_authlist_extension_value(stir_shaken_context_t *ss, X509_REQ *req);
 
 // Functions used for cert construction
 X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, long expiry_days);
@@ -1263,27 +1253,27 @@ char * stir_shaken_do_sign_keep_passport(stir_shaken_context_t *ss, stir_shaken_
 
 // Service
 
-char*					stir_shaken_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, const char *spc, unsigned char *key, uint32_t keylen, char **json);
-char*					stir_shaken_acme_generate_auth_challenge(stir_shaken_context_t *ss, char *status, char *expires, char *csr, char *nb, char *na, char *authz_url);
-char*					stir_shaken_acme_generate_auth_challenge_response(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *spc_token, unsigned char *key, uint32_t keylen, char **json);
-char*					stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss, char *status, const char *spc, const char *token, const char *authz_url);
-char*					stir_shaken_acme_generate_auth_polling_status(stir_shaken_context_t *ss, char *status, char *expires, char *validated, const char *spc, const char *token, const char *authz_url);
-char*					stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
+char* stir_shaken_acme_generate_cert_req_payload(stir_shaken_context_t *ss, const char *kid, const char *nonce, const char *url, X509_REQ *req, const char *nb, const char *na, const char *spc, unsigned char *key, uint32_t keylen, char **json);
+char* stir_shaken_acme_generate_auth_challenge(stir_shaken_context_t *ss, char *status, char *expires, char *csr, char *nb, char *na, char *authz_url);
+char* stir_shaken_acme_generate_auth_challenge_response(stir_shaken_context_t *ss, char *kid, char *nonce, char *url, char *spc_token, unsigned char *key, uint32_t keylen, char **json);
+char* stir_shaken_acme_generate_auth_challenge_details(stir_shaken_context_t *ss, char *status, const char *spc, const char *token, const char *authz_url);
+char* stir_shaken_acme_generate_auth_polling_status(stir_shaken_context_t *ss, char *status, char *expires, char *validated, const char *spc, const char *token, const char *authz_url);
+char* stir_shaken_acme_generate_new_account_req_payload(stir_shaken_context_t *ss, char *jwk, char *nonce, char *url, char *contact_mail, char *contact_tel, unsigned char *key, uint32_t keylen, char **json);
 stir_shaken_status_t stir_shaken_acme_api_uri_to_spc(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *buf, int buflen, unsigned long long int *sp_code, int *uri_has_secret, unsigned long long *secret);
-stir_shaken_status_t	stir_shaken_acme_api_uri_parse(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *arg1, int arg1_len, char *arg2, int arg2_len, int *args_n);
-char*					stir_shaken_acme_generate_spc_token(stir_shaken_context_t *ss, char *issuer, char *url, char *nb, char *na, char *spc, unsigned char *key, uint32_t keylen, char **json);
+stir_shaken_status_t stir_shaken_acme_api_uri_parse(stir_shaken_context_t *ss, const char *uri_request, const char *api_url, char *arg1, int arg1_len, char *arg2, int arg2_len, int *args_n);
+char* stir_shaken_acme_generate_spc_token(stir_shaken_context_t *ss, char *issuer, char *url, char *nb, char *na, char *spc, unsigned char *key, uint32_t keylen, char **json);
 
-stir_shaken_status_t	stir_shaken_acme_nonce_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
-stir_shaken_status_t	stir_shaken_acme_retrieve_auth_challenge_details(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
-stir_shaken_status_t	stir_shaken_acme_respond_to_challenge(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, char **polling_url, uint16_t remote_port);
-stir_shaken_status_t	stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data, const char *url, uint16_t remote_port);
-stir_shaken_status_t	stir_shaken_acme_perform_authorization(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, uint16_t remote_port);
+stir_shaken_status_t stir_shaken_acme_nonce_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+stir_shaken_status_t stir_shaken_acme_retrieve_auth_challenge_details(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, char **polling_url, uint16_t remote_port);
+stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data, const char *url, uint16_t remote_port);
+stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_t *ss, void *data, char *spc_token, unsigned char *key, uint32_t keylen, uint16_t remote_port);
 
 const char* stir_shaken_http_req_type_2_str(stir_shaken_http_req_type_t type);
-extern stir_shaken_status_t	(*stir_shaken_make_http_req)(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
-stir_shaken_status_t    stir_shaken_make_http_req_real(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
-extern stir_shaken_status_t    stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
-void					stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req);
+extern stir_shaken_status_t (*stir_shaken_make_http_req)(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+extern stir_shaken_status_t stir_shaken_make_http_req_mock(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+void stir_shaken_destroy_http_request(stir_shaken_http_req_t *http_req);
 
 /**
  * @http_req - (out) will contain HTTP response
@@ -1300,11 +1290,11 @@ stir_shaken_status_t stir_shaken_as_make_code_token_request(stir_shaken_context_
  */
 stir_shaken_status_t stir_shaken_as_make_stica_list_request(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *url);
 
-stir_shaken_status_t	stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
-stir_shaken_status_t	stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *data, uint8_t json);
-stir_shaken_status_t	stir_shaken_make_http_head_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *data, uint8_t is_json);
-char*					stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name);
-void					stir_shaken_error_desc_to_http_error_phrase(const char *error_desc, char *error_phrase, int buflen);
+stir_shaken_status_t stir_shaken_make_http_get_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req);
+stir_shaken_status_t stir_shaken_make_http_post_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *data, uint8_t json);
+stir_shaken_status_t stir_shaken_make_http_head_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *data, uint8_t is_json);
+char* stir_shaken_get_http_header(stir_shaken_http_req_t *http_req, char *name);
+void stir_shaken_error_desc_to_http_error_phrase(const char *error_desc, char *error_phrase, int buflen);
 
 stir_shaken_status_t stir_shaken_sp_cert_req(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, char *jwt, unsigned char *key, uint32_t keylen, const char *spc, char *spc_token);
 stir_shaken_status_t stir_shaken_sp_cert_req_ex(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req, const char *kid, const char *nonce, X509_REQ *req, const char *nb, const char *na, const char *spc, unsigned char *key, uint32_t keylen, char **json, char *spc_token);
@@ -1320,9 +1310,9 @@ typedef struct stir_shaken_as_settings_s {
 } stir_shaken_as_settings_t;
 
 typedef struct stir_shaken_as_s {
-	stir_shaken_ssl_keys_t			keys;
-	stir_shaken_cert_t				cert;
-	stir_shaken_as_settings_t		settings;
+	stir_shaken_ssl_keys_t keys;
+	stir_shaken_cert_t cert;
+	stir_shaken_as_settings_t settings;
 } stir_shaken_as_t;
 
 stir_shaken_as_t* stir_shaken_as_create(struct stir_shaken_context_s *ss);
@@ -1340,15 +1330,15 @@ stir_shaken_status_t stir_shaken_as_install_cert(struct stir_shaken_context_s *s
 typedef struct stir_shaken_vs_settings_s {
 
 	// SIP checking
-	time_t		sip_date_header_freshness_seconds;
-	uint8_t		sip_date_header_mandatory;
+	time_t sip_date_header_freshness_seconds;
+	uint8_t sip_date_header_mandatory;
 
 	// PASSporT checking
-	time_t		iat_freshness_seconds;
-	uint8_t 	identity_check;
+	time_t iat_freshness_seconds;
+	uint8_t identity_check;
 
 	// Certificate checking
-	uint8_t		x509_cert_path_check;
+	uint8_t x509_cert_path_check;
 	char ca_dir[STIR_SHAKEN_BUFLEN];
 	char crl_dir[STIR_SHAKEN_BUFLEN];
 
@@ -1358,9 +1348,9 @@ typedef struct stir_shaken_vs_settings_s {
 } stir_shaken_vs_settings_t;
 
 typedef struct stir_shaken_vs_s {
-	X509_STORE						*store;						// Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
-	stir_shaken_callback_t			callback;
-	stir_shaken_vs_settings_t		settings;
+	X509_STORE *store; // Container for CA list (list of approved CAs from STI-PA) and CRL (revocation list)
+	stir_shaken_callback_t callback;
+	stir_shaken_vs_settings_t settings;
 } stir_shaken_vs_t;
 
 stir_shaken_vs_t* stir_shaken_vs_create(struct stir_shaken_context_s *ss);
@@ -1410,14 +1400,14 @@ const char* stir_shaken_get_error(stir_shaken_context_t *ss, stir_shaken_error_t
 #define stir_shaken_set_error(ss, description, error) stir_shaken_do_set_error(ss, description, error, __FILE__, __LINE__)
 #define stir_shaken_set_error_if_clear(ss, description, error) stir_shaken_do_set_error_if_clear(ss, description, error, __FILE__, __LINE__)
 
-#define fprintif(level, fmt, ...)		\
-	if (stir_shaken_globals.loglevel >= level) {							\
-		fprintf(stderr, (fmt), ##__VA_ARGS__);	\
+#define fprintif(level, fmt, ...) \
+	if (stir_shaken_globals.loglevel >= level) { \
+		fprintf(stderr, (fmt), ##__VA_ARGS__); \
 	}
 
-#define STIR_SHAKEN_HASH_TYPE_SHALLOW			0
-#define STIR_SHAKEN_HASH_TYPE_DEEP				1
-#define STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE	2
+#define STIR_SHAKEN_HASH_TYPE_SHALLOW 0
+#define STIR_SHAKEN_HASH_TYPE_DEEP 1
+#define STIR_SHAKEN_HASH_TYPE_SHALLOW_AUTOFREE 2
 
 typedef void (*stir_shaken_hash_entry_destructor)(void*);
 
@@ -1430,7 +1420,7 @@ typedef struct stir_shaken_hash_entry_s {
 
 size_t stir_shaken_hash_hash(size_t hashsize, size_t key);
 stir_shaken_hash_entry_t* stir_shaken_hash_entry_find(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key);
-stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, int datalen, void *dctor, int hash_copy_type);
+stir_shaken_hash_entry_t* stir_shaken_hash_entry_create(size_t key, void *data, int datalen, stir_shaken_hash_entry_destructor dctor, int hash_copy_type);
 void stir_shaken_hash_entry_destroy(stir_shaken_hash_entry_t *e, int hash_copy_type);
 stir_shaken_hash_entry_t* stir_shaken_hash_entry_add(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key, void *data, int datalen, stir_shaken_hash_entry_destructor dctor, int hash_copy_type);
 stir_shaken_status_t stir_shaken_hash_entry_remove(stir_shaken_hash_entry_t **hash, size_t hashsize, size_t key, int hash_copy_type);
@@ -1444,14 +1434,14 @@ time_t stir_shaken_time_elapsed_s(time_t ts, time_t now);
 #define STI_CA_SESSIONS_MAX 1000
 #define STI_CA_TRUSTED_PA_KEYS_MAX 100
 
-#define STI_CA_SESSION_STATE_INIT				0
-#define STI_CA_SESSION_STATE_AUTHZ_SENT			1
-#define STI_CA_SESSION_STATE_AUTHZ_DETAILS_SENT	2
-#define STI_CA_SESSION_STATE_POLLING			3
-#define STI_CA_SESSION_STATE_DONE				4
+#define STI_CA_SESSION_STATE_INIT 0
+#define STI_CA_SESSION_STATE_AUTHZ_SENT 1
+#define STI_CA_SESSION_STATE_AUTHZ_DETAILS_SENT 2
+#define STI_CA_SESSION_STATE_POLLING 3
+#define STI_CA_SESSION_STATE_DONE 4
 
-#define STI_CA_HTTP_GET		0
-#define STI_CA_HTTP_POST	1
+#define STI_CA_HTTP_GET 0
+#define STI_CA_HTTP_POST 1
 
 typedef struct stir_shaken_sp_s {
 	char subject_c[STIR_SHAKEN_BUFLEN];
@@ -1541,14 +1531,14 @@ stir_shaken_status_t stir_shaken_run_pa_service(stir_shaken_context_t *ss, stir_
 
 void stir_shaken_sp_destroy(stir_shaken_sp_t *sp);
 
-#define STI_CA_ACME_ADDR				"ca.shaken.signalwire.cloud"
-#define STI_CA_API_URL					"/sti-ca/"
-#define STI_CA_ACME_API_URL				"/sti-ca/acme"
-#define STI_CA_ACME_CERT_REQ_URL		"/sti-ca/acme/cert"
-#define STI_CA_ACME_AUTHZ_URL			"/sti-ca/acme/authz"
-#define STI_CA_ACME_NONCE_REQ_URL		"/sti-ca/acme/nonce"
-#define STI_CA_ACME_NEW_ACCOUNT_URL		"/sti-ca/acme/account"
-#define STI_CA_AUTHORITY_CHECK_URL		"/sti-ca/authority-over-the-number-check"
+#define STI_CA_ACME_ADDR "ca.shaken.signalwire.cloud"
+#define STI_CA_API_URL "/sti-ca/"
+#define STI_CA_ACME_API_URL "/sti-ca/acme"
+#define STI_CA_ACME_CERT_REQ_URL "/sti-ca/acme/cert"
+#define STI_CA_ACME_AUTHZ_URL "/sti-ca/acme/authz"
+#define STI_CA_ACME_NONCE_REQ_URL "/sti-ca/acme/nonce"
+#define STI_CA_ACME_NEW_ACCOUNT_URL "/sti-ca/acme/account"
+#define STI_CA_AUTHORITY_CHECK_URL "/sti-ca/authority-over-the-number-check"
 
 const char* stir_shaken_get_git_version();
 
