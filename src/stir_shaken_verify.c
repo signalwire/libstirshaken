@@ -9,7 +9,7 @@ stir_shaken_status_t stir_shaken_basic_cert_check(stir_shaken_context_t *ss, sti
 {
 	int version = -1;
 	int res = 0;
-	char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 	if (!cert) return STIR_SHAKEN_STATUS_TERM;
 
