@@ -209,8 +209,8 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 	}
 
 	ss->callback_arg.action = STIR_SHAKEN_CALLBACK_ACTION_CERT_FETCH_ENQUIRY;
-	strncpy(ss->callback_arg.cert.public_url, cert_url, STIR_SHAKEN_BUFLEN);
-	ss->callback_arg.cert.public_url[STIR_SHAKEN_BUFLEN - 1] = '\0';
+	strncpy(ss->callback_arg.cert.public_url, cert_url, STIR_SHAKEN_BUFLEN - 1);
+	ss->callback_arg.cert.public_url[STIR_SHAKEN_BUFLEN - 2] = '\0';
 
 	if (STIR_SHAKEN_STATUS_HANDLED == (ss->callback)(&ss->callback_arg)) {
 
