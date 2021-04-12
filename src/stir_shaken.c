@@ -445,7 +445,7 @@ void stir_shaken_do_set_error(stir_shaken_context_t *ss, const char *description
 {
 	if (!ss) return;
 
-	snprintf(ss->e.err_buf, sizeof(ss->e.err_buf), "%s:%d: [error_code: %d] ", file, line, error);
+	snprintf(ss->e.err_buf, sizeof(ss->e.err_buf), "%s:%d: [error_code: %d] %s", file, line, error, description);
 	ss->e.error = error;
 	ss->e.got_error = 1;
 }
