@@ -51,6 +51,7 @@ stir_shaken_status_t stir_shaken_vs_verify_stica_against_list(stir_shaken_contex
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+#if 0
 static int stir_shaken_verify_data_with_cert(stir_shaken_context_t *ss, const char *data, size_t datalen, const unsigned char *signature, size_t siglen, stir_shaken_cert_t *cert)
 {
 	EVP_PKEY *pkey = NULL;
@@ -74,6 +75,7 @@ static int stir_shaken_verify_data_with_cert(stir_shaken_context_t *ss, const ch
 	EVP_PKEY_free(pkey);
 	return ret;
 }
+#endif
 
 /*
  * @jwt_encoded - (out) buffer for encoded JWT
@@ -109,6 +111,7 @@ static stir_shaken_status_t stir_shaken_jwt_sih_to_jwt_encoded(stir_shaken_conte
 	return STIR_SHAKEN_STATUS_OK;
 }
 
+#if 0
 static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
 {
 	char *m = NULL;
@@ -131,11 +134,10 @@ static size_t curl_callback(void *contents, size_t size, size_t nmemb, void *p)
 
 	return realsize;
 }
+#endif
 
 stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_shaken_http_req_t *http_req)
 {
-	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
-
 	if (!http_req) {
 		stir_shaken_set_error(ss, "HTTP Req not set", STIR_SHAKEN_ERROR_GENERAL);
 		return STIR_SHAKEN_STATUS_TERM;
@@ -161,14 +163,11 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_s
 
 stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, unsigned long connect_timeout_s)
 {
-	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
-	stir_shaken_http_req_t	http_req = { 0 };
-	long					res = CURLE_OK;
-	stir_shaken_cert_t		*cert = NULL;
-	const char				*cert_url = NULL;
-	jwt_t					*jwt = NULL;
-
-	memset(&http_req, 0, sizeof(http_req));
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
+	stir_shaken_http_req_t http_req = { 0 };
+	stir_shaken_cert_t *cert = NULL;
+	const char *cert_url = NULL;
+	jwt_t *jwt = NULL;
 
 	if (!ss) {
 		stir_shaken_set_error(ss, "Bad params: context missing", STIR_SHAKEN_ERROR_BAD_PARAMS_25);
@@ -345,13 +344,11 @@ stir_shaken_status_t stir_shaken_sih_verify_with_cert(stir_shaken_context_t *ss,
 
 stir_shaken_status_t stir_shaken_jwt_check_signature(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, unsigned long connect_timeout_s)
 {
-	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
-	long					res = CURLE_OK;
-	stir_shaken_cert_t		*cert = NULL;
-	jwt_t					*jwt = NULL;
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
+	stir_shaken_cert_t *cert = NULL;
+	jwt_t *jwt = NULL;
 	unsigned char key[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
 	int key_len = STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN;
-
 
 	if (!ss) {
 		stir_shaken_set_error(ss, "Bad params: context missing", STIR_SHAKEN_ERROR_BAD_PARAMS_26);
@@ -405,17 +402,12 @@ fail:
 
 stir_shaken_status_t stir_shaken_jwt_verify_ex(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, jwt_t **jwt_out, X509_STORE *store, uint8_t check_x509_cert_path, unsigned long connect_timeout_s)
 {
-	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
-	stir_shaken_http_req_t	http_req = { 0 };
-	long					res = CURLE_OK;
-	stir_shaken_cert_t		*cert = NULL;
-	const char				*cert_url = NULL;
-	jwt_t					*jwt = NULL;
-	stir_shaken_context_t	ss_local = { 0 };
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
+	stir_shaken_cert_t *cert = NULL;
+	jwt_t *jwt = NULL;
+	stir_shaken_context_t ss_local = { 0 };
 
-	memset(&http_req, 0, sizeof(http_req));
 	if (!ss) ss = &ss_local;
-
 
 	if (!token) {
 		stir_shaken_set_error(ss, "Bad params: JWT token is missing", STIR_SHAKEN_ERROR_BAD_PARAMS_20);
@@ -477,7 +469,6 @@ fail_x509_cert_path_check:
 fail:
 
 	stir_shaken_cert_destroy(&cert);
-	stir_shaken_destroy_http_request(&http_req);
 	if (jwt) jwt_free(jwt);
 
 	return STIR_SHAKEN_STATUS_FALSE;
@@ -564,18 +555,13 @@ stir_shaken_status_t stir_shaken_check_authority_over_number(stir_shaken_context
 
 stir_shaken_status_t stir_shaken_sih_verify_ex(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store, uint8_t check_x509_cert_path, unsigned long connect_timeout_s)
 {
-	stir_shaken_status_t	ss_status = STIR_SHAKEN_STATUS_FALSE;
-	stir_shaken_http_req_t	http_req = { 0 };
-	long					res = CURLE_OK;
-	stir_shaken_cert_t		*cert = NULL;
-
-	unsigned char jwt_encoded[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
+	stir_shaken_cert_t *cert = NULL;
 	jwt_t *jwt = NULL;
+	stir_shaken_passport_t *passport = NULL;
+	unsigned char jwt_encoded[STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN] = { 0 };
 
 	stir_shaken_clear_error(ss);
-	memset(&http_req, 0, sizeof(http_req));
-	stir_shaken_passport_t *passport = NULL;
-
 
 	if (!sih) {
 		stir_shaken_set_error(ss, "SIP Identity Header not set", STIR_SHAKEN_ERROR_BAD_PARAMS_23);

@@ -412,7 +412,6 @@ stir_shaken_status_t stir_shaken_make_authority_over_number_check_req(stir_shake
 	char req_url[STIR_SHAKEN_BUFLEN] = { 0 };
 	stir_shaken_status_t result = STIR_SHAKEN_STATUS_FALSE;
 	ks_json_t *json = NULL, *authority_check_result = NULL;
-	char *valuestring = NULL;
 
 	if (stir_shaken_zstr(url)) {
 		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);

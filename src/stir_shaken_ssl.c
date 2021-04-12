@@ -4,8 +4,8 @@
 static int do_sign_init(EVP_MD_CTX *ctx, EVP_PKEY *pkey,
         const EVP_MD *md, STACK_OF(OPENSSL_STRING) *sigopts)
 {
-    EVP_PKEY_CTX    *pkctx = NULL;
-    int             def_nid = 0;
+    EVP_PKEY_CTX *pkctx = NULL;
+    int def_nid = 0;
 
     if (ctx == NULL)
         return 0;
@@ -55,6 +55,7 @@ int do_X509_REQ_sign(X509_REQ *x, EVP_PKEY *pkey, const EVP_MD *md,
     return rv > 0 ? 1 : 0;
 }
 
+#if 0
 static unsigned char *generic_asn1(const char *value, X509V3_CTX *ctx,
         long *ext_len)
 {
@@ -67,6 +68,7 @@ static unsigned char *generic_asn1(const char *value, X509V3_CTX *ctx,
     ASN1_TYPE_free(typ);
     return ext_der;
 }
+#endif
 /**
   static void delete_ext(STACK_OF(X509_EXTENSION) *sk, X509_EXTENSION *dext)
   {
@@ -161,7 +163,7 @@ unsigned char *OPENSSL_hexstr2buf(const char *str, long *len)
     return hexbuf;
 }
 
-
+#if 0
 /* Create a generic extension: for now just handle DER type */
 static X509_EXTENSION *v3_generic_extension(const char *ext, const char *value, int crit, int gen_type, X509V3_CTX *ctx)
 {
@@ -201,6 +203,7 @@ err:
     return extension;
 
 }
+#endif
 
 
 stir_shaken_status_t stir_shaken_v3_add_ext(X509 *ca_x, X509 *x, X509_REQ *req, X509_CRL *crl, int nid, char *value)
@@ -398,8 +401,7 @@ stir_shaken_status_t stir_shaken_sign_x509_req(stir_shaken_context_t *ss, X509_R
 
 stir_shaken_status_t stir_shaken_generate_csr(stir_shaken_context_t *ss, uint32_t sp_code, X509_REQ **csr_req, EVP_PKEY *private_key, EVP_PKEY *public_key, const char *subject_c, const char *subject_cn)
 {
-    X509_REQ                *req = NULL;
-    X509_NAME				*tmp = NULL;
+    X509_REQ *req = NULL;
 
 
     stir_shaken_clear_error(ss);
@@ -567,9 +569,7 @@ const unsigned char* stir_shaken_x509_req_get_tn_authlist_extension_value(stir_s
 X509* stir_shaken_generate_x509_cert(stir_shaken_context_t *ss, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, const char *subject_c, const char *subject_cn, int64_t serial, long expiry_days)
 {
     X509 *x = NULL;
-    X509_NAME		*tmp = NULL;
-    const EVP_MD    *digest = NULL;
-    int             i = 0;
+    X509_NAME *tmp = NULL;
 
 
     stir_shaken_clear_error(ss);
@@ -932,8 +932,6 @@ fail:
 // where the digital signature may be verified by the public key bound into the certificate.
 X509* stir_shaken_generate_x509_self_signed_ca_cert(stir_shaken_context_t *ss, EVP_PKEY *private_key, EVP_PKEY *public_key, const char* issuer_c, const char *issuer_cn, int64_t serial, long expiry_days)
 {
-    X509 *x = NULL;
-
     // Self signed certificate is a special case of self-issued certificate,
     // with a property that it's digital signature may be verified by the public key bound into the certificate.
 
@@ -1016,10 +1014,6 @@ X509* stir_shaken_generate_x509_cert_from_csr(stir_shaken_context_t *ss, const c
 
     return x;
 
-fail:
-    if (public_key) EVP_PKEY_free(public_key);
-    if (x) X509_free(x);
-    return NULL;
 }
 
 // Create SP certificate from CSR.
@@ -1090,16 +1084,14 @@ static int stir_shaken_convert_ASN1TIME(stir_shaken_context_t *ss, ASN1_TIME *t,
 
 stir_shaken_status_t stir_shaken_read_cert_fields(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
 {
-    X509			*x = NULL;
-    ASN1_INTEGER	*serial = NULL;
-    BIGNUM			*bnser = NULL;
-    char			*serialHex = NULL;
-    char			*serialDec = NULL;
-    char			*issuer = NULL;
-    char			*subject = NULL;
-    ASN1_TIME		*notBefore = NULL;
-    ASN1_TIME		*notAfter = NULL;
-    int				version = -1;
+    X509 *x = NULL;
+    ASN1_INTEGER *serial = NULL;
+    BIGNUM *bnser = NULL;
+    char *serialHex = NULL;
+    char *serialDec = NULL;
+    ASN1_TIME *notBefore = NULL;
+    ASN1_TIME *notAfter = NULL;
+    int version = -1;
 
 
     if (!cert) {
@@ -1353,7 +1345,7 @@ void stir_shaken_hash_cert_name(stir_shaken_context_t *ss, stir_shaken_cert_t *c
 
 stir_shaken_status_t stir_shaken_init_cert_store(stir_shaken_context_t *ss, const char *ca_list, const char *ca_dir, const char *crl_list, const char *crl_dir)
 {
-    char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+    char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
     stir_shaken_globals_t *g = &stir_shaken_globals;
 
 
@@ -1533,7 +1525,6 @@ void stir_shaken_x509_cert_store_cleanup(X509_STORE **store)
 
 stir_shaken_status_t stir_shaken_verify_cert_path(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, X509_STORE *store)
 {
-	X509            *x = NULL;
 	int rc = 1;
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 	int verify_error = -1;
@@ -1614,7 +1605,6 @@ stir_shaken_status_t stir_shaken_register_tnauthlist_extension(stir_shaken_conte
 
 stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_context_t *ss, stir_shaken_cert_t *cert)
 {
-    X509            *x = NULL;
     int i = -1;
 
     stir_shaken_clear_error(ss);
@@ -1635,8 +1625,6 @@ stir_shaken_status_t stir_shaken_verify_cert_tn_authlist_extension(stir_shaken_c
 
 stir_shaken_status_t stir_shaken_verify_cert_ex(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, X509_STORE *store)
 {
-    X509            *x = NULL;
-
     stir_shaken_clear_error(ss);
 
     if (!cert) {
@@ -1750,7 +1738,7 @@ stir_shaken_status_t stir_shaken_extract_fingerprint(stir_shaken_context_t *ss, 
         return STIR_SHAKEN_STATUS_FALSE;
     }
 
-    if (X509_digest(x509, evp, raw, buflen) != 1 ||  buflen <= 0) {
+    if (X509_digest(x509, evp, raw, buflen) != 1 || *buflen <= 0) {
         stir_shaken_set_error(ss, "Extract_fingerprint: Error in SSL while extracting digest", STIR_SHAKEN_ERROR_X509_DIGEST);
         return STIR_SHAKEN_STATUS_FALSE;
     }
@@ -1779,18 +1767,18 @@ X509* stir_shaken_make_cert_from_public_key(stir_shaken_context_t *ss, EVP_PKEY 
 
 stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x, const char *cert_full_name)
 {
-    int				i = 0;
-    char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-    FILE			*fp = NULL;
+    int i = 0;
+    char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+    FILE *fp = NULL;
 
     if (!x) {
         stir_shaken_set_error(ss, "Cert not set", STIR_SHAKEN_ERROR_X509_MISSING_6);
-		goto fail;
-	}
+        goto fail;
+    }
     if (stir_shaken_zstr(cert_full_name)) {
         stir_shaken_set_error(ss, "Cert file name missing", STIR_SHAKEN_ERROR_X509_CERT_NAME_MISSING_1);
-		goto fail;
-	}
+        goto fail;
+    }
 
     if (cert_full_name) {
 
@@ -2055,7 +2043,7 @@ EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const cha
     }
 
 exit:
-    if (in) BIO_free(in); in = NULL;
+    if (in) BIO_free(in);
     return key;
 }
 
@@ -2092,15 +2080,15 @@ EVP_PKEY* stir_shaken_load_privkey_from_file(stir_shaken_context_t *ss, const ch
     }
 
 exit:
-    if (in) BIO_free(in); in = NULL;
+    if (in) BIO_free(in);
     return key;
 }
 
 stir_shaken_status_t stir_shaken_load_key_raw(stir_shaken_context_t *ss, const char *file, unsigned char *key_raw, uint32_t *key_raw_len)
 {
-    FILE		*fp = NULL;
-    uint32_t	raw_key_len = 0, sz = 0;
-    char		err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+    FILE *fp = NULL;
+    uint32_t raw_key_len = 0, sz = 0;
+    char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
     if (!key_raw_len || *key_raw_len == 0) {
         snprintf(err_buf, sizeof(err_buf), "Buffer for key from file %s invalid", file);
@@ -2147,9 +2135,8 @@ err:
 
 stir_shaken_status_t stir_shaken_load_x509_and_privkey(stir_shaken_context_t *ss, const char *cert_name, stir_shaken_cert_t *cert, const char *private_key_name, EVP_PKEY **pkey, unsigned char *priv_raw, uint32_t *priv_raw_len)
 {
-    X509            *x = NULL;
-    char			*b = NULL;
-    char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+    X509 *x = NULL;
+    char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 
     if (stir_shaken_zstr(cert_name)) {
@@ -2250,12 +2237,11 @@ fail:
 
 stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name, unsigned char *priv_raw, uint32_t *priv_raw_len)
 {
-    EC_KEY                  *ec_key = NULL;
-    EVP_PKEY                *pk = NULL;
-    BIO                     *bio = NULL;
-    char					err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-    int						pkey_type = EVP_PKEY_EC;
-    FILE					*fp = NULL;
+    EC_KEY *ec_key = NULL;
+    EVP_PKEY *pk = NULL;
+    BIO *bio = NULL;
+    char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+    int pkey_type = EVP_PKEY_EC;
 
 
     stir_shaken_clear_error(ss);
@@ -2365,13 +2351,13 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
         goto fail;
     }
 
-    if (bio) BIO_free_all(bio); bio = NULL;
+    if (bio) BIO_free_all(bio);
 
     return STIR_SHAKEN_STATUS_OK;
 
 fail:
 
-    if (bio) BIO_free_all(bio); bio = NULL;
+    if (bio) BIO_free_all(bio);
 
     return STIR_SHAKEN_STATUS_FALSE;
 }
@@ -2410,13 +2396,13 @@ void stir_shaken_destroy_keys(stir_shaken_ssl_keys_t *keys)
  */ 
 stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t *ss, const char *digest_name, EVP_PKEY *pkey, const char *data, size_t datalen, unsigned char *out, size_t *outlen)
 {
-    const EVP_MD    *md = NULL;
-    EVP_MD_CTX      *mdctx = NULL;
-    int             i = 0;
-    char			err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-    unsigned char	*tmpsig = NULL;
-    size_t			tmpsig_len = 0;
-    ECDSA_SIG		*ec_sig = NULL;
+    const EVP_MD *md = NULL;
+    EVP_MD_CTX *mdctx = NULL;
+    int i = 0;
+    char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+    unsigned char *tmpsig = NULL;
+    size_t tmpsig_len = 0;
+    ECDSA_SIG *ec_sig = NULL;
 
 
     if (!pkey || !data || !out || !outlen) {
@@ -2472,13 +2458,12 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 
     if (tmpsig_len > 0) {
 
-		const EC_GROUP *group = NULL;
-        unsigned int	degree = 0, bn_len = 0, r_len = 0, s_len = 0, buf_len = 0;
-        unsigned char	*raw_buf = NULL, *sig = NULL;
-        size_t			slen = 0;
-        EC_KEY			*ec_key = NULL;
-        const BIGNUM	*ec_sig_r = NULL;
-        const BIGNUM	*ec_sig_s = NULL;
+        const EC_GROUP *group = NULL;
+        unsigned int degree = 0, bn_len = 0, r_len = 0, s_len = 0, buf_len = 0;
+        unsigned char *raw_buf = NULL;
+        EC_KEY *ec_key = NULL;
+        const BIGNUM *ec_sig_r = NULL;
+        const BIGNUM *ec_sig_s = NULL;
 
         /* For EC we need to convert to a raw format of R/S. */
 
