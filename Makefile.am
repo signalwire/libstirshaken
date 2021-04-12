@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I build/m4
-AM_CFLAGS    = -I./src -Iinclude -I$(srcdir)/include $(KS_CFLAGS) $(CURL_CFLAGS) $(JWT_CFLAGS) $(openssl_CFLAGS) -Wall -pedantic -Werror
+AM_CFLAGS    = -I./src -Iinclude -I$(srcdir)/include $(KS_CFLAGS) $(CURL_CFLAGS) $(JWT_CFLAGS) $(openssl_CFLAGS) -Wall -Wno-gnu-zero-variadic-macro-arguments -pedantic -Werror
 
 lib_LTLIBRARIES = libstirshaken.la
 libstirshaken_la_SOURCES = src/stir_shaken.c src/stir_shaken_service.c src/stir_shaken_passport.c src/stir_shaken_verify.c src/stir_shaken_ssl.c src/stir_shaken_acme.c src/stir_shaken_sp.c src/stir_shaken_version.c
