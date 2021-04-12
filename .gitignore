@@ -21,6 +21,8 @@ config.sub
 configure
 csrName
 depcomp
+examples/.deps/
+examples/.dirstamp
 install-sh
 libtool
 ltmain.sh
@@ -33,6 +35,10 @@ spc_token.txt
 src/.deps/
 src/.dirstamp
 stamp-h1
+stir_shaken_as_basic
+stir_shaken_as_easy
+stir_shaken_ca
+stir_shaken_cert_req
 stir_shaken_test_1
 stir_shaken_test_10
 stir_shaken_test_11
@@ -47,6 +53,8 @@ stir_shaken_test_6
 stir_shaken_test_7
 stir_shaken_test_8
 stir_shaken_test_9
+stir_shaken_vs_basic
+stir_shaken_vs_easy
 stirshaken
 test-driver
 test/.deps/
@@ -60,4 +68,4 @@ build/m4/lt~obsolete.m4
 util/src/.deps/
 util/src/.dirstamp
 build/stirshaken.pc
-sp_1_*.pem
+sp_1*.pem
