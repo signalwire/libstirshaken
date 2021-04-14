@@ -196,17 +196,9 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 		use_https = 1;
 	}
 
-	if (http_req->remote_port == 0) {
-		if (use_https) {
-			http_req->remote_port = STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT_HTTPS;
-			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to default %u cause port not set\n", http_req->remote_port);
-		} else {
-			http_req->remote_port = STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT;
-			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: changing remote port to default %u cause port not set\n", http_req->remote_port);
-		}
+	if (http_req->remote_port > 0) {
+		curl_easy_setopt(curl_handle, CURLOPT_PORT, http_req->remote_port);
 	}
-
-	curl_easy_setopt(curl_handle, CURLOPT_PORT, http_req->remote_port);
 
 	if (http_req->connect_timeout_s == 0) {
 		http_req->connect_timeout_s = STIR_SHAKEN_HTTP_DEFAULT_CONNECT_TIMEOUT_S;
