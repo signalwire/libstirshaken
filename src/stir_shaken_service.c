@@ -146,6 +146,11 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 		return STIR_SHAKEN_STATUS_RESTART;
 	}
 
+	if (strlen(http_req->url) < 4 || strncmp(http_req->url, "http", 4)) {
+		stir_shaken_set_error(ss, "URL must be http or https", STIR_SHAKEN_ERROR_HTTP_PARAMS);
+		return STIR_SHAKEN_STATUS_RESTART;
+	}
+
 	if (ss) stir_shaken_clear_error(ss);
 
 	curl_global_init(CURL_GLOBAL_ALL);
@@ -194,6 +199,9 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 
 	if (strlen(http_req->url) > 5 && (!strncmp(http_req->url, "https", 5) || !strncmp(http_req->url, "HTTPS", 5))) {
 		use_https = 1;
+		curl_easy_setopt(curl_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+	} else {
+		curl_easy_setopt(curl_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP);
 	}
 
 	if (http_req->remote_port > 0) {
