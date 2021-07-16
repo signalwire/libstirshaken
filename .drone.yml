@@ -5,7 +5,7 @@ name: default
 steps:
     - name: unit-tests
       image: signalwire/freeswitch-public-base
-      pull: true
+      pull: always
       commands:
       - export WORK_DIR=$PWD
       - echo $WORK_DIR
@@ -31,7 +31,7 @@ steps:
 
     - name: notify
       image: signalwire/drone-notify
-      pull: true
+      pull: always
       environment:
         SLACK_WEBHOOK_URL:
           from_secret: slack_webhook_url
@@ -54,7 +54,7 @@ name: scan-build
 steps:
     - name: scan-build
       image: signalwire/freeswitch-public-base
-      pull: true
+      pull: always
       commands:
       - ./bootstrap.sh
       - ./configure
@@ -67,7 +67,7 @@ steps:
 
     - name: notify
       image: signalwire/drone-notify
-      pull: true
+      pull: always
       environment:
         SLACK_WEBHOOK_URL:
           from_secret: slack_webhook_url
@@ -84,6 +84,6 @@ trigger:
   - push
 ---
 kind: signature
-hmac: a3b14315871942a50a2af1a762e9ae3e96fc338cf120bcbb7848fb475734f16d
+hmac: 716da11bad65b844600fc375ce6ad2aef061523b3642c307afd4b1b62d6f5630
 
 ...
