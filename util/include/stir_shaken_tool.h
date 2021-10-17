@@ -162,7 +162,7 @@
 #define CA_DIR	NULL
 #define CRL_DIR	NULL
 
-struct ca {
+static struct ca {
 	stir_shaken_ca_t ca;
 	char issuer_c[STIR_SHAKEN_BUFLEN];
 	char issuer_cn[STIR_SHAKEN_BUFLEN];
@@ -173,7 +173,7 @@ struct ca {
 	char file[STIR_SHAKEN_BUFLEN];
 } ca;
 
-struct pa {
+static struct pa {
 	stir_shaken_pa_t pa;
 	char issuer_cn[STIR_SHAKEN_BUFLEN];
 	char spc[STIR_SHAKEN_BUFLEN];
@@ -184,7 +184,7 @@ struct pa {
 	size_t sp_code;
 } pa;
 
-struct sp {
+static struct sp {
 	stir_shaken_sp_t sp;
 	char subject_c[STIR_SHAKEN_BUFLEN];
 	char subject_cn[STIR_SHAKEN_BUFLEN];
@@ -196,7 +196,7 @@ struct sp {
 	char url[STIR_SHAKEN_BUFLEN];
 } sp;
 
-struct options {
+static struct options {
 	int command_cert_type;
 	stir_shaken_ssl_keys_t keys;
 	char private_key_name[STIR_SHAKEN_BUFLEN];
