@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef __STIR_SHAKEN
 #define __STIR_SHAKEN
 
@@ -1551,3 +1555,7 @@ stir_shaken_status_t stir_shaken_test_die(const char *reason, const char *file, 
 
 
 #endif // __STIR_SHAKEN
+
+#ifdef __cplusplus
+}
+#endif
