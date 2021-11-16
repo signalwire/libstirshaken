@@ -149,7 +149,7 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_s
 	}
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_get_req(ss, http_req)) {
-		stir_shaken_set_error(ss, "Cannot connect to URL", STIR_SHAKEN_ERROR_HTTP_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "Cannot connect to URL", STIR_SHAKEN_ERROR_HTTP_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -235,6 +235,9 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 		// Download cert if it has not been supplied by the caller
 		http_req.url = strdup(cert_url);
 		http_req.connect_timeout_s = connect_timeout_s;
+		if (http_req.max_response_download_size == 0) {
+			http_req.max_response_download_size = STIR_SHAKEN_HTTP_DEFAULT_MAX_RESPONSE_DOWNLOAD_SIZE;
+		}
 
 		jwt_free(jwt);
 		jwt = NULL;
@@ -416,7 +419,7 @@ stir_shaken_status_t stir_shaken_jwt_verify_ex(stir_shaken_context_t *ss, const 
 
 	ss_status = stir_shaken_jwt_check_signature(ss, token, &cert, &jwt, connect_timeout_s);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_JWT_CHECK_SIGNATURE);
+		stir_shaken_set_error_if_clear(ss, "JWT did not pass verification", STIR_SHAKEN_ERROR_JWT_CHECK_SIGNATURE);
 		ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_PASSPORT;
 		goto fail;
 	}
@@ -429,19 +432,19 @@ stir_shaken_status_t stir_shaken_jwt_verify_ex(stir_shaken_context_t *ss, const 
 
 		ss_status = stir_shaken_read_cert_fields(ss, cert);
 		if (STIR_SHAKEN_STATUS_OK != ss_status) {
-			stir_shaken_set_error(ss, "Error parsing certificate", STIR_SHAKEN_ERROR_JWT_CERT_MALFORMED_1);
+			stir_shaken_set_error_if_clear(ss, "Error parsing certificate", STIR_SHAKEN_ERROR_JWT_CERT_MALFORMED_1);
 			goto fail_x509_cert_path_check;
 		}
 
 		ss_status = stir_shaken_basic_cert_check(ss, cert);
 		if (STIR_SHAKEN_STATUS_OK != ss_status) {
-			stir_shaken_set_error(ss, "Cert did not pass basic check (wrong version or expired)", STIR_SHAKEN_ERROR_JWT_CERT_INVALID_1);
+			stir_shaken_set_error_if_clear(ss, "Cert did not pass basic check (wrong version or expired)", STIR_SHAKEN_ERROR_JWT_CERT_INVALID_1);
 			goto fail_x509_cert_path_check;
 		}
 
 		ss_status = stir_shaken_verify_cert_path(ss, cert, store);
 		if (STIR_SHAKEN_STATUS_OK != ss_status) {
-			stir_shaken_set_error(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_JWT_CERT_X509_PATH_INVALID_1);
+			stir_shaken_set_error_if_clear(ss, "Cert did not pass X509 path validation", STIR_SHAKEN_ERROR_JWT_CERT_X509_PATH_INVALID_1);
 			goto fail_x509_cert_path_check;
 		}
 	}
@@ -571,25 +574,25 @@ stir_shaken_status_t stir_shaken_sih_verify_ex(stir_shaken_context_t *ss, const 
 
 	ss_status = stir_shaken_jwt_sih_to_jwt_encoded(ss, sih, &jwt_encoded[0], STIR_SHAKEN_PUB_KEY_RAW_BUF_LEN);
 	if (ss_status != STIR_SHAKEN_STATUS_OK) {
-		stir_shaken_set_error(ss, "Failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_SIH_TO_JWT_2);
+		stir_shaken_set_error_if_clear(ss, "Failed to parse encoded PASSporT (SIP Identity Header) into encoded JWT", STIR_SHAKEN_ERROR_SIH_TO_JWT_2);
 		ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_IDENTITY_HDR;
 		goto end;
 	}
 
 	ss_status = stir_shaken_jwt_verify_ex(ss, (char *) jwt_encoded, &cert, &jwt, store, check_x509_cert_path, connect_timeout_s);
 	if (ss_status != STIR_SHAKEN_STATUS_OK) {
-		stir_shaken_set_error(ss, "JWT failed verification", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_2);
+		stir_shaken_set_error_if_clear(ss, "JWT failed verification", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_2);
 		goto end;
 	}
 
 	passport = stir_shaken_passport_create(ss, NULL, NULL, 0);
 	if (!passport) {
-		stir_shaken_set_error(ss, "Failed to create PASSporT", STIR_SHAKEN_ERROR_PASSPORT_CREATE_3);
+		stir_shaken_set_error_if_clear(ss, "Failed to create PASSporT", STIR_SHAKEN_ERROR_PASSPORT_CREATE_3);
 		goto end;
 	}
 
 	if (!stir_shaken_jwt_move_to_passport(ss, jwt, passport)) {
-		stir_shaken_set_error(ss, "Failed to assign JWT to PASSporT", STIR_SHAKEN_ERROR_SIH_JWT_MOVE_TO_PASSPORT_3);
+		stir_shaken_set_error_if_clear(ss, "Failed to assign JWT to PASSporT", STIR_SHAKEN_ERROR_SIH_JWT_MOVE_TO_PASSPORT_3);
 		jwt_free(jwt);
 		stir_shaken_passport_destroy(&passport);
 		goto end;
@@ -601,7 +604,7 @@ stir_shaken_status_t stir_shaken_sih_verify_ex(stir_shaken_context_t *ss, const 
 
 	ss_status = stir_shaken_check_authority_over_number(ss, cert, passport);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
-		stir_shaken_set_error(ss, "Caller has no authority over the call origin", STIR_SHAKEN_ERROR_AUTHORITY_CHECK_4);
+		stir_shaken_set_error_if_clear(ss, "Caller has no authority over the call origin", STIR_SHAKEN_ERROR_AUTHORITY_CHECK_4);
 		goto end;
 	}
 
