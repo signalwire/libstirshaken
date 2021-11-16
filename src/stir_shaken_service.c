@@ -10,6 +10,12 @@ static size_t stir_shaken_curl_write_callback(void *contents, size_t size, size_
 
 	stir_shaken_clear_error(mem->ss);
 
+	if (http_req->max_response_download_size > 0 && mem->size + realsize > http_req->max_response_download_size) {
+		printf("WTF Exceeded max HTTP(s) download size");
+		stir_shaken_set_error(mem->ss, "Exceeded max HTTP(s) download size", STIR_SHAKEN_ERROR_GENERAL);
+		return 0;
+	}
+
 	fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: CURL: Download progress: got %zu bytes (%zu total)\n", realsize, realsize + mem->size);
 
 	m = realloc(mem->mem, mem->size + realsize + 1);

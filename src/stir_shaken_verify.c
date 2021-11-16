@@ -149,7 +149,7 @@ stir_shaken_status_t stir_shaken_download_cert(stir_shaken_context_t *ss, stir_s
 	}
 
 	if (STIR_SHAKEN_STATUS_OK != stir_shaken_make_http_get_req(ss, http_req)) {
-		stir_shaken_set_error(ss, "Cannot connect to URL", STIR_SHAKEN_ERROR_HTTP_GENERAL);
+		stir_shaken_set_error_if_clear(ss, "Cannot connect to URL", STIR_SHAKEN_ERROR_HTTP_GENERAL);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -235,6 +235,9 @@ stir_shaken_status_t stir_shaken_jwt_fetch_or_download_cert(stir_shaken_context_
 		// Download cert if it has not been supplied by the caller
 		http_req.url = strdup(cert_url);
 		http_req.connect_timeout_s = connect_timeout_s;
+		if (http_req.max_response_download_size == 0) {
+			http_req.max_response_download_size = STIR_SHAKEN_HTTP_DEFAULT_MAX_RESPONSE_DOWNLOAD_SIZE;
+		}
 
 		jwt_free(jwt);
 		jwt = NULL;
