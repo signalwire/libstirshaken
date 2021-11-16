@@ -802,7 +802,6 @@ typedef struct stir_shaken_http_response_s {
 #define STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT 80u
 #define STIR_SHAKEN_HTTP_DEFAULT_REMOTE_PORT_HTTPS 443u
 #define STIR_SHAKEN_HTTP_DEFAULT_CONNECT_TIMEOUT_S 2L
-#define STIR_SHAKEN_HTTP_DEFAULT_MAX_RESPONSE_DOWNLOAD_SIZE (1024 * 64)
 
 typedef enum stir_shaken_action_type {
 	STIR_SHAKEN_ACTION_TYPE_SP_CERT_REQ_SP_INIT,
@@ -823,7 +822,6 @@ typedef struct stir_shaken_http_req_s {
 	stir_shaken_http_req_content_type_t content_type;
 	stir_shaken_http_response_t response;
 	stir_shaken_action_type_t action;
-	size_t max_response_download_size;
 } stir_shaken_http_req_t;
 
 
