@@ -220,7 +220,9 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 		fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "STIR-Shaken: connection timeout of %lus\n", http_req->connect_timeout_s);
 	}
 
+	curl_easy_setopt(curl_handle, CURLOPT_NOSIGNAL, 1L);
 	curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, http_req->connect_timeout_s);
+	curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, http_req->connect_timeout_s * 3);
 
 	// Some pple say, some servers don't like requests that are made without a user-agent field, so we provide one.
 	snprintf(user_agent, STIR_SHAKEN_ERROR_BUF_LEN, "freeswitch-stir-shaken/%s", STIR_SHAKEN_VERSION);
