@@ -257,6 +257,7 @@ Packages for latest libks and libjwt which are required are available in the fre
 
 Debian 10:
 ```
+TOKEN=YOURSIGNALWIRETOKEN
 apt-get update && apt-get install -y gnupg2 wget lsb-release
 wget --http-user=signalwire --http-password=$TOKEN -O /usr/share/keyrings/signalwire-freeswitch-repo.gpg https://freeswitch.signalwire.com/repo/deb/debian-release/signalwire-freeswitch-repo.gpg
  
