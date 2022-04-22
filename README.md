@@ -273,6 +273,11 @@ brew install automake autoconf libtool pkg-config curl libjwt
 brew install signalwire/signalwire/libks
 ```
 
+### Build from source
+
+Example Dockerfiles to build FreeSWITCH and dependencies from source:
+  * https://github.com/signalwire/libstirshaken/tree/master/docker/examples
+
 ### Build
 
 ```
