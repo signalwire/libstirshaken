@@ -1131,7 +1131,7 @@ EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const cha
 EVP_PKEY* stir_shaken_load_privkey_from_file(stir_shaken_context_t *ss, const char *file);
 stir_shaken_status_t stir_shaken_load_x509_from_mem(stir_shaken_context_t *ss, X509 **x, STACK_OF(X509) **xchain, void *mem);
 X509* stir_shaken_load_x509_from_file(stir_shaken_context_t *ss, const char *name);
-stir_shaken_status_t stir_shaken_load_x509_from_file_fullchain(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, const char *name)
+stir_shaken_status_t stir_shaken_load_x509_from_file_fullchain(stir_shaken_context_t *ss, stir_shaken_cert_t *cert, const char *name);
 stir_shaken_status_t stir_shaken_load_x509_req_from_mem(stir_shaken_context_t *ss, X509_REQ **req, void *mem);
 EVP_PKEY* stir_shaken_load_pubkey_from_file(stir_shaken_context_t *ss, const char *file);
 EVP_PKEY* stir_shaken_load_privkey_from_file(stir_shaken_context_t *ss, const char *file);
