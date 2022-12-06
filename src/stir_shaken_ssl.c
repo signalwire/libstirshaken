@@ -1717,7 +1717,9 @@ stir_shaken_status_t stir_shaken_cert_copy(stir_shaken_context_t *ss, stir_shake
 	memset(dst, 0, sizeof(*dst));
 
 	dst->x = src->x;
-	dst->xchain = X509_chain_up_ref(src->xchain);
+	if (src->xchain) {
+		dst->xchain = X509_chain_up_ref(src->xchain);
+	}
 	strncpy(dst->public_url, src->public_url, STIR_SHAKEN_BUFLEN);
 	X509_up_ref(src->x);
 
