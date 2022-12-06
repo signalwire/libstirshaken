@@ -1717,7 +1717,7 @@ stir_shaken_status_t stir_shaken_cert_copy(stir_shaken_context_t *ss, stir_shake
 	memset(dst, 0, sizeof(*dst));
 
 	dst->x = src->x;
-	dst->xchain = src->xchain;
+	dst->xchain = X509_chain_up_ref(src->xchain);
 	strncpy(dst->public_url, src->public_url, STIR_SHAKEN_BUFLEN);
 	X509_up_ref(src->x);
 
@@ -1830,6 +1830,11 @@ void stir_shaken_cert_deinit(stir_shaken_cert_t *cert)
             // If X509 gets destroyed then notBefore_ASN1 and notAfter_ASN1 must be NULLED as those are internal pointers to SSL
             cert->notBefore_ASN1 = NULL;
             cert->notAfter_ASN1 = NULL;
+        }
+
+        if (cert->xchain) {
+            sk_X509_pop_free(cert->xchain, X509_free);
+            cert->xchain = NULL;
         }
 
         if (cert->body) {
