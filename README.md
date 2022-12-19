@@ -481,4 +481,4 @@ draft-barnes-acme-service-provider, ACME Identifiers and Challenges for VoIP Ser
 
 ### Help
 
-Any questions? Please let us know at: https://signalwire-community.slack.com
+Any questions? Please let us know at: https://signalwire.community/
