@@ -2069,6 +2069,10 @@ stir_shaken_status_t stir_shaken_load_x509_from_file_fullchain(stir_shaken_conte
 
 fail:
     if (fp) fclose(fp);
+    if (cert->xchain) {
+        sk_X509_pop_free(cert->xchain, X509_free);
+        cert->xchain = NULL;
+    }
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
