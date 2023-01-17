@@ -2029,7 +2029,7 @@ stir_shaken_status_t stir_shaken_load_x509_from_file_fullchain(stir_shaken_conte
         snprintf(err_buf, sizeof(err_buf), "Cert file name missing");
         stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_X509_CERT_NAME_MISSING_1);
         goto fail;
-	}
+    }
 
     fp = fopen(name, "r");
     if (!fp) {
@@ -2045,13 +2045,13 @@ stir_shaken_status_t stir_shaken_load_x509_from_file_fullchain(stir_shaken_conte
     }
 
     while ((wcert = PEM_read_X509(fp, NULL, NULL, NULL))) {
-		if (!cert->x) {
-			cert->x = wcert;
-		}
-		else {
-			sk_X509_push(cert->xchain, wcert);
-		}
-	}
+        if (!cert->x) {
+            cert->x = wcert;
+        }
+        else {
+            sk_X509_push(cert->xchain, wcert);
+        }
+    }
 
     if (!cert->x) {
         snprintf(err_buf, sizeof(err_buf), "No certificate found in file %s", name);
