@@ -1784,7 +1784,6 @@ stir_shaken_status_t stir_shaken_x509_to_disk(stir_shaken_context_t *ss, X509 *x
 stir_shaken_status_t stir_shaken_x509_to_disk_fullchain(stir_shaken_context_t *ss, X509 *x, STACK_OF(X509) *xchain, const char *cert_full_name)
 {
     int i = 0;
-    int w = 0;
     char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
     FILE *fp = NULL;
     X509 *xc = NULL;
@@ -1807,8 +1806,7 @@ stir_shaken_status_t stir_shaken_x509_to_disk_fullchain(stir_shaken_context_t *s
             goto fail;
         }
 
-        w = PEM_write_X509(fp, x);
-        if (w == 0) {
+        if (!PEM_write_X509(fp, x)) {
             snprintf(err_buf, sizeof(err_buf), "Error writing certificate to file %s", cert_full_name);
             stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_FILE_WRITE_2);
             goto fail;
@@ -1817,12 +1815,10 @@ stir_shaken_status_t stir_shaken_x509_to_disk_fullchain(stir_shaken_context_t *s
         for (i = 0; i < sk_X509_num(xchain); i++) {
             xc = sk_X509_value(xchain, i);
             if (!xc) continue;
-            w = PEM_write_X509(fp, xc);
-            if (w == 0) {
-                snprintf(err_buf, sizeof(err_buf), "Error writing certificate chain to file %s", cert_full_name);
-                stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_FILE_WRITE_2);
-                goto fail;
-            }
+            if (!PEM_write_X509(fp, xc)) continue;
+            snprintf(err_buf, sizeof(err_buf), "Error writing certificate chain to file %s", cert_full_name);
+            stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_FILE_WRITE_2);
+            goto fail;
         }
 
     }
@@ -2033,7 +2029,7 @@ stir_shaken_status_t stir_shaken_load_x509_from_file_fullchain(stir_shaken_conte
     if (stir_shaken_zstr(name)) {
         snprintf(err_buf, sizeof(err_buf), "Cert file name missing");
         stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_X509_CERT_NAME_MISSING_1);
-		goto fail;
+        goto fail;
 	}
 
     fp = fopen(name, "r");
