@@ -1814,10 +1814,11 @@ stir_shaken_status_t stir_shaken_x509_to_disk_fullchain(stir_shaken_context_t *s
 
         for (i = 0; i < sk_X509_num(xchain); i++) {
             if (!(xc = sk_X509_value(xchain, i))) continue;
-            if (PEM_write_X509(fp, xc)) continue;
-            snprintf(err_buf, sizeof(err_buf), "Error writing certificate chain to file %s", cert_full_name);
-            stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_FILE_WRITE_2);
-            goto fail;
+            if (!PEM_write_X509(fp, xc)) {
+                snprintf(err_buf, sizeof(err_buf), "Error writing certificate chain to file %s", cert_full_name);
+                stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_FILE_WRITE_2);
+                goto fail;
+            }
         }
 
     }
