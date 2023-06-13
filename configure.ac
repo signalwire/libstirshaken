@@ -32,7 +32,14 @@ fi
 
 PKG_CHECK_MODULES([CURL], [libcurl >= 7.19])
 PKG_CHECK_MODULES([JWT], [libjwt >= 1.12])
-PKG_CHECK_MODULES([KS], [libks >= 1.1.0])
+
+PKG_CHECK_MODULES([KS], [libks2 >= 2.0.0],[
+  AM_CONDITIONAL([HAVE_KS],[true])],[
+  PKG_CHECK_MODULES([KS], [libks >= 1.8.2],[
+    AM_CONDITIONAL([HAVE_KS],[true])],[
+      AC_MSG_ERROR([You need to either install libks2 or libks])
+  ])
+])
 
 #  Enable clang address sanitizer bit build
 AC_ARG_ENABLE(address_sanitizer,
