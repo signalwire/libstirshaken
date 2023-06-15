@@ -682,14 +682,14 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 	}
 
 	if (ks_json_type_get(item) == KS_JSON_TYPE_STRING) {
-#if KS_VERSION_NUM >= 20000
 		const char *itemvalue = NULL;
 
+#if KS_VERSION_NUM >= 20000
 		ks_json_value_string(item, &itemvalue);
-		id = strdup(itemvalue);
 #else
-		id = strdup(ks_json_value_string(item));
+		itemvalue = ks_json_value_string(item);
 #endif
+		id = strdup(itemvalue);
 	} else if (ks_json_type_get(item) == KS_JSON_TYPE_NUMBER) {
 #if KS_VERSION_NUM >= 20000
 		ks_json_value_number_int(item, &id_int);

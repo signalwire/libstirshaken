@@ -43,20 +43,18 @@ static int test_passport_data(stir_shaken_passport_t *passport)
 	stir_shaken_assert(p != NULL, "PASSporT is missing param");
 	{
 		ks_json_t *j = ks_json_parse(p), *item = NULL;
-#if KS_VERSION_NUM >= 20000
 		const char *item_value = "";
-#endif
+
 		stir_shaken_assert(j, "Failed to parse @dest into JSON");
 		stir_shaken_assert(NULL != (item = ks_json_get_object_item(j, "tn")), "Failed to get @tn from @dest JSON");
 		stir_shaken_assert(NULL != (item = ks_json_get_array_item(item, 0)), "Failed to get array item from @dest @tn array JSON");
 #if KS_VERSION_NUM >= 20000
 		ks_json_value_string(item, &item_value);
+#else
+		item_value = ks_json_value_string(item);
+#endif
 		printf("\n@dest @tn is %s\n", item_value);
 		stir_shaken_assert(!strcmp(desttn_val, item_value), "@dest invalid");
-#else
-		printf("\n@dest @tn is %s\n", ks_json_value_string(item));
-		stir_shaken_assert(!strcmp(desttn_val, ks_json_value_string(item)), "@dest invalid");
-#endif
 		ks_json_delete(&j);
 	}
 	free((char*)p);
@@ -70,19 +68,17 @@ static int test_passport_data(stir_shaken_passport_t *passport)
 	stir_shaken_assert(p != NULL, "PASSporT is missing param");
 	{
 		ks_json_t *j = ks_json_parse(p), *item = NULL;
-#if KS_VERSION_NUM >= 20000
 		const char *item_value = "";
-#endif
+
 		stir_shaken_assert(j, "Failed to parse @orig into JSON");
 		stir_shaken_assert(NULL != (item = ks_json_get_object_item(j, "tn")), "Failed to get @tn from @orig JSON");
 #if KS_VERSION_NUM >= 20000
 		ks_json_value_string(item, &item_value);
+#else
+		item_value = ks_json_value_string(item);
+#endif
 		printf("\n@orig @tn is %s\n", item_value);
 		stir_shaken_assert(!strcmp(origtn_val, item_value), "@orig invalid");
-#else
-		printf("\n@orig @tn is %s\n", ks_json_value_string(item));
-		stir_shaken_assert(!strcmp(origtn_val, ks_json_value_string(item)), "@orig invalid");
-#endif
 		ks_json_delete(&j);
 	}
 	free((char*)p);

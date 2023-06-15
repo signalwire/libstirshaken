@@ -397,12 +397,12 @@ stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir
 	KS_JSON_ARRAY_FOREACH(iterator, array) {
 
 		if (ks_json_type_get(iterator) == KS_JSON_TYPE_STRING) {
-#if KS_VERSION_NUM >= 20000
 			const char *valuestring = "";
 
+#if KS_VERSION_NUM >= 20000
 			ks_json_value_string(iterator, &valuestring);
 #else
-			const char *valuestring = ks_json_value_string(iterator);
+			valuestring = ks_json_value_string(iterator);
 #endif
 			// TODO remove
 			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "%s\n", valuestring);
@@ -425,9 +425,7 @@ stir_shaken_status_t stir_shaken_make_authority_over_number_check_req(stir_shake
 	char req_url[STIR_SHAKEN_BUFLEN] = { 0 };
 	stir_shaken_status_t result = STIR_SHAKEN_STATUS_FALSE;
 	ks_json_t *json = NULL, *authority_check_result = NULL;
-#if KS_VERSION_NUM >= 20000
 	const char *authority_check_result_value = "";
-#endif
 
 	if (stir_shaken_zstr(url)) {
 		stir_shaken_set_error(ss, "URL missing", STIR_SHAKEN_ERROR_HTTP_PARAMS);
@@ -466,10 +464,10 @@ stir_shaken_status_t stir_shaken_make_authority_over_number_check_req(stir_shake
 
 #if KS_VERSION_NUM >= 20000
 	ks_json_value_string(authority_check_result, &authority_check_result_value);
-	if (strcmp("true", authority_check_result_value) == 0) {
 #else
-	if (strcmp("true", ks_json_value_string(authority_check_result)) == 0) {
+	authority_check_result_value = ks_json_value_string(authority_check_result);
 #endif
+	if (strcmp("true", authority_check_result_value) == 0) {
 		result = STIR_SHAKEN_STATUS_OK;
 	} else {
 		result = STIR_SHAKEN_STATUS_FALSE;
