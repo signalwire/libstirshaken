@@ -579,6 +579,7 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
 {
     ks_json_t *json = NULL, *auth_status = NULL, *challenges_arr = NULL;
     stir_shaken_http_req_t http_req = { 0 };
+    const char *auth_status_value = "";
 
 
     if (!data) {
@@ -617,8 +618,12 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
         goto fail;
     }
 
-    if (strcmp("valid", ks_json_value_string(auth_status)) == 0) {
-
+#if KS_VERSION_NUM >= 20000
+    ks_json_value_string(auth_status, &auth_status_value);
+#else
+    auth_status_value = ks_json_value_string(auth_status);
+#endif
+    if (strcmp("valid", auth_status_value) == 0) {
         // Authorization completed
 
     } else {
@@ -631,8 +636,8 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
         char *kid = NULL, *nonce = NULL;
         char *jwt_encoded = NULL;
 
-        if (strcmp("pending", ks_json_value_string(auth_status)) != 0) {
-            snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')", ks_json_value_string(auth_status));
+        if (strcmp("pending", auth_status_value) != 0) {
+            snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')", auth_status_value);
             stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME);
             goto fail;
         }
@@ -673,7 +678,11 @@ stir_shaken_status_t stir_shaken_acme_respond_to_challenge(stir_shaken_context_t
             goto fail;
         }
 
+#if KS_VERSION_NUM >= 20000
+        ks_json_value_string(url_item, &challenge_url);
+#else
         challenge_url = ks_json_value_string(url_item);
+#endif
         if (polling_url) {
             *polling_url = strdup(challenge_url);
         }
@@ -737,6 +746,7 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
     ks_json_t					*json = NULL, *auth_status = NULL;
     int						t = 0;
     char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+    const char *auth_status_value = "";
 
     if (!url) {
         goto fail;
@@ -795,26 +805,31 @@ stir_shaken_status_t stir_shaken_acme_poll(stir_shaken_context_t *ss, void *data
 
         // Check authorization status
         // If status is "valid" authorization is completed and can proceed to cert acquisition
-        if (strcmp("valid", ks_json_value_string(auth_status)) == 0) {
+#if KS_VERSION_NUM >= 20000
+        ks_json_value_string(auth_status, &auth_status_value);
 
+#else
+        auth_status_value = ks_json_value_string(auth_status);
+#endif
+        if (strcmp("valid", auth_status_value) == 0) {
             // Authorization completed
             status_is_valid = 1;
             fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got 'valid' polling status\n");
 
         } else {
 
-            if (strcmp("pending", ks_json_value_string(auth_status)) != 0) {
+            if (strcmp("pending", auth_status_value) != 0) {
 
-                if (0 == strcmp("failed", ks_json_value_string(auth_status))) {
+                if (0 == strcmp("failed", auth_status_value)) {
                     fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got 'failed' polling status\n");
-                    snprintf(err_buf, STIR_SHAKEN_BUFLEN, "\t-> Got 'failed' polling status (%s): ACME authorization unsuccessful\n", ks_json_value_string(auth_status));
+                    snprintf(err_buf, STIR_SHAKEN_BUFLEN, "\t-> Got 'failed' polling status (%s): ACME authorization unsuccessful\n", auth_status_value);
                     stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME_AUTHZ_UNSUCCESSFUL);
                     goto fail;
                 }
 
                 fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Got malformed polling status\n");
 
-                snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME auth status malformed, 'status' field is neither 'valid' nor 'pending' nor 'failed' (status is: '%s')\n", ks_json_value_string(auth_status));
+                snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME auth status malformed, 'status' field is neither 'valid' nor 'pending' nor 'failed' (status is: '%s')\n", auth_status_value);
                 stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME);
                 goto fail;
             }
@@ -866,6 +881,7 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
 {
     ks_json_t *json = NULL, *auth_status = NULL, *auth_arr = NULL;
     char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
+    const char *auth_status_value = "";
 
 
     if (!data) {
@@ -907,8 +923,12 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
     fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Processing authorization challenge...\n");
 
     // If status is "valid" authorization is completed and can proceed to cert acquisition
-    if (strcmp("valid", ks_json_value_string(auth_status)) == 0) {
-
+#if KS_VERSION_NUM >= 20000
+    ks_json_value_string(auth_status, &auth_status_value);
+#else
+    auth_status_value = ks_json_value_string(auth_status);
+#endif
+    if (strcmp("valid", auth_status_value) == 0) {
         // Authorization completed
         fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Authorization completed\n");
 
@@ -918,8 +938,8 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
         const char	*auth_url = NULL;
         stir_shaken_http_req_t http_req = { 0 };
 
-        if (strcmp("pending", ks_json_value_string(auth_status)) != 0) {
-            snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')", ks_json_value_string(auth_status));
+        if (strcmp("pending", auth_status_value) != 0) {
+            snprintf(err_buf, STIR_SHAKEN_BUFLEN, "ACME authorization challenge malformed, 'status' field is neither 'valid' nor 'pending' (status is: '%s')", auth_status_value);
             stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_ACME);
             goto fail;
         }
@@ -951,7 +971,11 @@ stir_shaken_status_t stir_shaken_acme_perform_authorization(stir_shaken_context_
             goto fail;
         }
 
+#if KS_VERSION_NUM >= 20000
+        ks_json_value_string(auth_item, &auth_url);
+#else
         auth_url = ks_json_value_string(auth_item);
+#endif
 
         /*
          * Performing Step 4 of 6.3.5.2 ACME Based Steps for Application for an STI Certificate [ATIS-1000080].

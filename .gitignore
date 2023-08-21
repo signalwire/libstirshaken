@@ -47,6 +47,10 @@ stir_shaken_test_11
 stir_shaken_test_12
 stir_shaken_test_13
 stir_shaken_test_14
+stir_shaken_test_15
+stir_shaken_test_16
+stir_shaken_test_17
+stir_shaken_test_18
 stir_shaken_test_2
 stir_shaken_test_3
 stir_shaken_test_4
@@ -71,3 +75,5 @@ util/src/.deps/
 util/src/.dirstamp
 build/stirshaken.pc
 sp_1*.pem
+debian/autoreconf.after
+debian/autoreconf.before

@@ -84,12 +84,15 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 				stir_shaken_set_error(ss, "Passport can't create JSON object", STIR_SHAKEN_ERROR_KSJSON_CREATE_OBJECT_JSON_2);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
-
+#if KS_VERSION_NUM >= 20000
+			ks_json_add_number_to_object(json, "iat", iat);
+#else
 			if (!ks_json_add_number_to_object(json, "iat", iat)) {
 				stir_shaken_set_error(ss, "Failed to add @iat to PASSporT", STIR_SHAKEN_ERROR_KSJSON_ADD_IAT);
 				ks_json_delete(&json);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
+#endif
 
 			if (!attest) {
 				stir_shaken_set_error(ss, "Passport @attest is missing", STIR_SHAKEN_ERROR_PASSPORT_ATTEST_MISSING);
@@ -103,11 +106,15 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 				return STIR_SHAKEN_STATUS_ERR;
 			}
 
+#if KS_VERSION_NUM >= 20000
+			ks_json_add_string_to_object(json, "attest", attest);
+#else
 			if (!ks_json_add_string_to_object(json, "attest", attest)) {
 				stir_shaken_set_error(ss, "Failed to add @attest to PASSporT", STIR_SHAKEN_ERROR_KSJSON_ADD_ATTEST);
 				ks_json_delete(&json);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
+#endif
 
 			if (!origid) {
 				stir_shaken_set_error(ss, "Passport @origid is missing", STIR_SHAKEN_ERROR_PASSPORT_ORIGID_MISSING);
@@ -115,11 +122,15 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 				return STIR_SHAKEN_STATUS_ERR;
 			}
 
+#if KS_VERSION_NUM >= 20000
+			ks_json_add_string_to_object(json, "origid", origid);
+#else
 			if (!ks_json_add_string_to_object(json, "origid", origid)) {
 				stir_shaken_set_error(ss, "Failed to add @origid to PASSporT", STIR_SHAKEN_ERROR_KSJSON_ADD_ORIGID);
 				ks_json_delete(&json);
 				return STIR_SHAKEN_STATUS_ERR;
 			}
+#endif
 
 			if (!origtn_val) {
 
@@ -150,6 +161,10 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 						return STIR_SHAKEN_STATUS_ERR;
 					}
 
+#if KS_VERSION_NUM >= 20000
+					ks_json_add_string_to_array(tn, origtn_val);
+					ks_json_add_item_to_object(orig, origtn_key, tn);
+#else
 					if (!ks_json_add_string_to_array(tn, origtn_val)) {
 						stir_shaken_set_error(ss, "Passport create json: Failed to add @orig to array", STIR_SHAKEN_ERROR_KSJSON_ADD_ORIG_TO_ARRAY);
 						ks_json_delete(&tn);
@@ -165,23 +180,30 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 						ks_json_delete(&json);
 						return STIR_SHAKEN_STATUS_ERR;
 					}
-
+#endif
 				} else {
-
+#if KS_VERSION_NUM >= 20000
+					ks_json_add_string_to_object(orig, "tn", origtn_val);
+#else
 					if (!ks_json_add_string_to_object(orig, "tn", origtn_val)) {
 						stir_shaken_set_error(ss, "Passport create json: Failed to add @origtn", STIR_SHAKEN_ERROR_KSJSON_ADD_TN);
 						ks_json_delete(&orig);
 						ks_json_delete(&json);
 						return STIR_SHAKEN_STATUS_ERR;
 					}
+#endif
 				}
 
+#if KS_VERSION_NUM >= 20000
+				ks_json_add_item_to_object(json, "orig", orig);
+#else
 				if (!ks_json_add_item_to_object(json, "orig", orig)) {
 					stir_shaken_set_error(ss, "Passport create json: Failed to add @orig", STIR_SHAKEN_ERROR_KSJSON_ADD_ORIG);
 					ks_json_delete(&orig);
 					ks_json_delete(&json);
 					return STIR_SHAKEN_STATUS_ERR;
 				}
+#endif
 			}
 
 			if (!desttn_val) {
@@ -211,6 +233,9 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 					return STIR_SHAKEN_STATUS_ERR;
 				}
 
+#if KS_VERSION_NUM >= 20000
+				ks_json_add_string_to_array(tn, desttn_val);
+#else
 				if (!ks_json_add_string_to_array(tn, desttn_val)) {
 						stir_shaken_set_error(ss, "Passport create json: Failed to add @desttn to array", STIR_SHAKEN_ERROR_KSJSON_ADD_DEST_TO_ARRAY);
 						ks_json_delete(&tn);
@@ -218,9 +243,17 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 						ks_json_delete(&json);
 						return STIR_SHAKEN_STATUS_ERR;
 					}
+#endif
 
 				// If @desttn_key is NULL or empty, use "tn" form
 
+#if KS_VERSION_NUM >= 20000
+				if (stir_shaken_zstr(desttn_key)) {
+					ks_json_add_item_to_object(dest, "tn", tn);
+				} else {
+					ks_json_add_item_to_object(dest, desttn_key, tn);
+				}
+#else
 				if ((stir_shaken_zstr(desttn_key) && !ks_json_add_item_to_object(dest, "tn", tn)) || (!stir_shaken_zstr(desttn_key) && !ks_json_add_item_to_object(dest, desttn_key, tn))) {
 					stir_shaken_set_error(ss, "Passport create json: Failed to add @dest array", STIR_SHAKEN_ERROR_KSJSON_ADD_DEST_ARRAY);
 					ks_json_delete(&tn);
@@ -228,13 +261,18 @@ stir_shaken_status_t stir_shaken_passport_jwt_init(stir_shaken_context_t *ss, jw
 					ks_json_delete(&json);
 					return STIR_SHAKEN_STATUS_ERR;
 				}
+#endif
 
+#if KS_VERSION_NUM >= 20000
+				ks_json_add_item_to_object(json, "dest", dest);
+#else
 				if (!ks_json_add_item_to_object(json, "dest", dest)) {
 					stir_shaken_set_error(ss, "Passport create json: Failed to add @dest", STIR_SHAKEN_ERROR_KSJSON_ADD_DEST);
 					ks_json_delete(&dest);
 					ks_json_delete(&json);
 					return STIR_SHAKEN_STATUS_ERR;
 				}
+#endif
 			}
 
 			jstr = ks_json_print_unformatted(json);
@@ -644,9 +682,20 @@ char* stir_shaken_passport_get_identity(stir_shaken_context_t *ss, stir_shaken_p
 	}
 
 	if (ks_json_type_get(item) == KS_JSON_TYPE_STRING) {
-		id = strdup(ks_json_value_string(item));
+		const char *itemvalue = NULL;
+
+#if KS_VERSION_NUM >= 20000
+		ks_json_value_string(item, &itemvalue);
+#else
+		itemvalue = ks_json_value_string(item);
+#endif
+		id = strdup(itemvalue);
 	} else if (ks_json_type_get(item) == KS_JSON_TYPE_NUMBER) {
+#if KS_VERSION_NUM >= 20000
+		ks_json_value_number_int(item, &id_int);
+#else
 		id_int = ks_json_value_number_int(item);
+#endif
 		id = malloc(20);
 		if (!id) {
 			stir_shaken_set_error(ss, "Not enough memory", STIR_SHAKEN_ERROR_MEM_ID);
