@@ -125,7 +125,7 @@ static void close_http_connection_with_error(struct mg_connection *nc, struct mb
 			char error_phrase[STIR_SHAKEN_BUFLEN] = { 0 };
 			stir_shaken_error_desc_to_http_error_phrase(error_desc, error_phrase, STIR_SHAKEN_BUFLEN);
 			if (error_body)
-				mg_printf(nc, "HTTP/1.1 %s %s\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND, error_phrase, strlen(error_body), error_body);
+				mg_printf(nc, "HTTP/1.1 %s %s\r\nContent-Length: %zu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND, error_phrase, strlen(error_body), error_body);
 			else
 				mg_printf(nc, "HTTP/1.1 %s %s\r\n\r\n", STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND, error_phrase);
 		}
@@ -533,7 +533,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Added authorization session to queue\n");
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t-> Sending authorization challenge:\n%s\n", authz_challenge);
 
-					mg_printf(nc, "HTTP/1.1 201 Created\r\nReplay-Nonce: %s\r\nLocation: %s\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", nonce, authz_url, strlen(authz_challenge), authz_challenge);
+					mg_printf(nc, "HTTP/1.1 201 Created\r\nReplay-Nonce: %s\r\nLocation: %s\r\nContent-Length: %zu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", nonce, authz_url, strlen(authz_challenge), authz_challenge);
 
 					session->state = STI_CA_SESSION_STATE_AUTHZ_SENT;
 
@@ -595,7 +595,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t\t-> STI-SP certificate is:\n%s\n", cert);
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t\t-> Sending STI-SP certificate...\n");
-					mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen((const char *)cert), cert);
+					mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %zu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen((const char *)cert), cert);
 
 					session->state = STI_CA_SESSION_STATE_DONE;
 
@@ -897,7 +897,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Sending polling status...\n");
 
-						mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(session->authz_polling_status), session->authz_polling_status);
+						mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %zu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(session->authz_polling_status), session->authz_polling_status);
 
 						// continue
 						session->state = STI_CA_SESSION_STATE_POLLING;
@@ -928,7 +928,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Sending challenge details:\n%s\n", session->authz_challenge_details);
 
-						mg_printf(nc, "HTTP/1.1 200 You are more than welcome. Here is your challenge:\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(session->authz_challenge_details), session->authz_challenge_details);
+						mg_printf(nc, "HTTP/1.1 200 You are more than welcome. Here is your challenge:\r\nContent-Length: %zu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(session->authz_challenge_details), session->authz_challenge_details);
 
 						session->state = STI_CA_SESSION_STATE_AUTHZ_DETAILS_SENT;
 					}
@@ -1085,7 +1085,7 @@ authorization_result:
 						}
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Configuring certificate...\n");
-						snprintf(session->sp.cert_name, sizeof(session->sp.cert_name), "sp_%s_%llu_%zu.pem", spc, secret, time(NULL));
+						snprintf(session->sp.cert_name, sizeof(session->sp.cert_name), "sp_%s_%llu_%lld.pem", spc, secret, (long long)time(NULL));
 
 						fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\t -> Saving certificate (%s)...\n", session->sp.cert_name);
 						if (STIR_SHAKEN_STATUS_OK != stir_shaken_x509_to_disk(&ca->ss, session->sp.cert.x, session->sp.cert_name)) {
@@ -1234,7 +1234,7 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 				ks_json_add_string_to_object(json, "authority", check_result);
 				json_str = ks_json_print_unformatted(json);
 
-				mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(json_str), json_str);
+				mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %zu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(json_str), json_str);
 
 				ks_json_delete(&json);
 				json = NULL;
