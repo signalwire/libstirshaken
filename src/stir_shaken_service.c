@@ -204,9 +204,17 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 
 	if (strlen(http_req->url) > 5 && (!strncmp(http_req->url, "https", 5) || !strncmp(http_req->url, "HTTPS", 5))) {
 		use_https = 1;
+#if defined(LIBCURL_VERSION_NUM) && (LIBCURL_VERSION_NUM >= 0x075500)
+		curl_easy_setopt(curl_handle, CURLOPT_PROTOCOLS_STR, "https");
+#else
 		curl_easy_setopt(curl_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+#endif
 	} else {
+#if defined(LIBCURL_VERSION_NUM) && (LIBCURL_VERSION_NUM >= 0x075500)
+		curl_easy_setopt(curl_handle, CURLOPT_PROTOCOLS_STR, "http");
+#else
 		curl_easy_setopt(curl_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP);
+#endif
 	}
 
 	if (http_req->remote_port > 0) {
