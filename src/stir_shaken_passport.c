@@ -864,13 +864,13 @@ stir_shaken_status_t stir_shaken_passport_validate_iat_against_freshness(stir_sh
 	}
 
 	if (now_s < iat) {
-		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT's @iat (in seconds) is: %zu, freshness is: %u, BUT now is %zu (this is PASSporT to the future, too young, not valid yet)", iat, iat_freshness, now_s);
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT's @iat (in seconds) is: %lld, freshness is: %u, BUT now is %lld (this is PASSporT to the future, too young, not valid yet)", (long long)iat, iat_freshness, (long long)now_s);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_FUTURE);
 		return STIR_SHAKEN_STATUS_ERR;
 	}
 
 	if (iat + iat_freshness < now_s) {
-		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT's @iat (in seconds) is: %zu, freshness is: %u, BUT now is %zu (PASSporT too old, expired)", iat, iat_freshness, now_s);
+		snprintf(err_buf, STIR_SHAKEN_ERROR_BUF_LEN, "PASSporT's @iat (in seconds) is: %lld, freshness is: %u, BUT now is %lld (PASSporT too old, expired)", (long long)iat, iat_freshness, (long long)now_s);
 		stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_EXPIRED);
 		return STIR_SHAKEN_STATUS_ERR;
 	}
