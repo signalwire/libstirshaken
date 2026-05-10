@@ -634,6 +634,75 @@ stir_shaken_status_t stir_shaken_sih_verify(stir_shaken_context_t *ss, const cha
 	return stir_shaken_sih_verify_ex(ss, sih, cert_out, passport_out, stir_shaken_globals.store, 1, connect_timeout_s);
 }
 
+stir_shaken_status_t stir_shaken_div_passport_verify_ex(stir_shaken_context_t *ss, const char *token, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store, uint8_t check_x509_cert_path, unsigned long connect_timeout_s, uint32_t iat_freshness)
+{
+	stir_shaken_cert_t *cert = NULL;
+	stir_shaken_passport_t *passport = NULL;
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
+
+	ss_status = stir_shaken_passport_verify_ex(ss, token, &cert, &passport, store, check_x509_cert_path, connect_timeout_s);
+	if (ss_status != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_if_clear(ss, "DIV PASSporT failed signature or certificate verification", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_3);
+		goto fail;
+	}
+
+	ss_status = stir_shaken_div_passport_validate(ss, passport, iat_freshness);
+	if (ss_status != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_if_clear(ss, "DIV PASSporT failed validation", STIR_SHAKEN_ERROR_PASSPORT_INVALID_3);
+		if (ss) ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_PASSPORT;
+		goto fail;
+	}
+
+	if (cert_out) {
+		*cert_out = cert;
+		cert = NULL;
+	}
+
+	if (passport_out) {
+		*passport_out = passport;
+		passport = NULL;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+	stir_shaken_cert_destroy(&cert);
+	stir_shaken_passport_destroy(&passport);
+	return STIR_SHAKEN_STATUS_FALSE;
+}
+
+stir_shaken_status_t stir_shaken_div_sih_verify_ex(stir_shaken_context_t *ss, const char *sih, stir_shaken_cert_t **cert_out, stir_shaken_passport_t **passport_out, X509_STORE *store, uint8_t check_x509_cert_path, unsigned long connect_timeout_s, uint32_t iat_freshness)
+{
+	stir_shaken_parsed_identity_t parsed = { 0 };
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
+
+	if (!sih) {
+		stir_shaken_set_error(ss, "DIV SIP Identity Header not set", STIR_SHAKEN_ERROR_BAD_PARAMS_23);
+		if (ss) ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_IDENTITY_HDR;
+		return STIR_SHAKEN_STATUS_FALSE;
+	}
+
+	ss_status = stir_shaken_sih_parse(ss, sih, &parsed);
+	if (ss_status != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_if_clear(ss, "Failed to parse DIV SIP Identity Header", STIR_SHAKEN_ERROR_SIH_TO_JWT_2);
+		if (ss) ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_IDENTITY_HDR;
+		goto done;
+	}
+
+	if (!parsed.ppt || strcmp(parsed.ppt, STIR_SHAKEN_PPT_DIV)) {
+		stir_shaken_set_error(ss, "DIV SIP Identity Header must use ppt=div", STIR_SHAKEN_ERROR_PASSPORT_INVALID_PPT);
+		if (ss) ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_PASSPORT;
+		ss_status = STIR_SHAKEN_STATUS_FALSE;
+		goto done;
+	}
+
+	ss_status = stir_shaken_div_passport_verify_ex(ss, parsed.passport_token, cert_out, passport_out, store, check_x509_cert_path, connect_timeout_s, iat_freshness);
+
+done:
+	stir_shaken_sih_parse_destroy(&parsed);
+	return ss_status;
+}
+
 stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, uint32_t iat_freshness)
 {
 	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_OK;
@@ -653,6 +722,30 @@ stir_shaken_status_t stir_shaken_passport_validate(stir_shaken_context_t *ss, st
 	ss_status = stir_shaken_passport_validate_iat_against_freshness(ss, passport, iat_freshness);
 	if (STIR_SHAKEN_STATUS_OK != ss_status) {
 		stir_shaken_set_error(ss, "PASSporT expired", STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_2);
+		return ss_status;
+	}
+
+	return STIR_SHAKEN_STATUS_OK;
+}
+
+stir_shaken_status_t stir_shaken_div_passport_validate(stir_shaken_context_t *ss, stir_shaken_passport_t *passport, uint32_t iat_freshness)
+{
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_OK;
+
+	if (!passport) {
+		stir_shaken_set_error(ss, "DIV PASSporT not set", STIR_SHAKEN_ERROR_GENERAL);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	ss_status = stir_shaken_div_passport_validate_headers_and_grants(ss, passport);
+	if (ss_status != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error(ss, "DIV PASSporT invalid", STIR_SHAKEN_ERROR_PASSPORT_INVALID_3);
+		return ss_status;
+	}
+
+	ss_status = stir_shaken_passport_validate_iat_against_freshness(ss, passport, iat_freshness);
+	if (ss_status != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error(ss, "DIV PASSporT expired", STIR_SHAKEN_ERROR_PASSPORT_INVALID_IAT_VALUE_2);
 		return ss_status;
 	}
 

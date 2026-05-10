@@ -1,2 +1,0 @@
-#!/bin/sh
-.githooks/update_git_version.sh

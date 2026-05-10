@@ -126,6 +126,13 @@ int stirshaken_command_configure(stir_shaken_context_t *ss, const char *command_
 		//strncpy(sp->sp.passport_params.origid, options->passport_params.origid, STIR_SHAKEN_BUFLEN);
 		return COMMAND_PASSPORT_CREATE;
 
+	} else if (!strcmp(command_name, COMMAND_NAME_DIV_PASSPORT_CREATE)) {
+		memcpy(&sp->sp.passport_params, &options->passport_params, sizeof(sp->sp.passport_params));
+		return COMMAND_DIV_PASSPORT_CREATE;
+
+	} else if (!strcmp(command_name, COMMAND_NAME_DIV_CHAIN_CHECK)) {
+		return COMMAND_DIV_CHAIN_CHECK;
+
 	} else if (!strcmp(command_name, COMMAND_NAME_VERSION)) {
 		return COMMAND_VERSION;
 
@@ -377,6 +384,69 @@ stir_shaken_status_t stirshaken_command_validate(stir_shaken_context_t *ss, int 
 			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(options->file)) {
 				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", options->file);
 				goto fail;
+			}
+			break;
+
+		case COMMAND_DIV_PASSPORT_CREATE:
+
+			if (stir_shaken_zstr(options->private_key_name)) {
+				fprintf(stderr, "ERROR: private key name missing\n");
+				goto fail;
+			}
+
+			if (stir_shaken_zstr(options->url)) {
+				fprintf(stderr, "ERROR: DIV cert URL missing\n");
+				goto fail;
+			}
+
+			if (stir_shaken_zstr(options->sih)) {
+				fprintf(stderr, "ERROR: original SHAKEN SIP Identity Header missing\n");
+				goto fail;
+			}
+
+			if (stir_shaken_zstr(sp->sp.passport_params.desttn_val)) {
+				fprintf(stderr, "ERROR: DIV PASSporT's desttn param missing\n");
+				goto fail;
+			}
+
+			if (stir_shaken_zstr(options->file)) {
+				fprintf(stderr, "ERROR: output file name missing\n");
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK != stir_shaken_file_exists(options->private_key_name)) {
+				fprintf(stderr, "ERROR: File %s does not exist.\n\n", options->private_key_name);
+				goto fail;
+			}
+
+			if (STIR_SHAKEN_STATUS_OK == stir_shaken_file_exists(options->file)) {
+				fprintf(stderr, "ERROR: File %s exists...\nPlease remove it or use different.\n\n", options->file);
+				goto fail;
+			}
+			break;
+
+		case COMMAND_DIV_CHAIN_CHECK:
+
+			if (stir_shaken_zstr(options->sih)) {
+				fprintf(stderr, "ERROR: original SHAKEN SIP Identity Header missing\n");
+				goto fail;
+			}
+
+			if (stir_shaken_zstr(options->div_sih)) {
+				fprintf(stderr, "ERROR: DIV SIP Identity Header missing\n");
+				goto fail;
+			}
+
+			if (options->x509_cert_path_check) {
+				if (stir_shaken_zstr(options->ca_dir_name)) {
+					fprintf(stderr, "ERROR: X509 cert path check is turned on but CA dir missing. Add --%s?\n", OPTION_NAME_CA_DIR);
+					goto fail;
+				}
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_dir_exists(options->ca_dir_name)) {
+					fprintf(stderr, "ERROR: Directory %s does not exist\n", options->ca_dir_name);
+					goto fail;
+				}
 			}
 			break;
 
@@ -829,6 +899,172 @@ stir_shaken_status_t stirshaken_command_execute(stir_shaken_context_t *ss, int c
 				sih = NULL;
 
 				stir_shaken_passport_destroy(&passport);
+			}
+			break;
+
+		case COMMAND_DIV_PASSPORT_CREATE:
+
+			{
+				const char *dest_vals[1] = { 0 };
+				const char *selected_dest_key = NULL;
+				const char *selected_dest_val = NULL;
+				stir_shaken_div_passport_params_t div_params = { 0 };
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Loading key...\n");
+				options->keys.priv_raw_len = STIR_SHAKEN_PRIV_KEY_RAW_BUF_LEN;
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_load_key_raw(ss, options->private_key_name, options->keys.priv_raw, &options->keys.priv_raw_len)) {
+					goto fail;
+				}
+
+				dest_vals[0] = sp->sp.passport_params.desttn_val;
+				if (!stir_shaken_zstr(options->divtn)) {
+					selected_dest_key = "tn";
+					selected_dest_val = options->divtn;
+				}
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Assigning parameters to DIV PASSporT...\n");
+				status = stir_shaken_div_params_from_original_sih(ss, options->sih, options->url, "tn", dest_vals, 1, selected_dest_key, selected_dest_val, &div_params);
+				if (STIR_SHAKEN_STATUS_OK != status) {
+					stir_shaken_div_passport_params_destroy(&div_params);
+					goto fail;
+				}
+
+				if (!stir_shaken_zstr(options->reason)) {
+					div_params.reason = strdup(options->reason);
+					if (!div_params.reason) {
+						stir_shaken_div_passport_params_destroy(&div_params);
+						goto fail;
+					}
+				}
+
+				if (!stir_shaken_zstr(options->hi)) {
+					div_params.hi = strdup(options->hi);
+					if (!div_params.hi) {
+						stir_shaken_div_passport_params_destroy(&div_params);
+						goto fail;
+					}
+				}
+
+				status = stir_shaken_div_authenticate_keep_passport(ss, &sih, &div_params, options->keys.priv_raw, options->keys.priv_raw_len, &passport);
+				stir_shaken_div_passport_params_destroy(&div_params);
+				if (STIR_SHAKEN_STATUS_OK != status || !sih || !passport) {
+					goto fail;
+				}
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Getting plain version of DIV PASSporT (decoded, not signed, with no signature)...\n");
+				p1 = stir_shaken_passport_dump_str(ss, passport, 1);
+				if (stir_shaken_zstr(p1)) {
+					goto fail;
+				}
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "DIV PASSporT is:\n%s\n", p1);
+
+				status = stir_shaken_passport_sign(ss, passport, NULL, 0, &p2);
+				if (STIR_SHAKEN_STATUS_OK != status) {
+					goto fail;
+				}
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "DIV PASSporT encoded (signed) is:\n%s\n", p2);
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nDIV SIP Identity Header is:\n%s\n\n", sih);
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_save_to_file(ss, "DIV PASSporT is:\n", options->file)) {
+					goto fail;
+				}
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_append_to_file(ss, p1, options->file)) {
+					goto fail;
+				}
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_append_to_file(ss, "\nDIV PASSporT signed is:\n", options->file)) {
+					goto fail;
+				}
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_append_to_file(ss, p2, options->file)) {
+					goto fail;
+				}
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_append_to_file(ss, "\n\nSIP Identity Header with DIV PASSporT is:\n", options->file)) {
+					goto fail;
+				}
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_append_to_file(ss, sih, options->file)) {
+					goto fail;
+				}
+
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_append_to_file(ss, "\n", options->file)) {
+					goto fail;
+				}
+
+				stir_shaken_free_jwt_str(p1);
+				p1 = NULL;
+
+				stir_shaken_free_jwt_str(p2);
+				p2 = NULL;
+
+				free(sih);
+				sih = NULL;
+
+				stir_shaken_passport_destroy(&passport);
+			}
+			break;
+
+		case COMMAND_DIV_CHAIN_CHECK:
+
+			{
+				stir_shaken_vs_div_result_t div_result = { 0 };
+				char *original_passport_decoded = NULL;
+				char *div_passport_decoded = NULL;
+
+				vs = stir_shaken_vs_create(ss);
+				if (!vs) {
+					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Cannot create Verification Service\n");
+					goto fail;
+				}
+
+				stir_shaken_vs_set_connect_timeout(ss, vs, options->connect_timeout_s);
+				stir_shaken_vs_set_x509_cert_path_check(ss, vs, options->x509_cert_path_check);
+
+				if (options->x509_cert_path_check) {
+					status = stir_shaken_vs_load_ca_dir(ss, vs, options->ca_dir_name);
+					if (STIR_SHAKEN_STATUS_OK != status) {
+						fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Failed to init X509 cert store");
+						goto fail;
+					}
+				}
+
+				status = stir_shaken_vs_div_sih_verify(ss, vs, options->sih, options->div_sih, &div_result);
+				if (STIR_SHAKEN_STATUS_OK != status) {
+					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "DIV SIP Identity Header chain failed verification\n");
+					stir_shaken_vs_div_result_deinit(&div_result);
+					goto fail;
+				}
+
+				original_passport_decoded = stir_shaken_passport_dump_str(ss, div_result.original_passport, 1);
+				if (original_passport_decoded) {
+					printf("\nOriginal SHAKEN PASSporT is:\n%s\n", original_passport_decoded);
+					stir_shaken_free_jwt_str(original_passport_decoded);
+					original_passport_decoded = NULL;
+				}
+
+				div_passport_decoded = stir_shaken_passport_dump_str(ss, div_result.div_passport, 1);
+				if (div_passport_decoded) {
+					printf("\nDIV PASSporT is:\n%s\n", div_passport_decoded);
+					stir_shaken_free_jwt_str(div_passport_decoded);
+					div_passport_decoded = NULL;
+				}
+
+				if (div_result.original_cert && STIR_SHAKEN_STATUS_OK == stir_shaken_read_cert_fields(ss, div_result.original_cert)) {
+					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Original certificate summary:\n\n");
+					stir_shaken_print_cert_fields(stderr, div_result.original_cert);
+				}
+
+				if (div_result.div_cert && STIR_SHAKEN_STATUS_OK == stir_shaken_read_cert_fields(ss, div_result.div_cert)) {
+					fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "DIV certificate summary:\n\n");
+					stir_shaken_print_cert_fields(stderr, div_result.div_cert);
+				}
+
+				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\nVerified DIV chain (%s X509 cert path check).\n", options->x509_cert_path_check ? "with" : "without");
+				stir_shaken_vs_div_result_deinit(&div_result);
+				stir_shaken_vs_destroy(&vs);
 			}
 			break;
 

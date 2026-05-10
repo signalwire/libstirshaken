@@ -23,6 +23,8 @@
 #define COMMAND_SP_CERT_REQ		13
 #define COMMAND_PASSPORT_CREATE	14
 #define COMMAND_VERSION			15
+#define COMMAND_DIV_PASSPORT_CREATE	16
+#define COMMAND_DIV_CHAIN_CHECK	17
 #define COMMAND_UNKNOWN			100
 
 #define COMMAND_NAME_KEYS			"keys"
@@ -41,6 +43,8 @@
 #define COMMAND_NAME_SP_CERT_REQ	"sp-cert-req"
 #define COMMAND_NAME_PASSPORT_CREATE	"passport-create"
 #define COMMAND_NAME_VERSION		"version"
+#define COMMAND_NAME_DIV_PASSPORT_CREATE	"div-passport-create"
+#define COMMAND_NAME_DIV_CHAIN_CHECK	"div-chain-check"
 #define COMMAND_NAME_UNKNOWN		"unknown"
 
 #define OPTION_PUBKEY		1
@@ -76,7 +80,12 @@
 #define OPTION_V			31
 #define OPTION_VV			32
 #define OPTION_VVV			33
-#define OPTION_MAX			34
+#define OPTION_SIH			34
+#define OPTION_DIV_SIH		35
+#define OPTION_DIVTN		36
+#define OPTION_REASON		37
+#define OPTION_HI			38
+#define OPTION_MAX			39
 
 #define OPTION_NAME_PUBKEY		"pubkey"
 #define OPTION_NAME_PRIVKEY		"privkey"
@@ -114,6 +123,13 @@
 #define OPTION_NAME_V			"v"
 #define OPTION_NAME_VV			"vv"
 #define OPTION_NAME_VVV			"vvv"
+#define OPTION_NAME_SIH			"sih"
+#define OPTION_NAME_DIV_SIH		"div_sih"
+#define OPTION_NAME_DIVTN		"divtn"
+#define OPTION_NAME_REASON		"reason"
+#define OPTION_NAME_HI			"hi"
+
+#define STIR_SHAKEN_TOOL_SIH_BUFLEN 8192
 
 #define PRINT_SHAKEN_ERROR_IF_SET \
 	if (stir_shaken_is_error_set(&ss)) { \
@@ -220,6 +236,11 @@ static struct options {
 	uint16_t port;
 	char url[STIR_SHAKEN_BUFLEN];
 	char jwt[STIR_SHAKEN_BUFLEN];
+	char sih[STIR_SHAKEN_TOOL_SIH_BUFLEN];
+	char div_sih[STIR_SHAKEN_TOOL_SIH_BUFLEN];
+	char divtn[STIR_SHAKEN_BUFLEN];
+	char reason[STIR_SHAKEN_BUFLEN];
+	char hi[STIR_SHAKEN_BUFLEN];
 	int loglevel;
 	uint8_t use_ssl;
 	char ssl_cert_name[STIR_SHAKEN_BUFLEN];

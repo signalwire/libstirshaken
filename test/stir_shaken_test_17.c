@@ -77,23 +77,36 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	unsigned long hash = 0;
 	char hashstr[100] = { 0 };
 	int hashstrlen = 100;
-	uint32_t iat = 0, iat_freshness_seconds = 60;
+	uint32_t iat = 0, iat_freshness_seconds = 600;
 	unsigned long connect_timeout_s = 3;
+	const char *div_dest_vals[1] = { "01256500777" };
 
 	stir_shaken_passport_params_t params = {
 		.x5u = "https://sp.com/sp.pem",
 		.attest = "A",
 		.desttn_key = "tn",
 		.desttn_val = "01256500600",
-		.iat = iat = time(NULL) + 120,
+		.iat = iat = time(NULL),
 		.origtn_key = "tn",
 		.origtn_val = "01256789999",
 		.origid = "ref"
 	};
+	stir_shaken_div_passport_params_t div_params = {
+		.x5u = "https://sp.com/sp.pem",
+		.orig_key = "tn",
+		.orig_val = "01256789999",
+		.dest_key = "tn",
+		.dest_vals = div_dest_vals,
+		.dest_vals_count = 1,
+		.div_key = "tn",
+		.div_val = "01256500600",
+		.iat = iat
+	};
 	stir_shaken_passport_t *passport = NULL, *passport_2 = NULL, *passport_out = NULL;
-	char *passport_encoded = NULL, *passport_decoded = NULL, *sip_identity_header = NULL;
+	char *passport_encoded = NULL, *passport_decoded = NULL, *sip_identity_header = NULL, *div_sip_identity_header = NULL, *bad_div_sip_identity_header = NULL;
 	stir_shaken_cert_t *cert_out = NULL;
 	jwt_t *jwt_out = NULL;
+	stir_shaken_vs_div_result_t div_result = { 0 };
 
 	stir_shaken_as_t *as = NULL;
 	stir_shaken_vs_t *vs = NULL;
@@ -153,7 +166,11 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	snprintf(ca.tn_auth_list_uri, STIR_SHAKEN_BUFLEN, "http://ca.com/api");
 	//sp.cert.x = stir_shaken_generate_x509_cert_from_csr(&ss, sp.code, sp.csr.req, ca.keys.private_key, ca.issuer_c, ca.issuer_cn, sp.serial, sp.expiry_days);
 	pkey = X509_REQ_get_pubkey(sp.csr.req);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	stir_shaken_assert(1 == EVP_PKEY_eq(pkey, sp.keys.public_key), "Public key in CSR different than SP's");
+#else
 	stir_shaken_assert(1 == EVP_PKEY_cmp(pkey, sp.keys.public_key), "Public key in CSR different than SP's");
+#endif
 	//sp.cert.x = stir_shaken_generate_x509_end_entity_cert(&ss, ca.cert.x, ca.keys.private_key, sp.keys.public_key, ca.issuer_c, ca.issuer_cn, sp.subject_c, sp.subject_cn, ca.serial_sp, ca.expiry_days_sp, ca.number_start_sp, ca.number_end_sp);
 	sp.cert.x = stir_shaken_generate_x509_end_entity_cert_from_csr(&ss, ca.cert.x, ca.keys.private_key, ca.issuer_c, ca.issuer_cn, sp.csr.req, ca.serial, ca.expiry_days, ca.tn_auth_list_uri);
 	PRINT_SHAKEN_ERROR_IF_SET
@@ -170,6 +187,7 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_as_load_private_key(&ss, as, sp.private_key_name), "Failed to load private key");
 	stir_shaken_assert(passport_encoded = stir_shaken_as_authenticate_to_passport(&ss, as, &params, &passport), "PASSporT has not been created");
 	stir_shaken_assert(sip_identity_header = stir_shaken_as_authenticate_to_sih(&ss, as, &params, &passport_2), "SIP Identity Header has not been created");
+	stir_shaken_assert(div_sip_identity_header = stir_shaken_as_div_authenticate_to_sih(&ss, as, &div_params, NULL), "DIV SIP Identity Header has not been created");
 	stir_shaken_assert(passport, "PASSporT not returned");
 	stir_shaken_assert(passport_2, "PASSporT not returned");
 
@@ -244,6 +262,29 @@ stir_shaken_status_t stir_shaken_unit_test_vs_verify(void)
 	stir_shaken_passport_destroy(&passport_out);
 	stir_shaken_cert_destroy(&cert_out);
 
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
+	vs->settings.iat_freshness_seconds = iat_freshness_seconds;
+
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_div_sih_verify(&ss, vs, sip_identity_header, div_sip_identity_header, &div_result), "DIV SIP Identity Header chain failed verification\n");
+	stir_shaken_assert(div_result.original_cert, "Original cert not returned");
+	stir_shaken_assert(div_result.original_passport, "Original PASSporT not returned");
+	stir_shaken_assert(div_result.div_cert, "DIV cert not returned");
+	stir_shaken_assert(div_result.div_passport, "DIV PASSporT not returned");
+	stir_shaken_assert(cache_callback_called == 2, "Cache callback should be called for original and DIV certs");
+	stir_shaken_vs_div_result_deinit(&div_result);
+
+	div_params.div_val = "01256500999";
+	stir_shaken_assert(bad_div_sip_identity_header = stir_shaken_as_div_authenticate_to_sih(&ss, as, &div_params, NULL), "Bad DIV SIP Identity Header has not been created");
+	memset(&ss, 0, sizeof(ss));
+	cache_callback_called = 0;
+	stir_shaken_assert(STIR_SHAKEN_STATUS_OK != stir_shaken_vs_div_sih_verify(&ss, vs, sip_identity_header, bad_div_sip_identity_header, &div_result), "DIV chain with mismatched original destination should fail verification\n");
+	stir_shaken_vs_div_result_deinit(&div_result);
+	stir_shaken_clear_error(&ss);
+	free(bad_div_sip_identity_header);
+	bad_div_sip_identity_header = NULL;
+	div_params.div_val = "01256500600";
+
 	// Test without X509 cert path verification
 
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_vs_set_x509_cert_path_check(&ss, vs, 0), "Failed to turn off x509 cert path check");
@@ -294,6 +335,15 @@ fail:
 		free(sip_identity_header);
 		sip_identity_header = NULL;
 	}
+	if (div_sip_identity_header) {
+		free(div_sip_identity_header);
+		div_sip_identity_header = NULL;
+	}
+	if (bad_div_sip_identity_header) {
+		free(bad_div_sip_identity_header);
+		bad_div_sip_identity_header = NULL;
+	}
+	stir_shaken_vs_div_result_deinit(&div_result);
 	stir_shaken_as_destroy(&as);
 	stir_shaken_vs_destroy(&vs);
 

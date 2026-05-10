@@ -1,0 +1,8 @@
+debian/man/stirshaken.1
+debian/man/stir_shaken_as_basic.1
+debian/man/stir_shaken_as_div.1
+debian/man/stir_shaken_as_easy.1
+debian/man/stir_shaken_ca.1
+debian/man/stir_shaken_cert_req.1
+debian/man/stir_shaken_vs_basic.1
+debian/man/stir_shaken_vs_easy.1

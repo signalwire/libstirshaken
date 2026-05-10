@@ -3,14 +3,18 @@
 STIR-Shaken is a technology for making secure calls by use of SSL certificates and JSON Web Tokens.
 For a general overview of the framwork please search web for: ATIS, "Signature-based Handling of Asserted Information using Tokens (SHAKEN). Governance Model and Certificate Management",
 
-This library implements STIR (Secure Telephony Identity Revisited) and SHAKEN (Signature-based Handling of Asserted information using toKENs) (RFC8224, RFC8588), with X509 certificate path check (ATIS "Signature-based Handling of Asserted information using toKENs (SHAKEN)", RFC5280 "6. Certification Path Validation").
+This library implements STIR (Secure Telephony Identity Revisited), SHAKEN (Signature-based Handling of Asserted information using toKENs) (RFC8224, RFC8588), and DIV PASSporT for diverted calls (RFC 8946), with X509 certificate path check (ATIS "Signature-based Handling of Asserted information using toKENs (SHAKEN)", RFC5280 "6. Certification Path Validation").
 
 You can find a comprehensive list of specs relevant to Shaken at the bottom of this document.
 
 ## libstirshaken
 
 This library provides building blocks for implementing STIR-Shaken authentication and verification services, (STI-SP/AS, STI-SP/VS),
-as well as elements of STI-CA and STI-PA.
+as well as elements of STI-CA and STI-PA. DIV PASSporT support covers the common single-diversion case, `SHAKEN -> DIV`, for authentication and verification. Multi-layered diversion chains such as `SHAKEN -> DIV -> DIV` are not supported.
+
+## Releasing
+
+See [RELEASING.md](RELEASING.md) for the release process.
 
 ## Interoperability
 
@@ -91,6 +95,62 @@ printf("\n3. SIP Identity Header:\n%s\n", sih);
 ```
 3. SIP Identity Header:
 eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9zaGFrZW4uc2lnbmFsd2lyZS5jbG91ZC9zcC5wZW0ifQ.eyJhdHRlc3QiOiJCIiwiZGVzdCI6eyJ0biI6WyIwMTI1NjcwMDgwMCJdfSwiaWF0IjoxNjE2NDQyNTIzLCJvcmlnIjp7InRuIjoiMDEyNTY1MDA2MDAifSwib3JpZ2lkIjoiZTMyZjQxODktY2I4Ni00NjBmLWJiOTItYmQzYWNiODlmMjljIn0.rN3n-2qjP9eVPMViBbK6sVUmN3tMRbI-8ffVs1M7J9KL0q0hMKtdZNBWj_TS5RkvakiDUoSErkDsahh2nRGD8Q;info=<https://shaken.signalwire.cloud/sp.pem>;alg=ES256;ppt=shaken
+```
+
+# DIV PASSporT
+
+DIV PASSporT is used when a call is diverted from the original destination to another destination. The library supports the common single-diversion case where an original SHAKEN PASSporT is paired with one DIV PASSporT (`SHAKEN -> DIV`). Both SIP Identity headers should be forwarded as separate `Identity` header fields. Multi-layered diversion chains such as `SHAKEN -> DIV -> DIV` are not supported.
+
+Create DIV PASSporT parameters from an original SHAKEN SIP Identity Header and a new destination
+
+```
+const char *new_dest = "12155551214";
+const char *new_dests[1] = { new_dest };
+stir_shaken_div_passport_params_t div_params = { 0 };
+stir_shaken_passport_t *div_passport = NULL;
+char *div_sih = NULL;
+
+status = stir_shaken_div_params_from_original_sih(
+	&ss,
+	original_sip_identity_header,
+	"https://shaken.signalwire.cloud/div.pem",
+	"tn",
+	new_dests,
+	1,
+	NULL,
+	NULL,
+	&div_params);
+```
+
+Sign the DIV PASSporT and create a DIV SIP Identity Header
+
+```
+div_sih = stir_shaken_as_div_authenticate_to_sih(&ss, as, &div_params, &div_passport);
+printf("Identity: %s\n", original_sip_identity_header);
+printf("Identity: %s\n", div_sih);
+```
+
+Verify an original SHAKEN SIP Identity Header and a DIV SIP Identity Header as a single-diversion chain
+
+```
+stir_shaken_vs_div_result_t div_result = { 0 };
+
+status = stir_shaken_vs_div_sih_verify(&ss, vs, original_sip_identity_header, div_sih, &div_result);
+if (STIR_SHAKEN_STATUS_OK != status) {
+	printf("DIV SIP Identity Header chain failed verification");
+} else {
+	printf("DIV SIP Identity Header chain verified");
+}
+
+stir_shaken_vs_div_result_deinit(&div_result);
+```
+
+Clean up DIV authentication objects
+
+```
+free(div_sih);
+stir_shaken_passport_destroy(&div_passport);
+stir_shaken_div_passport_params_destroy(&div_params);
 ```
 
 # Verification
@@ -249,22 +309,22 @@ OpenSSL: https://github.com/openssl/openssl version 1.1 or later
 
 LibJWT: https://github.com/benmcollins/libjwt version 1.12 or later
 
-LibKS: https://github.com/signalwire/libks
+LibKS 2: https://github.com/signalwire/libks
 
 Signalwire Personal Access Token: https://freeswitch.org/confluence/display/FREESWITCH/HOWTO+Create+a+SignalWire+Personal+Access+Token
 
-Packages for latest libks and libjwt which are required are available in the freeswitch package repositories:
+Packages for latest libks2 and libjwt which are required are available in the freeswitch package repositories:
 
-Debian 10:
+Debian 12 and later:
 ```
 TOKEN=YOURSIGNALWIRETOKEN
-apt-get update && apt-get install -y gnupg2 wget lsb-release
-wget --http-user=signalwire --http-password=$TOKEN -O /usr/share/keyrings/signalwire-freeswitch-repo.gpg https://freeswitch.signalwire.com/repo/deb/debian-release/signalwire-freeswitch-repo.gpg
+apt-get update && apt-get install -y ca-certificates curl lsb-release
+curl --fail --silent --show-error --location --user signalwire:$TOKEN --output /usr/share/keyrings/signalwire-freeswitch-repo.gpg https://freeswitch.signalwire.com/repo/deb/debian-release/signalwire-freeswitch-repo.gpg
  
 echo "machine freeswitch.signalwire.com login signalwire password $TOKEN" > /etc/apt/auth.conf
 echo "deb [signed-by=/usr/share/keyrings/signalwire-freeswitch-repo.gpg] https://freeswitch.signalwire.com/repo/deb/debian-release/ `lsb_release -sc` main" > /etc/apt/sources.list.d/freeswitch.list
 echo "deb-src [signed-by=/usr/share/keyrings/signalwire-freeswitch-repo.gpg] https://freeswitch.signalwire.com/repo/deb/debian-release/ `lsb_release -sc` main" >> /etc/apt/sources.list.d/freeswitch.list
-apt-get update && apt-get install -y automake autoconf libtool pkg-config libcurl4-openssl-dev libjwt-dev libks
+apt-get update && apt-get install -y automake autoconf libtool pkgconf libcurl4-openssl-dev libjwt-dev libks2 libssl-dev uuid-dev
 ```
 
 Mac:
@@ -346,6 +406,8 @@ Where command is one of:
 		 sp-spc-req --url URL --port port
 		 sp-cert-req --url URL --port port --privkey key --pubkey key --csr csr.pem --spc CODE --spc_token SPC_TOKEN -f CERT_NAME
 		 passport-create --privkey key --url x5u_URL --attest attestation_level --origtn origtn --desttn desttn --origid origid -f passport_file_name
+		 div-passport-create --privkey key --url x5u_URL --sih shaken_sih --desttn desttn [--divtn divtn] [--reason reason] [--hi hi] -f passport_file_name
+		 div-chain-check --sih shaken_sih --div_sih div_sih [--cert_path_check --ca_dir ca_dir] [--timeout timeout_in_seconds]
 		 version
 
 		 Each command accepts setting print/logging verbosity level:
@@ -371,6 +433,8 @@ Where command is one of:
 		 sp-spc-req		: request SP Code token from PA at url given to --url
 		 sp-cert-req		: request SP certificate for Service Provider identified by number given to --spc from CA at url given to --url on port given to --port
 		 passport-create	: generate PASSporT with x5u pointing to given URL, with given attestation level, origination and destination telephone numbers and with given reference, and sign it using specified private key
+		 div-passport-create	: generate a DIV PASSporT SIP Identity Header from an original SHAKEN SIP Identity Header and a new destination telephone number
+		 div-chain-check		: verify an original SHAKEN SIP Identity Header and a DIV SIP Identity Header as a single-diversion chain
 		 version		: print the library version (git hash of the most recent commit)
 ```
 
@@ -404,6 +468,10 @@ sudo ./stirshaken ca --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "Si
 ./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 9999 --ca_cert test/ref/ca/ca.pem --uri "TNAuthList(URI)" --pa_cert test/ref/pa/pa.pem --pa_dir rootpax509 --ssl --ssl_cert fullchain.cer --ssl_key key.pem --vvv
 
 ./stirshaken passport-create --privkey test/ref/pa/pa.priv --url https://sp.shaken.signalwire.cloud/sp.pem -attest B --origtn +48599800700 --desttn +447267888999 --origid REF200500 -f passport_ssl.txt
+
+./stirshaken div-passport-create --privkey test/ref/sp/sp.priv --url https://sp.shaken.signalwire.cloud/div.pem --sih "$SHAKEN_SIH" --desttn +447267889000 --reason forwarding -f div_passport.txt
+
+./stirshaken div-chain-check --sih "$SHAKEN_SIH" --div_sih "$DIV_SIH" --vvv
 
 nohup sudo ./stirshaken ca --port 8082 --privkey test/ref/ca/ca.priv --issuer_c US --issuer_cn "SignalWire STI-CA" --serial 1 --expiry 10000 --ca_cert test/ref/ca/ca.pem --uri https://190.102.98.199/sti-ca/authority-over-the-number-check/1 --vvv 2> /var/log/ca.err > /var/log/ca.log &
 
@@ -473,7 +541,7 @@ draft-barnes-acme-service-provider, ACME Identifiers and Challenges for VoIP Ser
 * draft-ietf-acme-acme, Automatic Certificate Management Environment (ACME)                                           https://tools.ietf.org/html/rfc8555
 * draft-ietf-stir-passport-rcd
 * draft-ietf-stir-rph-emergency-services
-* draft-ietf-stir-passport-divert
+* RFC 8946, Personal Assertion Token (PASSporT) Extension for Diverted Calls.                                      https://tools.ietf.org/html/rfc8946
 * draft-ietf-stir-cert-delegation
 * draft-ietf-stir-oob
 * draft-ietf-acme-authority-token-tnauthlist

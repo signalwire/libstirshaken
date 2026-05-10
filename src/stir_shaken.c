@@ -723,7 +723,11 @@ stir_shaken_status_t stir_shaken_is_key_trusted(stir_shaken_context_t *ss, EVP_P
 	}
 
 	// Let SSL confirm
-	if (!EVP_PKEY_cmp(pkey, candidate_pkey)) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (EVP_PKEY_eq(pkey, candidate_pkey) != 1) {
+#else
+	if (EVP_PKEY_cmp(pkey, candidate_pkey) != 1) {
+#endif
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 

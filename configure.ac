@@ -1,4 +1,4 @@
-AC_INIT([libstirshaken], [m4_esyscmd_s([git rev-parse HEAD])], [https://github.com/signalwire/libstirshaken], [libstirshaken], [signalwire.com])
+AC_INIT([libstirshaken], [m4_esyscmd_s([build/version.sh])], [https://github.com/signalwire/libstirshaken], [libstirshaken], [signalwire.com])
 
 AM_INIT_AUTOMAKE([subdir-objects -Wall -Werror foreign])
 
@@ -10,7 +10,7 @@ AM_PROG_CC_C_O
 
 AM_PROG_AR
 
-AC_PROG_LIBTOOL
+LT_INIT
 
 AC_CANONICAL_HOST
 
@@ -35,15 +35,12 @@ PKG_CHECK_MODULES([JWT], [libjwt >= 1.12])
 
 PKG_CHECK_MODULES([KS], [libks2 >= 2.0.0],[
   AM_CONDITIONAL([HAVE_KS],[true])],[
-  PKG_CHECK_MODULES([KS], [libks >= 1.8.2],[
-    AM_CONDITIONAL([HAVE_KS],[true])],[
-      AC_MSG_ERROR([You need to either install libks2 or libks])
-  ])
+  AC_MSG_ERROR([You need to install libks2 >= 2.0.0])
 ])
 
 #  Enable clang address sanitizer bit build
 AC_ARG_ENABLE(address_sanitizer,
-  [AC_HELP_STRING([--enable-address-sanitizer],[build with address sanitizer])],
+  [AS_HELP_STRING([--enable-address-sanitizer],[build with address sanitizer])],
   [enable_address_sanitizer="$enable_address_sanitizer"],
   [enable_address_sanitizer="no"])
 if test "${enable_address_sanitizer}" = "yes"; then

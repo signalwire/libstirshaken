@@ -1,4 +1,108 @@
 #include "stir_shaken.h"
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/core_names.h>
+#endif
+
+#if defined(__GNUC__)
+#define STIR_SHAKEN_SUPPRESS_DEPRECATED_BEGIN \
+	_Pragma("GCC diagnostic push") \
+	_Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+#define STIR_SHAKEN_SUPPRESS_DEPRECATED_END \
+	_Pragma("GCC diagnostic pop")
+#else
+#define STIR_SHAKEN_SUPPRESS_DEPRECATED_BEGIN
+#define STIR_SHAKEN_SUPPRESS_DEPRECATED_END
+#endif
+
+static unsigned int stir_shaken_pkey_curve_bytes(EVP_PKEY *pkey)
+{
+	int bits = 0;
+
+	if (!pkey) return 0;
+
+	bits = EVP_PKEY_get_bits(pkey);
+	if (bits <= 0) return 0;
+
+	return (unsigned int) ((bits + 7) / 8);
+}
+
+static void stir_shaken_openssl_cleanup(void)
+{
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+	ERR_free_strings();
+	EVP_cleanup();
+	CRYPTO_cleanup_all_ex_data();
+#ifndef OPENSSL_NO_ENGINE
+	ENGINE_cleanup();
+#endif
+#endif
+}
+
+static EC_KEY *stir_shaken_pkey_get_legacy_ec_key(EVP_PKEY *pkey)
+{
+	EC_KEY *ec_key = NULL;
+
+	if (!pkey) return NULL;
+
+	STIR_SHAKEN_SUPPRESS_DEPRECATED_BEGIN
+	ec_key = EVP_PKEY_get1_EC_KEY(pkey);
+	STIR_SHAKEN_SUPPRESS_DEPRECATED_END
+
+	return ec_key;
+}
+
+static void stir_shaken_legacy_ec_key_free(EC_KEY **ec_key)
+{
+	if (!ec_key || !*ec_key) return;
+
+	STIR_SHAKEN_SUPPRESS_DEPRECATED_BEGIN
+	EC_KEY_free(*ec_key);
+	STIR_SHAKEN_SUPPRESS_DEPRECATED_END
+
+	*ec_key = NULL;
+}
+
+static char *stir_shaken_bn_to_base64url(const BIGNUM *bn, int width)
+{
+	unsigned char *bin = NULL;
+	unsigned char *b64 = NULL;
+	char *out = NULL;
+	int b64_len = 0;
+	int i = 0;
+
+	if (!bn || width <= 0) return NULL;
+
+	bin = calloc(1, (size_t) width);
+	if (!bin) return NULL;
+
+	if (BN_bn2binpad(bn, bin, width) != width) {
+		free(bin);
+		return NULL;
+	}
+
+	b64_len = 4 * ((width + 2) / 3);
+	b64 = malloc((size_t) b64_len + 1);
+	if (!b64) {
+		free(bin);
+		return NULL;
+	}
+
+	EVP_EncodeBlock(b64, bin, width);
+	free(bin);
+
+	for (i = 0; i < b64_len; i++) {
+		if (b64[i] == '+') b64[i] = '-';
+		else if (b64[i] == '/') b64[i] = '_';
+		else if (b64[i] == '=') {
+			b64[i] = '\0';
+			break;
+		}
+	}
+
+	out = strdup((char *) b64);
+	free(b64);
+	return out;
+}
 
 
 static int do_sign_init(EVP_MD_CTX *ctx, EVP_PKEY *pkey,
@@ -330,7 +434,7 @@ X509_REQ* stir_shaken_generate_x509_req(stir_shaken_context_t *ss, const char *s
         goto fail;
     }
 
-    if (!X509_REQ_set_version(req, 2L)) {
+    if (!X509_REQ_set_version(req, 0L)) {
         stir_shaken_set_error(ss, "Failed to set version on CSR", STIR_SHAKEN_ERROR_X509_REQ_SET_VERSION);
         goto fail;
     }
@@ -2322,8 +2426,8 @@ fail:
 
 stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub, const char *private_key_full_name, const char *public_key_full_name, unsigned char *priv_raw, uint32_t *priv_raw_len)
 {
-    EC_KEY *ec_key = NULL;
     EVP_PKEY *pk = NULL;
+    EVP_PKEY_CTX *pctx = NULL;
     BIO *bio = NULL;
     char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
     int pkey_type = EVP_PKEY_EC;
@@ -2359,23 +2463,20 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
     stir_shaken_file_remove(private_key_full_name);
     stir_shaken_file_remove(public_key_full_name);
 
-    /* Generate EC key associated with our chosen curve. */
-    ec_key = EC_KEY_new_by_curve_name(stir_shaken_globals.curve_nid);
-    if (!ec_key) {
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL);
+    if (!pctx) {
         stir_shaken_set_error(ss, "Cannot construct new EC key", STIR_SHAKEN_ERROR_SSL_EC_KEY_NEW_BY_CURVE_NAME);
         goto fail;
     }
 
-    *eck = ec_key;
-
-    if (!EC_KEY_generate_key(ec_key)) {
+    if (EVP_PKEY_keygen_init(pctx) <= 0 || EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pctx, stir_shaken_globals.curve_nid) <= 0 || EVP_PKEY_keygen(pctx, &pk) <= 0) {
         stir_shaken_set_error(ss, "Cannot generate new private/public keys from EC key", STIR_SHAKEN_ERROR_SSL_EC_KEY_GENERATE);
         goto fail;
     }
 
     fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "Got new private/public EC key pair\n");
 
-    if (!EC_KEY_check_key(ec_key)) {
+    if (EVP_PKEY_id(pk) != EVP_PKEY_EC) {
         stir_shaken_set_error(ss, "EC key pair is invalid", STIR_SHAKEN_ERROR_SSL_EC_KEY_CHECK);
         goto fail;
     }
@@ -2385,7 +2486,10 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
         stir_shaken_set_error(ss, "Cannot open private key into bio", STIR_SHAKEN_ERROR_SSL_BIO_NEW_FILE_2);
         goto fail;
     }
-    PEM_write_bio_ECPrivateKey(bio, ec_key, NULL, NULL, 0, NULL, NULL);
+    if (!PEM_write_bio_PrivateKey(bio, pk, NULL, NULL, 0, NULL, NULL)) {
+        stir_shaken_set_error(ss, "Cannot write private key into bio", STIR_SHAKEN_ERROR_SSL_PEM_WRITE_BIO_PRIVKEY_1);
+        goto fail;
+    }
     BIO_free_all(bio);
     bio = NULL;
 
@@ -2394,22 +2498,44 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
         stir_shaken_set_error(ss, "Cannot open public key into bio", STIR_SHAKEN_ERROR_SSL_BIO_NEW_FILE_3);
         goto fail;
     }
-    PEM_write_bio_EC_PUBKEY(bio, ec_key);
+    if (!PEM_write_bio_PUBKEY(bio, pk)) {
+        stir_shaken_set_error(ss, "Cannot write public key into bio", STIR_SHAKEN_ERROR_SSL_PEM_WRITE_BIO_PUBKEY_1);
+        goto fail;
+    }
     BIO_free_all(bio);
     bio = NULL;
 
-    pk = stir_shaken_load_privkey_from_file(ss, private_key_full_name);
-    if (!pk) {
-        snprintf(err_buf, sizeof(err_buf), "Failed to read private key from file %s", private_key_full_name);
-        stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL_LOAD_PRIVKEY_FROM_FILE_3);
-        goto fail;
+    if (eck) {
+        *eck = stir_shaken_pkey_get_legacy_ec_key(pk);
+        if (!*eck) {
+            stir_shaken_set_error(ss, "Cannot get EC key from EVP key", STIR_SHAKEN_ERROR_SSL_GET_EC_KEY_1);
+            goto fail;
+        }
     }
-    *priv = pk;
 
-    pkey_type = EVP_PKEY_id(pk);
+    *priv = pk;
+    pk = NULL;
+
+    pkey_type = EVP_PKEY_id(*priv);
     if (pkey_type != EVP_PKEY_EC) {
         snprintf(err_buf, sizeof(err_buf), "Private key is not EVP_PKEY_EC type");
         stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL_KEY_TYPE_1);
+        goto fail;
+    }
+
+    pk = stir_shaken_load_pubkey_from_file(ss, public_key_full_name);
+    if (!pk) {
+        snprintf(err_buf, sizeof(err_buf), "Failed to read public key from file %s", public_key_full_name);
+        stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL_LOAD_PUBKEY_FROM_FILE_2);
+        goto fail;
+    }
+    *pub = pk;
+    pk = NULL;
+
+    pkey_type = EVP_PKEY_id(*pub);
+    if (pkey_type != EVP_PKEY_EC) {
+        snprintf(err_buf, sizeof(err_buf), "Public key is not EVP_PKEY_EC type");
+        stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL_KEY_TYPE_2);
         goto fail;
     }
 
@@ -2421,38 +2547,17 @@ stir_shaken_status_t stir_shaken_generate_keys(stir_shaken_context_t *ss, EC_KEY
         }
     }
 
-    pk = stir_shaken_load_pubkey_from_file(ss, public_key_full_name);
-    if (!pk) {
-        snprintf(err_buf, sizeof(err_buf), "Failed to read public key from file %s", public_key_full_name);
-        stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL_LOAD_PUBKEY_FROM_FILE_2);
-        goto fail;
-    }
-    *pub = pk;
-
-    pkey_type = EVP_PKEY_id(pk);
-    if (pkey_type != EVP_PKEY_EC) {
-        snprintf(err_buf, sizeof(err_buf), "Public key is not EVP_PKEY_EC type");
-        stir_shaken_set_error(ss, err_buf, STIR_SHAKEN_ERROR_SSL_KEY_TYPE_2);
-        goto fail;
-    }
-
     if (bio) BIO_free_all(bio);
+    if (pctx) EVP_PKEY_CTX_free(pctx);
 
     return STIR_SHAKEN_STATUS_OK;
 
 fail:
 
     if (bio) BIO_free_all(bio);
-
-    return STIR_SHAKEN_STATUS_FALSE;
-}
-
-void stir_shaken_destroy_keys_ex(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub)
-{
-    if (eck && *eck) {
-        EC_KEY_free(*eck);
-        *eck = NULL;
-    }
+    if (pctx) EVP_PKEY_CTX_free(pctx);
+    if (pk) EVP_PKEY_free(pk);
+    stir_shaken_legacy_ec_key_free(eck);
     if (priv && *priv) {
         EVP_PKEY_free(*priv);
         *priv = NULL;
@@ -2461,10 +2566,22 @@ void stir_shaken_destroy_keys_ex(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub)
         EVP_PKEY_free(*pub);
         *pub = NULL;
     }
-    ERR_free_strings();
-    EVP_cleanup();
-    CRYPTO_cleanup_all_ex_data();
-    ENGINE_cleanup();
+
+    return STIR_SHAKEN_STATUS_FALSE;
+}
+
+void stir_shaken_destroy_keys_ex(EC_KEY **eck, EVP_PKEY **priv, EVP_PKEY **pub)
+{
+    stir_shaken_legacy_ec_key_free(eck);
+    if (priv && *priv) {
+        EVP_PKEY_free(*priv);
+        *priv = NULL;
+    }
+    if (pub && *pub) {
+        EVP_PKEY_free(*pub);
+        *pub = NULL;
+    }
+    stir_shaken_openssl_cleanup();
 }
 
 void stir_shaken_destroy_keys(stir_shaken_ssl_keys_t *keys)
@@ -2543,44 +2660,29 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 
     if (tmpsig_len > 0) {
 
-        const EC_GROUP *group = NULL;
-        unsigned int degree = 0, bn_len = 0, r_len = 0, s_len = 0, buf_len = 0;
+        const unsigned char *der = tmpsig;
+        unsigned int bn_len = 0, buf_len = 0;
         unsigned char *raw_buf = NULL;
-        EC_KEY *ec_key = NULL;
         const BIGNUM *ec_sig_r = NULL;
         const BIGNUM *ec_sig_s = NULL;
 
         /* For EC we need to convert to a raw format of R/S. */
 
-        /* Get the actual ec_key */
-        ec_key = EVP_PKEY_get1_EC_KEY(pkey);
-        if (ec_key == NULL) {
-            stir_shaken_set_error(ss, "Cannot get EC key from EVP key", STIR_SHAKEN_ERROR_SSL_GET_EC_KEY_1);
-            goto err;
-        }
-
-		group = EC_KEY_get0_group(ec_key);
-		if (!group) {
-			stir_shaken_set_error(ss, "Cannot get EC group from EC key", STIR_SHAKEN_ERROR_SSL_EC_KEY_GET_GROUP_1);
+        bn_len = stir_shaken_pkey_curve_bytes(pkey);
+		if (!bn_len) {
+			stir_shaken_set_error(ss, "Cannot get EC key size from EVP key", STIR_SHAKEN_ERROR_SSL_EC_KEY_GET_GROUP_1);
 			goto err;
 		}
 
-        degree = EC_GROUP_get_degree(group);
-
-        EC_KEY_free(ec_key);
-
         /* Get the sig from the DER encoded version. */
-        ec_sig = d2i_ECDSA_SIG(NULL, (const unsigned char **) &tmpsig, tmpsig_len);
+        ec_sig = d2i_ECDSA_SIG(NULL, &der, tmpsig_len);
         if (ec_sig == NULL) {
             stir_shaken_set_error(ss, "Cannot get signature from DER", STIR_SHAKEN_ERROR_SSL_D2I_ECDSA_SIGNATURE);
             goto err;
         }
 
         ECDSA_SIG_get0(ec_sig, &ec_sig_r, &ec_sig_s);
-        r_len = BN_num_bytes(ec_sig_r);
-        s_len = BN_num_bytes(ec_sig_s);
-        bn_len = (degree + 7) / 8;
-        if ((r_len > bn_len) || (s_len > bn_len)) {
+        if (BN_num_bytes(ec_sig_r) > (int) bn_len || BN_num_bytes(ec_sig_s) > (int) bn_len) {
             stir_shaken_set_error(ss, "Algorithm/key/method misconfiguration", STIR_SHAKEN_ERROR_SSL_BN_NUM_BYTES);
             goto err;
         }
@@ -2594,8 +2696,10 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
 
         /* Pad the bignums with leading zeroes. */
         memset(raw_buf, 0, buf_len);
-        BN_bn2bin(ec_sig_r, raw_buf + bn_len - r_len);
-        BN_bn2bin(ec_sig_s, raw_buf + buf_len - s_len);
+        if (BN_bn2binpad(ec_sig_r, raw_buf, bn_len) != (int) bn_len || BN_bn2binpad(ec_sig_s, raw_buf + bn_len, bn_len) != (int) bn_len) {
+            stir_shaken_set_error(ss, "Algorithm/key/method misconfiguration", STIR_SHAKEN_ERROR_SSL_BN_NUM_BYTES);
+            goto err;
+        }
 
         if (buf_len > *outlen) {
             stir_shaken_set_error(ss, "Output buffer too short", STIR_SHAKEN_ERROR_BUFFER_4);
@@ -2619,10 +2723,7 @@ stir_shaken_status_t stir_shaken_do_sign_data_with_digest(stir_shaken_context_t 
         ECDSA_SIG_free(ec_sig);
         ec_sig = NULL;
     }
-    ERR_free_strings();
-    EVP_cleanup();
-    CRYPTO_cleanup_all_ex_data();
-    ENGINE_cleanup();
+    stir_shaken_openssl_cleanup();
 
     return STIR_SHAKEN_STATUS_OK;
 
@@ -2635,10 +2736,7 @@ err:
         EVP_MD_CTX_destroy(mdctx);
         mdctx = NULL;
     }
-    ERR_free_strings();
-    EVP_cleanup();
-    CRYPTO_cleanup_all_ex_data();
-    ENGINE_cleanup();
+    stir_shaken_openssl_cleanup();
     return STIR_SHAKEN_STATUS_FALSE;
 }
 
@@ -2671,10 +2769,8 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
 
         BIGNUM *ec_sig_r = NULL;
         BIGNUM *ec_sig_s = NULL;
-		const EC_GROUP *group = NULL;
-        unsigned int degree = 0, bn_len = 0;
+        unsigned int bn_len = 0;
         unsigned char *p = NULL;
-        EC_KEY *ec_key = NULL;
 
         ec_sig = ECDSA_SIG_new();
         if (ec_sig == NULL) {
@@ -2682,24 +2778,12 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
             goto err;
         }
 
-        /* Get the actual ec_key */
-        ec_key = EVP_PKEY_get1_EC_KEY(public_key);
-        if (ec_key == NULL) {
-            stir_shaken_set_error(ss, "Cannot create EC key", STIR_SHAKEN_ERROR_SSL_GET_EC_KEY_2);
-            goto err;
-        }
-
-		group = EC_KEY_get0_group(ec_key);
-		if (!group) {
-			stir_shaken_set_error(ss, "Cannot get EC group from EC key", STIR_SHAKEN_ERROR_SSL_EC_KEY_GET_GROUP_2);
+        bn_len = stir_shaken_pkey_curve_bytes(public_key);
+		if (!bn_len) {
+			stir_shaken_set_error(ss, "Cannot get EC key size from EVP key", STIR_SHAKEN_ERROR_SSL_EC_KEY_GET_GROUP_2);
 			goto err;
 		}
 
-        degree = EC_GROUP_get_degree(group);
-
-        EC_KEY_free(ec_key);
-
-        bn_len = (degree + 7) / 8;
         if ((bn_len * 2) != siglen) {
             stir_shaken_set_error(ss, "Bad EC key", STIR_SHAKEN_ERROR_SSL_GROUP_DEGREE);
             goto err;
@@ -2785,10 +2869,7 @@ int stir_shaken_do_verify_data(stir_shaken_context_t *ss, const void *data, size
         ECDSA_SIG_free(ec_sig);
         ec_sig = NULL;
     }
-    ERR_free_strings();
-    EVP_cleanup();
-    CRYPTO_cleanup_all_ex_data();
-    ENGINE_cleanup();
+    stir_shaken_openssl_cleanup();
     return res;
 
 err:
@@ -2804,10 +2885,7 @@ err:
         ECDSA_SIG_free(ec_sig);
         ec_sig = NULL;
     }
-    ERR_free_strings();
-    EVP_cleanup();
-    CRYPTO_cleanup_all_ex_data();
-    ENGINE_cleanup();
+    stir_shaken_openssl_cleanup();
     return -1;
 }
 
@@ -2958,43 +3036,67 @@ stir_shaken_status_t stir_shaken_get_pubkey_raw_from_cert(stir_shaken_context_t 
     return ret;
 }
 
-stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *ec_key, const char *kid, ks_json_t **jwk)
+stir_shaken_status_t stir_shaken_create_jwk_from_pkey(stir_shaken_context_t *ss, EVP_PKEY *pkey, const char *kid, ks_json_t **jwk)
 {
     ks_json_t *j = NULL;
-    BIGNUM *x = NULL, *y = NULL;
-    const EC_GROUP *group = NULL;
-    const EC_POINT *point = NULL;
-    char *x_b64 = "";
-    char *y_b64 = "";
+    BIGNUM *x = NULL;
+    BIGNUM *y = NULL;
+    char *x_b64 = NULL;
+    char *y_b64 = NULL;
+    unsigned int width = 0;
+    stir_shaken_status_t status = STIR_SHAKEN_STATUS_ERR;
 
-    if (!ec_key || !jwk) {
+    if (!pkey || !jwk) {
 		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS_22);
 		return STIR_SHAKEN_STATUS_TERM;
 	}
 
-    point = EC_KEY_get0_public_key(ec_key);
-    if (!point) {
-        stir_shaken_set_error(ss, "Cannot get EC point from EC key", STIR_SHAKEN_ERROR_SSL_EC_KEY_GET_PUBKEY_1);
-        return STIR_SHAKEN_STATUS_ERR;
-    }
+    width = stir_shaken_pkey_curve_bytes(pkey);
+    if (!width) {
+        stir_shaken_set_error(ss, "Cannot get EC key size from EVP key", STIR_SHAKEN_ERROR_SSL_EC_KEY_GET_GROUP_3);
+        goto done;
+	}
 
-    group = EC_KEY_get0_group(ec_key);
-    if (!group) {
-        stir_shaken_set_error(ss, "Cannot get EC group from EC key", STIR_SHAKEN_ERROR_SSL_EC_KEY_GET_GROUP_3);
-        return STIR_SHAKEN_STATUS_ERR;
-    }
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    if (!EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_EC_PUB_X, &x) || !EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_EC_PUB_Y, &y)) {
+        stir_shaken_set_error(ss, "Cannot get affine coordinates from EVP key", STIR_SHAKEN_ERROR_SSL_EC_POINT_COORDINATE);
+        goto done;
+	}
+#else
+    {
+        EC_KEY *ec_key = stir_shaken_pkey_get_legacy_ec_key(pkey);
+        const EC_GROUP *group = NULL;
+        const EC_POINT *point = NULL;
 
-    if (EC_POINT_get_affine_coordinates_GFp(group, point, x, y, NULL) != 1) {
-        stir_shaken_set_error(ss, "Cannot get affine coordinates from EC key", STIR_SHAKEN_ERROR_SSL_EC_POINT_COORDINATE);
-        return STIR_SHAKEN_STATUS_ERR;
-    }
+        if (!ec_key) {
+            stir_shaken_set_error(ss, "Cannot get EC key from EVP key", STIR_SHAKEN_ERROR_SSL_GET_EC_KEY_1);
+            goto done;
+        }
 
-    // TODO need to get x and y coordinates in base 64
+        point = EC_KEY_get0_public_key(ec_key);
+        group = EC_KEY_get0_group(ec_key);
+        x = BN_new();
+        y = BN_new();
+        if (!point || !group || !x || !y || EC_POINT_get_affine_coordinates_GFp(group, point, x, y, NULL) != 1) {
+            stir_shaken_legacy_ec_key_free(&ec_key);
+            stir_shaken_set_error(ss, "Cannot get affine coordinates from EC key", STIR_SHAKEN_ERROR_SSL_EC_POINT_COORDINATE);
+            goto done;
+        }
+        stir_shaken_legacy_ec_key_free(&ec_key);
+    }
+#endif
+
+    x_b64 = stir_shaken_bn_to_base64url(x, (int) width);
+    y_b64 = stir_shaken_bn_to_base64url(y, (int) width);
+    if (!x_b64 || !y_b64) {
+        stir_shaken_set_error(ss, "Cannot encode JWK coordinates", STIR_SHAKEN_ERROR_BASE64_ENCODE);
+        goto done;
+	}
 
     j = ks_json_create_object();
     if (!j) {
         stir_shaken_set_error(ss, "Error in ks_json, cannot create object", STIR_SHAKEN_ERROR_KSJSON_CREATE_OBJECT_JSON_1);
-        return STIR_SHAKEN_STATUS_ERR;
+        goto done;
     }
 
     ks_json_add_string_to_object(j, "kty", "EC");
@@ -3006,8 +3108,47 @@ stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *e
     }
 
     *jwk = j;
+    j = NULL;
+    status = STIR_SHAKEN_STATUS_OK;
 
-    return STIR_SHAKEN_STATUS_OK;
+done:
+    if (j) ks_json_delete(&j);
+    if (x) BN_free(x);
+    if (y) BN_free(y);
+    free(x_b64);
+    free(y_b64);
+    return status;
+}
+
+stir_shaken_status_t stir_shaken_create_jwk(stir_shaken_context_t *ss, EC_KEY *ec_key, const char *kid, ks_json_t **jwk)
+{
+    EVP_PKEY *pkey = NULL;
+    stir_shaken_status_t status = STIR_SHAKEN_STATUS_FALSE;
+
+    if (!ec_key || !jwk) {
+		stir_shaken_set_error(ss, "Bad params", STIR_SHAKEN_ERROR_BAD_PARAMS_22);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+    pkey = EVP_PKEY_new();
+    if (!pkey) {
+        stir_shaken_set_error(ss, "Cannot create EVP key", STIR_SHAKEN_ERROR_PUBKEY_SET);
+        return STIR_SHAKEN_STATUS_ERR;
+    }
+
+    STIR_SHAKEN_SUPPRESS_DEPRECATED_BEGIN
+    status = EVP_PKEY_set1_EC_KEY(pkey, ec_key) == 1 ? STIR_SHAKEN_STATUS_OK : STIR_SHAKEN_STATUS_ERR;
+    STIR_SHAKEN_SUPPRESS_DEPRECATED_END
+
+    if (status != STIR_SHAKEN_STATUS_OK) {
+        EVP_PKEY_free(pkey);
+        stir_shaken_set_error(ss, "Cannot assign EC key to EVP key", STIR_SHAKEN_ERROR_PUBKEY_SET);
+        return STIR_SHAKEN_STATUS_ERR;
+    }
+
+    status = stir_shaken_create_jwk_from_pkey(ss, pkey, kid, jwk);
+    EVP_PKEY_free(pkey);
+    return status;
 }
 
 void stir_shaken_print_cert_fields(FILE *file, stir_shaken_cert_t *cert)

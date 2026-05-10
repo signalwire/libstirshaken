@@ -1,0 +1,241 @@
+name: Build Debian packages and release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  verify-tag-source:
+    name: Verify tag belongs to div-passport-port
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify release version metadata
+        run: |
+          set -euo pipefail
+
+          version="${GITHUB_REF_NAME#v}"
+          package_version="$(build/version.sh)"
+          changelog_version="$(sed -n '1s/^.*(\([^)]*\)).*$/\1/p' debian/changelog)"
+
+          if [[ ! "$version" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]]; then
+            echo "Release tag must use plain semver with a leading v: $GITHUB_REF_NAME"
+            exit 1
+          fi
+
+          if [ "$package_version" != "$version" ]; then
+            echo "VERSION/build version $package_version does not match tag version $version."
+            exit 1
+          fi
+
+          if [ "$changelog_version" != "$version-1" ]; then
+            echo "Debian changelog version $changelog_version does not match expected version $version-1."
+            exit 1
+          fi
+
+      - name: Verify tag is reachable from div-passport-port
+        run: |
+          set -euo pipefail
+
+          git fetch origin div-passport-port
+
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/div-passport-port"; then
+            echo "Tag $GITHUB_REF_NAME does not point to a commit reachable from div-passport-port."
+            exit 1
+          fi
+
+  build:
+    name: Build ${{ matrix.debian.name }} package
+    needs: verify-tag-source
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        debian:
+          - name: debian12
+            codename: bookworm
+            image: debian:12
+          - name: debian13
+            codename: trixie
+            image: debian:13
+
+    container:
+      image: ${{ matrix.debian.image }}
+
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      SIGNALWIRE_ACCESS_TOKEN: ${{ secrets.SIGNALWIRE_ACCESS_TOKEN }}
+
+    steps:
+      - name: Validate SignalWire token is configured
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SIGNALWIRE_ACCESS_TOKEN:-}" ]; then
+            echo "Missing required repository secret: SIGNALWIRE_ACCESS_TOKEN"
+            exit 1
+          fi
+
+          echo "::add-mask::${SIGNALWIRE_ACCESS_TOKEN}"
+
+      - name: Install base tools
+        run: |
+          set -euo pipefail
+
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates \
+            curl \
+            git \
+            gnupg \
+            wget
+
+      - name: Check out tagged source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Trust checked-out source directory
+        run: |
+          set -euo pipefail
+
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Configure SignalWire FreeSWITCH APT repository
+        run: |
+          set -euo pipefail
+
+          install -d -m 0755 /usr/share/keyrings
+          install -d -m 0755 /etc/apt/auth.conf.d
+          install -d -m 0755 /etc/apt/sources.list.d
+
+          cat > /etc/apt/auth.conf.d/signalwire-freeswitch.conf <<EOF
+          machine freeswitch.signalwire.com
+          login signalwire
+          password ${SIGNALWIRE_ACCESS_TOKEN}
+          EOF
+          chmod 0600 /etc/apt/auth.conf.d/signalwire-freeswitch.conf
+
+          curl -fsSL \
+            --user "signalwire:${SIGNALWIRE_ACCESS_TOKEN}" \
+            "https://freeswitch.signalwire.com/repo/deb/debian-release/signalwire-freeswitch-repo.gpg" \
+            -o /usr/share/keyrings/signalwire-freeswitch-repo.gpg
+
+          cat > /etc/apt/sources.list.d/99-freeswitch.list <<EOF
+          deb [signed-by=/usr/share/keyrings/signalwire-freeswitch-repo.gpg] https://freeswitch.signalwire.com/repo/deb/debian-release/ ${{ matrix.debian.codename }} main
+          EOF
+
+          apt-get update
+
+      - name: Install Debian packaging tools
+        run: |
+          set -euo pipefail
+
+          apt-get install -y --no-install-recommends \
+            build-essential \
+            debhelper \
+            devscripts \
+            equivs \
+            fakeroot \
+            lintian \
+            pkgconf
+
+      - name: Install package build dependencies
+        run: |
+          set -euo pipefail
+
+          mk-build-deps \
+            --install \
+            --remove \
+            --tool "apt-get -y --no-install-recommends" \
+            debian/control
+
+      - name: Build Debian binary packages
+        run: |
+          set -euo pipefail
+
+          dpkg-buildpackage -us -uc -b
+
+      - name: Collect package artifacts
+        run: |
+          set -euo pipefail
+
+          mkdir -p "dist/${{ matrix.debian.name }}"
+
+          while IFS= read -r -d '' artifact; do
+            filename="${artifact##*/}"
+            extension="${filename##*.}"
+            stem="${filename%.*}"
+            arch="${stem##*_}"
+            prefix="${stem%_*}"
+
+            cp -v \
+              "$artifact" \
+              "dist/${{ matrix.debian.name }}/${prefix}_${{ matrix.debian.name }}_${arch}.${extension}"
+          done < <(
+            find .. -maxdepth 1 -type f \
+              \( -name "*.deb" -o -name "*.changes" -o -name "*.buildinfo" \) \
+              -print0
+          )
+
+          ls -lh "dist/${{ matrix.debian.name }}"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: libstirshaken-${{ matrix.debian.name }}-${{ github.ref_name }}
+          path: dist/${{ matrix.debian.name }}/*
+          if-no-files-found: error
+
+  release:
+    name: Create release and upload packages
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: release-assets
+          merge-multiple: false
+
+      - name: Show release assets
+        run: |
+          set -euo pipefail
+          find release-assets -type f -maxdepth 3 -print -exec ls -lh {} \;
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
+
+      - name: Upload Debian packages to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          gh release upload "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            release-assets/**/* \
+            --clobber

@@ -1,5 +1,6 @@
 #include "stir_shaken.h"
 #include <curl/curl.h>
+#include <limits.h>
 
 static size_t stir_shaken_curl_write_callback(void *contents, size_t size, size_t nmemb, void *p)
 {
@@ -204,9 +205,17 @@ stir_shaken_status_t stir_shaken_make_http_req_real(stir_shaken_context_t *ss, s
 
 	if (strlen(http_req->url) > 5 && (!strncmp(http_req->url, "https", 5) || !strncmp(http_req->url, "HTTPS", 5))) {
 		use_https = 1;
+#if LIBCURL_VERSION_NUM >= 0x075500
+		curl_easy_setopt(curl_handle, CURLOPT_PROTOCOLS_STR, "https");
+#else
 		curl_easy_setopt(curl_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+#endif
 	} else {
+#if LIBCURL_VERSION_NUM >= 0x075500
+		curl_easy_setopt(curl_handle, CURLOPT_PROTOCOLS_STR, "http");
+#else
 		curl_easy_setopt(curl_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP);
+#endif
 	}
 
 	if (http_req->remote_port > 0) {
@@ -399,11 +408,7 @@ stir_shaken_status_t stir_shaken_vs_verify_stica(stir_shaken_context_t *ss, stir
 		if (ks_json_type_get(iterator) == KS_JSON_TYPE_STRING) {
 			const char *valuestring = "";
 
-#if KS_VERSION_NUM >= 20000
 			ks_json_value_string(iterator, &valuestring);
-#else
-			valuestring = ks_json_value_string(iterator);
-#endif
 			// TODO remove
 			fprintif(STIR_SHAKEN_LOGLEVEL_HIGH, "%s\n", valuestring);
 
@@ -462,11 +467,7 @@ stir_shaken_status_t stir_shaken_make_authority_over_number_check_req(stir_shake
 		goto fail;
 	}
 
-#if KS_VERSION_NUM >= 20000
 	ks_json_value_string(authority_check_result, &authority_check_result_value);
-#else
-	authority_check_result_value = ks_json_value_string(authority_check_result);
-#endif
 	if (strcmp("true", authority_check_result_value) == 0) {
 		result = STIR_SHAKEN_STATUS_OK;
 	} else {
@@ -808,6 +809,22 @@ char* stir_shaken_as_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_
 	return stir_shaken_authenticate_to_sih_with_key(ss, params, passport_out, as->keys.priv_raw, as->keys.priv_raw_len);
 }
 
+char *stir_shaken_as_div_authenticate_to_sih(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, stir_shaken_div_passport_params_t *params, stir_shaken_passport_t **passport_out)
+{
+	char *sih = NULL;
+
+	if (!as) {
+		stir_shaken_set_error(ss, "Authentication service missing", STIR_SHAKEN_ERROR_AS_MISSING_3);
+		return NULL;
+	}
+
+	if (STIR_SHAKEN_STATUS_OK != stir_shaken_div_authenticate_keep_passport(ss, &sih, params, as->keys.priv_raw, as->keys.priv_raw_len, passport_out)) {
+		return NULL;
+	}
+
+	return sih;
+}
+
 stir_shaken_status_t stir_shaken_as_install_cert(struct stir_shaken_context_s *ss, stir_shaken_as_t *as, const char *where)
 {
 	if (!as) {
@@ -963,4 +980,91 @@ stir_shaken_status_t stir_shaken_vs_sih_verify(stir_shaken_context_t *ss, stir_s
 
 	ss->callback = vs->callback;
 	return stir_shaken_sih_verify_ex(ss, sih, cert_out, passport_out, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
+}
+
+void stir_shaken_vs_div_result_deinit(stir_shaken_vs_div_result_t *result)
+{
+	if (!result) return;
+	stir_shaken_cert_destroy(&result->original_cert);
+	stir_shaken_passport_destroy(&result->original_passport);
+	stir_shaken_cert_destroy(&result->div_cert);
+	stir_shaken_passport_destroy(&result->div_passport);
+	memset(result, 0, sizeof(*result));
+}
+
+stir_shaken_status_t stir_shaken_vs_div_sih_verify(stir_shaken_context_t *ss, stir_shaken_vs_t *vs, const char *original_sih, const char *div_sih, stir_shaken_vs_div_result_t *result)
+{
+	stir_shaken_context_t ss_local = { 0 };
+	stir_shaken_vs_div_result_t verified = { 0 };
+	stir_shaken_parsed_identity_t parsed = { 0 };
+	stir_shaken_status_t ss_status = STIR_SHAKEN_STATUS_FALSE;
+	uint32_t iat_freshness = UINT_MAX;
+
+	if (!ss) ss = &ss_local;
+
+	if (result) memset(result, 0, sizeof(*result));
+
+	if (!vs) {
+		stir_shaken_set_error(ss, "Verification service missing", STIR_SHAKEN_ERROR_VS_MISSING_5);
+		return STIR_SHAKEN_STATUS_TERM;
+	}
+
+	if (vs->settings.iat_freshness_seconds > 0) {
+		iat_freshness = (uint32_t) vs->settings.iat_freshness_seconds;
+	}
+
+	ss->callback = vs->callback;
+
+	ss_status = stir_shaken_sih_parse(ss, original_sih, &parsed);
+	if (ss_status != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_if_clear(ss, "Failed to parse original SHAKEN SIP Identity Header", STIR_SHAKEN_ERROR_SIH_TO_JWT_2);
+		ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_IDENTITY_HDR;
+		goto fail;
+	}
+
+	if (parsed.ppt && strcmp(parsed.ppt, STIR_SHAKEN_PPT_SHAKEN)) {
+		stir_shaken_set_error(ss, "Original SIP Identity Header must use ppt=shaken", STIR_SHAKEN_ERROR_PASSPORT_INVALID_PPT);
+		ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_PASSPORT;
+		goto fail;
+	}
+	stir_shaken_sih_parse_destroy(&parsed);
+
+	ss_status = stir_shaken_sih_verify_ex(ss, original_sih, &verified.original_cert, &verified.original_passport, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s);
+	if (ss_status != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_if_clear(ss, "Original SHAKEN SIP Identity Header failed verification", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_2);
+		goto fail;
+	}
+
+	ss_status = stir_shaken_passport_validate(ss, verified.original_passport, iat_freshness);
+	if (ss_status != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_if_clear(ss, "Original SHAKEN PASSporT failed validation", STIR_SHAKEN_ERROR_PASSPORT_INVALID_3);
+		ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_PASSPORT;
+		goto fail;
+	}
+
+	ss_status = stir_shaken_div_sih_verify_ex(ss, div_sih, &verified.div_cert, &verified.div_passport, vs->store, vs->settings.x509_cert_path_check, vs->settings.connect_timeout_s, iat_freshness);
+	if (ss_status != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_if_clear(ss, "DIV SIP Identity Header failed verification", STIR_SHAKEN_ERROR_JWT_VERIFY_AND_CHECK_X509_CERT_PATH_2);
+		goto fail;
+	}
+
+	ss_status = stir_shaken_div_validate_chain_claims(ss, verified.original_passport, verified.div_passport);
+	if (ss_status != STIR_SHAKEN_STATUS_OK) {
+		stir_shaken_set_error_if_clear(ss, "DIV PASSporT chain validation failed", STIR_SHAKEN_ERROR_PASSPORT_GRANTS_INVALID);
+		ss->verification_status = STIR_SHAKEN_VERIFICATION_STATUS_BAD_PASSPORT;
+		goto fail;
+	}
+
+	if (result) {
+		*result = verified;
+		memset(&verified, 0, sizeof(verified));
+	}
+
+	stir_shaken_vs_div_result_deinit(&verified);
+	return STIR_SHAKEN_STATUS_OK;
+
+fail:
+	stir_shaken_sih_parse_destroy(&parsed);
+	stir_shaken_vs_div_result_deinit(&verified);
+	return STIR_SHAKEN_STATUS_FALSE;
 }

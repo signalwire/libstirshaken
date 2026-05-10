@@ -6,6 +6,42 @@
 
 pthread_mutex_t big_fat_lock = PTHREAD_MUTEX_INITIALIZER;
 
+typedef struct stir_shaken_ca_mongoose_context_s {
+	stir_shaken_ca_t *ca;
+	struct mg_str tls_cert;
+	struct mg_str tls_key;
+} stir_shaken_ca_mongoose_context_t;
+
+static void ca_mg_str_to_buf(struct mg_str s, char *buf, size_t buflen)
+{
+	size_t len = 0;
+
+	if (!buf || !buflen) return;
+
+	len = stir_shaken_min(buflen - 1, s.len);
+	if (len && s.buf) {
+		memcpy(buf, s.buf, len);
+	}
+	buf[len] = '\0';
+}
+
+static int ca_mg_str_contains(struct mg_str haystack, const char *needle)
+{
+	size_t needle_len = 0;
+	size_t i = 0;
+
+	if (!haystack.buf || stir_shaken_zstr(needle)) return 0;
+
+	needle_len = strlen(needle);
+	if (needle_len > haystack.len) return 0;
+
+	for (i = 0; i <= haystack.len - needle_len; i++) {
+		if (!memcmp(haystack.buf + i, needle, needle_len)) return 1;
+	}
+
+	return 0;
+}
+
 static stir_shaken_status_t ca_authority_over_a_number_check(char *sp, char *origin_identity) {
 
 	if (!sp || !origin_identity) return STIR_SHAKEN_STATUS_TERM;
@@ -25,19 +61,19 @@ void stir_shaken_ca_destroy(stir_shaken_ca_t *ca)
 	stir_shaken_hash_destroy(ca->trusted_pa_keys, STI_CA_TRUSTED_PA_KEYS_MAX, STIR_SHAKEN_HASH_TYPE_SHALLOW);
 }
 
-static int ca_http_method(struct http_message *m)
+static int ca_http_method(struct mg_http_message *m)
 {
 	if (!m) return 13;
-	if (!strncmp(m->method.p, "GET", 3)) {
+	if (!mg_strcmp(m->method, mg_str("GET"))) {
 		return STIR_SHAKEN_HTTP_REQ_TYPE_GET;
 	}
-	if (!strncmp(m->method.p, "POST", 4)) {
+	if (!mg_strcmp(m->method, mg_str("POST"))) {
 		return STIR_SHAKEN_HTTP_REQ_TYPE_POST;
 	}
-	if (!strncmp(m->method.p, "HEAD", 4)) {
+	if (!mg_strcmp(m->method, mg_str("HEAD"))) {
 		return STIR_SHAKEN_HTTP_REQ_TYPE_HEAD;
 	}
-	if (!strncmp(m->method.p, "PUT", 3)) {
+	if (!mg_strcmp(m->method, mg_str("PUT"))) {
 		return STIR_SHAKEN_HTTP_REQ_TYPE_PUT;
 	}
 	return 1000;
@@ -84,11 +120,11 @@ static event_handler_t* handler_registered(struct mg_str *uri)
 		e = &event_handlers[i];
 		if (e->uri) {
 			if (e->accepts_params) {
-				if (strstr(uri->p, e->uri)) {
+				if (ca_mg_str_contains(*uri, e->uri)) {
 					return e;
 				}
 			} else {
-				if (!mg_vcmp(uri, e->uri)) {
+				if (!mg_strcmp(*uri, mg_str(e->uri))) {
 					return e;
 				}
 			}
@@ -116,7 +152,7 @@ static void unregister_handlers(void)
 	}
 }
 
-static void close_http_connection_with_error(struct mg_connection *nc, struct mbuf *io, const char *error_desc, const char *error_body)
+static void close_http_connection_with_error(struct mg_connection *nc, const char *error_desc, const char *error_body)
 {
 	if (nc) {
 		if (stir_shaken_zstr(error_desc)) {
@@ -130,16 +166,18 @@ static void close_http_connection_with_error(struct mg_connection *nc, struct mb
 				mg_printf(nc, "HTTP/1.1 %s %s\r\n\r\n", STIR_SHAKEN_HTTP_REQ_404_NOT_FOUND, error_phrase);
 		}
 	}
-	if (nc) mg_send_http_chunk(nc, "", 0);
-	if (io) mbuf_remove(io, io->len);
-	if (nc) nc->flags |= MG_F_SEND_AND_CLOSE;
+	if (nc) {
+		nc->is_resp = 0;
+		nc->is_draining = 1;
+	}
 }
 
-static void close_http_connection(struct mg_connection *nc, struct mbuf *io)
+static void close_http_connection(struct mg_connection *nc)
 {
-	if (nc) mg_send_http_chunk(nc, "", 0);
-	if (io) mbuf_remove(io, io->len);
-	if (nc) nc->flags |= MG_F_SEND_AND_CLOSE;
+	if (nc) {
+		nc->is_resp = 0;
+		nc->is_draining = 1;
+	}
 }
 
 static stir_shaken_ca_session_t* stir_shaken_ca_session_create(size_t sp_code, char *authz_challenge, void *csr_pem, uint8_t use_ssl)
@@ -216,7 +254,7 @@ static void ca_handle_bad_request(struct mg_connection *nc, int event, void *hm,
 
 static void ca_handle_api_account(struct mg_connection *nc, int event, void *hm, void *d)
 {
-	struct http_message *m = (struct http_message*) hm;
+	struct mg_http_message *m = (struct mg_http_message*) hm;
 	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST; 
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API call: %s...\n", STI_CA_ACME_NEW_ACCOUNT_URL);
@@ -234,8 +272,7 @@ static void ca_handle_api_account(struct mg_connection *nc, int event, void *hm,
 
 static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, void *d)
 {
-	struct http_message *m = (struct http_message*) hm;
-	struct mbuf *io = NULL;
+	struct mg_http_message *m = (struct mg_http_message*) hm;
 	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
 	ks_uuid_t uuid = { 0 };
 	char nonce[STIR_SHAKEN_BUFLEN] = { 0 };
@@ -255,10 +292,7 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 	}
 
 	http_method = ca_http_method(m);
-	io = &nc->recv_mbuf;
-
-	strncpy(mbody, m->body.p, stir_shaken_min(STIR_SHAKEN_BUFLEN * 4, m->body.len));
-	mbody[STIR_SHAKEN_BUFLEN * 4 - 1] = '\0';
+	ca_mg_str_to_buf(m->body, mbody, sizeof(mbody));
 
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call:\n%s\n", http_method, STI_CA_ACME_NONCE_REQ_URL);
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", mbody);
@@ -266,7 +300,7 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 
 	switch (event) {
 
-		case MG_EV_HTTP_REQUEST:
+		case MG_EV_HTTP_MSG:
 
 			{
 				int i = 0;
@@ -288,13 +322,13 @@ static void ca_handle_api_nonce(struct mg_connection *nc, int event, void *hm, v
 				mg_printf(nc, "HTTP/1.1 200 OK\r\nReplay-Nonce: %s\r\nCache-Control: no-store\r\n\r\n", nonce);
 
 
-				close_http_connection(nc, io);
+				close_http_connection(nc);
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
 
 				break;
 			}
 
-		case MG_EV_RECV:
+		case MG_EV_READ:
 			break;
 
 		default:
@@ -309,7 +343,7 @@ fail:
 	if (ca && stir_shaken_is_error_set(&ca->ss)) {
 		error_desc = stir_shaken_get_error(&ca->ss, &error);
 	}
-	close_http_connection_with_error(nc, io, error_desc, NULL);
+	close_http_connection_with_error(nc, error_desc, NULL);
 
 	stir_shaken_set_error(&ca->ss, "API NONCE request failed", STIR_SHAKEN_ERROR_ACME);
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== FAIL\n");
@@ -469,12 +503,12 @@ fail:
  */
 static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, void *d)
 {
-	struct http_message *m = (struct http_message*) hm;
-	struct mbuf *io = NULL;
+	struct mg_http_message *m = (struct mg_http_message*) hm;
 	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
 	ks_json_t *json = NULL;
 	jwt_t *jwt = NULL;
-	struct mg_str cert_api_url = mg_mk_str(STI_CA_ACME_CERT_REQ_URL);
+	struct mg_str cert_api_url = mg_str(STI_CA_ACME_CERT_REQ_URL);
+	char cert_api_url_buf[STIR_SHAKEN_BUFLEN] = { 0 };
 
 	const char *spc = NULL;
 	char *pCh = NULL;
@@ -496,6 +530,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 	stir_shaken_ca_session_t *session = NULL;
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST; 
 	char mbody[STIR_SHAKEN_BUFLEN * 4] = { 0 };
+	char uri[STIR_SHAKEN_BUFLEN] = { 0 };
 
 
 	if (!m || !nc || !ca) {
@@ -504,10 +539,9 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 	}
 
 	http_method = ca_http_method(m);
-	io = &nc->recv_mbuf;
-
-	strncpy(mbody, m->body.p, stir_shaken_min(STIR_SHAKEN_BUFLEN * 4, m->body.len));
-	mbody[STIR_SHAKEN_BUFLEN * 4 - 1] = '\0';
+	ca_mg_str_to_buf(m->body, mbody, sizeof(mbody));
+	ca_mg_str_to_buf(m->uri, uri, sizeof(uri));
+	ca_mg_str_to_buf(cert_api_url, cert_api_url_buf, sizeof(cert_api_url_buf));
 
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call:\n%s\n", http_method, STI_CA_ACME_CERT_REQ_URL);
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", mbody);
@@ -515,7 +549,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 
 	switch (event) {
 
-		case MG_EV_HTTP_REQUEST:
+		case MG_EV_HTTP_MSG:
 
 			{
 				if (STIR_SHAKEN_HTTP_REQ_TYPE_POST == http_method) {
@@ -525,7 +559,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 						goto fail;
 					}
 
-					if (STIR_SHAKEN_STATUS_OK != ca_sp_cert_req_reply_challenge(&ca->ss, ca, (char *) m->body.p, authz_challenge, authz_url, &session, ca->use_ssl)) {
+					if (STIR_SHAKEN_STATUS_OK != ca_sp_cert_req_reply_challenge(&ca->ss, ca, mbody, authz_challenge, authz_url, &session, ca->use_ssl)) {
 						stir_shaken_set_error(&ca->ss, "Oops. Failed to process new SP cert req", STIR_SHAKEN_ERROR_ACME);
 						goto fail;
 					}
@@ -549,7 +583,7 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 
 					// Handle certificate download request
 
-					if ((STIR_SHAKEN_STATUS_OK != stir_shaken_acme_api_uri_to_spc(&ca->ss, m->uri.p, cert_api_url.p, spcbuf, STIR_SHAKEN_BUFLEN, &sp_code, &uri_has_secret, &secret)) || stir_shaken_zstr(spcbuf)) {
+					if ((STIR_SHAKEN_STATUS_OK != stir_shaken_acme_api_uri_to_spc(&ca->ss, uri, cert_api_url_buf, spcbuf, STIR_SHAKEN_BUFLEN, &sp_code, &uri_has_secret, &secret)) || stir_shaken_zstr(spcbuf)) {
 						stir_shaken_set_error(&ca->ss, "Bad cert request, SPC is missing", STIR_SHAKEN_ERROR_ACME_CERT);
 						goto fail;
 					}
@@ -603,13 +637,13 @@ static void ca_handle_api_cert(struct mg_connection *nc, int event, void *hm, vo
 
 				}
 
-				close_http_connection(nc, io);
+				close_http_connection(nc);
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
 			}
 
 			break;
 
-		case MG_EV_RECV:
+		case MG_EV_READ:
 			break;
 
 		default:
@@ -639,7 +673,7 @@ fail:
 	if (ca && stir_shaken_is_error_set(&ca->ss)) {
 		error_desc = stir_shaken_get_error(&ca->ss, &error);
 	}
-	close_http_connection_with_error(nc, io, error_desc, NULL);
+	close_http_connection_with_error(nc, error_desc, NULL);
 
 	if (json) {
 		ks_json_delete(&json);
@@ -814,11 +848,10 @@ stir_shaken_status_t ca_verify_pa_cert(stir_shaken_context_t *ss, stir_shaken_ca
 
 static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, void *d)
 {
-	struct http_message *m = (struct http_message*) hm;
+	struct mg_http_message *m = (struct mg_http_message*) hm;
 	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
-	struct mg_str authz_api_url = mg_mk_str(STI_CA_ACME_AUTHZ_URL);
-	struct mbuf *io = NULL;
-
+	struct mg_str authz_api_url = mg_str(STI_CA_ACME_AUTHZ_URL);
+	char authz_api_url_buf[STIR_SHAKEN_BUFLEN] = { 0 };
 	char spc[STIR_SHAKEN_BUFLEN] = { 0 };
 	char *pCh = NULL;
 	unsigned long long int sp_code = 0;
@@ -836,6 +869,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 	stir_shaken_ca_session_t *session = NULL;
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST;
 	char mbody[STIR_SHAKEN_BUFLEN * 4] = { 0 };
+	char uri[STIR_SHAKEN_BUFLEN] = { 0 };
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
 
 	stir_shaken_cert_t *cert = NULL;
@@ -848,21 +882,19 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 	}
 
 	http_method = ca_http_method(m);
-
-	io = &nc->recv_mbuf;
-
-	strncpy(mbody, m->body.p, stir_shaken_min(STIR_SHAKEN_BUFLEN * 4, m->body.len));
-	mbody[STIR_SHAKEN_BUFLEN * 4 - 1] = '\0';
+	ca_mg_str_to_buf(m->body, mbody, sizeof(mbody));
+	ca_mg_str_to_buf(m->uri, uri, sizeof(uri));
+	ca_mg_str_to_buf(authz_api_url, authz_api_url_buf, sizeof(authz_api_url_buf));
 
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call: %s...\n", http_method, STI_CA_ACME_AUTHZ_URL);
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", mbody);
 
 	switch (event) {
 
-		case MG_EV_HTTP_REQUEST:
+		case MG_EV_HTTP_MSG:
 
 			{
-				if ((STIR_SHAKEN_STATUS_OK != stir_shaken_acme_api_uri_to_spc(&ca->ss, m->uri.p, authz_api_url.p, spc, STIR_SHAKEN_BUFLEN, &sp_code, &uri_has_secret, &secret)) || stir_shaken_zstr(spc)) {
+				if ((STIR_SHAKEN_STATUS_OK != stir_shaken_acme_api_uri_to_spc(&ca->ss, uri, authz_api_url_buf, spc, STIR_SHAKEN_BUFLEN, &sp_code, &uri_has_secret, &secret)) || stir_shaken_zstr(spc)) {
 					stir_shaken_set_error(&ca->ss, "Bad AUTHZ request, SPC missing or invalid", STIR_SHAKEN_ERROR_ACME_AUTHZ_SPC);
 					goto fail;
 				}
@@ -975,7 +1007,7 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 						goto fail;
 					}
 
-					if (STIR_SHAKEN_STATUS_OK != ca_session_prepare_polling(&ca->ss, m->body.p, spc, expires, validated, session)) {
+					if (STIR_SHAKEN_STATUS_OK != ca_session_prepare_polling(&ca->ss, mbody, spc, expires, validated, session)) {
 						stir_shaken_set_error(&ca->ss, "AUTHZ request failed, could not produce polling status", STIR_SHAKEN_ERROR_ACME_AUTHZ_POLLING);
 						goto fail;
 					}
@@ -984,12 +1016,12 @@ static void ca_handle_api_authz(struct mg_connection *nc, int event, void *hm, v
 					session->state = STI_CA_SESSION_STATE_POLLING;
 
 					mg_printf(nc, "HTTP/1.1 200 OK, Processing... (you can do polling now)\r\n\r\n");
-					close_http_connection(nc, io);
+					close_http_connection(nc);
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "-> Verifying SPC token...\n");
 
 					// Extract SPC token from response token
-					if (STIR_SHAKEN_STATUS_OK != ca_extract_spc_token_from_authz_response(&ca->ss, m->body.p, &spc_token, &spc_token_jwt)) {
+					if (STIR_SHAKEN_STATUS_OK != ca_extract_spc_token_from_authz_response(&ca->ss, mbody, &spc_token, &spc_token_jwt)) {
 						stir_shaken_set_error(&ca->ss, "AUTHZ request failed, authz response has invalid SPC token", STIR_SHAKEN_ERROR_ACME_AUTHZ_SPC);
 						goto fail;
 					}
@@ -1111,13 +1143,13 @@ authorization_result:
 
 				}
 
-				close_http_connection(nc, io);
+				close_http_connection(nc);
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
 			}
 
 			break;
 
-		case MG_EV_RECV:
+		case MG_EV_READ:
 			break;
 
 		default:
@@ -1144,7 +1176,7 @@ fail:
 	if (ca && stir_shaken_is_error_set(&ca->ss)) {
 		error_desc = stir_shaken_get_error(&ca->ss, &error);
 	}
-	close_http_connection_with_error(nc, io, error_desc, NULL);
+	close_http_connection_with_error(nc, error_desc, NULL);
 
 	if (authz_challenge_details) {
 		free(authz_challenge_details);
@@ -1164,10 +1196,10 @@ fail:
 
 static void ca_handle_api_authority_check(struct mg_connection *nc, int event, void *hm, void *d)
 {
-	struct http_message *m = (struct http_message*) hm;
-	struct mbuf *io = NULL;
+	struct mg_http_message *m = (struct mg_http_message*) hm;
 	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
-	struct mg_str authority_check_api_url = mg_mk_str(STI_CA_AUTHORITY_CHECK_URL);
+	struct mg_str authority_check_api_url = mg_str(STI_CA_AUTHORITY_CHECK_URL);
+	char authority_check_api_url_buf[STIR_SHAKEN_BUFLEN] = { 0 };
 	int http_method = STIR_SHAKEN_HTTP_REQ_TYPE_POST; 
 	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
 	const char *error_desc = NULL;
@@ -1177,6 +1209,7 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 	int arg1_len = STIR_SHAKEN_BUFLEN, arg2_len = STIR_SHAKEN_BUFLEN;
 	int args_n = 0;
 	char mbody[STIR_SHAKEN_BUFLEN * 4] = { 0 };
+	char uri[STIR_SHAKEN_BUFLEN] = { 0 };
 
 
 	if (!m || !nc || !ca) {
@@ -1185,10 +1218,9 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 	}
 
 	http_method = ca_http_method(m);
-	io = &nc->recv_mbuf;
-
-	strncpy(mbody, m->body.p, stir_shaken_min(STIR_SHAKEN_BUFLEN * 4, m->body.len));
-	mbody[STIR_SHAKEN_BUFLEN * 4 - 1] = '\0';
+	ca_mg_str_to_buf(m->body, mbody, sizeof(mbody));
+	ca_mg_str_to_buf(m->uri, uri, sizeof(uri));
+	ca_mg_str_to_buf(authority_check_api_url, authority_check_api_url_buf, sizeof(authority_check_api_url_buf));
 
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Handling API [%d] call:\n%s\n", http_method, STI_CA_AUTHORITY_CHECK_URL);
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "\n=== Message Body:\n%s\n", mbody);
@@ -1196,7 +1228,7 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 
 	switch (event) {
 
-		case MG_EV_HTTP_REQUEST:
+		case MG_EV_HTTP_MSG:
 
 			{
 				char *check_result = "false", *json_str = NULL;
@@ -1207,7 +1239,7 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 					goto fail;
 				}
 
-				if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_api_uri_parse(&ca->ss, m->uri.p, authority_check_api_url.p, arg1, arg1_len, arg2, arg2_len, &args_n)) {
+				if (STIR_SHAKEN_STATUS_OK != stir_shaken_acme_api_uri_parse(&ca->ss, uri, authority_check_api_url_buf, arg1, arg1_len, arg2, arg2_len, &args_n)) {
 					stir_shaken_set_error(&ca->ss, "Bad request, parsing with errors", STIR_SHAKEN_ERROR_ACME_BAD_REQUEST);
 					goto fail;
 				}
@@ -1233,19 +1265,26 @@ static void ca_handle_api_authority_check(struct mg_connection *nc, int event, v
 
 				ks_json_add_string_to_object(json, "authority", check_result);
 				json_str = ks_json_print_unformatted(json);
+				if (!json_str) {
+					ks_json_delete(&json);
+					stir_shaken_set_error(&ca->ss, "Cannot print JSON object", STIR_SHAKEN_ERROR_JSON);
+					goto fail;
+				}
 
 				mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\nContent-Type: application/json\r\n\r\n%s\r\n\r\n", strlen(json_str), json_str);
+				free(json_str);
+				json_str = NULL;
 
 				ks_json_delete(&json);
 				json = NULL;
 
-				close_http_connection(nc, io);
+				close_http_connection(nc);
 				fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== OK\n");
 
 				break;
 			}
 
-		case MG_EV_RECV:
+		case MG_EV_READ:
 			break;
 
 		default:
@@ -1260,71 +1299,67 @@ fail:
 	if (ca && stir_shaken_is_error_set(&ca->ss)) {
 		error_desc = stir_shaken_get_error(&ca->ss, &error);
 	}
-	close_http_connection_with_error(nc, io, error_desc, NULL);
+	close_http_connection_with_error(nc, error_desc, NULL);
 
 	stir_shaken_set_error(&ca->ss, "API AUTHORITY CHECK request failed", STIR_SHAKEN_ERROR_HTTP_GENERAL);
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "=== FAIL\n");
 	return;
 }
 
-static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void *d)
+static void ca_event_handler(struct mg_connection *nc, int event, void *hm)
 {
-	struct http_message *m = (struct http_message*) hm;
-	struct mbuf *io = NULL;
+	struct mg_http_message *m = (struct mg_http_message*) hm;
 	event_handler_t *evh = NULL;
-	stir_shaken_ca_t *ca = (stir_shaken_ca_t*) d;
+	stir_shaken_ca_mongoose_context_t *ctx = nc ? (stir_shaken_ca_mongoose_context_t*) nc->fn_data : NULL;
+	stir_shaken_ca_t *ca = ctx ? ctx->ca : NULL;
 	stir_shaken_error_t error = STIR_SHAKEN_ERROR_GENERAL;
 	const char *error_desc = NULL;
 	char err_buf[STIR_SHAKEN_ERROR_BUF_LEN] = { 0 };
-	struct mg_str api_url = mg_mk_str(STI_CA_API_URL);
+	struct mg_str api_url = mg_str(STI_CA_API_URL);
 
 
 	pthread_mutex_lock(&big_fat_lock);
 
 	if (!ca) {
-		stir_shaken_set_error(&ca->ss, "Bad params", STIR_SHAKEN_ERROR_ACME);
 		goto exit;
 	}
 
 	fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Event [%d]...\n", event);
 
-	if (nc) {
-		io = &nc->recv_mbuf;
-	}
-
 	switch (event) {
 
 		case MG_EV_ACCEPT:
 			{
-				char addr[32];
-				mg_sock_addr_to_str(&nc->sa, addr, sizeof(addr), MG_SOCK_STRINGIFY_IP | MG_SOCK_STRINGIFY_PORT);
-				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "%p: Connection from %s\r\n", nc, addr);
+				if (ctx && ctx->tls_cert.buf && ctx->tls_key.buf) {
+					struct mg_tls_opts opts = { 0 };
+					opts.cert = ctx->tls_cert;
+					opts.key = ctx->tls_key;
+					mg_tls_init(nc, &opts);
+				}
+				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "%p: Connection accepted\r\n", nc);
 				break;
 			}
 
-		case MG_EV_RECV:
+		case MG_EV_READ:
 			fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "RECV... \r\n");
 			break;
 
-		case MG_EV_HTTP_REQUEST:
+		case MG_EV_HTTP_MSG:
 			{
-				unsigned int port_i = 0;
 				char this_uri[STIR_SHAKEN_BUFLEN] = { 0 };
 
 				fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\n=== +++ Processing HTTP request...\n");
 
-				if (m->uri.p) {
+				if (m->uri.buf) {
+					ca_mg_str_to_buf(m->uri, this_uri, sizeof(this_uri));
 
-					if (!mg_strstr(m->uri, api_url)) {
+					if (!ca_mg_str_contains(m->uri, api_url.buf)) {
 
-						close_http_connection_with_error(nc, io, "This is STI-CA handling STIR-Shaken. The request you submitted is not handled by this API.", "This is STI-CA handling STIR-Shaken. The request you submitted is not handled by this API.");
-						snprintf(err_buf, STIR_SHAKEN_BUFLEN, "URL (%s) is not handled by ACME API. Closed HTTP connection", m->uri.p);
+						close_http_connection_with_error(nc, "This is STI-CA handling STIR-Shaken. The request you submitted is not handled by this API.", "This is STI-CA handling STIR-Shaken. The request you submitted is not handled by this API.");
+						snprintf(err_buf, STIR_SHAKEN_BUFLEN, "URL (%s) is not handled by ACME API. Closed HTTP connection", this_uri);
 						stir_shaken_set_error(&ca->ss, err_buf, STIR_SHAKEN_ERROR_ACME);
 						break;
 					}
-
-					strncpy(this_uri, m->uri.p, stir_shaken_min(STIR_SHAKEN_BUFLEN, m->uri.len));
-					this_uri[STIR_SHAKEN_BUFLEN - 1] = '\0';
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\n-> Searching handler for %s...\n", this_uri);
 
@@ -1336,14 +1371,14 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 							error_desc = stir_shaken_get_error(&ca->ss, &error);
 						}
 
-						close_http_connection_with_error(nc, io, error_desc, NULL);
+						close_http_connection_with_error(nc, error_desc, NULL);
 						stir_shaken_set_error(&ca->ss, "Handler not found. Closed HTTP connection", STIR_SHAKEN_ERROR_ACME);
 
 						break;
 					}
 
 					fprintif(STIR_SHAKEN_LOGLEVEL_MEDIUM, "\n-> Handler found\n");
-					evh->f(nc, event, hm, d);
+					evh->f(nc, event, hm, ca);
 				}
 				break;
 			}
@@ -1353,7 +1388,7 @@ static void ca_event_handler(struct mg_connection *nc, int event, void *hm, void
 	}
 
 exit:
-	if (stir_shaken_is_error_set(&ca->ss)) {
+	if (ca && stir_shaken_is_error_set(&ca->ss)) {
 		error_desc = stir_shaken_get_error(&ca->ss, &error);
 		fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Error. %s\n", error_desc);
 		stir_shaken_clear_error(&ca->ss);
@@ -1369,15 +1404,13 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 	struct mg_mgr mgr = { 0 };
 	struct mg_connection *nc = NULL;
 	char port[100] = { 0 };
-	struct mg_bind_opts bopts = { 0 };
-	struct mg_http_endpoint_opts opts = { 0 };
+	stir_shaken_ca_mongoose_context_t ctx = { 0 };
 
 
 	if (!ca)
 		return STIR_SHAKEN_STATUS_TERM;
 
-	opts.user_data = ca;
-	bopts.user_data = ca;
+	ctx.ca = ca;
 
 	if (ca->use_ssl) {
 
@@ -1385,15 +1418,25 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 			stir_shaken_set_error(ss, "HTTPS requested, but no cert specified", STIR_SHAKEN_ERROR_HTTPS_CERT);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
-		bopts.ssl_cert = ca->ssl_cert_name;
+		ctx.tls_cert = mg_file_read(&mg_fs_posix, ca->ssl_cert_name);
+		if (!ctx.tls_cert.buf) {
+			stir_shaken_set_error(ss, "HTTPS requested, but cert could not be read", STIR_SHAKEN_ERROR_HTTPS_CERT);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
 
 		if (stir_shaken_zstr(ca->ssl_key_name)) {
 			stir_shaken_set_error(ss, "HTTPS requested, but no key specified", STIR_SHAKEN_ERROR_HTTPS_KEY);
+			mg_free((void*) ctx.tls_cert.buf);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
-		bopts.ssl_key = ca->ssl_key_name;
+		ctx.tls_key = mg_file_read(&mg_fs_posix, ca->ssl_key_name);
+		if (!ctx.tls_key.buf) {
+			stir_shaken_set_error(ss, "HTTPS requested, but key could not be read", STIR_SHAKEN_ERROR_HTTPS_KEY);
+			mg_free((void*) ctx.tls_cert.buf);
+			return STIR_SHAKEN_STATUS_FALSE;
+		}
 
-		fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Using HTTPS with cert (%s) and key (%s)...\n", bopts.ssl_cert, bopts.ssl_key);
+		fprintif(STIR_SHAKEN_LOGLEVEL_BASIC, "Using HTTPS with cert (%s) and key (%s)...\n", ca->ssl_cert_name, ca->ssl_key_name);
 	}
 
 	if (!ca->ss.callback) {
@@ -1401,15 +1444,17 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 		ca->ss.callback = stir_shaken_default_callback;
 	}
 
-	mg_mgr_init(&mgr, NULL);
+	mg_mgr_init(&mgr);
 
 	if (ca->port == 0)
 		ca->port = STIR_SHAKEN_DEFAULT_CA_PORT;
 
-	snprintf(port, 100, ":%u", ca->port); 
-	nc = mg_bind_opt(&mgr, port, ca_event_handler, ca, bopts);
+	snprintf(port, 100, "%s://0.0.0.0:%u", ca->use_ssl ? "https" : "http", ca->port);
+	nc = mg_http_listen(&mgr, port, ca_event_handler, &ctx);
 	if (!nc) {
 		stir_shaken_set_error(ss, "Cannnot bind to port", STIR_SHAKEN_ERROR_BIND);
+		if (ctx.tls_cert.buf) mg_free((void*) ctx.tls_cert.buf);
+		if (ctx.tls_key.buf) mg_free((void*) ctx.tls_key.buf);
 		return STIR_SHAKEN_STATUS_FALSE;
 	}
 
@@ -1419,6 +1464,8 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 
 		if (STIR_SHAKEN_STATUS_OK != stir_shaken_add_cert_trusted_from_file(ss, ca->trusted_pa_cert_name, ca->trusted_pa_keys, STI_CA_TRUSTED_PA_KEYS_MAX)) {
 			stir_shaken_set_error(ss, "Cannot add trusted PA certificate", STIR_SHAKEN_ERROR_PA_ADD);
+			if (ctx.tls_cert.buf) mg_free((void*) ctx.tls_cert.buf);
+			if (ctx.tls_key.buf) mg_free((void*) ctx.tls_key.buf);
 			return STIR_SHAKEN_STATUS_FALSE;
 		}
 	}
@@ -1429,14 +1476,14 @@ stir_shaken_status_t stir_shaken_run_ca_service(stir_shaken_context_t *ss, stir_
 	register_uri_handler(STI_CA_ACME_NONCE_REQ_URL, ca_handle_api_nonce, 0);
 	register_uri_handler(STI_CA_AUTHORITY_CHECK_URL, ca_handle_api_authority_check, 1);
 
-	mg_set_protocol_http_websocket(nc);
-
 	for (;;) {
 		mg_mgr_poll(&mgr, 10000);
 	}
 
 	unregister_handlers();
 	mg_mgr_free(&mgr);
+	if (ctx.tls_cert.buf) mg_free((void*) ctx.tls_cert.buf);
+	if (ctx.tls_key.buf) mg_free((void*) ctx.tls_key.buf);
 
 	return STIR_SHAKEN_STATUS_OK;
 }

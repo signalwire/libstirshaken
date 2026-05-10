@@ -2,12 +2,24 @@ Source: libstirshaken
 Section: libs
 Priority: optional
 Maintainer: FreeSWITCH Solutions <packages@freeswitch.com>
-Build-Depends: debhelper (>= 9), libcurl4-openssl-dev, libjwt-dev (>= 1.12.0), libks2 (>= 2.0.0), libssl-dev, pkgconf, uuid-dev
-Standards-Version: 3.9.6
+Build-Depends:
+ autoconf,
+ automake,
+ debhelper-compat (= 13),
+ libcurl4-openssl-dev,
+ libjwt-dev (>= 1.12.0),
+ libks2 (>= 2.0.0),
+ libssl-dev,
+ libtool,
+ pkgconf,
+ uuid-dev
+Standards-Version: 4.7.4
+Rules-Requires-Root: no
 
 Package: libstirshaken1
 Architecture: any
-Depends: ${shlibs:Depends}
+Multi-Arch: same
+Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: STIR-Shaken authentication and verification library
  This library provides building blocks for implementing STIR-Shaken
  authentication and verification services, (STI-SP/AS, STI-SP/VS),
@@ -18,10 +30,28 @@ Description: STIR-Shaken authentication and verification library
 Package: libstirshaken-dev
 Section: libdevel
 Architecture: any
-Depends: libstirshaken1 (= ${binary:Version}), libcurl4-openssl-dev, libjwt-dev (>= 1.12.0), libks2 (>= 2.0.0)
+Multi-Arch: same
+Depends:
+ ${misc:Depends},
+ libstirshaken1 (= ${binary:Version}),
+ libcurl4-openssl-dev,
+ libjwt-dev (>= 1.12.0),
+ libks2 (>= 2.0.0),
+ libssl-dev
 Description: STIR-Shaken authentication and verification library
  This library provides building blocks for implementing STIR-Shaken
  authentication and verification services, (STI-SP/AS, STI-SP/VS),
  as well as elements of STI-CA and STI-PA.
  .
  This package contains the static library and development headers.
+
+Package: libstirshaken-tools
+Section: utils
+Architecture: any
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends},
+ libstirshaken1 (= ${binary:Version})
+Description: STIR-Shaken command-line tools
+ This package contains command-line tools for working with the
+ libstirshaken authentication and verification library.

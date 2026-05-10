@@ -36,6 +36,7 @@ src/.deps/
 src/.dirstamp
 stamp-h1
 stir_shaken_as_basic
+stir_shaken_as_div
 stir_shaken_as_easy
 stir_shaken_as_passport
 stir_shaken_vs
@@ -51,6 +52,7 @@ stir_shaken_test_15
 stir_shaken_test_16
 stir_shaken_test_17
 stir_shaken_test_18
+stir_shaken_test_19
 stir_shaken_test_2
 stir_shaken_test_3
 stir_shaken_test_4

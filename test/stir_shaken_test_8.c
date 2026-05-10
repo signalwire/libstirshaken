@@ -113,6 +113,18 @@ stir_shaken_status_t stir_shaken_unit_test_verify_with_cert(void)
 	stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
 	stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
 
+	status = stir_shaken_sign_x509_cert(&ss, cert.x, private_key);
+	if (stir_shaken_is_error_set(&ss)) {
+		error_description = stir_shaken_get_error(&ss, &error_code);
+		printf("Error description is: '%s'\n", error_description);
+		printf("Error code is: '%d'\n", error_code);
+	}
+	stir_shaken_assert(status == STIR_SHAKEN_STATUS_OK, "Err, signing Cert");
+	stir_shaken_assert(stir_shaken_is_error_set(&ss) == 0, "Err, error condition set (should not be set)");
+	error_description = stir_shaken_get_error(&ss, &error_code);
+	stir_shaken_assert(error_code == STIR_SHAKEN_ERROR_GENERAL, "Err, error should be GENERAL");
+	stir_shaken_assert(error_description == NULL, "Err, error description set, should be NULL");
+
 	stir_shaken_assert(STIR_SHAKEN_STATUS_OK == stir_shaken_x509_to_disk(&ss, cert.x, cert_name), "Failed to write cert to disk");
 
 	printf("Verifying SIP Identity Header's signature with Cert...\n\n");
